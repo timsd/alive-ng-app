@@ -355,17 +355,34 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
           bottom: ResponsiveUtils.getResponsiveSpacing(context, 12)),
       elevation: 2,
       child: ExpansionTile(
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.secondary,
-          backgroundImage: user.avatarUrl != null
-              ? CustomImage.provider(user.avatarUrl!)
-              : null,
-          child: user.avatarUrl == null
-              ? Icon(
-                  Icons.person,
-                  color: Theme.of(context).colorScheme.onSecondary,
-                )
-              : null,
+        leading: Builder(
+          builder: (context) {
+            final avatarUrl = (user.avatarUrl != null && user.avatarUrl!.trim().isNotEmpty)
+                ? user.avatarUrl!.trim()
+                : ((user.photoUrl != null && user.photoUrl!.trim().isNotEmpty)
+                    ? user.photoUrl!.trim()
+                    : null);
+            return CircleAvatar(
+              backgroundColor: Theme.of(context).colorScheme.secondary,
+              child: ClipOval(
+                child: avatarUrl != null
+                    ? CustomImage(
+                        imageUrl: avatarUrl,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorWidget: Icon(
+                          Icons.person,
+                          color: Theme.of(context).colorScheme.onSecondary,
+                        ),
+                      )
+                    : Icon(
+                        Icons.person,
+                        color: Theme.of(context).colorScheme.onSecondary,
+                      ),
+              ),
+            );
+          },
         ),
         title: Text(
           user.fullName ?? 'Unknown User',

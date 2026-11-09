@@ -7,6 +7,8 @@ import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
 import 'chapter_reports_screen.dart';
+import 'admin_approval_screen.dart';
+import 'role_management_screen.dart';
 
 class AdminChaptersScreen extends StatefulWidget {
   const AdminChaptersScreen({super.key});
@@ -225,6 +227,22 @@ class _AdminChaptersScreenState extends State<AdminChaptersScreen> {
                 PopupMenuButton<String>(
                   itemBuilder: (context) => [
                     const PopupMenuItem(
+                      value: 'members',
+                      child: ListTile(
+                        leading: Icon(Icons.people_outline),
+                        title: Text('View Members'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'approvals',
+                      child: ListTile(
+                        leading: Icon(Icons.how_to_reg_outlined),
+                        title: Text('Pending Approvals'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const PopupMenuItem(
                       value: 'edit',
                       child: ListTile(
                         leading: Icon(Icons.edit_outlined),
@@ -291,13 +309,30 @@ class _AdminChaptersScreenState extends State<AdminChaptersScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
+                        builder: (context) => const AdminApprovalScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.how_to_reg_outlined, size: 16),
+                  label: const Text('Approvals', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
                         builder: (context) =>
                             ChapterReportsScreen(initialChapter: chapter.name),
                       ),
                     );
                   },
                   icon: const Icon(Icons.assessment_outlined, size: 16),
-                  label: const Text('Chapter Reports',
+                  label: const Text('Reports',
                       style: TextStyle(fontSize: 12)),
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
@@ -314,6 +349,22 @@ class _AdminChaptersScreenState extends State<AdminChaptersScreen> {
 
   void _handleAction(String action, Chapter chapter) {
     switch (action) {
+      case 'members':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const RoleManagementScreen(),
+          ),
+        );
+        break;
+      case 'approvals':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AdminApprovalScreen(),
+          ),
+        );
+        break;
       case 'edit':
         _showChapterDialog(chapter: chapter);
         break;

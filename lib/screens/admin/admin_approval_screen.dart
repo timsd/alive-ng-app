@@ -366,15 +366,43 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundImage: user.avatarUrl != null
-              ? CustomImage.provider(user.avatarUrl!)
-              : null,
-          child: user.avatarUrl == null
-              ? Text((user.fullName != null && user.fullName!.trim().isNotEmpty)
-                  ? user.fullName!.trim().substring(0, 1).toUpperCase()
-                  : 'U')
-              : null,
+        leading: Builder(
+          builder: (context) {
+            final avatarUrl = (user.avatarUrl != null && user.avatarUrl!.trim().isNotEmpty)
+                ? user.avatarUrl!.trim()
+                : ((user.photoUrl != null && user.photoUrl!.trim().isNotEmpty)
+                    ? user.photoUrl!.trim()
+                    : null);
+            final initial = (user.fullName != null && user.fullName!.trim().isNotEmpty)
+                ? user.fullName!.trim().substring(0, 1).toUpperCase()
+                : 'U';
+            return CircleAvatar(
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              child: ClipOval(
+                child: avatarUrl != null
+                    ? CustomImage(
+                        imageUrl: avatarUrl,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorWidget: Text(
+                          initial,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        initial,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+              ),
+            );
+          },
         ),
         title: Text(user.fullName ?? 'Unknown User'),
         subtitle: Column(

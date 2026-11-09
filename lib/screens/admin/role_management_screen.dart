@@ -385,17 +385,34 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _getRoleColor(context, user.role),
-          backgroundImage: user.avatarUrl != null
-              ? CustomImage.provider(user.avatarUrl!)
-              : null,
-          child: user.avatarUrl == null
-              ? Icon(
-                  Icons.person,
-                  color: _getRoleForegroundColor(context, user.role),
-                )
-              : null,
+        leading: Builder(
+          builder: (context) {
+            final avatarUrl = (user.avatarUrl != null && user.avatarUrl!.trim().isNotEmpty)
+                ? user.avatarUrl!.trim()
+                : ((user.photoUrl != null && user.photoUrl!.trim().isNotEmpty)
+                    ? user.photoUrl!.trim()
+                    : null);
+            return CircleAvatar(
+              backgroundColor: _getRoleColor(context, user.role),
+              child: ClipOval(
+                child: avatarUrl != null
+                    ? CustomImage(
+                        imageUrl: avatarUrl,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorWidget: Icon(
+                          Icons.person,
+                          color: _getRoleForegroundColor(context, user.role),
+                        ),
+                      )
+                    : Icon(
+                        Icons.person,
+                        color: _getRoleForegroundColor(context, user.role),
+                      ),
+              ),
+            );
+          },
         ),
         title: Text(
           user.fullName ?? 'Unknown User',

@@ -540,6 +540,8 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -548,6 +550,8 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w500,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),

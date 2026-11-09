@@ -106,6 +106,7 @@ class _LeaderMeetingTranscriptionScreenState
   StreamSubscription? _transcriptSub;
   StreamSubscription? _decisionsSub;
   StreamSubscription? _actionItemsSub;
+  StreamSubscription? _roomStatusSub;
 
   List<ScribeTranscriptPacket> _transcript = [];
   List<ScribeDecision> _decisions = [];
@@ -190,8 +191,31 @@ class _LeaderMeetingTranscriptionScreenState
       }
     });
 
-    // Start on-device audio transcription for the local microphone
-    _scribeService!.startListening();
+    // Auto-listen only when an active meeting is connected
+    _roomStatusSub = gateway.roomStatus.listen((status) {
+      if (!mounted) return;
+      if (status == RoomStatus.connected) {
+        if (_scribeService != null && !_scribeService!.isListening) {
+          _scribeService!.startListening().then((_) {
+            if (mounted) setState(() {});
+          });
+        }
+      } else if (status == RoomStatus.disconnected) {
+        if (_scribeService != null && _scribeService!.isListening) {
+          _scribeService!.stopListening().then((_) {
+            if (mounted) setState(() {});
+          });
+        }
+      }
+    });
+
+    // If meeting is already actively connected when Scribe screen is opened, start listening;
+    // otherwise remain in Standby mode until a meeting connects.
+    if (gateway.isConnected) {
+      _scribeService!.startListening().then((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   void _scrollToBottom() {
@@ -443,6 +467,7 @@ class _LeaderMeetingTranscriptionScreenState
     _transcriptSub?.cancel();
     _decisionsSub?.cancel();
     _actionItemsSub?.cancel();
+    _roomStatusSub?.cancel();
     _scribeService?.dispose();
     _tabController.dispose();
     _transcriptScrollController.dispose();
@@ -637,6 +662,7 @@ class _LeaderMeetingTranscriptionScreenState
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: p.isSpeaking ? FontWeight.bold : FontWeight.w500,
+                                          color: theme.colorScheme.onSurface,
                                         ),
                                       ),
                                       if (p.isSpeaking) ...[
@@ -660,7 +686,11 @@ class _LeaderMeetingTranscriptionScreenState
                                   ),
                                   child: Text(
                                     name,
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
                                   ),
                                 );
                               }),
@@ -782,6 +812,7 @@ class _LeaderMeetingTranscriptionScreenState
   // ──────────────────────────────────────────────────────────
   Widget _buildLiveTranscriptTab(bool isDark) {
     if (_transcript.isEmpty) {
+      final isListening = _scribeService?.isListening == true;
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -789,20 +820,34 @@ class _LeaderMeetingTranscriptionScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.record_voice_over_outlined,
-                size: 48,
-                color: Colors.grey.withValues(alpha: 0.5),
+                isListening ? Icons.record_voice_over_rounded : Icons.mic_none_rounded,
+                size: 52,
+                color: isListening
+                    ? const Color(0xFF16A34A)
+                    : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'ALIVE Scribe is active and listening.',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              const SizedBox(height: 16),
+              Text(
+                isListening
+                    ? 'ALIVE Scribe is actively listening.'
+                    : 'ALIVE Scribe is in Standby.',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+                ),
               ),
-              const SizedBox(height: 6),
-              const Text(
-                'When attendees speak, their speech is cleaned of filler words ("um", "you know") and streamed here in real time with 100% speaker attribution.',
+              const SizedBox(height: 8),
+              Text(
+                isListening
+                    ? 'When attendees speak, their speech is cleaned of filler words ("um", "you know") and streamed here in real time with 100% speaker attribution.'
+                    : 'Listening begins automatically when your meeting connects. You can also tap the microphone icon above to start manual dictation at any time.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  fontSize: 13,
+                  height: 1.45,
+                ),
               ),
             ],
           ),
@@ -871,14 +916,21 @@ class _LeaderMeetingTranscriptionScreenState
                           const Spacer(),
                           Text(
                             timeStr,
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 6),
                       Text(
                         packet.text,
-                        style: const TextStyle(fontSize: 14, height: 1.4),
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.45,
+                          color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+                        ),
                       ),
                     ],
                   ),
@@ -904,19 +956,27 @@ class _LeaderMeetingTranscriptionScreenState
             children: [
               Icon(
                 Icons.lightbulb_outline,
-                size: 48,
-                color: Colors.grey.withValues(alpha: 0.5),
+                size: 52,
+                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
               ),
-              const SizedBox(height: 12),
-              const Text(
+              const SizedBox(height: 16),
+              Text(
                 'No decisions or action items yet.',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+                ),
               ),
-              const SizedBox(height: 6),
-              const Text(
+              const SizedBox(height: 8),
+              Text(
                 'As participants state agreements ("we agreed to...", "it is resolved that...") or commitments ("I will...", "Bro. Samuel to follow up..."), ALIVE Scribe will extract them here with exact verbatim citations.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  fontSize: 13,
+                  height: 1.45,
+                ),
               ),
             ],
           ),
@@ -937,7 +997,11 @@ class _LeaderMeetingTranscriptionScreenState
                 const SizedBox(width: 8),
                 Text(
                   'Council Resolutions (${_decisions.length})',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+                  ),
                 ),
               ],
             ),
@@ -954,7 +1018,11 @@ class _LeaderMeetingTranscriptionScreenState
                 const SizedBox(width: 8),
                 Text(
                   'Assigned Action Items (${_actionItems.length})',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+                  ),
                 ),
               ],
             ),
@@ -996,25 +1064,38 @@ class _LeaderMeetingTranscriptionScreenState
               const Spacer(),
               Text(
                 '[${dec.timestampFormatted}]',
-                style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'monospace'),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? const Color(0xFF86EFAC).withValues(alpha: 0.8) : const Color(0xFF166534).withValues(alpha: 0.8),
+                  fontFamily: 'monospace',
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             dec.decision,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.35),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+              color: isDark ? const Color(0xFFF0FDF4) : const Color(0xFF14532D),
+            ),
           ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               'Citation: "${dec.verbatimQuote}" — ${dec.speakerName}',
-              style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+                color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
+              ),
             ),
           ),
         ],
@@ -1073,25 +1154,38 @@ class _LeaderMeetingTranscriptionScreenState
               const Spacer(),
               Text(
                 '[${act.timestampFormatted}]',
-                style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'monospace'),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? const Color(0xFF93C5FD).withValues(alpha: 0.8) : const Color(0xFF1E40AF).withValues(alpha: 0.8),
+                  fontFamily: 'monospace',
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             act.task,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.35),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+              color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E3A8A),
+            ),
           ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               'Citation: "${act.verbatimQuote}" — ${act.speakerName}',
-              style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+                color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
+              ),
             ),
           ),
         ],

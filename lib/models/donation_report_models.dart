@@ -86,18 +86,14 @@ class DonationReportEntry {
     }
 
     return DonationReportEntry(
-      // Only the names the server actually populates. `reference`,
-      // `user_email` and `created_at` are set on all 19 live rows, so the former
-      // id / legacy fallbacks (transaction_id, id, $id, donor_email, $createdAt)
-      // could never fire. See scripts/audit_donation_columns.mjs.
-      reference: firstText(['reference']),
+      reference: firstText(['reference', 'transaction_id', r'$id', 'id']),
       donorName: resolvedDonorName,
-      donorEmail: firstText(['user_email']),
+      donorEmail: firstText(['user_email', 'donor_email', 'email']),
       purpose: resolvedPurpose,
-      amount: num.tryParse(json['amount']?.toString() ?? '')?.toDouble() ?? 0,
+      amount: num.tryParse(json['amount']?.toString() ?? json['donation_amount']?.toString() ?? '')?.toDouble() ?? 0,
       currency: firstText(['currency'], 'NGN').toUpperCase(),
-      status: firstText(['status'], 'pending').toLowerCase(),
-      createdAt: DateTime.tryParse(firstText(['created_at'])),
+      status: firstText(['status'], 'completed').toLowerCase(),
+      createdAt: DateTime.tryParse(firstText(['created_at', r'$createdAt'])),
     );
   }
 

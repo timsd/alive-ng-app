@@ -114,24 +114,82 @@ class AppwriteAdminExportService {
     String? status,
     int limit = 250,
   }) async {
-    final response = await _tables.listRows(
-      databaseId: AppwriteBackendConfig.databaseId,
-      tableId: AppwriteBackendConfig.donationRecordsCollectionId,
-      queries: [
-        Query.orderDesc('\$createdAt'),
-        Query.limit(limit),
-        if (status != null && status.isNotEmpty && status != 'all')
-          Query.equal(
-            'status',
-            status.toLowerCase() == 'completed'
-                ? ['completed', 'success']
-                : status.toLowerCase(),
-          ),
-      ],
-    );
-    return response.rows
-        .map((row) => DonationReportEntry.fromJson(_rowData(row)))
-        .toList();
+    final entries = <DonationReportEntry>[];
+
+    // 1. Load from donation_records
+    try {
+      final response = await _tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.donationRecordsCollectionId,
+        queries: [
+          Query.orderDesc(r'$createdAt'),
+          Query.limit(limit),
+          if (status != null && status.isNotEmpty && status != 'all')
+            Query.equal(
+              'status',
+              status.toLowerCase() == 'completed'
+                  ? ['completed', 'success']
+                  : status.toLowerCase(),
+            ),
+        ],
+      );
+      entries.addAll(
+        response.rows.map((row) => DonationReportEntry.fromJson(_rowData(row))),
+      );
+    } catch (_) {
+      try {
+        final fallback = await _tables.listRows(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.donationRecordsCollectionId,
+          queries: [
+            Query.limit(limit),
+            if (status != null && status.isNotEmpty && status != 'all')
+              Query.equal(
+                'status',
+                status.toLowerCase() == 'completed'
+                    ? ['completed', 'success']
+                    : status.toLowerCase(),
+              ),
+          ],
+        );
+        entries.addAll(
+          fallback.rows.map((row) => DonationReportEntry.fromJson(_rowData(row))),
+        );
+      } catch (e) {
+        _logger.warning('Could not load donation_records: $e');
+      }
+    }
+
+    // 2. Also load completed tract / material download gifts
+    try {
+      final matRes = await _tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.materialDownloadsCollectionId,
+        queries: [
+          Query.greaterThan('donation_amount', 0),
+          Query.limit(limit),
+        ],
+      );
+      for (final row in matRes.rows) {
+        final data = _rowData(row);
+        final entry = DonationReportEntry.fromJson(data);
+        if (entry.amount > 0 &&
+            !entries.any((e) => e.reference == entry.reference && entry.reference.isNotEmpty)) {
+          entries.add(entry);
+        }
+      }
+    } catch (e) {
+      _logger.warning('Could not load material_downloads gifts: $e');
+    }
+
+    // Sort newest first
+    entries.sort((a, b) {
+      final aTime = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bTime.compareTo(aTime);
+    });
+
+    return entries;
   }
 
   Future<List<Map<String, dynamic>>> listDonations({

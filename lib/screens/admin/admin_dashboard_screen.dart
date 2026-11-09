@@ -63,6 +63,23 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   bool _isLoading = true;
   bool _hasAccess = false;
   AppUser? _currentUser;
+  UserProfile? _adminProfile;
+
+  String get _adminDisplayName {
+    final profileName = _adminProfile?.name?.trim();
+    if (profileName != null && profileName.isNotEmpty) {
+      return profileName;
+    }
+    final display = _currentUser?.displayName?.trim();
+    if (display != null && display.isNotEmpty) {
+      return display;
+    }
+    final email = _currentUser?.email.trim();
+    if (email != null && email.isNotEmpty) {
+      return email.split('@').first;
+    }
+    return 'Administrator';
+  }
 
   /// Whether the signed-in person may see Donations & Finance.
   ///
@@ -133,6 +150,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       _currentUser = AuthService.instance.currentUser;
       if (_currentUser != null) {
         _hasAccess = _roleService.hasRole('admin');
+        try {
+          _adminProfile = await AuthService.instance.getCurrentUserProfile();
+        } catch (_) {}
       }
       await _resolveFinanceAccess();
       await _loadDashboardStats();
@@ -615,7 +635,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Welcome, ${_currentUser?.email != null ? _currentUser!.email.split('@').first : 'Administrator'}',
+                    'Welcome, $_adminDisplayName',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: isDark ? theme.colorScheme.onSurface : Colors.white,

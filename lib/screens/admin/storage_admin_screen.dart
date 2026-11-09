@@ -37,6 +37,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     'documents': 'pdf-files',
     'images': 'profile-pictures',
     'backups': 'system-backups',
+    'board-documents': 'board_documents',
   };
 
   /// Maps a canonical alias (or legacy name) to the real storage bucket name.
@@ -50,6 +51,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     'profile-pictures',
     'tract-avatars',
     'podcast-covers',
+    'board-documents',
     'meeting-files',
     'system-backups',
     'app-logs',
@@ -101,7 +103,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
 
     try {
       final refs = await _storageService.listFiles(resolved);
-      final files = await Future.wait(refs.map((ref) async {
+      final rawFiles = await Future.wait(refs.map((ref) async {
         final md = await ref.getMetadata();
         return {
           'name': ref.name,
@@ -113,6 +115,52 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
           'contentType': md.contentType,
         };
       }));
+
+      // Deduplicate files by unique fileId
+      final seenIds = <String>{};
+      final uniqueFiles = rawFiles.where((f) {
+        final fid = (f['fileId'] as String?)?.isNotEmpty == true
+            ? f['fileId'] as String
+            : (f['name'] as String? ?? '');
+        return seenIds.add(fid);
+      }).toList();
+
+      // Properly categorize items by bucket purpose to prevent cross-bucket leakage
+      final files = uniqueFiles.where((f) {
+        final name = (f['name'] as String? ?? '').toLowerCase();
+        final ct = (f['contentType'] as String? ?? '').toLowerCase();
+        final ext = name.contains('.') ? name.split('.').last : '';
+
+        const audioExts = {'mp3', 'wav', 'aac', 'm4a', 'ogg', 'opus', 'flac'};
+        const videoExts = {'mp4', 'mov', 'm4v', 'webm', 'mkv', 'avi'};
+        const docExts = {'pdf', 'epub', 'doc', 'docx'};
+        const imgExts = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'};
+        const backupExts = {'zip', 'json', 'tar', 'gz', 'csv', 'sql'};
+        const logExts = {'log', 'txt'};
+
+        switch (bucket) {
+          case 'audio-files':
+            return ct.startsWith('audio/') || audioExts.contains(ext);
+          case 'podcast-covers':
+            return ct.startsWith('image/') || imgExts.contains(ext);
+          case 'video-files':
+            return ct.startsWith('video/') || videoExts.contains(ext);
+          case 'pdf-files':
+            return ct.contains('pdf') || docExts.contains(ext);
+          case 'tract-avatars':
+            return ct.startsWith('image/') || imgExts.contains(ext);
+          case 'profile-pictures':
+            return ct.startsWith('image/') || imgExts.contains(ext);
+          case 'board-documents':
+            return ct.contains('pdf') || docExts.contains(ext) || backupExts.contains(ext);
+          case 'system-backups':
+            return backupExts.contains(ext) || ct.contains('zip') || ct.contains('json');
+          case 'app-logs':
+            return logExts.contains(ext);
+          default:
+            return true;
+        }
+      }).toList();
 
       files.sort((a, b) {
         final ad =
@@ -458,6 +506,9 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
         return Colors.green;
       case 'podcast-covers':
         return Colors.orange;
+      case 'board-documents':
+      case 'board_documents':
+        return const Color(0xFF1B365D);
       case 'meeting-files':
         return Colors.teal;
       case 'system-backups':
@@ -483,6 +534,9 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
         return Icons.book;
       case 'podcast-covers':
         return Icons.headset;
+      case 'board-documents':
+      case 'board_documents':
+        return Icons.business_center_rounded;
       case 'meeting-files':
         return Icons.folder;
       case 'system-backups':

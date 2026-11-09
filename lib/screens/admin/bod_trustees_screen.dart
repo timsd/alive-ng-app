@@ -218,28 +218,28 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                           ),
                         ),
                         const SizedBox(width: 14),
-                        FutureBuilder<UserProfile?>(
-                          future: _currentUserId != null
-                              ? _profileService
-                                  .getUserProfileModel(_currentUserId!)
-                              : Future<UserProfile?>.value(null),
-                          builder: (context, snapshot) {
-                            final profile = snapshot.data;
-                            final userEmail = profile?.fullName?.isNotEmpty == true
-                                ? profile!.fullName!
-                                : profile?.email ?? 'Administrator';
-                            return Expanded(
-                              child: Text(
-                                'Welcome, $userEmail',
+                        Expanded(
+                          child: FutureBuilder<UserProfile?>(
+                            future: _currentUserId != null
+                                ? _profileService
+                                    .getUserProfileModel(_currentUserId!)
+                                : Future<UserProfile?>.value(null),
+                            builder: (context, snapshot) {
+                              final profile = snapshot.data;
+                              final userName = profile?.fullName?.isNotEmpty == true
+                                  ? profile!.fullName!
+                                  : profile?.email ?? 'Administrator';
+                              return Text(
+                                'Welcome, $userName',
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: colorScheme.onSurface,
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -556,15 +556,36 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: colorScheme.primaryContainer,
-              child: Icon(
-                record.position == LeadershipPosition.trustee
-                    ? Icons.security_rounded
-                    : Icons.person_rounded,
-                color: colorScheme.onPrimaryContainer,
-              ),
+            Builder(
+              builder: (context) {
+                final photoUrl = record.contactInfo?['avatar_url']?.toString() ??
+                    record.contactInfo?['photo_url']?.toString();
+                return CircleAvatar(
+                  radius: 22,
+                  backgroundColor: colorScheme.primaryContainer,
+                  child: ClipOval(
+                    child: (photoUrl != null && photoUrl.trim().isNotEmpty)
+                        ? CustomImage(
+                            imageUrl: photoUrl.trim(),
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                            errorWidget: Icon(
+                              record.position == LeadershipPosition.trustee
+                                  ? Icons.security_rounded
+                                  : Icons.person_rounded,
+                              color: colorScheme.onPrimaryContainer,
+                            ),
+                          )
+                        : Icon(
+                            record.position == LeadershipPosition.trustee
+                                ? Icons.security_rounded
+                                : Icons.person_rounded,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 14),
             Expanded(
