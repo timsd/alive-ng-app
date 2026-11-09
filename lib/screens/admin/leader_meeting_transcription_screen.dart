@@ -580,7 +580,9 @@ class _LeaderMeetingTranscriptionScreenState
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            isLiveKitConnected ? 'LiveKit: $roomName' : roomName,
+                            isLiveKitConnected
+                                ? 'ALIVE Meet: ${roomName.replaceFirst(RegExp(r'^alive-meet-?', caseSensitive: false), '')}'
+                                : roomName,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -594,21 +596,35 @@ class _LeaderMeetingTranscriptionScreenState
                     ),
                     const Spacer(),
 
-                    // Duration Counter
-                    Row(
-                      children: [
-                        Icon(Icons.timer_outlined, size: 14, color: theme.colorScheme.outline),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatDuration(_sessionDuration),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'monospace',
-                            color: theme.colorScheme.onSurface,
+                    // Meeting Call Duration Counter
+                    Tooltip(
+                      message: 'Meeting Duration',
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                           ),
                         ),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.timer_outlined, size: 13, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Meeting: ${_formatDuration(_sessionDuration)}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'monospace',
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -829,26 +845,26 @@ class _LeaderMeetingTranscriptionScreenState
               const SizedBox(height: 16),
               Text(
                 isListening
-                    ? 'ALIVE Scribe is actively listening.'
-                    : 'ALIVE Scribe is in Standby.',
+                    ? 'ALIVE Scribe is active and listening'
+                    : 'ALIVE Scribe is in Standby',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                   color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                isListening
-                    ? 'When attendees speak, their speech is cleaned of filler words ("um", "you know") and streamed here in real time with 100% speaker attribution.'
-                    : 'Listening begins automatically when your meeting connects. You can also tap the microphone icon above to start manual dictation at any time.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                  fontSize: 13,
-                  height: 1.45,
+              if (!isListening) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Listening begins automatically when meeting connects. You can tap the mic icon above to toggle dictation.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
