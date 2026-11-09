@@ -2037,9 +2037,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     final session = ref.read(meetingSessionStreamProvider).value;
     final isConnected = session?.isConnected ?? false;
     final isLeader = RoleAccessService.instance.canStartConferencing() ||
-        widget.isModerator ||
-        (session?.isHost ?? false) ||
-        (session?.isCoHost ?? false);
+        widget.isModerator;
 
     if (!isConnected) {
       return true;
@@ -2151,9 +2149,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
   Widget _buildVideoGridStage(MeetingSession session, MeetingGateway gateway) {
     final isLeader = RoleAccessService.instance.canStartConferencing() ||
-        widget.isModerator ||
-        session.isHost ||
-        session.isCoHost;
+        widget.isModerator;
     return MeetingVideoGridStage(
       session: session,
       gateway: gateway,

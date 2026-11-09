@@ -885,6 +885,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
       return tract.imageUrl!.trim();
     } else if (tract.coverImages.isNotEmpty && tract.coverImages.first.trim().isNotEmpty) {
       return tract.coverImages.first.trim();
+    }
     final idLower = tract.id.toLowerCase();
     final titleLower = tract.title.toLowerCase();
     if (idLower.contains('lesson_1') ||

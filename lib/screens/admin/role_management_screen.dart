@@ -3,6 +3,7 @@ import '../../utils/error_handler.dart';
 import '../../utils/appwrite_id_utils.dart';
 import 'package:flutter/material.dart';
 
+import '../../config/appwrite_backend_config.dart';
 import '../../models/app_models.dart';
 import '../../models/leadership_models.dart' show RoleHistoryRecord;
 import '../../services/appwrite_profile_service.dart';
