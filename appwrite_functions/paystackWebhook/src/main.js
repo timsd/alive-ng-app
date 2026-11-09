@@ -71,17 +71,17 @@ function resolvePurposeFromMetadata(meta) {
 async function sendDonationReceipt(paymentData) {
   const email = paymentData.customer && paymentData.customer.email;
   if (!email) return;
-  
+
   const amount = (paymentData.amount / 100).toLocaleString();
   const currency = paymentData.currency || 'NGN';
   const reference = paymentData.reference;
   const date = new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
-  
+
   const donorName = (paymentData.metadata && paymentData.metadata.donor_name)
     ? paymentData.metadata.donor_name
     : (paymentData.customer && paymentData.customer.first_name
-        ? paymentData.customer.first_name
-        : 'Donor');
+      ? paymentData.customer.first_name
+      : 'Donor');
   const paymentMethod = paymentData.channel || 'card';
 
   // Resolve the donation's purpose the same way `paystack_payments` does, so
@@ -125,7 +125,7 @@ async function sendDonationReceipt(paymentData) {
   const safePaymentMethod = escapeHtml(paymentMethod);
 
   const receiptHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Donation Receipt - ALIVE Nigeria</title></head><body style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a202c;"><div style="text-align: center; border-bottom: 3px solid #1a365d; padding-bottom: 20px; margin-bottom: 20px;"><img src="' + ALIVE_LOGO_URL + '" alt="ALIVE Nigeria" width="88" height="88" style="display:block;margin:0 auto 12px;border:0;outline:none;" /><h1 style="color: #1a365d; margin: 0;">ALIVE Nigeria</h1><p style="color: #666; margin: 4px 0;">Official Donation Receipt</p><p style="color: #999; font-size: 12px; margin: 4px 0;">Valid for tax filing purposes</p></div><div style="padding: 10px 0;"><p>Dear ' + safeDonorName + ',</p><p>Thank you for your generous donation to ALIVE Nigeria. Your contribution is making a difference. Your gift of <strong>' + safeCurrency + ' ' + safeAmount + '</strong> was designated to <strong>' + safeProjectName + '</strong>. Below are the details of your donation:</p><table style="width: 100%; border-collapse: collapse; margin: 20px 0;"><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Donor Name</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeDonorName + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Purpose</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeProjectName + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Amount</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeCurrency + ' ' + safeAmount + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Reference</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeReference + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Date</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeDate + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Payment Method</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safePaymentMethod + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Project</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeProjectName + '</td></tr></table><p style="color: #4a5568; font-size: 14px;">This receipt confirms your donation to ALIVE Nigeria. Please retain this for your tax records. If you have any questions, contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a>.</p></div><div style="text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #999; font-size: 12px;"><p>ALIVE Nigeria &mdash; Thank you for your generosity.</p></div></body></html>';
-  
+
   try {
     if (process.env.RESEND_API_KEY) {
       // Receipts always come from the dedicated receipts@ identity.
@@ -379,21 +379,27 @@ async function incrementProjectRaised(databases, metadata, log, reference, curre
   const amount = Number(metadata.amount_ngn || metadata.amount || 0);
   if (NON_PROJECT_IDS.has(projectId) || !Number.isFinite(amount) || amount <= 0) return;
 
+  const isTestMode = (process.env.PAYSTACK_SECRET_KEY || '').startsWith('sk_test_') || metadata.domain === 'test';
+  if (isTestMode) {
+    log(`[TEST GUARD] Test payment detected - skipping project credit for ${projectId}`);
+    return;
+  }
+
   try {
     if (await hasProjectCredit(databases, reference)) {
       log(`Project ${projectId} already credited for ${reference}; not double counting`);
       return;
     }
 
-    // A target is denominated in naira, so a charge that settled in another
-    // currency must not be added as if it were naira.
     const settled = String(currency || 'NGN').toUpperCase();
-    if (settled !== 'NGN') {
-      log(`Not crediting project ${projectId}: settled in ${settled}, target is NGN`);
-      return;
+    let creditAmount = amount;
+    if (settled === 'USD') {
+      const rate = Number(metadata.exchange_rate_usd_ngn ?? metadata.exchange_rate ?? 1600);
+      creditAmount = Math.round(amount * rate);
+      log(`Converting USD donation ($${amount}) to ₦${creditAmount} NGN at rate ${rate} for project ${projectId}`);
     }
 
-    const raised = await addToProjectRaised({ databases, projectId, amount });
+    const raised = await addToProjectRaised({ databases, projectId, amount: creditAmount });
     log(`Credited project ${projectId} to ${raised}`);
     await markProjectCredited(databases, reference);
   } catch (err) {

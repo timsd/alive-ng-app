@@ -416,18 +416,48 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      'Raised: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayRaised)}',
-                                      style: theme.textTheme.labelSmall
-                                          ?.copyWith(
-                                              fontWeight: FontWeight.bold),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Raised: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayRaised)}',
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                                  fontWeight: FontWeight.bold),
+                                        ),
+                                        Text(
+                                          _selectedCurrency == 'USD'
+                                              ? '≈ ₦${_formatCompact(raised)} NGN'
+                                              : '≈ \$${_formatCompact(raised / _exchangeRate)} USD',
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                                  fontSize: 10,
+                                                  color: theme.colorScheme.onSurface
+                                                      .withValues(alpha: 0.55)),
+                                        ),
+                                      ],
                                     ),
-                                    Text(
-                                      'Goal: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayGoal)}',
-                                      style: theme.textTheme.labelSmall
-                                          ?.copyWith(
-                                              color: theme.colorScheme.onSurface
-                                                  .withValues(alpha: 0.6)),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'Goal: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${_formatCompact(displayGoal)}',
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                                  color: theme.colorScheme.onSurface
+                                                      .withValues(alpha: 0.7)),
+                                        ),
+                                        Text(
+                                          _selectedCurrency == 'USD'
+                                              ? '≈ ₦${_formatCompact(goal)} NGN'
+                                              : '≈ \$${_formatCompact(goal / _exchangeRate)} USD',
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                                  fontSize: 10,
+                                                  color: theme.colorScheme.onSurface
+                                                      .withValues(alpha: 0.55)),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -1915,6 +1945,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                             if (i > 0) const SizedBox(height: 12),
                             ProjectCard(
                               project: projects[i],
+                              displayCurrency: _selectedCurrency,
+                              exchangeRate: _exchangeRate,
                               onDonate: () {
                                 Navigator.of(ctx).pop();
                                 setState(() {

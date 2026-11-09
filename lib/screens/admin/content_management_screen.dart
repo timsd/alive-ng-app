@@ -13,6 +13,7 @@ import '../../utils/layout_fix_utils.dart';
 import '../../utils/project_sync_bridge.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/interactive_lessons_service.dart';
+import '../../services/exchange_rate_service.dart';
 
 class ContentManagementScreen extends StatefulWidget {
   final String? contentType;
@@ -930,6 +931,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     final raised = (project['raised'] ?? 0).toDouble();
     final percent = goal > 0 ? (raised / goal).clamp(0.0, 1.0) : 0.0;
     final status = project['status'] ?? 'active';
+    final rate = ExchangeRateService.instance.lastKnownRate;
+    final usdRaised = rate > 0 ? (raised / rate) : 0.0;
+    final usdGoal = rate > 0 ? (goal / rate) : 0.0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12.0),
@@ -962,14 +966,34 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Raised: ${NumberFormat.simpleCurrency(name: 'NGN').format(raised)}',
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.bold),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Raised: ${NumberFormat.simpleCurrency(name: 'NGN').format(raised)}',
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    if (rate > 0)
+                      Text(
+                        '≈ ${NumberFormat.simpleCurrency(name: 'USD').format(usdRaised)}',
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                  ],
                 ),
-                Text(
-                  'Goal: ${NumberFormat.simpleCurrency(name: 'NGN').format(goal)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Goal: ${NumberFormat.simpleCurrency(name: 'NGN').format(goal)}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    if (rate > 0)
+                      Text(
+                        '≈ ${NumberFormat.simpleCurrency(name: 'USD').format(usdGoal)}',
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                  ],
                 ),
               ],
             ),

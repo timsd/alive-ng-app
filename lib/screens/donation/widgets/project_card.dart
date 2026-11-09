@@ -3,20 +3,51 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/project_model.dart';
+import '../../../services/exchange_rate_service.dart';
 import 'project_fund_update.dart';
 
 class ProjectCard extends StatelessWidget {
-  const ProjectCard({super.key, required this.project, required this.onDonate});
+  const ProjectCard({
+    super.key,
+    required this.project,
+    required this.onDonate,
+    this.displayCurrency,
+    this.exchangeRate,
+  });
+
   final Project project;
   final VoidCallback onDonate;
+  final String? displayCurrency;
+  final double? exchangeRate;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final currency = project.currency.trim().isEmpty ? 'NGN' : project.currency;
-    final money =
-        NumberFormat.compactCurrency(name: currency, symbol: '$currency ');
+    final rate = (exchangeRate != null && exchangeRate! > 0)
+        ? exchangeRate!
+        : ExchangeRateService.instance.lastKnownRate;
+    final hasRate = rate > 0;
+
+    final isUsdPrimary = displayCurrency?.toUpperCase() == 'USD';
+    final ngnRaised = project.raisedAmount;
+    final ngnTarget = project.targetAmount;
+    final usdRaised = hasRate ? (ngnRaised / rate) : 0.0;
+    final usdTarget = hasRate ? (ngnTarget / rate) : 0.0;
+
+    final ngnMoney = NumberFormat.compactCurrency(name: 'NGN', symbol: '₦');
+    final usdMoney = NumberFormat.compactCurrency(name: 'USD', symbol: '\$');
+
+    final primaryText = isUsdPrimary
+        ? '${usdMoney.format(usdRaised)} raised of ${usdMoney.format(usdTarget)}'
+        : '${ngnMoney.format(ngnRaised)} raised of ${ngnMoney.format(ngnTarget)}';
+
+    final secondaryText = isUsdPrimary
+        ? '≈ ${ngnMoney.format(ngnRaised)} / ${ngnMoney.format(ngnTarget)} NGN'
+        : (hasRate
+            ? '≈ ${usdMoney.format(usdRaised)} / ${usdMoney.format(usdTarget)} USD'
+            : null);
+
     final statusColor = switch (project.status.toLowerCase()) {
       'active' => colors.tertiary,
       'planning' => colors.secondary,
@@ -92,9 +123,27 @@ class ProjectCard extends StatelessWidget {
                     minHeight: 6,
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    '${money.format(project.raisedAmount)} raised of ${money.format(project.targetAmount)}',
-                    style: theme.textTheme.labelMedium,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 2,
+                    children: [
+                      Text(
+                        primaryText,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (secondaryText != null)
+                        Text(
+                          secondaryText,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
                 ProjectFundUpdate(project: project),

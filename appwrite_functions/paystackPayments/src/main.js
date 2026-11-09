@@ -1020,6 +1020,7 @@ async function handleVerifiedPayment(paystackData, log) {
     const amount = amountKobo / 100;
     const customerEmail = paystackData.customer?.email || paystackData.metadata?.donor_email || paystackData.metadata?.email || '';
     const donorName = paystackData.metadata?.donor_name || paystackData.customer?.first_name || 'Donor';
+    const isTestPayment = (process.env.PAYSTACK_SECRET_KEY || '').startsWith('sk_test_') || paystackData.domain === 'test';
     const metadata = {
       ...(paystackData.metadata || {}),
       processor: 'paystack',
@@ -1027,6 +1028,7 @@ async function handleVerifiedPayment(paystackData, log) {
       fees: paystackData.fees,
       gateway_response: paystackData.gateway_response,
       paid_at: paystackData.paid_at,
+      is_test: isTestPayment,
     };
 
     // Resolve what this gift was FOR, so the receipt and the stored record are
@@ -1104,31 +1106,44 @@ async function handleVerifiedPayment(paystackData, log) {
     const NON_PROJECT_IDS = new Set(['general_mission_fund', 'general_support', '']);
     if (projId && !NON_PROJECT_IDS.has(projId)) {
       try {
-        const alreadyCredited = await hasProjectCredit(
-          databases,
-          donationsCollectionId,
-          reference,
-        );
-        if (alreadyCredited) {
+        if (isTestPayment) {
           if (log) {
-            log(`Project ${projId} already credited for ${reference}; not double counting`);
+            log(`[TEST GUARD] Test payment detected (domain=${paystackData.domain}) - skipping real project credit for ${projId}`);
           }
         } else {
-          // Only NGN may raise an NGN-denominated target. A charge that
-          // settled in another currency would otherwise be added as naira.
-          const settled = String(paystackData.currency || 'NGN').toUpperCase();
-          if (settled !== 'NGN') {
+          const alreadyCredited = await hasProjectCredit(
+            databases,
+            donationsCollectionId,
+            reference,
+          );
+          if (alreadyCredited) {
             if (log) {
-              log(`Not crediting project ${projId}: settled in ${settled}, target is NGN`);
+              log(`Project ${projId} already credited for ${reference}; not double counting`);
             }
           } else {
+            const settled = String(paystackData.currency || 'NGN').toUpperCase();
+            let creditAmount = amount;
+            if (settled === 'USD') {
+              const clientRate = Number(
+                paystackData.metadata?.exchange_rate_usd_ngn ?? paystackData.metadata?.exchange_rate,
+              );
+              let rate = clientRate;
+              if (!Number.isFinite(rate) || rate <= 100) {
+                const resolved = await getConfiguredUsdToNgnRate(log);
+                rate = resolved.rate;
+              }
+              creditAmount = Math.round(amount * rate);
+              if (log) {
+                log(`Converting USD donation ($${amount}) to ₦${creditAmount} NGN at rate ${rate} for project ${projId}`);
+              }
+            }
             await addToProjectRaised({
               databases,
               projectsCollectionId,
               projectId: projId,
-              amount,
+              amount: creditAmount,
             });
-            if (log) log(`Credited project ${projId} by ${amount}`);
+            if (log) log(`Credited project ${projId} by ${creditAmount}`);
             await markProjectCredited(databases, donationsCollectionId, reference);
           }
         }

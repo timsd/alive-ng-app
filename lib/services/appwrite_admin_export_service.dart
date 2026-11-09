@@ -195,6 +195,12 @@ class AppwriteAdminExportService {
 
       // Filter by date client-side to ensure robustness across timestamp schema variations
       final rows = rawRows.where((r) {
+        // Exclude sandbox / test records so production reports only reflect real donor funds
+        final isTest = r['is_test'] == true ||
+            r['notes']?.toString().contains('[TEST') == true ||
+            r['metadata']?.toString().contains('"is_test":true') == true;
+        if (isTest) return false;
+
         final dateStr = r['created_at'] ?? r['\$createdAt'];
         if (dateStr == null) return true;
         final dt = DateTime.tryParse(dateStr.toString());

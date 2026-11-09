@@ -639,3 +639,4 @@ class _BibleStudyTabState extends State<BibleStudyTab> {
     );
   }
 }
+
