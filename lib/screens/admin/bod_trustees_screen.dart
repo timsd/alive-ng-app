@@ -57,7 +57,10 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             role == 'bod' ||
             role == 'trustee' ||
             RoleAccessService.instance.canAccessAdmin();
-        _isAdmin = RoleAccessService.instance.hasRole('admin');
+        _isAdmin = RoleAccessService.instance.canAccessAdmin() ||
+            role == 'admin' ||
+            role == 'super_admin' ||
+            role == 'superadmin';
         if (_hasAccess) await _loadLeadership();
       }
     } catch (e) {

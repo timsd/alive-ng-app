@@ -113,9 +113,19 @@ class AppwriteBoardService {
         rowId: AppwriteIdUtils.toValidUid(decisionId),
       );
       final data = _documentData(current);
+      final rawVotes = data['votes'];
+      List<dynamic> parsedList = const [];
+      if (rawVotes is List) {
+        parsedList = rawVotes;
+      } else if (rawVotes is String && rawVotes.trim().isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawVotes);
+          if (decoded is List) parsedList = decoded;
+        } catch (_) {}
+      }
       final votes = List<Map<String, dynamic>>.from(
-        (data['votes'] as List? ?? const []).map(
-          (vote) => Map<String, dynamic>.from(vote as Map),
+        parsedList.whereType<Map>().map(
+          (vote) => Map<String, dynamic>.from(vote),
         ),
       );
 

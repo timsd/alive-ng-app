@@ -633,6 +633,23 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                         foregroundColor: colorScheme.onError),
                     child: const Text('Vote Reject'),
                   ),
+                  OutlinedButton(
+                    onPressed: () async {
+                      final authService = AuthService.instance;
+                      final success =
+                          await _boardService.castBoardVote(decision.id, {
+                        'voter_id': authService.currentUser?.uid ?? 'unknown',
+                        'voter_name':
+                            authService.currentUser?.displayName ?? 'Admin',
+                        'vote': 'abstain',
+                      });
+                      if (success && context.mounted) {
+                        Navigator.pop(context);
+                        _loadDecisions();
+                      }
+                    },
+                    child: const Text('Vote Abstain'),
+                  ),
                   if (_isAdmin && decision.status == 'voting') ...[
                     OutlinedButton(
                       onPressed: () async {

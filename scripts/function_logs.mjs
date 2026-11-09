@@ -28,9 +28,8 @@ if (!functionId) {
   process.exit(1);
 }
 
-const queryStr = encodeURIComponent('orderDesc("$createdAt")');
 const res = await fetch(
-  `${endpoint}/v1/functions/${functionId}/executions?queries[]=${queryStr}&limit=${count}`,
+  `${endpoint}/v1/functions/${functionId}/executions?limit=${count}`,
   { headers },
 );
 const j = await res.json();
