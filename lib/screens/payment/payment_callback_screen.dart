@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../../config/appwrite_backend_config.dart';
 import '../../constants/app_constants.dart';
+import '../../models/donation_models.dart';
 import '../../main.dart';
 import '../../services/donation_service.dart';
 import '../../utils/error_handler.dart';

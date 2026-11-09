@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../models/lesson_color_palette.dart';
+import '../../../services/pdf_extractor_service.dart';
 
 /// A card framing an interactive lesson section with a numbered badge and color palette.
 class LessonSectionCard extends StatelessWidget {

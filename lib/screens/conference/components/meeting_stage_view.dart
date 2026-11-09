@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/meeting_models.dart';
-import '../../../providers/user_profile_provider.dart';
-import '../../../services/meeting_gateway.dart';
+import '../../../providers/appwrite_auth_provider.dart';
+import '../../../services/ports/meeting_gateway.dart';
 
 String formatMeetingParticipantName(ParticipantInfo p) {
   final raw = p.name.trim();

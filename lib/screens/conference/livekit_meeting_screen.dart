@@ -1578,7 +1578,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               FilledButton.tonalIcon(
                 onPressed: () =>
                     _showBreakoutRoomsSheet(context, session, gateway, isLeader),
-                icon: const Icon(Icons.Swap_horiz_rounded, size: 16),
+                icon: const Icon(Icons.swap_horiz_rounded, size: 16),
                 label: Text(inSubRoom ? 'Switch / View Rooms' : 'View / Join Rooms'),
                 style: FilledButton.styleFrom(
                   visualDensity: VisualDensity.compact,
@@ -2033,6 +2033,118 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     );
   }
 
+  Future<bool> _handleHostExit(MeetingGateway gateway) async {
+    final session = ref.read(meetingSessionStreamProvider).value;
+    final isConnected = session?.isConnected ?? false;
+    final isLeader = RoleAccessService.instance.canStartConferencing() ||
+        widget.isModerator ||
+        (session?.isHost ?? false) ||
+        (session?.isCoHost ?? false);
+
+    if (!isConnected) {
+      return true;
+    }
+
+    if (!isLeader) {
+      await gateway.leaveMeeting();
+      return true;
+    }
+
+    // If host is the only person remaining in the room, leave cleanly and end the session
+    if ((session?.participants.length ?? 0) <= 1) {
+      if (_isProjectorMode) {
+        setState(() => _isProjectorMode = false);
+      }
+      await gateway.endMeetingForAll();
+      _showMessage('Meeting ended.');
+      return true;
+    }
+
+    // Host / Leader: Show Zoom / Google Meet standard choice dialog
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.call_end_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Leave or End Meeting?'),
+          ],
+        ),
+        content: const Text(
+          'As the meeting host, would you like to end the meeting for all attendees, or leave and keep the session active for others?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('cancel'),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(ctx).pop('leave'),
+            child: const Text('Leave Meeting'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(ctx).pop('end_all'),
+            icon: const Icon(Icons.stop_circle_outlined, size: 18),
+            label: const Text('End Meeting for All'),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade800),
+          ),
+        ],
+      ),
+    );
+
+    if (action == 'end_all') {
+      if (_isProjectorMode) {
+        setState(() => _isProjectorMode = false);
+      }
+      await gateway.endMeetingForAll();
+      _showMessage('Meeting ended for all participants.');
+      return true;
+    } else if (action == 'leave') {
+      if (_isProjectorMode) {
+        setState(() => _isProjectorMode = false);
+      }
+      await gateway.leaveMeeting();
+      return true;
+    }
+
+    return false; // User cancelled
+  }
+
+  void _confirmEndMeetingForAll(MeetingGateway gateway) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.stop_circle_outlined, color: Colors.red),
+            SizedBox(width: 8),
+            Text('End Meeting for All?'),
+          ],
+        ),
+        content: const Text(
+          'This will disconnect all attendees and close the meeting room immediately.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await gateway.endMeetingForAll();
+              _showMessage('Meeting ended for all participants.');
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade800),
+            child: const Text('End Meeting for All'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildScreenShareStage(MeetingSession session, MeetingGateway gateway) {
     return MeetingScreenShareStage(session: session, gateway: gateway);
   }
@@ -2040,8 +2152,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   Widget _buildVideoGridStage(MeetingSession session, MeetingGateway gateway) {
     final isLeader = RoleAccessService.instance.canStartConferencing() ||
         widget.isModerator ||
-        gateway.isHost ||
-        gateway.isCoHost;
+        session.isHost ||
+        session.isCoHost;
     return MeetingVideoGridStage(
       session: session,
       gateway: gateway,

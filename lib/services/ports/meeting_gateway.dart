@@ -169,6 +169,13 @@ abstract class MeetingGateway {
   /// Participant action: Alerts the host that the current breakout room needs assistance.
   Future<void> requestHostHelpInBreakout();
 
+  /// Host command: Moves or assigns a participant to a specific breakout sub-room.
+  Future<void> assignParticipantToBreakout({
+    required String participantId,
+    required String participantName,
+    required String targetRoomId,
+  });
+
   /// Stream of user-facing moderation prompts (e.g. host ask-to-unmute requests).
   Stream<String> get moderationPromptsStream;
 

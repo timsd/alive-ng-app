@@ -432,7 +432,7 @@ class AliveScribeService {
     // 2. Action Items & Commitments Matcher
     final actionPatterns = [
       RegExp(r'\b(i (will|am going to|shall)\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(i\'ll\s+(.+))', caseSensitive: false),
+      RegExp(r"\b(i'll\s+(.+))", caseSensitive: false),
       RegExp(r'\b(assigned to\s+([A-Za-z\s]+?)\s+(to|for|with)\s+(.+))', caseSensitive: false),
       RegExp(r'\b((bro|brother|sis|sister|pastor|elder|sir|uncle|aunty|dr)\s+[A-Za-z]+\s+(will|is to|to|should)\s+(.+))', caseSensitive: false),
       RegExp(r'\b(we will follow up on\s+(.+))', caseSensitive: false),
@@ -468,7 +468,7 @@ class AliveScribeService {
 
         // Clean task description
         task = task
-            .replaceFirst(RegExp(r'^(i will|i\'ll|we will follow up on|take responsibility for|action point is|action point)\s*', caseSensitive: false), '')
+            .replaceFirst(RegExp(r"^(i will|i'll|we will follow up on|take responsibility for|action point is|action point)\s*", caseSensitive: false), '')
             .trim();
         if (task.isNotEmpty) {
           task = task[0].toUpperCase() + task.substring(1);

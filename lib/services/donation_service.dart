@@ -483,6 +483,22 @@ class DonationService {
     }
   }
 
+  /// Look up a donation record by id or reference.
+  Future<DonationRecord?> getDonation(String donationId) async {
+    final draft = _checkoutDrafts[donationId];
+    if (draft != null) return draft;
+    try {
+      final row = await _tables.getRow(
+        databaseId: _databaseId,
+        tableId: _donationsCollectionId,
+        rowId: AppwriteIdUtils.toValidUid(donationId),
+      );
+      return DonationRecord.fromJson(_rowData(row));
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Generate download URL for material
   Future<String> generateDownloadUrl(String materialId) async {
     try {

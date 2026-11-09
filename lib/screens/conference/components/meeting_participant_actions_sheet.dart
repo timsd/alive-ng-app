@@ -149,7 +149,7 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
                 onTap: () async {
                   Navigator.of(context).pop();
                   try {
-                    await gateway.toggleRaiseHand();
+                    await gateway.raiseHand(raised: !participant.isHandRaised);
                   } catch (e) {
                     showMessage(e.toString().replaceAll('Exception: ', ''));
                   }

@@ -479,6 +479,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
     final fallbackCover = _resolveTractCoverImage(Tract(
       id: download.materialId,
       title: download.materialTitle,
+      description: '',
       category: 'Bible Study',
     ));
 

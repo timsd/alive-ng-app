@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../../services/file_picker_facade.dart';
 import '../../../models/podcast_models.dart';
@@ -6,7 +7,7 @@ import '../../../utils/responsive_utils.dart';
 import '../../../services/appwrite_admin_content_service.dart';
 import '../../../services/appwrite_storage_compat_service.dart';
 import '../../../widgets/custom_image.dart';
-import '../podcast_episode_form_dialog.dart';
+import '../podcast_episode_form_dialog.dart' show PodcastEpisodeFormDialog;
 import 'tract_podcast_shared.dart';
 
 class PodcastManagementTab extends StatefulWidget {

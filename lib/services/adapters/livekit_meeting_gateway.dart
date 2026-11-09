@@ -1802,6 +1802,41 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   }
 
   @override
+  Future<void> assignParticipantToBreakout({
+    required String participantId,
+    required String participantName,
+    required String targetRoomId,
+  }) async {
+    final updatedRooms = _breakoutRooms.map((r) {
+      if (r.id == targetRoomId) {
+        final list = List<String>.from(r.assignedParticipantIds);
+        if (!list.contains(participantId)) list.add(participantId);
+        return r.copyWith(assignedParticipantIds: list);
+      } else {
+        final list = List<String>.from(r.assignedParticipantIds)..remove(participantId);
+        return r.copyWith(assignedParticipantIds: list);
+      }
+    }).toList();
+    _breakoutRooms = updatedRooms;
+    _syncStateFromRoom();
+
+    final targets = _breakoutRooms.map((r) => r.id).toList();
+    if (_mainRoomName != null && _mainRoomName!.isNotEmpty) {
+      targets.add(_mainRoomName!);
+    }
+
+    await _relayControlMessageToRooms(
+      {
+        'action': 'breakout_assign_participant',
+        'participantId': participantId,
+        'participantName': participantName,
+        'targetRoomId': targetRoomId,
+      },
+      targets,
+    );
+  }
+
+  @override
   Future<void> requestHostHelpInBreakout() async {
     final roomId = _activeBreakoutRoomId;
     final roomName = _activeBreakoutRoomName ?? 'Breakout Room';
