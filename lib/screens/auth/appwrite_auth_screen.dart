@@ -220,7 +220,16 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           // Show a user-facing message instead of raw exception text
           final rawError = error.toString().toLowerCase();
           String displayMsg;
-          if (rawError.contains('popup-blocked') ||
+          if (_isGoogleSigningIn &&
+              (rawError.contains('user_already_exists') ||
+                  rawError.contains('user already exists'))) {
+            displayMsg =
+                'An account with this email was registered using email and password. Please sign in with your email and password above.';
+          } else if (rawError.contains('key and secret not available') ||
+              rawError.contains('invalid oauth2 response')) {
+            displayMsg =
+                'Google Sign-In is pending server OAuth configuration. Please sign in with your email and password.';
+          } else if (rawError.contains('popup-blocked') ||
               rawError.contains('popup_blocked_by_browser')) {
             displayMsg =
                 'Google Sign-In popup was blocked. Please allow popups for this site in your browser settings, then try again.';

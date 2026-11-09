@@ -190,7 +190,10 @@ class ErrorHandler {
       return 'Email service is temporarily unavailable. Please try again later.';
     }
     if (lower.contains('user_already_exists') || lower.contains('user already exists')) {
-      return 'An account with this email address already exists. Please switch to Sign In.';
+      if (lower.contains('google') || lower.contains('oauth')) {
+        return 'An account with this email was registered using email and password. Please sign in with your password.';
+      }
+      return 'An account with this email address already exists. Please sign in with your credentials.';
     }
     if (lower.contains('invalid_credentials') || lower.contains('invalid credentials')) {
       return 'Incorrect email or password. Please check your credentials and try again.';

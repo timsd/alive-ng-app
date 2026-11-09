@@ -78,8 +78,10 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
     final width = screenSize.width;
     final height = screenSize.height;
 
-    // Center Y coordinate of bottom navigation bar items
-    final bottomNavY = height - (bottomPadding > 0 ? bottomPadding + 28 : 34);
+    // Center Y coordinate of bottom navigation bar items:
+    // In Flutter, BottomNavigationBar height is 56.0, situated directly above the bottom system inset.
+    // Centering at height - bottomPadding - 32.0 perfectly frames both the icon and its label.
+    final bottomNavY = height - bottomPadding - (bottomPadding > 0 ? 32.0 : 28.0);
 
     switch (targetArea) {
       case 'home':
@@ -131,14 +133,43 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       case 'profile':
         return 40.0;
       default:
-        return 27.0; // Bottom nav tab circle spotlight
+        return 28.0; // Bottom nav tab circle spotlight
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final viewPadding = MediaQuery.of(context).viewPadding;
+    final mediaQuery = MediaQuery.of(context);
+    final screenSize = mediaQuery.size;
+    final viewPadding = mediaQuery.viewPadding;
+    final padding = mediaQuery.padding;
+
+    // Safely query the native FlutterView insets directly from the engine.
+    // Dialog and modal routes frequently strip MediaQuery padding, which would
+    // miscalculate bottom navigation positions by up to 48px on Android devices.
+    double windowBottomInset = 0.0;
+    double windowTopInset = 0.0;
+    try {
+      final flutterView = View.of(context);
+      final dpr = flutterView.devicePixelRatio;
+      if (dpr > 0) {
+        windowBottomInset = flutterView.padding.bottom / dpr;
+        windowTopInset = flutterView.padding.top / dpr;
+      }
+    } catch (_) {}
+
+    final effectiveTopPadding = [
+      viewPadding.top,
+      padding.top,
+      windowTopInset,
+    ].reduce((a, b) => a > b ? a : b);
+
+    final effectiveBottomPadding = [
+      viewPadding.bottom,
+      padding.bottom,
+      windowBottomInset,
+    ].reduce((a, b) => a > b ? a : b);
+
     final locale = ref.watch(localeProvider);
     final langCode = locale.languageCode;
 
@@ -148,8 +179,8 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
     final targetCenter = _getTargetCenter(
       step.targetArea,
       screenSize,
-      viewPadding.top,
-      viewPadding.bottom,
+      effectiveTopPadding,
+      effectiveBottomPadding,
     );
     final targetRadius = _getTargetRadius(step.targetArea);
     final isProfileTarget = step.targetArea == 'profile';
@@ -508,8 +539,8 @@ class _SpotlightPainter extends CustomPainter {
     final holeRadius = targetRadius * pulseScale;
 
     // 1. Vector difference cutout: punches out the circle mathematically from the background rect.
-    // This avoids canvas.saveLayer() and BlendMode.clear which allocate full-screen GPU framebuffers
-    // on every animation frame and cause GPU VRAM flickering / multicolored TV static glitches on Android.
+    // The interior of the circle remains 100% transparent and unobstructed so the underlying
+    // icon, tab, or button shines through with maximum sharpness and clarity.
     final backgroundPath = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
     final holePath = Path()
@@ -521,30 +552,7 @@ class _SpotlightPainter extends CustomPainter {
       Paint()..color = const Color(0xEE070C14),
     );
 
-    // 2. Luminous penetrating spotlight beam inside the circle:
-    // When the underlying icon or avatar is dark in dark mode or on dark surfaces,
-    // this radial white/accent illumination penetrates from behind and spotlights the icon,
-    // making it vividly visible, bright, and contrasted against the dark surroundings.
-    final innerBeamPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          Colors.white.withValues(alpha: 0.32),
-          Colors.white.withValues(alpha: 0.16),
-          accentColor.withValues(alpha: 0.08),
-          Colors.transparent,
-        ],
-        stops: const [0.0, 0.55, 0.85, 1.0],
-      ).createShader(Rect.fromCircle(center: targetCenter, radius: holeRadius));
-    canvas.drawCircle(targetCenter, holeRadius, innerBeamPaint);
-
-    // 3. Delicate inner accent ring delineating the inner perimeter
-    final innerRingPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.35)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawCircle(targetCenter, holeRadius - 2.5, innerRingPaint);
-
-    // 4. Exterior accent glow ring
+    // 2. Exterior accent glow ring
     final outerGlowPaint = Paint()
       ..color = accentColor.withValues(alpha: glowOpacity * 0.90)
       ..style = PaintingStyle.stroke
