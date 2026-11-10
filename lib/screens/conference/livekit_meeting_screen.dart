@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../config/meeting_links_config.dart';
@@ -89,10 +88,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     }
     _roomController = TextEditingController(text: _initialRoomName());
     _loadAvailableChannels();
-    // Auto-prompt media permissions upfront & ensure overlay is dismissed on screen open
+    // Ensure meeting overlay is dismissed when opening full meeting screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(isMeetingMinimizedProvider.notifier).state = false;
-      MediaPermissionService.requestMediaPermissions();
     });
 
     _breakoutUiTicker = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -259,10 +257,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     setState(() => _isJoining = true);
 
     try {
-      // Auto-prompt microphone & camera upfront with timeout so join is never stalled
+      // Auto-prompt microphone & camera upfront so join completes on first click
       try {
         await MediaPermissionService.requestMediaPermissions()
-            .timeout(const Duration(seconds: 4));
+            .timeout(const Duration(seconds: 25));
       } catch (_) {}
 
       final isAdmin = RoleAccessService.instance.canAccessAdmin() || widget.isModerator;

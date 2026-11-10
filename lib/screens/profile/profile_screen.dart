@@ -20,7 +20,6 @@ import '../../services/auth_service.dart';
 import '../../services/biometric_auth_service.dart';
 import '../../services/platform/app_store_helper.dart';
 import '../../services/role_access_service.dart';
-import '../../utils/error_handler.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/image_compression_utils.dart';
 import '../../config/appwrite_backend_config.dart';
@@ -396,17 +395,9 @@ class ProfileScreen extends ConsumerWidget {
               Navigator.pop(ctx);
               try {
                 await AuthService.instance.resetPassword(profile.email ?? '');
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Password reset email sent!')),
-                  );
-                }
+                ToastUtils.showSuccess('Password reset email sent!');
               } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to send reset email: ${ErrorHandler.getUserFriendlyMessage(e)}')),
-                  );
-                }
+                ToastUtils.showError(e, 'Failed to send reset email');
               }
             },
             child: const Text('Send Reset Link'),
@@ -438,11 +429,7 @@ class ProfileScreen extends ConsumerWidget {
                   context.go(AppConstants.authRoute);
                 }
               } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Unable to sign out: ${ErrorHandler.getUserFriendlyMessage(e)}')),
-                  );
-                }
+                ToastUtils.showError(e, 'Unable to sign out');
               }
             },
             style: FilledButton.styleFrom(
@@ -584,11 +571,7 @@ class ProfileScreen extends ConsumerWidget {
                     context.go(AppConstants.authRoute);
                   }
                 } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Unable to delete account: ${ErrorHandler.getUserFriendlyMessage(e)}')),
-                    );
-                  }
+                  ToastUtils.showError(e, 'Unable to delete account');
                 }
               }
             },
@@ -726,15 +709,15 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
 
       if (imageBytes == null || imageBytes.isEmpty) return;
 
-      // Automatically compress and resize to standard 512x512 avatar
-      final compressedBytes = ImageCompressionUtils.compressAvatar(imageBytes);
-
-      // Instantly propagate local bytes to state and global provider for immediate 0ms preview
-      ref.read(pendingAvatarBytesProvider.notifier).state = compressedBytes;
+      // 1. Instantly display raw selected bytes for 0ms immediate preview
       setState(() {
-        _pendingBytes = compressedBytes;
+        _pendingBytes = imageBytes;
         _isUploading = true;
       });
+      ref.read(pendingAvatarBytesProvider.notifier).state = imageBytes;
+
+      // Automatically compress and resize to standard 512x512 avatar
+      final compressedBytes = ImageCompressionUtils.compressAvatar(imageBytes);
 
       final previousUrl = ref.read(uploadedAvatarUrlProvider) ??
           widget.profile.avatarUrl ??
@@ -897,6 +880,7 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
                                 fit: BoxFit.cover,
                                 backgroundColor: theme.colorScheme.primary,
                                 placeholder: buildPlaceholder(),
+                                errorWidget: buildPlaceholder(),
                               ),
                             )
                           : buildPlaceholder()),

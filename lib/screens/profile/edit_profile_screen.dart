@@ -11,7 +11,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/image_compression_utils.dart';
 import '../../models/app_models.dart';
 import '../../utils/responsive_utils.dart';
-import '../../utils/error_handler.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/appwrite_profile_service.dart';
@@ -231,22 +230,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
       if (mounted) {
         setState(() => _hasChanges = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Profile updated successfully!'),
-            backgroundColor: Theme.of(context).colorScheme.tertiary,
-          ),
-        );
+        ToastUtils.showSuccess('Profile updated successfully!');
         Navigator.of(context).pop(updatedProfile);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update profile: ${ErrorHandler.getUserFriendlyMessage(e)}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        ToastUtils.showError(e, 'Failed to update profile');
       }
     } finally {
       if (mounted) {
@@ -780,6 +769,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 height: 80,
                                 fit: BoxFit.cover,
                                 placeholder: _buildPicturePlaceholder(),
+                                errorWidget: _buildPicturePlaceholder(),
                               ),
                       )
                     : _buildPicturePlaceholder(),
@@ -914,15 +904,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         return; // User cancelled
       }
 
-      // Automatically compress and resize to standard 512x512 avatar
-      final compressedBytes = ImageCompressionUtils.compressAvatar(imageBytes);
-
-      // Instantly propagate local bytes to state and global provider for immediate 0ms preview
-      ref.read(pendingAvatarBytesProvider.notifier).state = compressedBytes;
+      // 1. Instantly display raw selected bytes for 0ms immediate preview
       setState(() {
-        _pendingPictureBytes = compressedBytes;
+        _pendingPictureBytes = imageBytes;
         _isUploadingPicture = true;
       });
+      ref.read(pendingAvatarBytesProvider.notifier).state = imageBytes;
+
+      // Automatically compress and resize to standard 512x512 avatar
+      final compressedBytes = ImageCompressionUtils.compressAvatar(imageBytes);
 
       try {
         final userId = widget.userProfile.id;
