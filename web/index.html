@@ -1069,11 +1069,21 @@
         </div>
       </div>
 
-      <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:6px; max-width:320px; text-align:center; padding:0 16px;">
         <div id="loading-text"
-          style="color:#64748B; font-size:12px; font-weight:700; letter-spacing:0.12em; text-transform: uppercase;">
+          style="color:#64748B; font-size:12px; font-weight:700; letter-spacing:0.04em; line-height: 1.4;">
           Initializing System</div>
         <div id="loading-percent" style="color:#94A3B8; font-size:11px; font-weight:700;">10%</div>
+        <div id="loading-actions" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:10px;">
+          <button id="loading-retry-btn" onclick="location.reload()"
+            style="background:#0F9B07; color:white; border:none; padding:8px 22px; border-radius:20px; font-weight:700; font-size:13px; cursor:pointer; box-shadow: 0 4px 12px rgba(15,155,7,0.3);">
+            Tap to Retry
+          </button>
+          <a href="https://play.google.com/store/apps/details?id=com.alive.alivengandroidapp" target="_blank"
+            style="color:#0F9B07; font-size:12px; text-decoration:none; font-weight:600; margin-top:4px;">
+            Get ALIVE Mobile App on Google Play
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -1407,14 +1417,61 @@
       }, 1500);
     }
     (function () {
+      function formatUserFriendlyError(raw) {
+        var str = String(raw || '').toLowerCase();
+        if (
+          !navigator.onLine ||
+          str.indexOf('failed to fetch') !== -1 ||
+          str.indexOf('network') !== -1 ||
+          str.indexOf('fontmanifest') !== -1 ||
+          str.indexOf('notices') !== -1 ||
+          str.indexOf('typeerror') !== -1 ||
+          str.indexOf('unable to load asset') !== -1 ||
+          str.indexOf('load failed') !== -1 ||
+          str.indexOf('net::err') !== -1
+        ) {
+          return 'Network connection interrupted. Please check your internet connection and tap Retry.';
+        }
+        if (str.indexOf('serviceworker') !== -1 || str.indexOf('script') !== -1) {
+          return 'App update in progress. Please tap Retry to reload the latest version.';
+        }
+        return 'Unable to start application due to a connection issue. Please tap Retry.';
+      }
+
       function showError(msg) {
         try {
           var overlay = document.getElementById('app-loading-overlay');
           var textEl = document.getElementById('loading-text');
+          var percentEl = document.getElementById('loading-percent');
+          var actionsEl = document.getElementById('loading-actions');
+          var trackEl = document.getElementById('loading-progress-track');
+
           overlay.style.display = 'flex';
-          textEl.textContent = 'Error: ' + String(msg || 'Unknown');
+          var friendly = formatUserFriendlyError(msg);
+          textEl.textContent = friendly;
+          textEl.style.color = '#DC2626';
+          textEl.style.textTransform = 'none';
+          textEl.style.fontWeight = '600';
+          textEl.style.fontSize = '13px';
+          textEl.style.lineHeight = '1.4';
+
+          if (percentEl) percentEl.style.display = 'none';
+          if (trackEl) trackEl.style.background = '#FCA5A5';
+          if (actionsEl) actionsEl.style.display = 'flex';
         } catch (_) { }
       }
+
+      // Auto-reload when user's internet reconnects
+      window.addEventListener('online', function () {
+        try {
+          var textEl = document.getElementById('loading-text');
+          if (textEl && textEl.textContent.indexOf('Network') !== -1) {
+            textEl.textContent = 'Connection restored! Reloading...';
+            setTimeout(function () { location.reload(); }, 600);
+          }
+        } catch (_) { }
+      });
+
       window.addEventListener('error', function (e) {
         try { window._lastError = e.error || e.message; } catch (_) { }
         var m = (e.error && e.error.message) || e.message || 'Unknown';
