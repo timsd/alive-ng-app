@@ -765,9 +765,8 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
         await prefs.setString('cached_avatar_url_${widget.profile.id}', publicUrl);
       } catch (_) {}
 
-      // Update reactive URL override before clearing pending bytes to prevent placeholder flicker
+      // Update reactive URL override immediately
       ref.read(uploadedAvatarUrlProvider.notifier).state = publicUrl;
-      ref.read(pendingAvatarBytesProvider.notifier).state = null;
       RoleAccessService.instance.clearCache();
 
       // Only evict previous image to free memory, keep the new one warm in cache
@@ -778,8 +777,9 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
       }
 
       ref.invalidate(currentUserProfileProvider);
+      ref.invalidate(currentUserAvatarUrlProvider);
       if (mounted) {
-        setState(() => _pendingBytes = null);
+        setState(() => _isUploading = false);
       }
       ToastUtils.showSuccess('Profile photo updated!');
 

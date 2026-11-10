@@ -959,13 +959,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
         // Immediately propagate the new avatar URL to all screens (Home, Profile, etc.)
         ref.read(uploadedAvatarUrlProvider.notifier).state = publicUrl;
-        ref.read(pendingAvatarBytesProvider.notifier).state = null;
+        ref.invalidate(currentUserProfileProvider);
+        ref.invalidate(currentUserAvatarUrlProvider);
         RoleAccessService.instance.clearCache();
 
         if (!mounted) return;
         setState(() {
           _profilePictureUrl = publicUrl;
-          _pendingPictureBytes = null;
+          _isUploadingPicture = false;
         });
 
         if (previousUrl != null && previousUrl.isNotEmpty && previousUrl != publicUrl) {

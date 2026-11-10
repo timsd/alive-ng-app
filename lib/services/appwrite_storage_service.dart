@@ -54,6 +54,10 @@ class AppwriteStorageService {
       bytes: bytes,
       fileName: fileName,
       contentType: contentType,
+      permissions: [
+        Permission.read(Role.any()),
+        Permission.write(Role.users()),
+      ],
     );
   }
 

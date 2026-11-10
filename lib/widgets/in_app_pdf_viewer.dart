@@ -29,6 +29,8 @@ class InAppPdfViewerScreen extends StatefulWidget {
 }
 
 class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
+  static final Map<String, Uint8List> _pdfMemoryCache = {};
+
   final PdfViewerController _pdfController = PdfViewerController();
   Uint8List? _bytes;
   bool _isLoading = true;
@@ -56,7 +58,8 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
       return;
     }
 
-    if (widget.pdfUrl == null || widget.pdfUrl!.trim().isEmpty) {
+    final url = widget.pdfUrl?.trim();
+    if (url == null || url.isEmpty) {
       setState(() {
         _isLoading = false;
         _errorMessage = 'No document URL provided.';
@@ -64,21 +67,43 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
       return;
     }
 
-    try {
-      final uri = Uri.parse(widget.pdfUrl!);
-      final response = await http.get(uri).timeout(
-            const Duration(seconds: 40),
-            onTimeout: () => throw 'Connection timed out while loading document.',
-          );
+    // Check fast in-memory cache first for instant 0ms preview
+    if (_pdfMemoryCache.containsKey(url)) {
+      setState(() {
+        _bytes = _pdfMemoryCache[url];
+        _isLoading = false;
+      });
+      return;
+    }
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
+    try {
+      final uri = Uri.parse(url);
+      http.Response? response;
+
+      // Resilient attempt with quick automatic retry on transient mobile packet drops
+      for (int attempt = 1; attempt <= 2; attempt++) {
+        try {
+          response = await http.get(uri).timeout(
+                const Duration(seconds: 25),
+              );
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            break;
+          }
+        } catch (e) {
+          if (attempt == 2) rethrow;
+          await Future.delayed(const Duration(milliseconds: 800));
+        }
+      }
+
+      if (response != null && response.statusCode >= 200 && response.statusCode < 300) {
         if (!mounted) return;
+        _pdfMemoryCache[url] = response.bodyBytes;
         setState(() {
-          _bytes = response.bodyBytes;
+          _bytes = response!.bodyBytes;
           _isLoading = false;
         });
       } else {
-        throw 'Server returned status ${response.statusCode}';
+        throw 'Server returned status ${response?.statusCode ?? 500}';
       }
     } catch (e) {
       if (!mounted) return;

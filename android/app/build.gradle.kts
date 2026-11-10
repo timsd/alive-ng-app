@@ -33,6 +33,11 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+
+        // Ensure 32-bit (armeabi-v7a for devices like Nokia G20) and 64-bit ABIs are packaged
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86_64"))
+        }
     }
 
     packaging {
