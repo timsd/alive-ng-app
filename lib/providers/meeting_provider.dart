@@ -31,3 +31,6 @@ final meetingRoomStatusProvider = StreamProvider<RoomStatus>((ref) {
   final gateway = ref.watch(meetingGatewayProvider);
   return gateway.roomStatus;
 });
+
+/// Tracks whether an active meeting is minimized to a floating overlay.
+final isMeetingMinimizedProvider = StateProvider<bool>((ref) => false);

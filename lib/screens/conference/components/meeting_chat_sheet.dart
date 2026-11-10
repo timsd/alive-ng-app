@@ -1,10 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../models/meeting_models.dart';
 import '../../../services/ports/meeting_gateway.dart';
 
-/// Modal bottom sheet widget for in-meeting chatting and host moderation.
+/// Modal bottom sheet widget for in-meeting chatting, 1-on-1 direct messaging,
+/// and host moderation.
 class MeetingChatSheet extends StatefulWidget {
   final MeetingGateway gateway;
   final List<InMeetingChatMessage> messages;
@@ -13,9 +15,11 @@ class MeetingChatSheet extends StatefulWidget {
   final bool isChatLockedByHost;
   final bool isLeader;
   final String currentUserId;
+  final List<ParticipantInfo> participants;
+  final ParticipantInfo? initialRecipient;
   final ValueChanged<bool> onToggleLock;
   final VoidCallback onClearChat;
-  final VoidCallback onSendMessage;
+  final void Function(String text, ParticipantInfo? recipient) onSendMessage;
 
   const MeetingChatSheet({
     super.key,
@@ -26,6 +30,8 @@ class MeetingChatSheet extends StatefulWidget {
     required this.isChatLockedByHost,
     required this.isLeader,
     required this.currentUserId,
+    required this.participants,
+    this.initialRecipient,
     required this.onToggleLock,
     required this.onClearChat,
     required this.onSendMessage,
@@ -40,9 +46,11 @@ class MeetingChatSheet extends StatefulWidget {
     required bool isChatLockedByHost,
     required bool isLeader,
     required String currentUserId,
+    required List<ParticipantInfo> participants,
+    ParticipantInfo? initialRecipient,
     required ValueChanged<bool> onToggleLock,
     required VoidCallback onClearChat,
-    required VoidCallback onSendMessage,
+    required void Function(String text, ParticipantInfo? recipient) onSendMessage,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -59,6 +67,8 @@ class MeetingChatSheet extends StatefulWidget {
         isChatLockedByHost: isChatLockedByHost,
         isLeader: isLeader,
         currentUserId: currentUserId,
+        participants: participants,
+        initialRecipient: initialRecipient,
         onToggleLock: onToggleLock,
         onClearChat: onClearChat,
         onSendMessage: onSendMessage,
@@ -72,11 +82,153 @@ class MeetingChatSheet extends StatefulWidget {
 
 class _MeetingChatSheetState extends State<MeetingChatSheet> {
   late bool _locked;
+  StreamSubscription? _dataSub;
+  ParticipantInfo? _selectedRecipient;
 
   @override
   void initState() {
     super.initState();
     _locked = widget.isChatLockedByHost;
+    _selectedRecipient = widget.initialRecipient;
+
+    // Real-time live data channel subscription so incoming chat messages
+    // trigger an immediate re-render and auto-scroll to the bottom.
+    _dataSub = widget.gateway.dataChannelMessagesStream.listen((data) {
+      if (!mounted) return;
+      final action = data['action'];
+      if (action == 'in_meeting_chat') {
+        final msg = InMeetingChatMessage.fromJson(data, isLocal: false);
+        final targetId = msg.targetUserId;
+        final isPublic = targetId == null || targetId.isEmpty || targetId == 'everyone';
+        final isForMe = targetId == widget.currentUserId || msg.senderId == widget.currentUserId;
+
+        if (isPublic || isForMe) {
+          if (!widget.messages.any((m) => m.id == msg.id)) {
+            setState(() {
+              widget.messages.add(msg);
+            });
+            _scrollToBottom();
+          }
+        }
+      } else if (action == 'in_meeting_chat_lock') {
+        final isLocked = data['isLocked'] == true;
+        setState(() {
+          _locked = isLocked;
+        });
+      } else if (action == 'in_meeting_chat_clear') {
+        setState(() {
+          widget.messages.clear();
+        });
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  @override
+  void dispose() {
+    _dataSub?.cancel();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          widget.scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _send() {
+    final text = widget.chatController.text.trim();
+    if (text.isEmpty) return;
+    widget.onSendMessage(text, _selectedRecipient);
+    widget.chatController.clear();
+    setState(() {});
+    _scrollToBottom();
+  }
+
+  void _showRecipientPicker(BuildContext context) {
+    final availableParticipants = widget.participants.where((p) => !p.isLocal).toList();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'Send Message To',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFD49B28),
+                  child: Icon(Icons.people_alt_rounded, color: Colors.white, size: 20),
+                ),
+                title: const Text('Everyone', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Public to all attendees in the meeting'),
+                trailing: _selectedRecipient == null
+                    ? const Icon(Icons.check_circle_rounded, color: Color(0xFFD49B28))
+                    : null,
+                onTap: () {
+                  setState(() => _selectedRecipient = null);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              if (availableParticipants.isNotEmpty) ...[
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
+                  child: Text(
+                    'Direct 1-on-1 (Private)',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+                  ),
+                ),
+                ...availableParticipants.map((p) {
+                  final isSelected = _selectedRecipient?.identity == p.identity;
+                  final name = p.name.isNotEmpty ? p.name : 'Attendee (${p.identity.substring(0, 4)})';
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.teal.shade700,
+                      backgroundImage: (p.avatarUrl != null && p.avatarUrl!.isNotEmpty)
+                          ? NetworkImage(p.avatarUrl!)
+                          : null,
+                      child: (p.avatarUrl == null || p.avatarUrl!.isEmpty)
+                          ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+                          : null,
+                    ),
+                    title: Text(name),
+                    subtitle: const Text('Private message only seen by you and them'),
+                    trailing: isSelected
+                        ? const Icon(Icons.check_circle_rounded, color: Colors.teal)
+                        : null,
+                    onTap: () {
+                      setState(() => _selectedRecipient = p);
+                      Navigator.of(ctx).pop();
+                    },
+                  );
+                }),
+              ],
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -86,7 +238,7 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
     final myUid = widget.currentUserId;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.75,
+      height: MediaQuery.of(context).size.height * 0.8,
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Column(
         children: [
@@ -169,7 +321,7 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Send a message to everyone in the meeting room.',
+                            'Send a public message or tap "To" to send a private direct message.',
                             style: TextStyle(color: theme.hintColor, fontSize: 12),
                             textAlign: TextAlign.center,
                           ),
@@ -184,6 +336,7 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                     itemBuilder: (ctx, idx) {
                       final msg = widget.messages[idx];
                       final isMe = msg.isLocal || (myUid.isNotEmpty && msg.senderId == myUid);
+                      final isPrivate = msg.isPrivate;
                       final timeStr = DateFormat.jm().format(msg.timestamp);
 
                       return Padding(
@@ -195,7 +348,9 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                             if (!isMe) ...[
                               CircleAvatar(
                                 radius: 14,
-                                backgroundColor: theme.colorScheme.primaryContainer,
+                                backgroundColor: isPrivate
+                                    ? Colors.amber.shade700
+                                    : theme.colorScheme.primaryContainer,
                                 backgroundImage: (msg.senderAvatar != null && msg.senderAvatar!.isNotEmpty)
                                     ? NetworkImage(msg.senderAvatar!)
                                     : null,
@@ -203,7 +358,11 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                                     ? null
                                     : Text(
                                         msg.senderName.isNotEmpty ? msg.senderName[0].toUpperCase() : 'M',
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: isPrivate ? Colors.white : null,
+                                        ),
                                       ),
                               ),
                               const SizedBox(width: 8),
@@ -213,21 +372,56 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: isMe
-                                      ? theme.colorScheme.primary
-                                      : (theme.brightness == Brightness.dark
-                                          ? const Color(0xFF2D3748)
-                                          : Colors.grey.shade200),
+                                      ? (isPrivate
+                                          ? const Color(0xFF8B5E00)
+                                          : theme.colorScheme.primary)
+                                      : (isPrivate
+                                          ? (theme.brightness == Brightness.dark
+                                              ? const Color(0xFF382D1B)
+                                              : const Color(0xFFFFF7E6))
+                                          : (theme.brightness == Brightness.dark
+                                              ? const Color(0xFF2D3748)
+                                              : Colors.grey.shade200)),
                                   borderRadius: BorderRadius.only(
                                     topLeft: const Radius.circular(14),
                                     topRight: const Radius.circular(14),
                                     bottomLeft: isMe ? const Radius.circular(14) : Radius.zero,
                                     bottomRight: isMe ? Radius.zero : const Radius.circular(14),
                                   ),
+                                  border: isPrivate
+                                      ? Border.all(
+                                          color: const Color(0xFFD49B28).withValues(alpha: 0.6),
+                                          width: 1,
+                                        )
+                                      : null,
                                 ),
                                 child: Column(
                                   crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                                   children: [
-                                    if (!isMe)
+                                    if (isPrivate) ...[
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.lock_rounded,
+                                            size: 11,
+                                            color: isMe ? Colors.amber.shade200 : const Color(0xFFD49B28),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            isMe
+                                                ? 'Direct to ${msg.targetUserName ?? "Attendee"} (Private)'
+                                                : 'Direct from ${msg.senderName} (Private)',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: isMe ? Colors.amber.shade200 : const Color(0xFFD49B28),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                    ] else if (!isMe) ...[
                                       Text(
                                         msg.senderName,
                                         style: TextStyle(
@@ -236,11 +430,13 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                                           color: theme.colorScheme.primary,
                                         ),
                                       ),
+                                      const SizedBox(height: 2),
+                                    ],
                                     Text(
                                       msg.text,
                                       style: TextStyle(
                                         color: isMe
-                                            ? theme.colorScheme.onPrimary
+                                            ? Colors.white
                                             : (theme.brightness == Brightness.dark ? Colors.white : Colors.black87),
                                         fontSize: 14,
                                       ),
@@ -251,7 +447,7 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                                       style: TextStyle(
                                         fontSize: 9,
                                         color: isMe
-                                            ? theme.colorScheme.onPrimary.withValues(alpha: 0.7)
+                                            ? Colors.white.withValues(alpha: 0.7)
                                             : theme.hintColor,
                                       ),
                                     ),
@@ -267,6 +463,86 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                   ),
           ),
           const Divider(height: 1),
+
+          // Recipient Selector Bar
+          if (!(_locked && !widget.isLeader))
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              color: theme.brightness == Brightness.dark
+                  ? const Color(0xFF1A202C)
+                  : const Color(0xFFF7FAFC),
+              child: Row(
+                children: [
+                  const Text(
+                    'To:',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () => _showRecipientPicker(context),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _selectedRecipient != null
+                            ? const Color(0xFFD49B28).withValues(alpha: 0.2)
+                            : theme.colorScheme.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _selectedRecipient != null
+                              ? const Color(0xFFD49B28)
+                              : theme.colorScheme.primary.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _selectedRecipient != null ? Icons.lock_rounded : Icons.people_alt_rounded,
+                            size: 13,
+                            color: _selectedRecipient != null
+                                ? const Color(0xFFD49B28)
+                                : theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            _selectedRecipient != null
+                                ? '${_selectedRecipient!.name} (Direct Message)'
+                                : 'Everyone',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: _selectedRecipient != null
+                                  ? const Color(0xFFD49B28)
+                                  : theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_drop_down,
+                            size: 16,
+                            color: _selectedRecipient != null
+                                ? const Color(0xFFD49B28)
+                                : theme.colorScheme.primary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_selectedRecipient != null) ...[
+                    const Spacer(),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      onPressed: () => setState(() => _selectedRecipient = null),
+                      child: const Text('Reset to Everyone', style: TextStyle(fontSize: 11)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
 
           // Chat Input bar
           if (_locked && !widget.isLeader)
@@ -298,7 +574,9 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                       controller: widget.chatController,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: InputDecoration(
-                        hintText: 'Type a message to everyone...',
+                        hintText: _selectedRecipient != null
+                            ? 'Private message to ${_selectedRecipient!.name}...'
+                            : 'Type a message to everyone...',
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         border: OutlineInputBorder(
@@ -306,18 +584,12 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                           borderSide: BorderSide(color: theme.dividerColor),
                         ),
                       ),
-                      onSubmitted: (_) {
-                        widget.onSendMessage();
-                        setState(() {});
-                      },
+                      onSubmitted: (_) => _send(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    onPressed: () {
-                      widget.onSendMessage();
-                      setState(() {});
-                    },
+                    onPressed: _send,
                     icon: const Icon(Icons.send_rounded, size: 20),
                   ),
                 ],
@@ -328,4 +600,3 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
     );
   }
 }
-

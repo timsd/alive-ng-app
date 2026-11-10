@@ -431,6 +431,8 @@ class InMeetingChatMessage {
   final String text;
   final DateTime timestamp;
   final bool isLocal;
+  final String? targetUserId;
+  final String? targetUserName;
 
   const InMeetingChatMessage({
     this.id = '',
@@ -440,7 +442,25 @@ class InMeetingChatMessage {
     required this.text,
     required this.timestamp,
     this.isLocal = false,
+    this.targetUserId,
+    this.targetUserName,
   });
+
+  bool get isPrivate =>
+      targetUserId != null &&
+      targetUserId!.isNotEmpty &&
+      targetUserId != 'everyone';
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'senderId': senderId,
+        'senderName': senderName,
+        'senderAvatar': senderAvatar,
+        'text': text,
+        'timestamp': timestamp.toIso8601String(),
+        'targetUserId': targetUserId,
+        'targetUserName': targetUserName,
+      };
 
   factory InMeetingChatMessage.fromJson(Map<String, dynamic> json, {bool isLocal = false}) {
     DateTime ts;
@@ -459,6 +479,8 @@ class InMeetingChatMessage {
       text: json['text']?.toString() ?? '',
       timestamp: ts,
       isLocal: isLocal,
+      targetUserId: json['targetUserId']?.toString(),
+      targetUserName: json['targetUserName']?.toString(),
     );
   }
 }

@@ -14,6 +14,7 @@ import '../../providers/meeting_provider.dart';
 import '../../services/alive_scribe_service.dart';
 import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/toast_utils.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'meeting_file_sharing_screen.dart';
 
@@ -260,12 +261,7 @@ class _LeaderMeetingTranscriptionScreenState
   // ──────────────────────────────────────────────────────────
   Future<void> _saveToMeetingFiles() async {
     if (_transcript.isEmpty && _decisions.isEmpty && _actionItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cannot save empty minutes. Waiting for discussion...'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      ToastUtils.showWarning('Cannot save empty minutes. Waiting for discussion...');
       return;
     }
 
@@ -353,32 +349,10 @@ class _LeaderMeetingTranscriptionScreenState
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Saved "$fileName" to Meeting Files!'),
-          backgroundColor: const Color(0xFF2E7D32),
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'View Files',
-            textColor: Colors.white,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const MeetingFileSharingScreen(),
-                ),
-              );
-            },
-          ),
-        ),
-      );
+      ToastUtils.showSuccess('Saved "$fileName" to Meeting Files!');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Note saving file: $e'),
-            backgroundColor: Colors.orange.shade800,
-          ),
-        );
+        ToastUtils.showError('Note saving file: $e');
       }
     } finally {
       if (mounted) {
@@ -398,9 +372,7 @@ class _LeaderMeetingTranscriptionScreenState
         '';
 
     if (markdown.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No transcript or minutes available to share yet.')),
-      );
+      ToastUtils.showInfo('No transcript or minutes available to share yet.');
       return;
     }
 
@@ -431,12 +403,7 @@ class _LeaderMeetingTranscriptionScreenState
                   await Clipboard.setData(ClipboardData(text: markdown));
                   if (ctx.mounted) {
                     Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Minutes copied to clipboard!'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
+                    ToastUtils.showSuccess('Minutes copied to clipboard!');
                   }
                 },
               ),

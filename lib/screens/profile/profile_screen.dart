@@ -18,6 +18,7 @@ import '../../services/appwrite_profile_service.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_auth_service.dart';
+import '../../services/platform/app_store_helper.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/error_handler.dart';
 import '../../utils/toast_utils.dart';
@@ -1281,14 +1282,10 @@ class _BiometricToggleState extends State<_BiometricToggle> {
           ),
         ),
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Biometric sign-in (Fingerprint / Face ID) is supported on the ALIVE Nigeria Android & iOS mobile app.',
-              ),
-              duration: Duration(seconds: 4),
-            ),
+          ToastUtils.showInfo(
+            'Biometric Sign-In is supported on the ALIVE mobile app. Opening Google Play Store...',
           );
+          AppStoreHelper.redirectToPlayStore();
         },
       );
     }

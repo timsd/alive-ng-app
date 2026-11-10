@@ -34,6 +34,7 @@ import 'services/appwrite_client.dart';
 import 'services/onboarding_service.dart';
 import 'services/offline_bible_service.dart';
 import 'utils/url_strategy.dart';
+import 'screens/conference/components/meeting_floating_overlay.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -178,6 +179,14 @@ class AliveApp extends ConsumerWidget {
       ],
       // Routing
       routerConfig: router,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            child ?? const SizedBox.shrink(),
+            const MeetingFloatingOverlay(),
+          ],
+        );
+      },
     );
   }
 }

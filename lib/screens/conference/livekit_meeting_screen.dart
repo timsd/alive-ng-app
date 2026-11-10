@@ -13,16 +13,23 @@ import '../../providers/appwrite_auth_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/meeting_provider.dart';
 import '../../services/chat_service.dart';
+import '../../services/platform/app_store_helper.dart';
 import '../../services/platform/media_permission_adapter.dart';
 import '../../services/ports/meeting_gateway.dart';
 import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/error_handler.dart';
+import '../../utils/toast_utils.dart';
 import '../admin/leader_meeting_transcription_screen.dart';
+import 'components/meeting_breakout_banner.dart';
 import 'components/meeting_breakout_sheet.dart';
 import 'components/meeting_chat_sheet.dart';
+import 'components/meeting_control_bar.dart';
+import 'components/meeting_more_actions_sheet.dart';
 import 'components/meeting_participant_actions_sheet.dart';
-import 'components/meeting_stage_view.dart';
+import 'components/meeting_participants_list.dart';
+import 'components/meeting_prejoin_lobby.dart';
+import 'components/meeting_projector_view.dart';
 
 class LiveKitMeetingScreen extends ConsumerStatefulWidget {
   final MeetingType? meetingType;
@@ -82,8 +89,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     }
     _roomController = TextEditingController(text: _initialRoomName());
     _loadAvailableChannels();
-    // Auto-prompt media permissions upfront (Google Meet flow)
+    // Auto-prompt media permissions upfront & ensure overlay is dismissed on screen open
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(isMeetingMinimizedProvider.notifier).state = false;
       MediaPermissionService.requestMediaPermissions();
     });
 
@@ -101,13 +109,22 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       if (!mounted) return;
       if (data['action'] == 'in_meeting_chat') {
         final msg = InMeetingChatMessage.fromJson(data, isLocal: false);
-        setState(() {
-          _inMeetingChatMessages.add(msg);
-          if (!_isChatSheetOpen) {
-            _unreadChatCount++;
+        final currentUid = ref.read(currentUserProvider)?.uid ?? '';
+        final targetId = msg.targetUserId;
+        final isPublic = targetId == null || targetId.isEmpty || targetId == 'everyone';
+        final isForMe = targetId == currentUid || msg.senderId == currentUid;
+
+        if (isPublic || isForMe) {
+          if (!_inMeetingChatMessages.any((m) => m.id == msg.id)) {
+            setState(() {
+              _inMeetingChatMessages.add(msg);
+              if (!_isChatSheetOpen) {
+                _unreadChatCount++;
+              }
+            });
+            _scrollChatToBottom();
           }
-        });
-        _scrollChatToBottom();
+        }
       } else if (data['action'] == 'in_meeting_chat_lock') {
         final isLocked = data['isLocked'] == true;
         setState(() {
@@ -217,7 +234,16 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     return text.replaceAll(' ', '-').toLowerCase();
   }
 
+  void _minimizeMeeting() {
+    ref.read(isMeetingMinimizedProvider.notifier).state = true;
+    if (mounted) {
+      Navigator.of(context).maybePop();
+    }
+  }
+
   Future<void> _joinMeeting(MeetingGateway gateway) async {
+    if (_isJoining) return;
+
     final roomName = _roomController.text.trim();
     if (roomName.isEmpty) {
       _showMessage('Enter a room name before joining.');
@@ -230,11 +256,15 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       return;
     }
 
-    // Google Meet flow: Auto-prompt microphone & camera upfront
-    await MediaPermissionService.requestMediaPermissions();
-
     setState(() => _isJoining = true);
+
     try {
+      // Auto-prompt microphone & camera upfront with timeout so join is never stalled
+      try {
+        await MediaPermissionService.requestMediaPermissions()
+            .timeout(const Duration(seconds: 4));
+      } catch (_) {}
+
       final isAdmin = RoleAccessService.instance.canAccessAdmin() || widget.isModerator;
       final roomSlug = _getRoomSlug();
       final roomTitle = widget.meetingType?.displayName ?? roomName;
@@ -330,9 +360,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    if (AppStoreHelper.isMobileOnlyNotice(message)) {
+      ToastUtils.showMobilePrompt(message);
+    } else {
+      ToastUtils.showInfo(message);
+    }
   }
 
   Future<void> _loadAvailableChannels() async {
@@ -368,7 +400,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     _showMessage('Meeting invitation link copied to clipboard!');
   }
 
-  void _sendInMeetingChatMessage(MeetingGateway gateway) {
+  void _sendInMeetingChatMessage(
+    MeetingGateway gateway,
+    String text,
+    ParticipantInfo? recipient,
+  ) {
     if (_isChatLockedByHost) {
       final isLeader = RoleAccessService.instance.canStartConferencing() ||
           widget.isModerator ||
@@ -380,8 +416,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       }
     }
 
-    final text = _inMeetingChatController.text.trim();
-    if (text.isEmpty) return;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
 
     final user = ref.read(currentUserProvider);
     final avatar = ref.read(currentUserAvatarUrlProvider);
@@ -396,8 +432,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       'senderId': senderId,
       'senderName': senderName,
       'senderAvatar': avatar,
-      'text': text,
+      'text': trimmed,
       'timestamp': now.toIso8601String(),
+      'targetUserId': recipient?.identity,
+      'targetUserName': recipient?.name,
     };
 
     gateway.sendDataChannelMessage(packet);
@@ -408,9 +446,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         senderId: senderId,
         senderName: senderName,
         senderAvatar: avatar,
-        text: text,
+        text: trimmed,
         timestamp: now,
         isLocal: true,
+        targetUserId: recipient?.identity,
+        targetUserName: recipient?.name,
       ));
     });
 
@@ -430,7 +470,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     });
   }
 
-  void _showInMeetingChatSheet(BuildContext context, MeetingGateway gateway) {
+  void _showInMeetingChatSheet(
+    BuildContext context,
+    MeetingGateway gateway, {
+    ParticipantInfo? initialRecipient,
+  }) {
     setState(() {
       _isChatSheetOpen = true;
       _unreadChatCount = 0;
@@ -441,6 +485,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         widget.isModerator ||
         _isLocalHost ||
         _isLocalCoHost;
+    final session = gateway.currentSession;
 
     MeetingChatSheet.show(
       context: context,
@@ -451,6 +496,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       isChatLockedByHost: _isChatLockedByHost,
       isLeader: isLeader,
       currentUserId: user?.uid ?? '',
+      participants: session.participants,
+      initialRecipient: initialRecipient,
       onToggleLock: (newLock) {
         gateway.sendDataChannelMessage({
           'action': 'in_meeting_chat_lock',
@@ -469,7 +516,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         });
         _showMessage('Chat transcript cleared');
       },
-      onSendMessage: () => _sendInMeetingChatMessage(gateway),
+      onSendMessage: (text, recipient) =>
+          _sendInMeetingChatMessage(gateway, text, recipient),
     ).whenComplete(() {
       if (mounted) {
         setState(() => _isChatSheetOpen = false);
@@ -585,14 +633,26 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         canPop: false,
         onPopInvokedWithResult: (didPop, result) async {
           if (didPop) return;
-          final shouldPop = await _handleHostExit(gateway);
-          if (shouldPop && context.mounted) {
-            Navigator.of(context).maybePop();
-          }
+          _minimizeMeeting();
         },
         child: Scaffold(
           backgroundColor: Colors.black,
-          body: _buildProjectorView(context, session, gateway, isLeader, canShareScreen),
+          body: MeetingProjectorView(
+            session: session,
+            gateway: gateway,
+            isLeader: isLeader,
+            canShareScreen: canShareScreen,
+            roomTitle: _roomController.text.isNotEmpty
+                ? _roomController.text
+                : (widget.meetingType?.displayName ?? 'ALIVE Sanctuary Stage'),
+            onExitProjector: () => setState(() => _isProjectorMode = false),
+            onOpenBreakoutRooms: () =>
+                _showBreakoutRoomsSheet(context, session, gateway, isLeader),
+            onLeaveMeeting: () => _handleHostExit(gateway),
+            onParticipantTap: (p) =>
+                _showParticipantActions(context, p, gateway, isLeader),
+            showMessage: _showMessage,
+          ),
         ),
       );
     }
@@ -601,6 +661,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       canPop: !connected,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        if (connected) {
+          _minimizeMeeting();
+          return;
+        }
         final shouldPop = await _handleHostExit(gateway);
         if (shouldPop && context.mounted) {
           Navigator.of(context).maybePop();
@@ -612,43 +676,20 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               ? (session.activeBreakoutRoomName ?? 'Breakout Room')
               : (widget.meetingType?.displayName ?? 'ALIVE Meet'),
           showBackButton: true,
+          onBackPressed: connected ? _minimizeMeeting : null,
           showDonationButton: false,
           actions: [
+            if (connected)
+              IconButton(
+                icon: const Icon(Icons.picture_in_picture_alt_rounded),
+                tooltip: 'Minimize to Floating Overlay',
+                onPressed: _minimizeMeeting,
+              ),
             IconButton(
               icon: const Icon(Icons.share_rounded),
               tooltip: 'Share Meeting Link',
               onPressed: _shareMeetingLink,
             ),
-            if (connected) ...[
-              IconButton(
-                icon: Badge(
-                  isLabelVisible: _unreadChatCount > 0,
-                  label: Text('$_unreadChatCount'),
-                  child: const Icon(Icons.chat_bubble_outline_rounded),
-                ),
-                tooltip: 'In-Meeting Chat',
-                onPressed: () => _showInMeetingChatSheet(context, gateway),
-              ),
-            ],
-            if (connected && (isLeader || session.isBreakoutActive)) ...[
-              IconButton(
-                icon: Badge(
-                  isLabelVisible: session.isBreakoutActive,
-                  label: Text('${session.breakoutRooms.length}'),
-                  child: const Icon(Icons.workspaces_rounded),
-                ),
-                tooltip: 'Breakout Rooms',
-                onPressed: () =>
-                    _showBreakoutRoomsSheet(context, session, gateway, isLeader),
-              ),
-            ],
-            if (connected) ...[
-              IconButton(
-                icon: const Icon(Icons.tv_rounded),
-                tooltip: 'Projector / Stage Display',
-                onPressed: () => setState(() => _isProjectorMode = true),
-              ),
-            ],
             IconButton(
               icon: const Icon(Icons.note_alt_outlined),
               tooltip: 'Scribe & Notes',
@@ -667,126 +708,85 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             ),
           ],
         ),
+        bottomNavigationBar: connected
+            ? MeetingControlBar(
+                session: session,
+                gateway: gateway,
+                isLeader: isLeader,
+                canShareScreen: canShareScreen,
+                isAudioMuted: isAudioMuted,
+                isVideoMuted: isVideoMuted,
+                unreadChatCount: _unreadChatCount,
+                onToggleAudio: () async {
+                  if (!isLeader && session.isRoomAudioLocked && isAudioMuted) {
+                    _showMessage('The host has locked microphones. Raise your hand to request to speak.');
+                    return;
+                  }
+                  try {
+                    await gateway.toggleAudio();
+                  } catch (e) {
+                    _showMessage(e.toString().replaceAll('Exception: ', ''));
+                  }
+                },
+                onToggleVideo: () async {
+                  try {
+                    await gateway.toggleVideo();
+                  } catch (e) {
+                    _showMessage(e.toString().replaceAll('Exception: ', ''));
+                  }
+                },
+                onToggleScreenShare: () async {
+                  try {
+                    await gateway.toggleScreenShare();
+                    _showMessage(session.isScreenShareEnabled
+                        ? 'Screen sharing stopped.'
+                        : 'Screen sharing started.');
+                  } catch (e) {
+                    final errStr = ErrorHandler.getUserFriendlyMessage(e);
+                    if (AppStoreHelper.isMobileOnlyNotice(errStr) ||
+                        AppStoreHelper.isMobileOnlyNotice(e)) {
+                      ToastUtils.showInfo(
+                        'Screen sharing on mobile requires the ALIVE app. Opening Google Play Store...',
+                      );
+                      AppStoreHelper.redirectToPlayStore();
+                    } else {
+                      ToastUtils.showError(e);
+                    }
+                  }
+                },
+                onOpenChat: () => _showInMeetingChatSheet(context, gateway),
+                onToggleHand: () async {
+                  final newRaised = !session.isHandRaised;
+                  await gateway.raiseHand(raised: newRaised);
+                  _showMessage(newRaised ? 'Hand raised' : 'Hand lowered');
+                },
+                onOpenMore: () => _showMeetingMoreSheet(context, session, gateway, isLeader),
+                onLeaveOrEnd: () => _handleHostExit(gateway),
+              )
+            : null,
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextField(
-                controller: _roomController,
-                decoration: InputDecoration(
-                  labelText: 'Meeting Room',
-                  border: const OutlineInputBorder(),
-                  helperText: !isLeader
-                      ? 'Members can join designated rooms. Starting new rooms is reserved for leaders.'
-                      : null,
+              if (!connected)
+                MeetingPrejoinLobby(
+                  roomController: _roomController,
+                  isLeader: isLeader,
+                  isJoining: _isJoining,
+                  requireHostApproval: _requireHostApproval,
+                  onToggleRequireHostApproval: (val) => setState(() => _requireHostApproval = val),
+                  notifyMembers: _notifyMembers,
+                  onToggleNotifyMembers: (val) => setState(() => _notifyMembers = val),
+                  targetAudience: _targetAudience,
+                  onAudienceChanged: (val) => setState(() => _targetAudience = val),
+                  audienceItems: _buildTargetAudienceItems(),
+                  selectedTargetChapter: _selectedTargetChapter,
+                  onChapterChanged: (val) => setState(() => _selectedTargetChapter = val),
+                  isLoadingChannels: _isLoadingChannels,
+                  onRefreshChannels: _loadAvailableChannels,
+                  onJoin: () => _joinMeeting(gateway),
                 ),
-                readOnly: !isLeader,
-              ),
-              if (isLeader && !connected) ...[
-                const SizedBox(height: 8),
-                // Waiting Room Policy toggle
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  secondary: const Icon(Icons.meeting_room_outlined),
-                  title: const Text('Require Host Approval (Waiting Room)'),
-                  subtitle: const Text('Participants wait in virtual lobby until admitted by host/leader'),
-                  value: _requireHostApproval,
-                  onChanged: (val) => setState(() => _requireHostApproval = val),
-                ),
-                const SizedBox(height: 4),
-                // Targeted Push Notification toggle
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  secondary: const Icon(Icons.notifications_active_outlined),
-                  title: const Text('Notify members via push notification'),
-                  subtitle: const Text('Sends a background push notification when meeting starts'),
-                  value: _notifyMembers,
-                  onChanged: (val) => setState(() => _notifyMembers = val),
-                ),
-                if (_notifyMembers) ...[
-                  const SizedBox(height: 8),
-                  Builder(
-                    builder: (context) {
-                      final audienceItems = _buildTargetAudienceItems();
-                      final effectiveAudience =
-                          audienceItems.any((i) => i.value == _targetAudience)
-                              ? _targetAudience
-                              : 'general';
-
-                      return DropdownButtonFormField<String>(
-                        value: effectiveAudience,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: 'Notification Target Audience',
-                          prefixIcon: const Icon(Icons.group_outlined),
-                          suffixIcon: IconButton(
-                            icon: _isLoadingChannels
-                                ? const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.refresh_rounded, size: 18),
-                            tooltip: 'Refresh Channels',
-                            onPressed: _isLoadingChannels
-                                ? null
-                                : _loadAvailableChannels,
-                          ),
-                          border: const OutlineInputBorder(),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                        ),
-                        items: audienceItems,
-                        onChanged: (val) {
-                          if (val != null) setState(() => _targetAudience = val);
-                        },
-                      );
-                    },
-                  ),
-                  if (_targetAudience == 'chapter') ...[
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _selectedTargetChapter,
-                      decoration: const InputDecoration(
-                        labelText: 'Select Chapter to Notify',
-                        prefixIcon: Icon(Icons.location_on_outlined),
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      ),
-                      items: ChapterConstants.availableChapters.map((ch) {
-                        return DropdownMenuItem(
-                          value: ch,
-                          child: Text(ch),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _selectedTargetChapter = val);
-                      },
-                    ),
-                  ],
-                ],
-              ],
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: _isJoining || connected
-                    ? null
-                    : () => _joinMeeting(gateway),
-                icon: _isJoining
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.video_call),
-                label: Text(_isJoining
-                    ? 'Joining...'
-                    : connected
-                        ? (session.isInBreakoutRoom
-                            ? 'Connected • ${session.activeBreakoutRoomName}'
-                            : 'Connected')
-                        : (isLeader ? 'Start / Join ALIVE Meet' : 'Join ALIVE Meet')),
-              ),
               // Connection status banner
               if (session.status == RoomStatus.connecting ||
                   session.status == RoomStatus.reconnecting) ...[
@@ -938,7 +938,22 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               ] else if (connected) ...[
                 // Active Breakout Room Status Banner
                 if (session.isBreakoutActive || session.isInBreakoutRoom)
-                  _buildBreakoutBanner(context, session, gateway, isLeader),
+                  MeetingBreakoutBanner(
+                    session: session,
+                    gateway: gateway,
+                    isLeader: isLeader,
+                    onOpenBreakoutRooms: () =>
+                        _showBreakoutRoomsSheet(context, session, gateway, isLeader),
+                    onAskHostHelp: () async {
+                      await gateway.requestHostHelpInBreakout();
+                      _showMessage('Host has been invited to assist your room.');
+                    },
+                    onReturnToMainRoom: () async {
+                      await gateway.returnToMainRoom();
+                      _showMessage('Returned to Main Room');
+                    },
+                    formatRemaining: _formatBreakoutRemaining,
+                  ),
 
                 // Host Waiting Room Admission Requests Banner
                 if (isLeader && session.waitingKnocks.isNotEmpty) ...[
@@ -1057,431 +1072,70 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                   ),
                 ],
 
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: () async {
-                        if (!isLeader && session.isRoomAudioLocked && isAudioMuted) {
-                          _showMessage('The host has locked microphones. Raise your hand to ask to speak.');
-                          return;
-                        }
-                        try {
-                          await gateway.toggleAudio();
-                        } catch (e) {
-                          _showMessage(e.toString().replaceAll('Exception: ', ''));
-                        }
-                      },
-                      icon: Icon(isAudioMuted ? Icons.mic_off : Icons.mic),
-                      label: Text(
-                        !isLeader && session.isRoomAudioLocked && isAudioMuted
-                            ? 'Muted (Locked)'
-                            : (isAudioMuted ? 'Unmute' : 'Mute'),
-                      ),
-                      style: !isLeader && session.isRoomAudioLocked && isAudioMuted
-                          ? FilledButton.styleFrom(
-                              backgroundColor: Colors.grey.shade700,
-                            )
-                          : null,
+                // Stage Header Card: Meeting Room Title & Presence
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF1B2432)
+                        : const Color(0xFFF3EBE0),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFD49B28).withValues(alpha: 0.35),
                     ),
-                    FilledButton.icon(
-                      onPressed: () async {
-                        try {
-                          await gateway.toggleVideo();
-                        } catch (e) {
-                          _showMessage(e.toString().replaceAll('Exception: ', ''));
-                        }
-                      },
-                      icon: Icon(isVideoMuted ? Icons.videocam_off : Icons.videocam),
-                      label: Text(isVideoMuted ? 'Camera On' : 'Camera Off'),
-                    ),
-                    // Screen Share button for Host and Co-Host
-                    if (canShareScreen)
-                      FilledButton.icon(
-                        onPressed: () async {
-                          try {
-                            await gateway.toggleScreenShare();
-                            _showMessage(session.isScreenShareEnabled
-                                ? 'Screen sharing stopped.'
-                                : 'Screen sharing started.');
-                          } catch (e) {
-                            _showMessage(ErrorHandler.getUserFriendlyMessage(e));
-                          }
-                        },
-                        icon: Icon(session.isScreenShareEnabled
-                            ? Icons.stop_screen_share_rounded
-                            : Icons.screen_share_rounded),
-                        label: Text(session.isScreenShareEnabled
-                            ? 'Stop Screen'
-                            : 'Share Screen'),
-                        style: session.isScreenShareEnabled
-                            ? FilledButton.styleFrom(
-                                backgroundColor: Colors.teal.shade700,
-                                foregroundColor: Colors.white,
-                              )
-                            : null,
-                      ),
-                    // Breakout Rooms button
-                    if (isLeader || session.isBreakoutActive)
-                      FilledButton.tonalIcon(
-                        onPressed: () => _showBreakoutRoomsSheet(
-                          context,
-                          session,
-                          gateway,
-                          isLeader,
-                        ),
-                        icon: const Icon(Icons.workspaces_rounded),
-                        label: Text(
-                          session.isBreakoutActive
-                              ? 'Breakout Rooms (${session.breakoutRooms.length})'
-                              : 'Breakout Rooms',
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 9,
+                        height: 9,
+                        decoration: const BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
                         ),
                       ),
-                    if (session.isInBreakoutRoom)
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          await gateway.returnToMainRoom();
-                          _showMessage('Returned to Main Plenary Room');
-                        },
-                        icon: const Icon(Icons.keyboard_return_rounded),
-                        label: const Text('Main Room'),
-                      ),
-                    // In-Meeting Chat button
-                    FilledButton.tonalIcon(
-                      onPressed: () => _showInMeetingChatSheet(context, gateway),
-                      icon: Badge(
-                        isLabelVisible: _unreadChatCount > 0,
-                        label: Text('$_unreadChatCount'),
-                        child: const Icon(Icons.chat_bubble_outline_rounded),
-                      ),
-                      label: Text(_unreadChatCount > 0 ? 'Chat ($_unreadChatCount)' : 'Chat'),
-                    ),
-                    // Share Meeting Link button
-                    OutlinedButton.icon(
-                      onPressed: _shareMeetingLink,
-                      icon: const Icon(Icons.share_rounded),
-                      label: const Text('Share Link'),
-                    ),
-                    // Projector / Display View button
-                    FilledButton.tonalIcon(
-                      onPressed: () => setState(() => _isProjectorMode = true),
-                      icon: const Icon(Icons.tv_rounded),
-                      label: const Text('Projector Display'),
-                    ),
-                    // Raise Hand button for all attendees
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final newRaised = !session.isHandRaised;
-                        await gateway.raiseHand(raised: newRaised);
-                        _showMessage(newRaised ? 'Hand raised' : 'Hand lowered');
-                      },
-                      icon: Icon(
-                        session.isHandRaised ? Icons.pan_tool_rounded : Icons.pan_tool_outlined,
-                        color: session.isHandRaised ? const Color(0xFFD49B28) : null,
-                      ),
-                      label: Text(session.isHandRaised ? 'Lower Hand' : 'Raise Hand'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => _handleHostExit(gateway),
-                      icon: const Icon(Icons.call_end),
-                      label: const Text('Leave'),
-                    ),
-                    // End Meeting for All button (leaders/hosts only)
-                    if (isLeader)
-                      FilledButton.icon(
-                        onPressed: () => _confirmEndMeetingForAll(gateway),
-                        icon: const Icon(Icons.stop_circle_outlined),
-                        label: const Text('End Meeting for All'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.red.shade800,
-                          foregroundColor: Colors.white,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          session.isInBreakoutRoom
+                              ? '${session.activeBreakoutRoomName}'
+                              : (widget.meetingType?.displayName ?? _roomController.text.trim()),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    // Go Live button — streams to YouTube via LiveKit egress
-                    if (isLeader)
-                      FilledButton.icon(
-                        onPressed: _isBroadcasting
-                            ? () => _stopBroadcast(gateway)
-                            : () => _startBroadcast(gateway),
-                        icon: Icon(_isBroadcasting ? Icons.stop : Icons.live_tv),
-                        label: Text(_isBroadcasting ? 'Stop Live' : 'Go Live'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor:
-                              _isBroadcasting ? Colors.red : null,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.people_alt_rounded, size: 12, color: Colors.green),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${session.participants.length} connected',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                            ),
+                          ],
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
 
-                // Host / Moderator Controls Area
-                if (isLeader) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF1B2432)
-                          : const Color(0xFFF3EBE0),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFD49B28).withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.admin_panel_settings_rounded, size: 16, color: Color(0xFFD49B28)),
-                            SizedBox(width: 6),
-                            Text(
-                              'Host Moderation Controls',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFD49B28),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            // "Mute All" button
-                            ElevatedButton.icon(
-                              onPressed: () async {
-                                await gateway.muteAll();
-                                _showMessage('Broadcast command sent: All participants muted.');
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red.shade800,
-                                foregroundColor: Colors.white,
-                              ),
-                              icon: const Icon(Icons.volume_off_rounded, size: 16),
-                              label: const Text('Mute All'),
-                            ),
-                            // Hard Lockout toggle ("Disallow Participants to Unmute")
-                            OutlinedButton.icon(
-                              onPressed: () async {
-                                final newLock = !session.isRoomAudioLocked;
-                                await gateway.setRoomAudioLock(newLock);
-                                _showMessage(newLock
-                                    ? 'Host Hard Lockout activated: Participants cannot unmute.'
-                                    : 'Host Hard Lockout released: Participants can now unmute.');
-                              },
-                              icon: Icon(
-                                session.isRoomAudioLocked ? Icons.lock_open_rounded : Icons.lock_rounded,
-                                size: 16,
-                              ),
-                              label: Text(session.isRoomAudioLocked ? 'Unlock Mics' : 'Lock Mics'),
-                            ),
-                            // Waiting Room / Gated meeting toggle
-                            OutlinedButton.icon(
-                              onPressed: () async {
-                                final newWaiting = !session.isWaitingRoomEnabled;
-                                await gateway.setWaitingRoom(newWaiting);
-                                _showMessage(newWaiting
-                                    ? 'Waiting Room activated: New participants must be admitted.'
-                                    : 'Waiting Room disabled: Participants can now join directly.');
-                              },
-                              icon: Icon(
-                                session.isWaitingRoomEnabled ? Icons.door_sliding : Icons.meeting_room_outlined,
-                                size: 16,
-                              ),
-                              label: Text(session.isWaitingRoomEnabled ? 'Waiting Room: ON' : 'Waiting Room: OFF'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: session.isWaitingRoomEnabled ? const Color(0xFFD49B28) : null,
-                              ),
-                            ),
-                            // Breakout Rooms Manager button in Host Controls
-                            OutlinedButton.icon(
-                              onPressed: () => _showBreakoutRoomsSheet(
-                                context,
-                                session,
-                                gateway,
-                                isLeader,
-                              ),
-                              icon: const Icon(Icons.workspaces_rounded, size: 16),
-                              label: Text(
-                                session.isBreakoutActive
-                                    ? 'Manage Breakout Rooms (${session.breakoutRooms.length})'
-                                    : 'Create Breakout Rooms',
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: session.isBreakoutActive
-                                    ? Colors.teal
-                                    : const Color(0xFFD49B28),
-                              ),
-                            ),
-                            // End Meeting for All in Host Controls
-                            ElevatedButton.icon(
-                              onPressed: () => _confirmEndMeetingForAll(gateway),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red.shade900,
-                                foregroundColor: Colors.white,
-                              ),
-                              icon: const Icon(Icons.power_settings_new_rounded, size: 16),
-                              label: const Text('End Meeting for All'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                if (session.participants.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    session.isInBreakoutRoom
-                        ? '${session.activeBreakoutRoomName} Participants (${session.participants.length}):'
-                        : 'Participants (${session.participants.length}):',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: session.participants.length,
-                      itemBuilder: (context, index) {
-                        final participant = session.participants[index];
-                        final displayName = _formatParticipantName(participant);
-                        return ListTile(
-                          onTap: () => _showParticipantActions(
-                            context,
-                            participant,
-                            gateway,
-                            isLeader,
-                          ),
-                          leading: CircleAvatar(
-                            backgroundImage: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
-                                ? NetworkImage(participant.avatarUrl!)
-                                : null,
-                            child: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
-                                ? null
-                                : Text(
-                                    displayName.isNotEmpty
-                                        ? displayName[0].toUpperCase()
-                                        : 'M',
-                                  ),
-                          ),
-                          title: Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  participant.isLocal
-                                      ? '$displayName (You)'
-                                      : displayName,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (gateway.isParticipantHost(participant.identity)) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFD49B28).withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: const Color(0xFFD49B28), width: 0.8),
-                                  ),
-                                  child: const Text(
-                                    'HOST',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFD49B28),
-                                    ),
-                                  ),
-                                ),
-                              ] else if (gateway.isParticipantCoHost(participant.identity)) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.teal.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: Colors.teal, width: 0.8),
-                                  ),
-                                  child: const Text(
-                                    'CO-HOST',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.teal,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          subtitle: Text(
-                            isLeader
-                                ? 'Tap to manage (mute, video, host, co-host)'
-                                : (participant.isLocal ? 'Tap for your audio/video controls' : ''),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (participant.isHandRaised) ...[
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  margin: const EdgeInsets.only(right: 8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFD49B28).withValues(alpha: 0.18),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: const Color(0xFFD49B28), width: 1),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.pan_tool_rounded, size: 13, color: Color(0xFFD49B28)),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Hand Raised',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFD49B28)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              Icon(
-                                participant.isAudioMuted
-                                    ? Icons.mic_off
-                                    : Icons.mic,
-                                size: 18,
-                                color: participant.isAudioMuted
-                                    ? Colors.red
-                                    : Colors.green,
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                participant.isVideoMuted
-                                    ? Icons.videocam_off
-                                    : Icons.videocam,
-                                size: 18,
-                                color: participant.isVideoMuted
-                                    ? Colors.red
-                                    : Colors.green,
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.chevron_right,
-                                size: 18,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                MeetingParticipantsList(
+                  session: session,
+                  gateway: gateway,
+                  isLeader: isLeader,
+                  onParticipantTap: (p) =>
+                      _showParticipantActions(context, p, gateway, isLeader),
+                  formatParticipantName: _formatParticipantName,
+                ),
               ],
             ],
           ),
@@ -1490,136 +1144,62 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     );
   }
 
-  Widget _buildBreakoutBanner(
+  void _showMeetingMoreSheet(
     BuildContext context,
     MeetingSession session,
     MeetingGateway gateway,
     bool isLeader,
   ) {
-    final remaining = _formatBreakoutRemaining(session.breakoutEndsAt);
-    final inSubRoom = session.isInBreakoutRoom;
-    final broadcastMsg = session.breakoutBroadcastMessage;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.teal.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.teal.shade600.withValues(alpha: 0.6)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.workspaces_rounded,
-                size: 18,
-                color: Colors.teal.shade700,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  inSubRoom
-                      ? 'Breakout Room: ${session.activeBreakoutRoomName}'
-                      : 'Breakout Sessions Active (${session.breakoutRooms.length} Rooms)',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              if (remaining.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade800,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.timer_outlined, size: 12, color: Colors.white),
-                      const SizedBox(width: 4),
-                      Text(
-                        remaining,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          if (broadcastMsg != null && broadcastMsg.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD49B28).withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.campaign_rounded, size: 16, color: Color(0xFFD49B28)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Host Broadcast: $broadcastMsg',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
+    MeetingMoreActionsSheet.show(
+      context: context,
+      session: session,
+      gateway: gateway,
+      isLeader: isLeader,
+      isBroadcasting: _isBroadcasting,
+      onOpenBreakoutRooms: () =>
+          _showBreakoutRoomsSheet(context, session, gateway, isLeader),
+      onOpenProjector: () => setState(() => _isProjectorMode = true),
+      onOpenScribe: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => LeaderMeetingTranscriptionScreen(
+              initialMeetingTitle:
+                  widget.meetingType?.displayName ?? _roomController.text,
+              initialRoomName: _roomController.text.trim(),
+              initialMeetingType: widget.meetingType?.displayName,
             ),
-          ],
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.tonalIcon(
-                onPressed: () =>
-                    _showBreakoutRoomsSheet(context, session, gateway, isLeader),
-                icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-                label: Text(inSubRoom ? 'Switch / View Rooms' : 'View / Join Rooms'),
-                style: FilledButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-              if (inSubRoom && !isLeader)
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    await gateway.requestHostHelpInBreakout();
-                    _showMessage('Host has been invited to assist your room.');
-                  },
-                  icon: const Icon(Icons.support_agent_rounded, size: 16),
-                  label: const Text('Ask Host for Help'),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
-              if (inSubRoom)
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    await gateway.returnToMainRoom();
-                    _showMessage('Returned to Main Room');
-                  },
-                  icon: const Icon(Icons.keyboard_return_rounded, size: 16),
-                  label: const Text('Return to Main Room'),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
-            ],
           ),
-        ],
-      ),
+        );
+      },
+      onShareLink: _shareMeetingLink,
+      onReturnToMainRoom: () async {
+        await gateway.returnToMainRoom();
+        _showMessage('Returned to Main Plenary Room');
+      },
+      onMuteAll: () async {
+        await gateway.muteAll();
+        _showMessage('Broadcast command sent: All participants muted.');
+      },
+      onToggleMicLock: (newLock) async {
+        await gateway.setRoomAudioLock(newLock);
+        _showMessage(newLock
+            ? 'Host Hard Lockout activated: Participants cannot unmute.'
+            : 'Host Hard Lockout released: Participants can now unmute.');
+      },
+      onToggleWaitingRoom: (newWaiting) async {
+        await gateway.setWaitingRoom(newWaiting);
+        _showMessage(newWaiting
+            ? 'Waiting Room activated: New participants must be admitted.'
+            : 'Waiting Room disabled: Participants can now join directly.');
+      },
+      onToggleBroadcast: () {
+        if (_isBroadcasting) {
+          _stopBroadcast(gateway);
+        } else {
+          _startBroadcast(gateway);
+        }
+      },
+      onEndMeetingForAll: () => _confirmEndMeetingForAll(gateway),
     );
   }
 
@@ -1738,6 +1318,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       gateway: gateway,
       isLeaderOrHost: isLeaderOrHost,
       showMessage: _showMessage,
+      onStartDirectChat: (target) {
+        _showInMeetingChatSheet(context, gateway, initialRecipient: target);
+      },
     );
   }
 
@@ -1815,231 +1398,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     return raw;
   }
 
-  Widget _buildProjectorView(
-    BuildContext context,
-    MeetingSession session,
-    MeetingGateway gateway,
-    bool isLeader,
-    bool canShareScreen,
-  ) {
-    final activePresenter = session.activeScreenShareName;
-    final isPresenting = session.isScreenShareEnabled || activePresenter != null;
 
-    return SafeArea(
-      child: Stack(
-        children: [
-          // Main Stage Canvas
-          Column(
-            children: [
-              // Projector Header Bar
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                color: const Color(0xFF111418),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      tooltip: 'Exit Projector Display',
-                      onPressed: () => setState(() => _isProjectorMode = false),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: session.isInBreakoutRoom
-                            ? Colors.teal.shade800
-                            : Colors.red.shade900,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            session.isInBreakoutRoom
-                                ? Icons.workspaces_rounded
-                                : Icons.fiber_manual_record,
-                            size: 10,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            session.isInBreakoutRoom ? 'BREAKOUT' : 'LIVE STAGE',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            session.isInBreakoutRoom
-                                ? (session.activeBreakoutRoomName ?? 'Breakout Room')
-                                : (_roomController.text.isNotEmpty
-                                    ? _roomController.text
-                                    : (widget.meetingType?.displayName ?? 'ALIVE Sanctuary Stage')),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            isPresenting
-                                ? 'Screen Share: ${activePresenter ?? "You are presenting"}'
-                                : 'Attendees: ${session.participants.length} connected',
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (isLeader || session.isBreakoutActive)
-                      IconButton(
-                        icon: const Icon(Icons.workspaces_rounded, color: Colors.white),
-                        tooltip: 'Breakout Rooms',
-                        onPressed: () => _showBreakoutRoomsSheet(
-                          context,
-                          session,
-                          gateway,
-                          isLeader,
-                        ),
-                      ),
-                    IconButton(
-                      icon: const Icon(Icons.fullscreen_exit_rounded, color: Colors.white),
-                      tooltip: 'Exit Projector Display',
-                      onPressed: () => setState(() => _isProjectorMode = false),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Central Stage Area (Optimized for Sanctuary / Conference Projectors)
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  color: const Color(0xFF0A0D11),
-                  child: Center(
-                    child: isPresenting
-                        ? _buildScreenShareStage(session, gateway)
-                        : _buildVideoGridStage(session, gateway),
-                  ),
-                ),
-              ),
-
-              // Floating Controls Bar at Bottom
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                color: const Color(0xFF111418),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton.filledTonal(
-                      onPressed: () async {
-                        try {
-                          await gateway.toggleAudio();
-                        } catch (e) {
-                          _showMessage(e.toString().replaceAll('Exception: ', ''));
-                        }
-                      },
-                      icon: Icon(session.isAudioMuted ? Icons.mic_off : Icons.mic),
-                      style: IconButton.styleFrom(
-                        backgroundColor: session.isAudioMuted
-                            ? Colors.red.withValues(alpha: 0.3)
-                            : Colors.green.withValues(alpha: 0.3),
-                        foregroundColor: session.isAudioMuted ? Colors.red : Colors.green,
-                      ),
-                      tooltip: session.isAudioMuted ? 'Unmute' : 'Mute',
-                    ),
-                    const SizedBox(width: 14),
-                    IconButton.filledTonal(
-                      onPressed: () async {
-                        try {
-                          await gateway.toggleVideo();
-                        } catch (e) {
-                          _showMessage(e.toString().replaceAll('Exception: ', ''));
-                        }
-                      },
-                      icon: Icon(session.isVideoMuted ? Icons.videocam_off : Icons.videocam),
-                      style: IconButton.styleFrom(
-                        backgroundColor: session.isVideoMuted
-                            ? Colors.red.withValues(alpha: 0.3)
-                            : Colors.blue.withValues(alpha: 0.3),
-                        foregroundColor: session.isVideoMuted ? Colors.red : Colors.blue,
-                      ),
-                      tooltip: session.isVideoMuted ? 'Camera On' : 'Camera Off',
-                    ),
-                    if (canShareScreen) ...[
-                      const SizedBox(width: 14),
-                      IconButton.filledTonal(
-                        onPressed: () async {
-                          try {
-                            await gateway.toggleScreenShare();
-                            _showMessage(session.isScreenShareEnabled
-                                ? 'Screen sharing stopped.'
-                                : 'Screen sharing started.');
-                          } catch (e) {
-                            _showMessage(ErrorHandler.getUserFriendlyMessage(e));
-                          }
-                        },
-                        icon: Icon(session.isScreenShareEnabled
-                            ? Icons.stop_screen_share_rounded
-                            : Icons.screen_share_rounded),
-                        style: IconButton.styleFrom(
-                          backgroundColor: session.isScreenShareEnabled ? Colors.teal.shade700 : Colors.white12,
-                          foregroundColor: Colors.white,
-                        ),
-                        tooltip: session.isScreenShareEnabled ? 'Stop Sharing' : 'Share Screen',
-                      ),
-                    ],
-                    if (isLeader || session.isBreakoutActive) ...[
-                      const SizedBox(width: 14),
-                      IconButton.filledTonal(
-                        onPressed: () => _showBreakoutRoomsSheet(
-                          context,
-                          session,
-                          gateway,
-                          isLeader,
-                        ),
-                        icon: const Icon(Icons.workspaces_rounded),
-                        style: IconButton.styleFrom(
-                          backgroundColor: session.isBreakoutActive
-                              ? Colors.teal.shade700
-                              : Colors.white12,
-                          foregroundColor: Colors.white,
-                        ),
-                        tooltip: 'Breakout Rooms',
-                      ),
-                    ],
-                    const SizedBox(width: 14),
-                    IconButton.filledTonal(
-                      onPressed: () => setState(() => _isProjectorMode = false),
-                      icon: const Icon(Icons.view_compact_rounded),
-                      style: IconButton.styleFrom(backgroundColor: Colors.white12, foregroundColor: Colors.white),
-                      tooltip: 'Standard Meeting View',
-                    ),
-                    const SizedBox(width: 14),
-                    IconButton.filledTonal(
-                      onPressed: () => _handleHostExit(gateway),
-                      icon: const Icon(Icons.call_end),
-                      style: IconButton.styleFrom(backgroundColor: Colors.red.shade900, foregroundColor: Colors.white),
-                      tooltip: 'Leave Meeting',
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<bool> _handleHostExit(MeetingGateway gateway) async {
     final session = ref.read(meetingSessionStreamProvider).value;
@@ -2151,25 +1510,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     );
   }
 
-  Widget _buildScreenShareStage(MeetingSession session, MeetingGateway gateway) {
-    return MeetingScreenShareStage(session: session, gateway: gateway);
-  }
 
-  Widget _buildVideoGridStage(MeetingSession session, MeetingGateway gateway) {
-    final isLeader = RoleAccessService.instance.canStartConferencing() ||
-        widget.isModerator;
-    return MeetingVideoGridStage(
-      session: session,
-      gateway: gateway,
-      isLeader: isLeader,
-      onParticipantTap: (p) => _showParticipantActions(
-        context,
-        p,
-        gateway,
-        isLeader,
-      ),
-    );
-  }
 
   Future<void> _startBroadcast(MeetingGateway gateway) async {
     final meetingType = widget.meetingType?.name ?? 'general';

@@ -10,6 +10,7 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
   final MeetingGateway gateway;
   final bool isLeaderOrHost;
   final void Function(String message) showMessage;
+  final void Function(ParticipantInfo participant)? onStartDirectChat;
 
   const MeetingParticipantActionsSheet({
     super.key,
@@ -17,6 +18,7 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
     required this.gateway,
     required this.isLeaderOrHost,
     required this.showMessage,
+    this.onStartDirectChat,
   });
 
   static Future<void> show({
@@ -25,6 +27,7 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
     required MeetingGateway gateway,
     required bool isLeaderOrHost,
     required void Function(String message) showMessage,
+    void Function(ParticipantInfo participant)? onStartDirectChat,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -36,6 +39,7 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
         gateway: gateway,
         isLeaderOrHost: isLeaderOrHost,
         showMessage: showMessage,
+        onStartDirectChat: onStartDirectChat,
       ),
     );
   }
@@ -155,8 +159,20 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
                   }
                 },
               ),
-            ] else if (isLeaderOrHost) ...[
-              // Moderator / Host Controls over remote participant
+            ] else ...[
+              // Direct 1-on-1 messaging for any remote participant
+              ListTile(
+                leading: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFFD49B28)),
+                title: Text('Direct Message $displayName'),
+                subtitle: const Text('Send a private 1-on-1 message in meeting chat'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onStartDirectChat?.call(participant);
+                },
+              ),
+
+              if (isLeaderOrHost) ...[
+                // Moderator / Host Controls over remote participant
               ListTile(
                 leading: const Icon(Icons.mic_off_outlined, color: Colors.red),
                 title: Text('Mute $displayName'),
