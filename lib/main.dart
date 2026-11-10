@@ -593,7 +593,7 @@ class MainNavigationScreen extends ConsumerWidget {
                   'route': AppConstants.testimoniesRoute
                 },
                 {
-                  'icon': Icons.emoji_events_rounded,
+                  'icon': Icons.child_care_rounded,
                   'label': 'kids_mission',
                   'route': AppConstants.kidsMissionRoute
                 },

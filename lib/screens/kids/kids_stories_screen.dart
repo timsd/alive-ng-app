@@ -194,7 +194,21 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Kids Stories',
+        titleWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.auto_stories_rounded, size: 22, color: Theme.of(context).colorScheme.onSurface),
+            const SizedBox(width: 8),
+            Text(
+              'Kids Stories',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
         showBackButton: true,
         bottom: TabBar(
           controller: _tabController,

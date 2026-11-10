@@ -201,8 +201,22 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Add Kids Mission',
+      appBar: CustomAppBar(
+        titleWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.child_care_rounded, size: 22, color: Theme.of(context).colorScheme.onSurface),
+            const SizedBox(width: 8),
+            Text(
+              'Add Kids Mission',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
         showBackButton: true,
         showDonationButton: false,
       ),

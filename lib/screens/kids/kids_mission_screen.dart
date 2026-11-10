@@ -711,7 +711,21 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Kids Mission',
+        titleWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.child_care_rounded, size: 22, color: theme.colorScheme.onSurface),
+            const SizedBox(width: 8),
+            Text(
+              'Kids Mission',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
         showBackButton: true,
       ),
       body: SingleChildScrollView(

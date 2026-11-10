@@ -197,8 +197,22 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Add Kids Story',
+      appBar: CustomAppBar(
+        titleWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.auto_stories_rounded, size: 22, color: Theme.of(context).colorScheme.onSurface),
+            const SizedBox(width: 8),
+            Text(
+              'Add Kids Story',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
         showBackButton: true,
         showDonationButton: false,
       ),

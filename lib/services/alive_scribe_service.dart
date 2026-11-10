@@ -398,7 +398,7 @@ class AliveScribeService {
   }
 
   /// Collapses progressive prefix accumulations caused by Web Speech API
-  /// (e.g. "Mymy namemy name is... my name is Timothy Olo today" -> "My name is Timothy Olodude",
+  /// (e.g. "Mymy namemy name is... my name is Timothy Olodude" -> "My name is Timothy Olodude",
   ///  or "Soso byso by the... so by the end of today's meeting" -> "So by the end of today's meeting").
   static String collapseCumulativePrefixes(String text) {
     var s = text.trim();
