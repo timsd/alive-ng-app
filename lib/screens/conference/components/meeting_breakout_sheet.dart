@@ -487,10 +487,10 @@ class _MeetingBreakoutSheetState extends State<MeetingBreakoutSheet> {
                     durationMinutes: _selectedDurationMins,
                     allowSelfSelect: _allowSelfSelect,
                   );
-                  widget.showMessage('Started ${_roomCount} breakout rooms.');
+                  widget.showMessage('Started $_roomCount breakout rooms.');
                 },
                 icon: const Icon(Icons.rocket_launch_rounded),
-                label: Text('Open ${_roomCount} Breakout Rooms'),
+                label: Text('Open $_roomCount Breakout Rooms'),
               ),
             ],
           ),

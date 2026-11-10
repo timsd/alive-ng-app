@@ -931,7 +931,11 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         throw Exception('Token not found in ALIVE Meet response.');
       }
 
-      await joinMeeting(roomToken: token, roomName: roomName);
+      await joinMeeting(
+        roomToken: token,
+        roomName: roomName,
+        isWaitingRoomEnabled: isWaitingRoomEnabled,
+      );
 
       if (avatarUrl != null && avatarUrl.isNotEmpty) {
         try {
@@ -990,7 +994,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   Future<void> joinMeeting({
     required String roomToken,
     String? roomName,
+    bool? isWaitingRoomEnabled,
   }) async {
+    final effectiveWaitingRoom = isWaitingRoomEnabled ?? _isWaitingRoomEnabled;
     try {
       if (_isSwitchingBreakoutRoom) {
         await _disconnectRoomInstanceOnly();
@@ -998,9 +1004,13 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         await leaveMeeting();
       }
 
+      // Preserve waiting room status across leaveMeeting reset
+      _isWaitingRoomEnabled = effectiveWaitingRoom;
+
       _currentSession = _currentSession.copyWith(
         roomName: roomName ?? '',
         status: RoomStatus.connecting,
+        isWaitingRoomEnabled: _isWaitingRoomEnabled,
         error: null,
       );
       _emitSession();
@@ -1115,6 +1125,26 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         participants: _collectParticipants(),
       );
       _emitSession();
+
+      // If host has waiting room enabled, announce to the room immediately
+      if (_isHostOrModerator && _isWaitingRoomEnabled) {
+        try {
+          final payload = utf8.encode(jsonEncode({
+            'action': 'toggle_waiting_room',
+            'enabled': true,
+          }));
+          await _room?.localParticipant?.publishData(payload, reliable: true);
+          debugPrint('[LiveKitMeetingGateway] Host joined with Waiting Room active: broadcasted to room');
+        } catch (_) {}
+      } else if (!_isHostOrModerator) {
+        // Query room state from host to sync waiting room & room audio lock
+        try {
+          final queryPayload = utf8.encode(jsonEncode({
+            'action': 'query_room_state',
+          }));
+          await _room?.localParticipant?.publishData(queryPayload, reliable: true);
+        } catch (_) {}
+      }
 
       debugPrint('Successfully connected to LiveKit room: $finalRoomName');
     } catch (e) {
@@ -1571,6 +1601,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   @override
   Future<void> setWaitingRoom(bool enabled) async {
     _isWaitingRoomEnabled = enabled;
+    _currentSession = _currentSession.copyWith(isWaitingRoomEnabled: enabled);
+    _emitSession();
     _syncStateFromRoom();
     try {
       final payload = utf8.encode(jsonEncode({

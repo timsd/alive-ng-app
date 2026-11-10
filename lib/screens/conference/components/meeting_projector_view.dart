@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../utils/error_handler.dart';
 import '../../../models/meeting_models.dart';
 import '../../../services/ports/meeting_gateway.dart';
 import 'meeting_stage_view.dart';
 
-/// Full screen immersive Projector / Stage Display widget for ALIVE sanctuary screens and TVs.
-class MeetingProjectorView extends StatelessWidget {
+/// Gallery View / Stage Display widget for video grids and stage presentations.
+class MeetingGalleryView extends StatefulWidget {
   final MeetingSession session;
   final MeetingGateway gateway;
   final bool isLeader;
@@ -14,11 +15,15 @@ class MeetingProjectorView extends StatelessWidget {
   final String roomTitle;
   final VoidCallback onExitProjector;
   final VoidCallback onOpenBreakoutRooms;
+  final VoidCallback? onOpenMore;
+  final VoidCallback? onOpenChat;
+  final bool isScribeRecording;
+  final VoidCallback? onToggleScribe;
   final VoidCallback onLeaveMeeting;
   final void Function(ParticipantInfo participant) onParticipantTap;
   final void Function(String message) showMessage;
 
-  const MeetingProjectorView({
+  const MeetingGalleryView({
     super.key,
     required this.session,
     required this.gateway,
@@ -27,15 +32,164 @@ class MeetingProjectorView extends StatelessWidget {
     required this.roomTitle,
     required this.onExitProjector,
     required this.onOpenBreakoutRooms,
+    this.onOpenMore,
+    this.onOpenChat,
+    this.isScribeRecording = false,
+    this.onToggleScribe,
     required this.onLeaveMeeting,
     required this.onParticipantTap,
     required this.showMessage,
   });
 
   @override
+  State<MeetingGalleryView> createState() => _MeetingGalleryViewState();
+}
+
+/// Backward compatibility alias for MeetingGalleryView
+typedef MeetingProjectorView = MeetingGalleryView;
+
+class _MeetingGalleryViewState extends State<MeetingGalleryView> {
+  final ScrollController _scrollController = ScrollController();
+  bool _canScrollLeft = false;
+  bool _canScrollRight = true;
+  bool _isLandscape = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_checkScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkScroll());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_checkScroll);
+    _scrollController.dispose();
+    // Safely reset orientation to portrait when exiting stage view
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    super.dispose();
+  }
+
+  void _checkScroll() {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
+    final canLeft = currentScroll > 8;
+    final canRight = currentScroll < (maxScroll - 8);
+    if (canLeft != _canScrollLeft || canRight != _canScrollRight) {
+      setState(() {
+        _canScrollLeft = canLeft;
+        _canScrollRight = canRight;
+      });
+    }
+  }
+
+  void _scroll(double delta) {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      (_scrollController.offset + delta).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _toggleOrientation() {
+    setState(() {
+      _isLandscape = !_isLandscape;
+    });
+    if (_isLandscape) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+    }
+  }
+
+  void _exitProjector() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    widget.onExitProjector();
+  }
+
+  void _leaveMeeting() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    widget.onLeaveMeeting();
+  }
+
+  Widget _buildControlButton({
+    required Widget icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? activeColor,
+    bool isDestructive = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: activeColor ??
+                        (isDestructive
+                            ? Colors.red.shade900
+                            : const Color(0xFF1E293B)),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      if (activeColor != null || isDestructive)
+                        BoxShadow(
+                          color: (activeColor ?? Colors.red).withValues(alpha: 0.35),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                    ],
+                  ),
+                  child: Center(child: icon),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final activePresenter = session.activeScreenShareName;
-    final isPresenting = session.isScreenShareEnabled || activePresenter != null;
+    final activePresenter = widget.session.activeScreenShareName;
+    final isPresenting = widget.session.isScreenShareEnabled || activePresenter != null;
 
     return SafeArea(
       child: Stack(
@@ -43,7 +197,7 @@ class MeetingProjectorView extends StatelessWidget {
           // Main Stage Canvas
           Column(
             children: [
-              // Projector Header Bar
+              // Projector Header Bar (Clean: duplicate buttons removed from header)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 color: const Color(0xFF111418),
@@ -51,31 +205,31 @@ class MeetingProjectorView extends StatelessWidget {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      tooltip: 'Exit Projector Display',
-                      onPressed: onExitProjector,
+                      tooltip: 'Switch to List View',
+                      onPressed: _exitProjector,
                     ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: session.isInBreakoutRoom
+                        color: widget.session.isInBreakoutRoom
                             ? Colors.teal.shade800
-                            : Colors.red.shade900,
+                            : const Color(0xFF1E3A8A),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            session.isInBreakoutRoom
+                            widget.session.isInBreakoutRoom
                                 ? Icons.workspaces_rounded
-                                : Icons.fiber_manual_record,
-                            size: 10,
+                                : Icons.grid_view_rounded,
+                            size: 11,
                             color: Colors.white,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            session.isInBreakoutRoom ? 'BREAKOUT' : 'LIVE STAGE',
+                            widget.session.isInBreakoutRoom ? 'BREAKOUT' : 'GALLERY VIEW',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
@@ -91,9 +245,9 @@ class MeetingProjectorView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            session.isInBreakoutRoom
-                                ? (session.activeBreakoutRoomName ?? 'Breakout Room')
-                                : roomTitle,
+                            widget.session.isInBreakoutRoom
+                                ? (widget.session.activeBreakoutRoomName ?? 'Breakout Room')
+                                : widget.roomTitle,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -104,156 +258,335 @@ class MeetingProjectorView extends StatelessWidget {
                           Text(
                             isPresenting
                                 ? 'Screen Share: ${activePresenter ?? "You are presenting"}'
-                                : 'Attendees: ${session.participants.length} connected',
+                                : 'Attendees: ${widget.session.participants.length} connected',
                             style: const TextStyle(color: Colors.white70, fontSize: 12),
                           ),
                         ],
                       ),
                     ),
-                    if (isLeader || session.isBreakoutActive)
-                      IconButton(
-                        icon: const Icon(Icons.workspaces_rounded, color: Colors.white),
-                        tooltip: 'Breakout Rooms',
-                        onPressed: onOpenBreakoutRooms,
-                      ),
-                    IconButton(
-                      icon: const Icon(Icons.fullscreen_exit_rounded, color: Colors.white),
-                      tooltip: 'Exit Projector Display',
-                      onPressed: onExitProjector,
-                    ),
                   ],
                 ),
               ),
 
-              // Central Stage Area (Optimized for Sanctuary / Conference Projectors)
+              // Central Stage Area (Optimized for Gallery View & Stage Presentations)
               Expanded(
                 child: Container(
                   width: double.infinity,
                   color: const Color(0xFF0A0D11),
-                  child: Center(
-                    child: isPresenting
-                        ? MeetingScreenShareStage(session: session, gateway: gateway)
-                        : MeetingVideoGridStage(
-                            session: session,
-                            gateway: gateway,
-                            isLeader: isLeader,
-                            onParticipantTap: onParticipantTap,
+                  child: isPresenting
+                      ? Column(
+                          children: [
+                            Expanded(
+                              child: MeetingScreenShareStage(
+                                session: widget.session,
+                                gateway: widget.gateway,
+                              ),
+                            ),
+                            MeetingParticipantStrip(
+                              session: widget.session,
+                              gateway: widget.gateway,
+                              onParticipantTap: widget.onParticipantTap,
+                            ),
+                          ],
+                        )
+                      : Center(
+                          child: MeetingVideoGridStage(
+                            session: widget.session,
+                            gateway: widget.gateway,
+                            isLeader: widget.isLeader,
+                            onParticipantTap: widget.onParticipantTap,
                           ),
-                  ),
+                        ),
                 ),
               ),
 
-              // Floating Controls Bar at Bottom
+              // Slideable Bottom Control Bar in Stage Mode
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 color: const Color(0xFF111418),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    IconButton.filledTonal(
-                      onPressed: () async {
-                        try {
-                          await gateway.toggleAudio();
-                        } catch (e) {
-                          showMessage(e.toString().replaceAll('Exception: ', ''));
-                        }
-                      },
-                      icon: Icon(session.isAudioMuted ? Icons.mic_off : Icons.mic),
-                      style: IconButton.styleFrom(
-                        backgroundColor: session.isAudioMuted
-                            ? Colors.red.withValues(alpha: 0.3)
-                            : Colors.green.withValues(alpha: 0.3),
-                        foregroundColor: session.isAudioMuted ? Colors.red : Colors.green,
+                    SingleChildScrollView(
+                      controller: _scrollController,
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 1. Mic (Primary Visible)
+                          _buildControlButton(
+                            icon: Icon(
+                              widget.session.isAudioMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            label: widget.session.isAudioMuted ? 'Unmute' : 'Mute',
+                            activeColor: widget.session.isAudioMuted
+                                ? Colors.red.shade700
+                                : Colors.green.shade700,
+                            onTap: () async {
+                              try {
+                                await widget.gateway.toggleAudio();
+                              } catch (e) {
+                                widget.showMessage(e.toString().replaceAll('Exception: ', ''));
+                              }
+                            },
+                          ),
+
+                          // 2. Screen Share (Primary Visible)
+                          if (widget.canShareScreen)
+                            _buildControlButton(
+                              icon: Icon(
+                                widget.session.isScreenShareEnabled
+                                    ? Icons.stop_screen_share_rounded
+                                    : Icons.screen_share_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                              label: widget.session.isScreenShareEnabled ? 'Stop Share' : 'Share',
+                              activeColor: widget.session.isScreenShareEnabled ? Colors.teal.shade700 : null,
+                              onTap: () async {
+                                try {
+                                  await widget.gateway.toggleScreenShare();
+                                  widget.showMessage(widget.session.isScreenShareEnabled
+                                      ? 'Screen sharing stopped.'
+                                      : 'Screen sharing started.');
+                                } catch (e) {
+                                  widget.showMessage(ErrorHandler.getUserFriendlyMessage(e));
+                                }
+                              },
+                            ),
+
+                          // 3. More (Primary Visible)
+                          _buildControlButton(
+                            icon: const Icon(
+                              Icons.more_horiz_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            label: 'More',
+                            onTap: () {
+                              if (widget.onOpenMore != null) {
+                                widget.onOpenMore!();
+                              }
+                            },
+                          ),
+
+                          // 4. End / Leave (Primary Visible)
+                          _buildControlButton(
+                            icon: const Icon(
+                              Icons.call_end_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            label: widget.isLeader ? 'Leave / End' : 'Leave',
+                            isDestructive: true,
+                            onTap: _leaveMeeting,
+                          ),
+
+                          // 5. Camera (Slideable)
+                          _buildControlButton(
+                            icon: Icon(
+                              widget.session.isVideoMuted ? Icons.videocam_off_rounded : Icons.videocam_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            label: widget.session.isVideoMuted ? 'Camera Off' : 'Camera On',
+                            activeColor: widget.session.isVideoMuted
+                                ? Colors.red.shade700
+                                : const Color(0xFF2563EB),
+                            onTap: () async {
+                              try {
+                                await widget.gateway.toggleVideo();
+                              } catch (e) {
+                                widget.showMessage(e.toString().replaceAll('Exception: ', ''));
+                              }
+                            },
+                          ),
+
+                          // 6. Switch to List View
+                          _buildControlButton(
+                            icon: const Icon(
+                              Icons.view_list_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            label: 'List View',
+                            onTap: _exitProjector,
+                          ),
+
+                          // 7. Breakout Rooms (Slideable)
+                          if (widget.isLeader || widget.session.isBreakoutActive)
+                            _buildControlButton(
+                              icon: const Icon(
+                                Icons.workspaces_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                              label: 'Breakout',
+                              activeColor: widget.session.isBreakoutActive ? Colors.teal.shade700 : null,
+                              onTap: widget.onOpenBreakoutRooms,
+                            ),
+
+                          // 8. In-Meeting Chat (Slideable)
+                          if (widget.onOpenChat != null)
+                            _buildControlButton(
+                              icon: const Icon(
+                                Icons.chat_bubble_outline_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                              label: 'Chat',
+                              onTap: widget.onOpenChat!,
+                            ),
+
+                          // 9. ALIVE Scribe Record Button (Slideable)
+                          _buildControlButton(
+                            icon: Icon(
+                              widget.isScribeRecording
+                                  ? Icons.fiber_manual_record_rounded
+                                  : Icons.fiber_manual_record_outlined,
+                              color: widget.isScribeRecording
+                                  ? Colors.white
+                                  : Colors.red.shade400,
+                              size: 22,
+                            ),
+                            label: widget.isScribeRecording ? 'REC Active' : 'Record',
+                            activeColor: widget.isScribeRecording ? Colors.red.shade700 : null,
+                            onTap: widget.onToggleScribe ?? () {},
+                          ),
+                        ],
                       ),
-                      tooltip: session.isAudioMuted ? 'Unmute' : 'Mute',
                     ),
-                    const SizedBox(width: 14),
-                    IconButton.filledTonal(
-                      onPressed: () async {
-                        try {
-                          await gateway.toggleVideo();
-                        } catch (e) {
-                          showMessage(e.toString().replaceAll('Exception: ', ''));
-                        }
-                      },
-                      icon: Icon(session.isVideoMuted ? Icons.videocam_off : Icons.videocam),
-                      style: IconButton.styleFrom(
-                        backgroundColor: session.isVideoMuted
-                            ? Colors.red.withValues(alpha: 0.3)
-                            : Colors.blue.withValues(alpha: 0.3),
-                        foregroundColor: session.isVideoMuted ? Colors.red : Colors.blue,
-                      ),
-                      tooltip: session.isVideoMuted ? 'Camera On' : 'Camera Off',
-                    ),
-                    if (canShareScreen) ...[
-                      const SizedBox(width: 14),
-                      IconButton.filledTonal(
-                        onPressed: () async {
-                          try {
-                            await gateway.toggleScreenShare();
-                            showMessage(session.isScreenShareEnabled
-                                ? 'Screen sharing stopped.'
-                                : 'Screen sharing started.');
-                          } catch (e) {
-                            showMessage(ErrorHandler.getUserFriendlyMessage(e));
-                          }
-                        },
-                        icon: Icon(session.isScreenShareEnabled
-                            ? Icons.stop_screen_share_rounded
-                            : Icons.screen_share_rounded),
-                        style: IconButton.styleFrom(
-                          backgroundColor: session.isScreenShareEnabled
-                              ? Colors.teal.shade700
-                              : Colors.white12,
-                          foregroundColor: Colors.white,
+
+                    // Left scroll chevron
+                    if (_canScrollLeft)
+                      Positioned(
+                        left: 4,
+                        child: Tooltip(
+                          message: 'Slide back left',
+                          child: GestureDetector(
+                            onTap: () => _scroll(-140),
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.8),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white24,
+                                  width: 1,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.chevron_left_rounded,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
-                        tooltip: session.isScreenShareEnabled
-                            ? 'Stop Sharing'
-                            : 'Share Screen',
                       ),
-                    ],
-                    if (isLeader || session.isBreakoutActive) ...[
-                      const SizedBox(width: 14),
-                      IconButton.filledTonal(
-                        onPressed: onOpenBreakoutRooms,
-                        icon: const Icon(Icons.workspaces_rounded),
-                        style: IconButton.styleFrom(
-                          backgroundColor: session.isBreakoutActive
-                              ? Colors.teal.shade700
-                              : Colors.white12,
-                          foregroundColor: Colors.white,
+
+                    // Right scroll chevron with Blue Dot indicator (matching user annotation)
+                    if (_canScrollRight)
+                      Positioned(
+                        right: 4,
+                        child: Tooltip(
+                          message: 'Slide right to see more options',
+                          child: GestureDetector(
+                            onTap: () => _scroll(140),
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.85),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF38BDF8),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                                    blurRadius: 6,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: Color(0xFF38BDF8),
+                              ),
+                            ),
+                          ),
                         ),
-                        tooltip: 'Breakout Rooms',
                       ),
-                    ],
-                    const SizedBox(width: 14),
-                    IconButton.filledTonal(
-                      onPressed: onExitProjector,
-                      icon: const Icon(Icons.view_compact_rounded),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.white12,
-                        foregroundColor: Colors.white,
-                      ),
-                      tooltip: 'Standard Meeting View',
-                    ),
-                    const SizedBox(width: 14),
-                    IconButton.filledTonal(
-                      onPressed: onLeaveMeeting,
-                      icon: const Icon(Icons.call_end),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.red.shade900,
-                        foregroundColor: Colors.white,
-                      ),
-                      tooltip: 'Leave Meeting',
-                    ),
                   ],
                 ),
               ),
             ],
+          ),
+
+          // Floating Rotating Icon Button (Flips to Landscape to view presentations widescreen)
+          Positioned(
+            right: 16,
+            bottom: 82,
+            child: Tooltip(
+              message: _isLandscape ? 'Flip to Portrait' : 'Flip to Landscape',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _toggleOrientation,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: Colors.teal.shade400.withValues(alpha: 0.8),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.teal.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _isLandscape
+                              ? Icons.screen_lock_portrait_rounded
+                              : Icons.screen_rotation_rounded,
+                          color: Colors.tealAccent,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _isLandscape ? 'Portrait' : 'Landscape',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 }
-

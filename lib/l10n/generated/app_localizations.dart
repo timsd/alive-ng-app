@@ -2375,6 +2375,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your donation has been processed successfully.'**
   String get donation_success_message;
+
+  /// No description provided for @evangelism_tracts.
+  ///
+  /// In en, this message translates to:
+  /// **'Evangelism Tracts'**
+  String get evangelism_tracts;
+
+  /// No description provided for @tracts_onboarding_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Evangelism Tracts Ready for Harvest'**
+  String get tracts_onboarding_title;
+
+  /// No description provided for @tracts_onboarding_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'In need of evangelism tracts? Easy to download, print, or share in softcopy with souls everywhere.'**
+  String get tracts_onboarding_desc;
+
+  /// No description provided for @gallery_view.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery View'**
+  String get gallery_view;
+
+  /// No description provided for @list_view.
+  ///
+  /// In en, this message translates to:
+  /// **'List View'**
+  String get list_view;
+
+  /// No description provided for @waiting_room.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting Room'**
+  String get waiting_room;
+
+  /// No description provided for @admit_participant.
+  ///
+  /// In en, this message translates to:
+  /// **'Admit'**
+  String get admit_participant;
+
+  /// No description provided for @admit_all.
+  ///
+  /// In en, this message translates to:
+  /// **'Admit All'**
+  String get admit_all;
+
+  /// No description provided for @raise_hand.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise Hand'**
+  String get raise_hand;
+
+  /// No description provided for @lower_hand.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower Hand'**
+  String get lower_hand;
+
+  /// No description provided for @stage_presentation.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage Presentation'**
+  String get stage_presentation;
+
+  /// No description provided for @tap_to_direct_chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to message directly'**
+  String get tap_to_direct_chat;
+
+  /// No description provided for @transcript.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcript'**
+  String get transcript;
+
+  /// No description provided for @show_notes.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Notes'**
+  String get show_notes;
+
+  /// No description provided for @search_transcript.
+  ///
+  /// In en, this message translates to:
+  /// **'Search in transcript...'**
+  String get search_transcript;
+
+  /// No description provided for @resume_sync.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume Sync'**
+  String get resume_sync;
+
+  /// No description provided for @manage_members.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Members'**
+  String get manage_members;
+
+  /// No description provided for @add_member.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Member'**
+  String get add_member;
+
+  /// No description provided for @remove_member.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Member'**
+  String get remove_member;
+
+  /// No description provided for @search_members_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search members...'**
+  String get search_members_hint;
 }
 
 class _AppLocalizationsDelegate

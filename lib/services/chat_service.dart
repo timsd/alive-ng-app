@@ -87,6 +87,22 @@ class ChatService {
     return _appwrite.leaveChannel(channelId);
   }
 
+  Future<void> addMemberToChannel(String channelId, String userId) {
+    return _appwrite.addMemberToChannel(channelId, userId);
+  }
+
+  Future<void> removeMemberFromChannel(String channelId, String userId) {
+    return _appwrite.removeMemberFromChannel(channelId, userId);
+  }
+
+  Future<List<ChatUser>> getAllCommunityUsers({int limit = 100}) {
+    return _appwrite.getAllCommunityUsers(limit: limit);
+  }
+
+  Future<ChatUser?> getChatUser(String userId) {
+    return _appwrite.getChatUser(userId);
+  }
+
   Future<List<TaggedEntity>> getTaggableEntities(String query,
       [TagType? tagType]) {
     return _appwrite.getTaggableEntities(query, tagType);
@@ -110,10 +126,6 @@ class ChatService {
 
   Future<int> getUnreadCount(String channelId) {
     return _appwrite.getUnreadCount(channelId);
-  }
-
-  Future<ChatUser?> getChatUser(String userId) {
-    return _appwrite.getChatUser(userId);
   }
 
   Future<void> updateChatUserStatus({

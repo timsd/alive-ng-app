@@ -211,6 +211,7 @@ class MainNavigationScreen extends ConsumerWidget {
     return Scaffold(
       drawerEnableOpenDragGesture: false,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           child,
         ],

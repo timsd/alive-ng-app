@@ -710,7 +710,7 @@ class AppLocalizationsYo extends AppLocalizations {
   String get search_books_tracts => 'Wa awọn iwe ati tirakti...';
 
   @override
-  String get search_tracts => 'Search tracts...';
+  String get search_tracts => 'Wá àwọn ìwé àṣàrò kọ̀ọ̀kan...';
 
   @override
   String get all_categories => 'Gbogbo Ẹka';
@@ -1187,4 +1187,66 @@ class AppLocalizationsYo extends AppLocalizations {
 
   @override
   String get donation_success_message => 'A ti gba ọrẹ rẹ ni aṣeyọri.';
+
+  @override
+  String get evangelism_tracts => 'Àwọn Ìwé Àṣàrò Ìhìnrere';
+
+  @override
+  String get tracts_onboarding_title =>
+      'Àwọn Ìwé Àṣàrò Ìhìnrere Ti Ṣetán fún Ìkórè';
+
+  @override
+  String get tracts_onboarding_desc =>
+      'Ṣe o nilo àwọn ìwé àṣàrò ìhìnrere? Ó rọrùn láti gba sílẹ̀, tẹ̀ jáde, tàbí pín lórí ẹ̀rọ pẹ̀lú àwọn ọkàn níbi gbogbo.';
+
+  @override
+  String get gallery_view => 'Ìwò Àwòrán Gbogbo';
+
+  @override
+  String get list_view => 'Ìwò Àtòjọ';
+
+  @override
+  String get waiting_room => 'Yàrá Ìdúró';
+
+  @override
+  String get admit_participant => 'Gba Wọlé';
+
+  @override
+  String get admit_all => 'Gba Gbogbo Wọlé';
+
+  @override
+  String get raise_hand => 'Gbé Ọwọ́ Sókè';
+
+  @override
+  String get lower_hand => 'Rẹ Ọwọ́ Sílẹ̀';
+
+  @override
+  String get stage_presentation => 'Ìfihàn Pèpéle';
+
+  @override
+  String get tap_to_direct_chat => 'Tẹ̀ láti fi ránṣẹ́ tààràtà';
+
+  @override
+  String get transcript => 'Àkọsílẹ̀ Ọ̀rọ̀';
+
+  @override
+  String get show_notes => 'Àkọsílẹ̀ Ètò';
+
+  @override
+  String get search_transcript => 'Wá nínú àkọsílẹ̀...';
+
+  @override
+  String get resume_sync => 'Tẹ̀síwájú Ìbámu';
+
+  @override
+  String get manage_members => 'Ṣàkóso Àwọn Ọmọ Ẹgbẹ́';
+
+  @override
+  String get add_member => 'Fi Ọmọ Ẹgbẹ́ Kún';
+
+  @override
+  String get remove_member => 'Yọ Ọmọ Ẹgbẹ́ Kúrò';
+
+  @override
+  String get search_members_hint => 'Wá àwọn ọmọ ẹgbẹ́...';
 }

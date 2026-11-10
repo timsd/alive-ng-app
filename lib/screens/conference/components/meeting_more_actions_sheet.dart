@@ -9,8 +9,11 @@ class MeetingMoreActionsSheet extends StatelessWidget {
   final MeetingGateway gateway;
   final bool isLeader;
   final bool isBroadcasting;
+  final bool isGalleryView;
+  final bool isScribeRecording;
+  final VoidCallback? onToggleScribe;
   final VoidCallback onOpenBreakoutRooms;
-  final VoidCallback onOpenProjector;
+  final VoidCallback onToggleViewMode;
   final VoidCallback onOpenScribe;
   final VoidCallback onShareLink;
   final VoidCallback onReturnToMainRoom;
@@ -26,8 +29,11 @@ class MeetingMoreActionsSheet extends StatelessWidget {
     required this.gateway,
     required this.isLeader,
     required this.isBroadcasting,
+    this.isGalleryView = false,
+    this.isScribeRecording = false,
+    this.onToggleScribe,
     required this.onOpenBreakoutRooms,
-    required this.onOpenProjector,
+    required this.onToggleViewMode,
     required this.onOpenScribe,
     required this.onShareLink,
     required this.onReturnToMainRoom,
@@ -44,8 +50,11 @@ class MeetingMoreActionsSheet extends StatelessWidget {
     required MeetingGateway gateway,
     required bool isLeader,
     required bool isBroadcasting,
+    bool isGalleryView = false,
+    bool isScribeRecording = false,
+    VoidCallback? onToggleScribe,
     required VoidCallback onOpenBreakoutRooms,
-    required VoidCallback onOpenProjector,
+    required VoidCallback onToggleViewMode,
     required VoidCallback onOpenScribe,
     required VoidCallback onShareLink,
     required VoidCallback onReturnToMainRoom,
@@ -67,8 +76,11 @@ class MeetingMoreActionsSheet extends StatelessWidget {
         gateway: gateway,
         isLeader: isLeader,
         isBroadcasting: isBroadcasting,
+        isGalleryView: isGalleryView,
+        isScribeRecording: isScribeRecording,
+        onToggleScribe: onToggleScribe,
         onOpenBreakoutRooms: onOpenBreakoutRooms,
-        onOpenProjector: onOpenProjector,
+        onToggleViewMode: onToggleViewMode,
         onOpenScribe: onOpenScribe,
         onShareLink: onShareLink,
         onReturnToMainRoom: onReturnToMainRoom,
@@ -140,24 +152,85 @@ class MeetingMoreActionsSheet extends StatelessWidget {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.tv_rounded, color: Colors.blueAccent),
-                  title: const Text('Projector / Full Stage Display'),
+                  leading: Icon(
+                    isGalleryView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                    color: Colors.blueAccent,
+                  ),
+                  title: Text(isGalleryView
+                      ? 'Switch to List View (Participants)'
+                      : 'Switch to Gallery View (Video Grid)'),
                   subtitle: Text(
-                    'Optimal viewing for projectors and shared TV screens',
+                    isGalleryView
+                        ? 'View clean attendee list with stage presentation'
+                        : 'View all attendees in a 2-column video grid with stage presentation',
                     style: subtitleStyle,
                   ),
                   onTap: () {
                     Navigator.of(context).pop();
-                    onOpenProjector();
+                    onToggleViewMode();
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.draw_rounded, color: Color(0xFFD49B28)),
-                  title: const Text('ALIVE Scribe & Minutes'),
+                  leading: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Icon(Icons.draw_rounded, color: Color(0xFFD49B28)),
+                      if (isScribeRecording)
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.redAccent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  title: Row(
+                    children: [
+                      const Text('ALIVE Scribe & Minutes'),
+                      if (isScribeRecording) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade700,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'REC',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                   subtitle: Text(
-                    'Real-time speech-to-text notes and transcript export',
+                    isScribeRecording
+                        ? 'Recording active in background • Tap to view live transcript'
+                        : 'Real-time speech-to-text notes and transcript export',
                     style: subtitleStyle,
                   ),
+                  trailing: onToggleScribe != null
+                      ? IconButton(
+                          icon: Icon(
+                            isScribeRecording
+                                ? Icons.pause_circle_outline_rounded
+                                : Icons.play_circle_outline_rounded,
+                            color: isScribeRecording ? Colors.redAccent : const Color(0xFF10B981),
+                          ),
+                          tooltip: isScribeRecording ? 'Pause Scribe Recording' : 'Start Scribe Recording',
+                          onPressed: onToggleScribe,
+                        )
+                      : null,
                   onTap: () {
                     Navigator.of(context).pop();
                     onOpenScribe();
@@ -248,8 +321,18 @@ class MeetingMoreActionsSheet extends StatelessWidget {
                         ? 'Waiting Room: Active (Host Approval Required)'
                         : 'Waiting Room: Off (Direct Join)'),
                     subtitle: Text(
-                      'Require host to admit new attendees from virtual lobby',
+                      session.isWaitingRoomEnabled
+                          ? 'Virtual lobby active: new attendees must be admitted by host'
+                          : 'Virtual lobby disabled: attendees can join directly',
                       style: subtitleStyle,
+                    ),
+                    trailing: Switch.adaptive(
+                      value: session.isWaitingRoomEnabled,
+                      activeThumbColor: const Color(0xFFD49B28),
+                      onChanged: (val) {
+                        Navigator.of(context).pop();
+                        onToggleWaitingRoom(val);
+                      },
                     ),
                     onTap: () {
                       Navigator.of(context).pop();

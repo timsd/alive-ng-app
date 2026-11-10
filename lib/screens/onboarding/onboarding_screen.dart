@@ -49,7 +49,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     {
       'title': 'Kids & Discipleship',
       'body':
-          'Grow in Christ through interactive discipleship lessons, audio podcasts, and children’s mission adventures with illustrated Bible stories and memory verses.',
+          'Grow in Christ through interactive discipleship lessons, audio podcasts, and children’s mission adventures with illustrated Bible stories, memory verses and Games for both kids and adults.',
       'icon': Icons.child_care_rounded,
       'color': Colors.orange,
     },

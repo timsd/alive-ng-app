@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../config/meeting_links_config.dart';
@@ -11,6 +13,9 @@ import '../../models/meeting_models.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/meeting_provider.dart';
+import '../../services/alive_scribe_service.dart';
+import '../../services/appwrite_meeting_file_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/platform/app_store_helper.dart';
 import '../../services/platform/media_permission_adapter.dart';
@@ -29,6 +34,7 @@ import 'components/meeting_participant_actions_sheet.dart';
 import 'components/meeting_participants_list.dart';
 import 'components/meeting_prejoin_lobby.dart';
 import 'components/meeting_projector_view.dart';
+import 'components/meeting_stage_view.dart';
 
 class LiveKitMeetingScreen extends ConsumerStatefulWidget {
   final MeetingType? meetingType;
@@ -61,10 +67,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   bool _isLocalHost = false;
   bool _isLocalCoHost = false;
   bool _isLocalScreenSharePermitted = false;
-  bool _isProjectorMode = false;
+  bool _isGalleryView = false;
   String? _activeEgressId;
   StreamSubscription<String>? _moderationSub;
   StreamSubscription<Map<String, dynamic>>? _dataChannelSub;
+  StreamSubscription<MeetingSession>? _sessionSub;
   Timer? _breakoutUiTicker;
 
   // In-Meeting Real-time Chat
@@ -74,6 +81,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   bool _isChatLockedByHost = false;
   final TextEditingController _inMeetingChatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
+
+  // ALIVE Scribe background transcription & intelligence
+  AliveScribeService? _scribeService;
+  bool _isScribeRecording = false;
+  bool _hasAutoStartedScribe = false;
 
   @override
   void initState() {
@@ -103,6 +115,23 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
     final gateway = ref.read(meetingGatewayProvider);
 
+    _sessionSub = gateway.sessionStream.listen((session) {
+      if (!mounted) return;
+      if (session.isConnected) {
+        _ensureScribeInitialized(gateway);
+        // Requirement: "once a meeting is open and we have two member inside/on the call, the alive scribe can start taking the note via the live transcript as we have set it up capturing from each speakers end"
+        if (!_hasAutoStartedScribe && session.participants.length >= 2) {
+          _hasAutoStartedScribe = true;
+          _startScribeRecording(showNotice: true);
+        }
+      } else if (session.status == RoomStatus.disconnected) {
+        _hasAutoStartedScribe = false;
+        if (_isScribeRecording) {
+          _stopScribeRecording();
+        }
+      }
+    });
+
     _dataChannelSub = gateway.dataChannelMessagesStream.listen((data) {
       if (!mounted) return;
       if (data['action'] == 'in_meeting_chat') {
@@ -121,6 +150,17 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               }
             });
             _scrollChatToBottom();
+          }
+        }
+      } else if (data['type'] == 'alive_scribe_control') {
+        final action = data['action'];
+        if (action == 'start_recording') {
+          if (!_isScribeRecording) {
+            _startScribeRecording(isRemoteTrigger: true);
+          }
+        } else if (action == 'stop_recording') {
+          if (_isScribeRecording) {
+            _stopScribeRecording(isRemoteTrigger: true);
           }
         }
       } else if (data['action'] == 'in_meeting_chat_lock') {
@@ -177,16 +217,17 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         setState(() {
           _isLocalCoHost = false;
           _isLocalScreenSharePermitted = false;
-          _isProjectorMode = false;
+          _isGalleryView = false;
         });
         _showMessage('You have been removed from the meeting by the host.');
       } else if (event == 'ended_by_host') {
         setState(() {
           _isLocalCoHost = false;
           _isLocalScreenSharePermitted = false;
-          _isProjectorMode = false;
+          _isGalleryView = false;
         });
         _showMessage('The meeting has been ended for all by the host.');
+        _autoSaveAndPromptMinutes();
       } else if (event == 'admitted_by_host') {
         _showMessage('You have been admitted to the meeting room.');
       } else if (event == 'declined_by_host') {
@@ -237,6 +278,217 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     if (mounted) {
       Navigator.of(context).maybePop();
     }
+  }
+
+  void _ensureScribeInitialized(MeetingGateway gateway) {
+    if (_scribeService != null) return;
+    final user = ref.read(currentUserProvider);
+    final userId = user?.uid ?? 'user_${DateTime.now().millisecondsSinceEpoch}';
+    final userName = user?.displayNameOrFallback ?? 'Attendee';
+    final isLeader = RoleAccessService.instance.canStartConferencing() ||
+        widget.isModerator ||
+        _isLocalHost;
+    final role = isLeader ? 'Host Leader' : 'Council Member';
+
+    _scribeService = AliveScribeService(
+      gateway: gateway,
+      localUserId: userId,
+      localUserName: userName,
+      localUserRole: role,
+    );
+  }
+
+  Future<void> _startScribeRecording({bool isRemoteTrigger = false, bool showNotice = false}) async {
+    final gateway = ref.read(meetingGatewayProvider);
+    _ensureScribeInitialized(gateway);
+    if (_scribeService == null) return;
+
+    if (!_scribeService!.isListening) {
+      await _scribeService!.startListening();
+    }
+    if (mounted) {
+      setState(() => _isScribeRecording = true);
+    }
+
+    if (!isRemoteTrigger) {
+      gateway.sendDataChannelMessage({
+        'type': 'alive_scribe_control',
+        'action': 'start_recording',
+      });
+    }
+
+    if (showNotice && mounted) {
+      _showMessage('ALIVE Scribe recording active in background.');
+    }
+  }
+
+  Future<void> _stopScribeRecording({bool isRemoteTrigger = false}) async {
+    if (_scribeService != null && _scribeService!.isListening) {
+      await _scribeService!.stopListening();
+    }
+    if (mounted) {
+      setState(() => _isScribeRecording = false);
+    }
+
+    if (!isRemoteTrigger) {
+      final gateway = ref.read(meetingGatewayProvider);
+      gateway.sendDataChannelMessage({
+        'type': 'alive_scribe_control',
+        'action': 'stop_recording',
+      });
+    }
+  }
+
+  Future<void> _toggleScribeRecording() async {
+    if (_isScribeRecording) {
+      await _stopScribeRecording();
+      _showMessage('ALIVE Scribe recording paused.');
+    } else {
+      await _startScribeRecording(showNotice: true);
+    }
+  }
+
+  void _openScribeScreen() {
+    final gateway = ref.read(meetingGatewayProvider);
+    _ensureScribeInitialized(gateway);
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LeaderMeetingTranscriptionScreen(
+          initialMeetingTitle:
+              widget.meetingType?.displayName ?? _roomController.text,
+          initialRoomName: _roomController.text.trim(),
+          initialMeetingType: widget.meetingType?.displayName,
+          scribeService: _scribeService,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  Future<void> _autoSaveAndPromptMinutes() async {
+    final scribe = _scribeService;
+    if (scribe == null || scribe.transcript.isEmpty) return;
+
+    try {
+      if (scribe.isListening) {
+        await scribe.stopListening();
+        if (mounted) setState(() => _isScribeRecording = false);
+      }
+    } catch (_) {}
+
+    final roomTitle = widget.meetingType?.displayName ?? _roomController.text.trim();
+    final meetingTypeStr = widget.meetingType?.displayName ?? 'Meeting';
+
+    final markdown = scribe.generateMarkdownMinutes(
+      meetingTitle: roomTitle,
+      meetingType: meetingTypeStr,
+    );
+
+    if (markdown.trim().isEmpty) return;
+
+    final bytes = Uint8List.fromList(utf8.encode(markdown));
+    final dateClean = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+    final sanitizedTitle = roomTitle.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+    final fileName = 'Minutes_${sanitizedTitle}_$dateClean.md';
+
+    final user = AuthService.instance.currentUser;
+    final uploaderId = user?.uid ?? 'alive-scribe';
+    final uploaderName = user?.displayName ?? 'ALIVE Scribe';
+
+    try {
+      await AppwriteMeetingFileService.instance.uploadMeetingFileBytes(
+        bytes,
+        fileName: fileName,
+        description: 'Auto-saved minutes & transcript for "$roomTitle".',
+        uploaderId: uploaderId,
+        uploadedBy: uploaderName,
+      );
+      debugPrint('[ALIVE Scribe] Meeting minutes auto-saved to files: $fileName');
+    } catch (e) {
+      debugPrint('[ALIVE Scribe] Note saving minutes to files: $e');
+    }
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.verified_rounded, color: Color(0xFF10B981)),
+            SizedBox(width: 8),
+            Expanded(child: Text('Meeting Minutes Saved')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ALIVE Scribe captured ${scribe.transcript.length} transcript entries and automatically synthesized the meeting minutes.',
+              style: const TextStyle(fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(ctx).dividerColor),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.description_rounded, size: 20, color: Color(0xFFD49B28)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      fileName,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'File saved to Meeting Files. You can share or download a copy now:',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.share_rounded, size: 16),
+            label: const Text('Share Minutes'),
+            onPressed: () async {
+              await SharePlus.instance.share(
+                ShareParams(
+                  text: markdown,
+                  subject: '$roomTitle - Minutes',
+                ),
+              );
+            },
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.draw_rounded, size: 16),
+            label: const Text('View Minutes'),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _openScribeScreen();
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _joinMeeting(MeetingGateway gateway) async {
@@ -626,7 +878,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         _isLocalScreenSharePermitted ||
         session.isScreenSharePermitted;
 
-    if (connected && _isProjectorMode) {
+    if (connected && _isGalleryView) {
       return PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) async {
@@ -635,7 +887,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         },
         child: Scaffold(
           backgroundColor: Colors.black,
-          body: MeetingProjectorView(
+          body: MeetingGalleryView(
             session: session,
             gateway: gateway,
             isLeader: isLeader,
@@ -643,9 +895,15 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             roomTitle: _roomController.text.isNotEmpty
                 ? _roomController.text
                 : (widget.meetingType?.displayName ?? 'ALIVE Sanctuary Stage'),
-            onExitProjector: () => setState(() => _isProjectorMode = false),
+            onExitProjector: () => setState(() => _isGalleryView = false),
             onOpenBreakoutRooms: () =>
                 _showBreakoutRoomsSheet(context, session, gateway, isLeader),
+            onOpenMore: () =>
+                _showMeetingMoreSheet(context, session, gateway, isLeader),
+            onOpenChat: () =>
+                _showInMeetingChatSheet(context, gateway),
+            isScribeRecording: _isScribeRecording,
+            onToggleScribe: _toggleScribeRecording,
             onLeaveMeeting: () => _handleHostExit(gateway),
             onParticipantTap: (p) =>
                 _showParticipantActions(context, p, gateway, isLeader),
@@ -689,455 +947,558 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               onPressed: _shareMeetingLink,
             ),
             IconButton(
-              icon: const Icon(Icons.note_alt_outlined),
-              tooltip: 'Scribe & Notes',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => LeaderMeetingTranscriptionScreen(
-                      initialMeetingTitle:
-                          widget.meetingType?.displayName ?? _roomController.text,
-                      initialRoomName: _roomController.text.trim(),
-                      initialMeetingType: widget.meetingType?.displayName,
+              icon: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Icon(Icons.draw_rounded),
+                  if (_isScribeRecording)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                     ),
-                  ),
-                );
-              },
+                ],
+              ),
+              tooltip: _isScribeRecording
+                  ? 'ALIVE Scribe (Recording...)'
+                  : 'Scribe & Notes',
+              onPressed: _openScribeScreen,
             ),
           ],
         ),
-        bottomNavigationBar: connected
-            ? MeetingControlBar(
-                session: session,
-                gateway: gateway,
-                isLeader: isLeader,
-                canShareScreen: canShareScreen,
-                isAudioMuted: isAudioMuted,
-                isVideoMuted: isVideoMuted,
-                unreadChatCount: _unreadChatCount,
-                onToggleAudio: () async {
-                  if (!isLeader && session.isRoomAudioLocked && isAudioMuted) {
-                    _showMessage('The host has locked microphones. Raise your hand to request to speak.');
-                    return;
-                  }
-                  try {
-                    await gateway.toggleAudio();
-                  } catch (e) {
-                    _showMessage(e.toString().replaceAll('Exception: ', ''));
-                  }
-                },
-                onToggleVideo: () async {
-                  try {
-                    await gateway.toggleVideo();
-                  } catch (e) {
-                    _showMessage(e.toString().replaceAll('Exception: ', ''));
-                  }
-                },
-                onToggleScreenShare: () async {
-                  try {
-                    await gateway.toggleScreenShare();
-                    _showMessage(session.isScreenShareEnabled
-                        ? 'Screen sharing stopped.'
-                        : 'Screen sharing started.');
-                  } catch (e) {
-                    final errStr = ErrorHandler.getUserFriendlyMessage(e);
-                    if (AppStoreHelper.isMobileOnlyNotice(errStr) ||
-                        AppStoreHelper.isMobileOnlyNotice(e)) {
-                      ToastUtils.showInfo(
-                        'Screen sharing on mobile requires the ALIVE app. Opening Google Play Store...',
-                      );
-                      AppStoreHelper.redirectToPlayStore();
-                    } else {
-                      ToastUtils.showError(e);
-                    }
-                  }
-                },
-                onOpenChat: () => _showInMeetingChatSheet(context, gateway),
-                onToggleHand: () async {
-                  final newRaised = !session.isHandRaised;
-                  await gateway.raiseHand(raised: newRaised);
-                  _showMessage(newRaised ? 'Hand raised' : 'Hand lowered');
-                },
-                onOpenMore: () => _showMeetingMoreSheet(context, session, gateway, isLeader),
-                onLeaveOrEnd: () => _handleHostExit(gateway),
-              )
-            : null,
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (!connected)
-                MeetingPrejoinLobby(
-                  roomController: _roomController,
-                  isLeader: isLeader,
-                  isJoining: _isJoining,
-                  requireHostApproval: _requireHostApproval,
-                  onToggleRequireHostApproval: (val) => setState(() => _requireHostApproval = val),
-                  notifyMembers: _notifyMembers,
-                  onToggleNotifyMembers: (val) => setState(() => _notifyMembers = val),
-                  targetAudience: _targetAudience,
-                  onAudienceChanged: (val) => setState(() => _targetAudience = val),
-                  audienceItems: _buildTargetAudienceItems(),
-                  selectedTargetChapter: _selectedTargetChapter,
-                  onChapterChanged: (val) => setState(() => _selectedTargetChapter = val),
-                  isLoadingChannels: _isLoadingChannels,
-                  onRefreshChannels: _loadAvailableChannels,
-                  onJoin: () => _joinMeeting(gateway),
-                ),
-              // Connection status banner
-              if (session.status == RoomStatus.connecting ||
-                  session.status == RoomStatus.reconnecting) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primaryContainer
-                        .withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          session.status == RoomStatus.reconnecting
-                              ? 'Reconnecting to meeting...'
-                              : 'Connecting to meeting...',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              // Notice / Error banner
-              if (session.error != null && !connected) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: session.error!.toLowerCase().contains('listen-only') ||
-                            session.error!.toLowerCase().contains('device not detected')
-                        ? Colors.amber.withValues(alpha: 0.15)
-                        : Theme.of(context)
-                            .colorScheme
-                            .errorContainer
-                            .withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: session.error!.toLowerCase().contains('listen-only') ||
-                              session.error!.toLowerCase().contains('device not detected')
-                          ? Colors.amber.shade700.withValues(alpha: 0.4)
-                          : Theme.of(context).colorScheme.error.withValues(alpha: 0.4),
+        bottomNavigationBar: null,
+        body: !connected
+            ? SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    MeetingPrejoinLobby(
+                      roomController: _roomController,
+                      isLeader: isLeader,
+                      isJoining: _isJoining,
+                      requireHostApproval: _requireHostApproval,
+                      onToggleRequireHostApproval: (val) {
+                        setState(() => _requireHostApproval = val);
+                        gateway.setWaitingRoom(val);
+                      },
+                      notifyMembers: _notifyMembers,
+                      onToggleNotifyMembers: (val) =>
+                          setState(() => _notifyMembers = val),
+                      targetAudience: _targetAudience,
+                      onAudienceChanged: (val) =>
+                          setState(() => _targetAudience = val),
+                      audienceItems: _buildTargetAudienceItems(),
+                      selectedTargetChapter: _selectedTargetChapter,
+                      onChapterChanged: (val) =>
+                          setState(() => _selectedTargetChapter = val),
+                      isLoadingChannels: _isLoadingChannels,
+                      onRefreshChannels: _loadAvailableChannels,
+                      onJoin: () => _joinMeeting(gateway),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        session.error!.toLowerCase().contains('listen-only') ||
-                                session.error!.toLowerCase().contains('device not detected')
-                            ? Icons.info_outline_rounded
-                            : Icons.error_outline,
-                        color: session.error!.toLowerCase().contains('listen-only') ||
-                                session.error!.toLowerCase().contains('device not detected')
-                            ? Colors.amber.shade800
-                            : Theme.of(context).colorScheme.error,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          session.error!,
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: session.error!.toLowerCase().contains('listen-only') ||
-                                            session.error!.toLowerCase().contains('device not detected')
-                                        ? (Theme.of(context).brightness == Brightness.dark
-                                            ? Colors.amber.shade200
-                                            : Colors.amber.shade900)
-                                        : Theme.of(context).colorScheme.error,
-                                  ),
+                    if (session.status == RoomStatus.connecting ||
+                        session.status == RoomStatus.reconnecting) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primaryContainer
+                              .withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              if (connected && !session.isAdmitted && session.isWaitingRoomEnabled && !isLeader) ...[
-                // Gated Waiting Room UI for unadmitted participants
-                const SizedBox(height: 24),
-                Center(
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 480),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0xFFD49B28).withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD49B28).withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.hourglass_top_rounded,
-                            size: 48,
-                            color: Color(0xFFD49B28),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Waiting for Host Approval',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'The meeting leader has been notified that you are in the lobby. You will be admitted automatically once approved.',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 20),
-                        const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        const SizedBox(height: 24),
-                        OutlinedButton.icon(
-                          onPressed: gateway.leaveMeeting,
-                          icon: const Icon(Icons.call_end),
-                          label: const Text('Leave Waiting Room'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ] else if (connected) ...[
-                // Active Breakout Room Status Banner
-                if (session.isBreakoutActive || session.isInBreakoutRoom)
-                  MeetingBreakoutBanner(
-                    session: session,
-                    gateway: gateway,
-                    isLeader: isLeader,
-                    onOpenBreakoutRooms: () =>
-                        _showBreakoutRoomsSheet(context, session, gateway, isLeader),
-                    onAskHostHelp: () async {
-                      await gateway.requestHostHelpInBreakout();
-                      _showMessage('Host has been invited to assist your room.');
-                    },
-                    onReturnToMainRoom: () async {
-                      await gateway.returnToMainRoom();
-                      _showMessage('Returned to Main Room');
-                    },
-                    formatRemaining: _formatBreakoutRemaining,
-                  ),
-
-                // Host Waiting Room Admission Requests Banner
-                if (isLeader && session.waitingKnocks.isNotEmpty) ...[
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade900.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.6)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                        child: Row(
                           children: [
-                            const Icon(Icons.door_sliding_outlined, size: 20, color: Color(0xFFD49B28)),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Waiting Room (${session.waitingKnocks.length})',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             ),
-                            const Spacer(),
-                            TextButton(
-                              onPressed: () {
-                                for (final knock in List<Map<String, String>>.from(session.waitingKnocks)) {
-                                  final id = knock['id'];
-                                  if (id != null) gateway.admitParticipant(id);
-                                }
-                              },
-                              child: const Text('Admit All'),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                session.status == RoomStatus.reconnecting
+                                    ? 'Reconnecting to meeting...'
+                                    : 'Connecting to meeting...',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
                             ),
                           ],
                         ),
-                        const Divider(height: 12),
-                        ...session.waitingKnocks.map((knock) {
-                          final kId = knock['id'] ?? '';
-                          final kName = knock['name'] ?? 'Participant';
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                    ],
+                    if (session.error != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: session.error!.toLowerCase().contains('listen-only') ||
+                                  session.error!.toLowerCase().contains('device not detected')
+                              ? Colors.amber.withValues(alpha: 0.15)
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .errorContainer
+                                  .withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: session.error!.toLowerCase().contains('listen-only') ||
+                                    session.error!.toLowerCase().contains('device not detected')
+                                ? Colors.amber.shade700.withValues(alpha: 0.4)
+                                : Theme.of(context).colorScheme.error.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              session.error!.toLowerCase().contains('listen-only') ||
+                                      session.error!.toLowerCase().contains('device not detected')
+                                  ? Icons.info_outline_rounded
+                                  : Icons.error_outline,
+                              color: session.error!.toLowerCase().contains('listen-only') ||
+                                      session.error!.toLowerCase().contains('device not detected')
+                                  ? Colors.amber.shade800
+                                  : Theme.of(context).colorScheme.error,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                session.error!,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: session.error!.toLowerCase().contains('listen-only') ||
+                                              session.error!.toLowerCase().contains('device not detected')
+                                          ? (Theme.of(context).brightness == Brightness.dark
+                                              ? Colors.amber.shade200
+                                              : Colors.amber.shade900)
+                                          : Theme.of(context).colorScheme.error,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              )
+            : (!session.isAdmitted && session.isWaitingRoomEnabled && !isLeader)
+                ? Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFFD49B28).withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD49B28).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.hourglass_top_rounded,
+                                size: 48,
+                                color: Color(0xFFD49B28),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Waiting for Host Approval',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'The meeting leader has been notified that you are in the lobby. You will be admitted automatically once approved.',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(height: 24),
+                            OutlinedButton.icon(
+                              onPressed: gateway.leaveMeeting,
+                              icon: const Icon(Icons.call_end),
+                              label: const Text('Leave Waiting Room'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (session.status == RoomStatus.reconnecting) ...[
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer
+                                    .withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Row(
+                                children: [
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text('Reconnecting to meeting...'),
+                                ],
+                              ),
+                            ),
+                          ],
+                          // Active Breakout Room Status Banner
+                          if (session.isBreakoutActive || session.isInBreakoutRoom)
+                            MeetingBreakoutBanner(
+                              session: session,
+                              gateway: gateway,
+                              isLeader: isLeader,
+                              onOpenBreakoutRooms: () =>
+                                  _showBreakoutRoomsSheet(context, session, gateway, isLeader),
+                              onAskHostHelp: () async {
+                                await gateway.requestHostHelpInBreakout();
+                                _showMessage('Host has been invited to assist your room.');
+                              },
+                              onReturnToMainRoom: () async {
+                                await gateway.returnToMainRoom();
+                                _showMessage('Returned to Main Room');
+                              },
+                              formatRemaining: _formatBreakoutRemaining,
+                            ),
+
+                          // Host Waiting Room Admission Requests Banner
+                          if (isLeader && session.waitingKnocks.isNotEmpty) ...[
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade900.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.6)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.door_sliding_outlined, size: 20, color: Color(0xFFD49B28)),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Waiting Room (${session.waitingKnocks.length})',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      TextButton(
+                                        onPressed: () {
+                                          for (final knock in List<Map<String, String>>.from(session.waitingKnocks)) {
+                                            final id = knock['id'];
+                                            if (id != null) gateway.admitParticipant(id);
+                                          }
+                                        },
+                                        child: const Text('Admit All'),
+                                      ),
+                                    ],
+                                  ),
+                                  const Divider(height: 12),
+                                  ...session.waitingKnocks.map((knock) {
+                                    final kId = knock['id'] ?? '';
+                                    final kName = knock['name'] ?? 'Participant';
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 4),
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 14,
+                                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                            child: Text(
+                                              kName.isNotEmpty ? kName.substring(0, 1).toUpperCase() : 'U',
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              kName,
+                                              style: const TextStyle(fontWeight: FontWeight.w600),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          FilledButton(
+                                            onPressed: () => gateway.admitParticipant(kId),
+                                            style: FilledButton.styleFrom(
+                                              visualDensity: VisualDensity.compact,
+                                              backgroundColor: Colors.green.shade700,
+                                            ),
+                                            child: const Text('Admit'),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          OutlinedButton(
+                                            onPressed: () => gateway.declineParticipant(kId),
+                                            style: OutlinedButton.styleFrom(
+                                              visualDensity: VisualDensity.compact,
+                                            ),
+                                            child: const Text('Decline'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          // Audio Lock notice banner
+                          if (session.isRoomAudioLocked) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.5)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.lock_rounded, size: 16, color: Colors.amber.shade800),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      isLeader
+                                          ? 'Room Audio Locked: Standard participants cannot unmute themselves.'
+                                          : 'Microphones are locked by the host. Raise your hand to request to speak.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.amber.shade200
+                                            : Colors.amber.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          // Presentation Stage Screen in List View (shown when screen sharing is active)
+                          if (session.isScreenShareEnabled || session.activeScreenShareName != null) ...[
+                            Container(
+                              height: 220,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: MeetingScreenShareStage(
+                                session: session,
+                                gateway: gateway,
+                              ),
+                            ),
+                          ],
+
+                          // Stage Header Card: Meeting Room Title & Presence
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? const Color(0xFF1B2432)
+                                  : const Color(0xFFF3EBE0),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFD49B28).withValues(alpha: 0.35),
+                              ),
+                            ),
                             child: Row(
                               children: [
-                                CircleAvatar(
-                                  radius: 14,
-                                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                                  child: Text(
-                                    kName.isNotEmpty ? kName.substring(0, 1).toUpperCase() : 'U',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                Container(
+                                  width: 9,
+                                  height: 9,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.green,
+                                    shape: BoxShape.circle,
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    kName,
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    session.isInBreakoutRoom
+                                        ? '${session.activeBreakoutRoomName}'
+                                        : (widget.meetingType?.displayName ?? _roomController.text.trim()),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                FilledButton(
-                                  onPressed: () => gateway.admitParticipant(kId),
-                                  style: FilledButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    backgroundColor: Colors.green.shade700,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
                                   ),
-                                  child: const Text('Admit'),
-                                ),
-                                const SizedBox(width: 8),
-                                OutlinedButton(
-                                  onPressed: () => gateway.declineParticipant(kId),
-                                  style: OutlinedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.people_alt_rounded, size: 12, color: Colors.green),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${session.participants.isEmpty ? 1 : session.participants.length} connected',
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                                      ),
+                                    ],
                                   ),
-                                  child: const Text('Decline'),
                                 ),
                               ],
                             ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ],
-                // Audio Lock notice banner
-                if (session.isRoomAudioLocked) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.5)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.lock_rounded, size: 16, color: Colors.amber.shade800),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            isLeader
-                                ? 'Room Audio Locked: Standard participants cannot unmute themselves.'
-                                : 'Microphones are locked by the host. Raise your hand to request to speak.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.amber.shade200
-                                  : Colors.amber.shade900,
+                          ),
+
+                          // Participant list filling all space above the controls
+                          Expanded(
+                            child: MeetingParticipantsList(
+                              session: session,
+                              gateway: gateway,
+                              isLeader: isLeader,
+                              onParticipantTap: (p) =>
+                                  _showParticipantActions(context, p, gateway, isLeader),
+                              onDirectChat: (p) =>
+                                  _showInMeetingChatSheet(context, gateway, initialRecipient: p),
+                              formatParticipantName: _formatParticipantName,
                             ),
                           ),
-                        ),
-                      ],
+
+                          const SizedBox(height: 8),
+
+                          // Pinned Control Bar at the bottom
+                          _buildMeetingControlBar(
+                            session: session,
+                            gateway: gateway,
+                            isLeader: isLeader,
+                            canShareScreen: canShareScreen,
+                            isAudioMuted: isAudioMuted,
+                            isVideoMuted: isVideoMuted,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
+      ),
+    );
+  }
 
-                // Stage Header Card: Meeting Room Title & Presence
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFF1B2432)
-                        : const Color(0xFFF3EBE0),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFFD49B28).withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 9,
-                        height: 9,
-                        decoration: const BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          session.isInBreakoutRoom
-                              ? '${session.activeBreakoutRoomName}'
-                              : (widget.meetingType?.displayName ?? _roomController.text.trim()),
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.people_alt_rounded, size: 12, color: Colors.green),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${session.participants.length} connected',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                MeetingParticipantsList(
-                  session: session,
-                  gateway: gateway,
-                  isLeader: isLeader,
-                  onParticipantTap: (p) =>
-                      _showParticipantActions(context, p, gateway, isLeader),
-                  formatParticipantName: _formatParticipantName,
-                ),
-              ],
-            ],
-          ),
+  Widget _buildMeetingControlBar({
+    required MeetingSession session,
+    required MeetingGateway gateway,
+    required bool isLeader,
+    required bool canShareScreen,
+    required bool isAudioMuted,
+    required bool isVideoMuted,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF0F1520)
+            : const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white10
+              : Colors.black.withValues(alpha: 0.08),
         ),
+      ),
+      child: MeetingControlBar(
+        session: session,
+        gateway: gateway,
+        isLeader: isLeader,
+        canShareScreen: canShareScreen,
+        isAudioMuted: isAudioMuted,
+        isVideoMuted: isVideoMuted,
+        unreadChatCount: _unreadChatCount,
+        isGalleryView: _isGalleryView,
+        onToggleViewMode: () => setState(() => _isGalleryView = !_isGalleryView),
+        onToggleAudio: () async {
+          if (!isLeader && session.isRoomAudioLocked && isAudioMuted) {
+            _showMessage('The host has locked microphones. Raise your hand to request to speak.');
+            return;
+          }
+          try {
+            await gateway.toggleAudio();
+          } catch (e) {
+            _showMessage(e.toString().replaceAll('Exception: ', ''));
+          }
+        },
+        onToggleVideo: () async {
+          try {
+            await gateway.toggleVideo();
+          } catch (e) {
+            _showMessage(e.toString().replaceAll('Exception: ', ''));
+          }
+        },
+        onToggleScreenShare: () async {
+          try {
+            await gateway.toggleScreenShare();
+            _showMessage(session.isScreenShareEnabled
+                ? 'Screen sharing stopped.'
+                : 'Screen sharing started.');
+          } catch (e) {
+            final errStr = ErrorHandler.getUserFriendlyMessage(e);
+            if (AppStoreHelper.isMobileOnlyNotice(errStr) ||
+                AppStoreHelper.isMobileOnlyNotice(e)) {
+              ToastUtils.showInfo(
+                'Screen sharing on mobile requires the ALIVE app. Opening Google Play Store...',
+              );
+              AppStoreHelper.redirectToPlayStore();
+            } else {
+              ToastUtils.showError(e);
+            }
+          }
+        },
+        onOpenChat: () => _showInMeetingChatSheet(context, gateway),
+        onToggleHand: () async {
+          final newRaised = !session.isHandRaised;
+          await gateway.raiseHand(raised: newRaised);
+          _showMessage(newRaised ? 'Hand raised' : 'Hand lowered');
+        },
+        isScribeRecording: _isScribeRecording,
+        onToggleScribe: _toggleScribeRecording,
+        onOpenMore: () => _showMeetingMoreSheet(context, session, gateway, isLeader),
+        onLeaveOrEnd: () => _handleHostExit(gateway),
       ),
     );
   }
@@ -1154,21 +1515,13 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       gateway: gateway,
       isLeader: isLeader,
       isBroadcasting: _isBroadcasting,
+      isGalleryView: _isGalleryView,
+      isScribeRecording: _isScribeRecording,
+      onToggleScribe: _toggleScribeRecording,
       onOpenBreakoutRooms: () =>
           _showBreakoutRoomsSheet(context, session, gateway, isLeader),
-      onOpenProjector: () => setState(() => _isProjectorMode = true),
-      onOpenScribe: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => LeaderMeetingTranscriptionScreen(
-              initialMeetingTitle:
-                  widget.meetingType?.displayName ?? _roomController.text,
-              initialRoomName: _roomController.text.trim(),
-              initialMeetingType: widget.meetingType?.displayName,
-            ),
-          ),
-        );
-      },
+      onToggleViewMode: () => setState(() => _isGalleryView = !_isGalleryView),
+      onOpenScribe: _openScribeScreen,
       onShareLink: _shareMeetingLink,
       onReturnToMainRoom: () async {
         await gateway.returnToMainRoom();
@@ -1185,6 +1538,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             : 'Host Hard Lockout released: Participants can now unmute.');
       },
       onToggleWaitingRoom: (newWaiting) async {
+        setState(() => _requireHostApproval = newWaiting);
         await gateway.setWaitingRoom(newWaiting);
         _showMessage(newWaiting
             ? 'Waiting Room activated: New participants must be admitted.'
@@ -1409,15 +1763,17 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     }
 
     if (!isLeader) {
+      await _autoSaveAndPromptMinutes();
       await gateway.leaveMeeting();
       return true;
     }
 
     // If host is the only person remaining in the room, leave cleanly and end the session
     if ((session?.participants.length ?? 0) <= 1) {
-      if (_isProjectorMode) {
-        setState(() => _isProjectorMode = false);
+      if (_isGalleryView) {
+        setState(() => _isGalleryView = false);
       }
+      await _autoSaveAndPromptMinutes();
       await gateway.endMeetingForAll();
       _showMessage('Meeting ended.');
       return true;
@@ -1458,16 +1814,18 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     );
 
     if (action == 'end_all') {
-      if (_isProjectorMode) {
-        setState(() => _isProjectorMode = false);
+      if (_isGalleryView) {
+        setState(() => _isGalleryView = false);
       }
+      await _autoSaveAndPromptMinutes();
       await gateway.endMeetingForAll();
       _showMessage('Meeting ended for all participants.');
       return true;
     } else if (action == 'leave') {
-      if (_isProjectorMode) {
-        setState(() => _isProjectorMode = false);
+      if (_isGalleryView) {
+        setState(() => _isGalleryView = false);
       }
+      await _autoSaveAndPromptMinutes();
       await gateway.leaveMeeting();
       return true;
     }
@@ -1497,6 +1855,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
           FilledButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
+              await _autoSaveAndPromptMinutes();
               await gateway.endMeetingForAll();
               _showMessage('Meeting ended for all participants.');
             },
@@ -1553,6 +1912,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     _breakoutUiTicker?.cancel();
     _moderationSub?.cancel();
     _dataChannelSub?.cancel();
+    _sessionSub?.cancel();
+    _scribeService?.dispose();
     _inMeetingChatController.dispose();
     _chatScrollController.dispose();
     _roomController.dispose();

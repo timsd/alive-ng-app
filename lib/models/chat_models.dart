@@ -187,6 +187,36 @@ class ChatChannel {
     this.settings = const {},
   });
 
+  ChatChannel copyWith({
+    String? id,
+    String? name,
+    String? description,
+    ChannelType? type,
+    List<String>? members,
+    List<String>? admins,
+    DateTime? createdAt,
+    DateTime? lastMessageAt,
+    String? lastMessage,
+    int? unreadCount,
+    bool? isArchived,
+    Map<String, dynamic>? settings,
+  }) {
+    return ChatChannel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      type: type ?? this.type,
+      members: members ?? this.members,
+      admins: admins ?? this.admins,
+      createdAt: createdAt ?? this.createdAt,
+      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+      lastMessage: lastMessage ?? this.lastMessage,
+      unreadCount: unreadCount ?? this.unreadCount,
+      isArchived: isArchived ?? this.isArchived,
+      settings: settings ?? this.settings,
+    );
+  }
+
   factory ChatChannel.fromJson(Map<String, dynamic> json) {
     return ChatChannel(
       id: json['id'] as String,

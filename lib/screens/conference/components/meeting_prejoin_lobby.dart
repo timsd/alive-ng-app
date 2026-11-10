@@ -64,10 +64,14 @@ class MeetingPrejoinLobby extends StatelessWidget {
           // Waiting Room Policy toggle
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            secondary: const Icon(Icons.meeting_room_outlined),
+            secondary: Icon(
+              requireHostApproval ? Icons.door_sliding : Icons.meeting_room_outlined,
+              color: requireHostApproval ? const Color(0xFFD49B28) : null,
+            ),
             title: const Text('Require Host Approval (Waiting Room)'),
             subtitle: const Text('Participants wait in virtual lobby until admitted by host/leader'),
             value: requireHostApproval,
+            activeThumbColor: const Color(0xFFD49B28),
             onChanged: onToggleRequireHostApproval,
           ),
           const SizedBox(height: 4),

@@ -104,9 +104,10 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
 
         if (isPublic || isForMe) {
           if (!widget.messages.any((m) => m.id == msg.id)) {
-            setState(() {
-              widget.messages.add(msg);
-            });
+            widget.messages.add(msg);
+          }
+          if (mounted) {
+            setState(() {});
             _scrollToBottom();
           }
         }

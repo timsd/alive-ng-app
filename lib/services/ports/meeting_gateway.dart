@@ -63,6 +63,7 @@ abstract class MeetingGateway {
   Future<void> joinMeeting({
     required String roomToken,
     String? roomName,
+    bool? isWaitingRoomEnabled,
   });
 
   /// Unlocks audio playback and ensures speaker routing is active (e.g. after user gesture on join).

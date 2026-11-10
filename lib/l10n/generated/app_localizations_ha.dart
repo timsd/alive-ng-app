@@ -715,7 +715,7 @@ class AppLocalizationsHa extends AppLocalizations {
   String get search_books_tracts => 'Nemo littattafai da tiraktoci...';
 
   @override
-  String get search_tracts => 'Search tracts...';
+  String get search_tracts => 'Bincika warƙoƙin bishara...';
 
   @override
   String get all_categories => 'Duk Rukunai';
@@ -1194,4 +1194,65 @@ class AppLocalizationsHa extends AppLocalizations {
   @override
   String get donation_success_message =>
       'An sami nasarar sarrafa gudummawarka.';
+
+  @override
+  String get evangelism_tracts => 'Warƙoƙin Yaɗa Bishara';
+
+  @override
+  String get tracts_onboarding_title => 'Warƙoƙin Bishara a Shirye don Girbi';
+
+  @override
+  String get tracts_onboarding_desc =>
+      'Kuna buƙatar warƙoƙin bishara? Sauƙin saukewa, bugawa, ko rabawa ta yanar gizo ga rayuka a ko\'ina.';
+
+  @override
+  String get gallery_view => 'Duba Fuskokin Jama\'a';
+
+  @override
+  String get list_view => 'Duba Jerin Sunaye';
+
+  @override
+  String get waiting_room => 'Ɗakin Jira';
+
+  @override
+  String get admit_participant => 'Shigar da Shi';
+
+  @override
+  String get admit_all => 'Shigar da Duka';
+
+  @override
+  String get raise_hand => 'Ɗaga Hannu';
+
+  @override
+  String get lower_hand => 'Sauke Hannu';
+
+  @override
+  String get stage_presentation => 'Nunin Dandali';
+
+  @override
+  String get tap_to_direct_chat => 'Danna don aikawa kai tsaye';
+
+  @override
+  String get transcript => 'Bayanin Rubutu';
+
+  @override
+  String get show_notes => 'Bayanin Shirin';
+
+  @override
+  String get search_transcript => 'Bincika a cikin rubutu...';
+
+  @override
+  String get resume_sync => 'Ci gaba da Daidaitawa';
+
+  @override
+  String get manage_members => 'Gudanar da Membobi';
+
+  @override
+  String get add_member => 'Ƙara Memba';
+
+  @override
+  String get remove_member => 'Cire Memba';
+
+  @override
+  String get search_members_hint => 'Bincika membobi...';
 }

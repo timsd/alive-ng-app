@@ -48,7 +48,14 @@ class MeetingScreenShareStage extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           if (screenVideoWidget != null)
-            screenVideoWidget
+            InteractiveViewer(
+              minScale: 1.0,
+              maxScale: 5.0,
+              panEnabled: true,
+              scaleEnabled: true,
+              clipBehavior: Clip.none,
+              child: screenVideoWidget,
+            )
           else
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -130,6 +137,29 @@ class MeetingScreenShareStage extends StatelessWidget {
               ),
             ),
           ),
+          Positioned(
+            bottom: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white24, width: 0.8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.zoom_in_rounded, size: 14, color: Colors.tealAccent),
+                  SizedBox(width: 4),
+                  Text(
+                    'Pinch to zoom presentation',
+                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -170,17 +200,18 @@ class MeetingVideoGridStage extends ConsumerWidget {
     final participants = session.participants;
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Two per row on mobile when participants/cameras are active (matches user design)
         final crossAxisCount = constraints.maxWidth > 900
             ? 3
-            : (constraints.maxWidth > 500 ? 2 : 1);
+            : (participants.length <= 1 ? 1 : 2);
 
         return GridView.builder(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 16 / 10,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: crossAxisCount == 1 ? (16 / 10) : (4 / 3),
           ),
           itemCount: participants.length,
           itemBuilder: (context, index) {
@@ -353,6 +384,135 @@ class MeetingVideoGridStage extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+}
+
+/// Horizontal scrollable thumbnail strip of participants shown during presentations in Gallery View.
+class MeetingParticipantStrip extends ConsumerWidget {
+  final MeetingSession session;
+  final MeetingGateway gateway;
+  final void Function(ParticipantInfo p) onParticipantTap;
+
+  const MeetingParticipantStrip({
+    super.key,
+    required this.session,
+    required this.gateway,
+    required this.onParticipantTap,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final participants = session.participants.isNotEmpty
+        ? session.participants
+        : [
+            ParticipantInfo(
+              identity: 'local',
+              name: 'You',
+              isLocal: true,
+              isAudioEnabled: !session.isAudioMuted,
+              isVideoEnabled: !session.isVideoMuted,
+              isHandRaised: session.isHandRaised,
+            ),
+          ];
+
+    return Container(
+      height: 96,
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      color: const Color(0xFF0F141C),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: participants.length,
+        itemBuilder: (context, index) {
+          final p = participants[index];
+          final name = formatMeetingParticipantName(p);
+          final liveVideo = !p.isVideoMuted
+              ? gateway.buildParticipantVideoWidget(p.identity)
+              : null;
+          final effectiveAvatar = p.isLocal
+              ? (ref.watch(currentUserAvatarUrlProvider) ?? p.avatarUrl)
+              : p.avatarUrl;
+          final hasAvatar = effectiveAvatar != null && effectiveAvatar.isNotEmpty;
+
+          return InkWell(
+            onTap: () => onParticipantTap(p),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 104,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: p.isSpeaking
+                      ? Colors.green
+                      : Colors.white24,
+                  width: p.isSpeaking ? 2 : 1,
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (liveVideo != null)
+                    liveVideo
+                  else
+                    Center(
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: p.isLocal
+                            ? const Color(0xFF3B82F6)
+                            : const Color(0xFF10B981),
+                        backgroundImage: hasAvatar ? NetworkImage(effectiveAvatar) : null,
+                        child: hasAvatar
+                            ? null
+                            : Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                  // Name and status overlay
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      color: Colors.black87,
+                      child: Row(
+                        children: [
+                          Icon(
+                            p.isAudioMuted ? Icons.mic_off : Icons.mic,
+                            size: 10,
+                            color: p.isAudioMuted ? Colors.red : Colors.green,
+                          ),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

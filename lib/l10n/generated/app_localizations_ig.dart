@@ -712,7 +712,7 @@ class AppLocalizationsIg extends AppLocalizations {
   String get search_books_tracts => 'Chọọ akwụkwọ na tracts...';
 
   @override
-  String get search_tracts => 'Search tracts...';
+  String get search_tracts => 'Chọọ traktị ozioma...';
 
   @override
   String get all_categories => 'Ụdị Niile';
@@ -1183,4 +1183,66 @@ class AppLocalizationsIg extends AppLocalizations {
 
   @override
   String get donation_success_message => 'Enyere onyinye gị nke ọma.';
+
+  @override
+  String get evangelism_tracts => 'Traktị Mgbasa Oziọma';
+
+  @override
+  String get tracts_onboarding_title =>
+      'Traktị Oziọma Dị Njikere Maka Owuwe Ihe Ubi';
+
+  @override
+  String get tracts_onboarding_desc =>
+      'Ị chọrọ traktị oziọma? Ọ dị mfe ibudata, ibipụta, ma ọ bụ kesaa na ekwentị nye mkpụrụ obi n\'ebe niile.';
+
+  @override
+  String get gallery_view => 'Nlele Foto Niile';
+
+  @override
+  String get list_view => 'Nlele Ndepụta';
+
+  @override
+  String get waiting_room => 'Ime Ụlọ Nchere';
+
+  @override
+  String get admit_participant => 'Kwe Ka Ọ Banye';
+
+  @override
+  String get admit_all => 'Kwe Ka Ha Niile Banye';
+
+  @override
+  String get raise_hand => 'Welie Aka';
+
+  @override
+  String get lower_hand => 'Wedata Aka';
+
+  @override
+  String get stage_presentation => 'Nkwupụta N\'ọgbọ';
+
+  @override
+  String get tap_to_direct_chat => 'Kpatụ ka i ziga ozi ozugbo';
+
+  @override
+  String get transcript => 'Mkpọpụta Okwu';
+
+  @override
+  String get show_notes => 'Ihe E Dere Maka Ihe Omume';
+
+  @override
+  String get search_transcript => 'Chọọ n\'ime mkpọpụta...';
+
+  @override
+  String get resume_sync => 'Gaa n\'ihu na Nkwekọrịta';
+
+  @override
+  String get manage_members => 'Jikwaa Ndị Otu';
+
+  @override
+  String get add_member => 'Tinye Onye Otu';
+
+  @override
+  String get remove_member => 'Wepụ Onye Otu';
+
+  @override
+  String get search_members_hint => 'Chọọ ndị otu...';
 }

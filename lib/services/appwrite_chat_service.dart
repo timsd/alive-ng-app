@@ -504,6 +504,68 @@ class AppwriteChatService extends ChangeNotifier {
     );
   }
 
+  Future<void> addMemberToChannel(String channelId, String userId) async {
+    final channel = await _getChannel(channelId);
+    if (channel == null || channel.members.contains(userId)) return;
+    final updatedMembers = [...channel.members, userId];
+    await _tables.updateRow(
+      databaseId: databaseId,
+      tableId: channelsCollectionId,
+      rowId: channelId,
+      data: {
+        'members': updatedMembers,
+      },
+    );
+  }
+
+  Future<void> removeMemberFromChannel(String channelId, String userId) async {
+    final channel = await _getChannel(channelId);
+    if (channel == null) return;
+    final updatedMembers = channel.members.where((id) => id != userId).toList();
+    await _tables.updateRow(
+      databaseId: databaseId,
+      tableId: channelsCollectionId,
+      rowId: channelId,
+      data: {
+        'members': updatedMembers,
+      },
+    );
+  }
+
+  Future<List<ChatUser>> getAllCommunityUsers({int limit = 100}) async {
+    try {
+      final response = await _tables.listRows(
+        databaseId: databaseId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        queries: [
+          Query.limit(limit),
+        ],
+      );
+      return response.rows.map((row) {
+        final data = row.data;
+        return ChatUser(
+          id: row.$id,
+          name: (data['fullName'] ??
+                  data['full_name'] ??
+                  data['name'] ??
+                  data['email'] ??
+                  'Member')
+              .toString(),
+          email: (data['email'] ?? '').toString(),
+          avatar: data['avatar_url'] as String?,
+          role: UserRole.values.firstWhere(
+            (role) => role.name == (data['role'] ?? 'member').toString(),
+            orElse: () => UserRole.member,
+          ),
+          isOnline: data['is_online'] as bool? ?? false,
+        );
+      }).toList();
+    } catch (e) {
+      _logger.error('Error getting community users: $e');
+      return [];
+    }
+  }
+
   Future<void> markMessagesAsRead(String channelId) async {
     _logger.debug('markMessagesAsRead pending Appwrite read-receipt schema.');
   }

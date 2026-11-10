@@ -205,7 +205,7 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
       child: Stack(
         children: [
           // 1. Dark Backdrop with Cutout Spotlight Hole over Target
-          // Full-screen Spotlight Painter with crystal-clear transparent cutout, penetrating light beam & exterior glow ring
+          // Full-screen Spotlight Painter with high-contrast dual-theme visibility & interior illumination
           AnimatedBuilder(
             animation: _pulseController,
             builder: (context, _) {
@@ -217,6 +217,7 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
                   pulseScale: _scaleAnimation.value,
                   glowOpacity: _glowAnimation.value,
                   accentColor: step.accentColor,
+                  isDark: Theme.of(context).brightness == Brightness.dark,
                 ),
               );
             },
@@ -518,13 +519,14 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
 }
 
 /// Custom painter that creates a smooth dark backdrop over the screen while
-/// carving out a crisp, clear spotlight hole right over the spotlighted target.
+/// carving out a crisp, illuminated spotlight hole with dual-theme contrast rings.
 class _SpotlightPainter extends CustomPainter {
   final Offset targetCenter;
   final double targetRadius;
   final double pulseScale;
   final double glowOpacity;
   final Color accentColor;
+  final bool isDark;
 
   _SpotlightPainter({
     required this.targetCenter,
@@ -532,48 +534,92 @@ class _SpotlightPainter extends CustomPainter {
     required this.pulseScale,
     required this.glowOpacity,
     required this.accentColor,
+    required this.isDark,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final holeRadius = targetRadius * pulseScale;
 
-    // 1. Vector difference cutout: punches out the circle mathematically from the background rect.
-    // The interior of the circle remains 100% transparent and unobstructed so the underlying
-    // icon, tab, or button shines through with maximum sharpness and clarity.
+    // 1. Vector difference cutout: punches out the circle from the background overlay.
     final backgroundPath = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
     final holePath = Path()
       ..addOval(Rect.fromCircle(center: targetCenter, radius: holeRadius));
-    final cutoutPath = Path.combine(PathOperation.difference, backgroundPath, holePath);
+    final cutoutPath =
+        Path.combine(PathOperation.difference, backgroundPath, holePath);
 
+    // Dark backdrop overlay: 88% opacity dark navy slate
     canvas.drawPath(
       cutoutPath,
-      Paint()..color = const Color(0xEE070C14),
+      Paint()..color = const Color(0xE0060A10),
     );
 
-    // 2. Exterior accent glow ring
-    final outerGlowPaint = Paint()
-      ..color = accentColor.withValues(alpha: glowOpacity * 0.90)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.5
-      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 12);
-    canvas.drawCircle(targetCenter, holeRadius, outerGlowPaint);
+    // 2. Interior Spotlight Illumination (Lens Beam):
+    // In Dark Mode: Casts a radiant soft-white & accent beam from behind the icon so
+    // dark icons are brightly lit, crisp, and 100% visible instead of being dark-on-dark.
+    // In Light Mode: Casts a soft accent wash so the circular target stage stands out
+    // clearly against light/white surfaces.
+    final lensGradient = RadialGradient(
+      colors: isDark
+          ? [
+              Colors.white.withValues(alpha: 0.35),
+              accentColor.withValues(alpha: 0.22),
+              Colors.transparent,
+            ]
+          : [
+              accentColor.withValues(alpha: 0.24),
+              accentColor.withValues(alpha: 0.10),
+              Colors.transparent,
+            ],
+      stops: const [0.0, 0.72, 1.0],
+    );
+    final lensPaint = Paint()
+      ..shader = lensGradient.createShader(
+        Rect.fromCircle(center: targetCenter, radius: holeRadius),
+      );
+    canvas.drawCircle(targetCenter, holeRadius, lensPaint);
 
-    // 5. Exterior white halo for extra vibrancy
-    final whiteHaloPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.85)
+    // 3. Animated Expanding Ripple / Pulse Wave
+    final pulseDelta = (pulseScale - 1.0).clamp(0.0, 0.15);
+    final waveProgress = (pulseDelta / 0.08).clamp(0.0, 1.0);
+    final pulseWaveRadius = holeRadius + (waveProgress * 18.0);
+    final pulseWavePaint = Paint()
+      ..color = accentColor.withValues(alpha: (1.0 - waveProgress) * 0.45)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 5);
-    canvas.drawCircle(targetCenter, holeRadius, whiteHaloPaint);
+      ..strokeWidth = 2.0;
+    canvas.drawCircle(targetCenter, pulseWaveRadius, pulseWavePaint);
 
-    // 6. Crisp white border ring delineating the spotlight boundary
-    final borderPaint = Paint()
-      ..color = Colors.white
+    // 4. Dark Drop-Shadow Underlay Stroke (Dual-Theme Contrast Anchor):
+    // In Light Mode on white app bars, white borders disappear without this.
+    // This dark stroke ensures the spotlight boundary is razor-sharp on white, dark, or colored backgrounds!
+    final contrastShadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: isDark ? 0.75 : 0.60)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
-    canvas.drawCircle(targetCenter, holeRadius, borderPaint);
+      ..strokeWidth = 5.2;
+    canvas.drawCircle(targetCenter, holeRadius, contrastShadowPaint);
+
+    // 5. Exterior Accent Glow
+    final glowPaint = Paint()
+      ..color = accentColor.withValues(alpha: glowOpacity * 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawCircle(targetCenter, holeRadius + 1.0, glowPaint);
+
+    // 6. Vibrant Accent Color Ring
+    final accentRingPaint = Paint()
+      ..color = accentColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+    canvas.drawCircle(targetCenter, holeRadius, accentRingPaint);
+
+    // 7. Crisp High-Contrast Inner Edge
+    final innerHighlightPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.95)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6;
+    canvas.drawCircle(targetCenter, holeRadius - 1.0, innerHighlightPaint);
   }
 
   @override
@@ -582,6 +628,7 @@ class _SpotlightPainter extends CustomPainter {
         oldDelegate.targetRadius != targetRadius ||
         oldDelegate.pulseScale != pulseScale ||
         oldDelegate.glowOpacity != glowOpacity ||
-        oldDelegate.accentColor != accentColor;
+        oldDelegate.accentColor != accentColor ||
+        oldDelegate.isDark != isDark;
   }
 }

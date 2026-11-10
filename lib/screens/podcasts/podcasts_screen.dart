@@ -388,20 +388,38 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
       );
     }
 
-    return ListView.builder(
-      padding: ResponsiveUtils.getResponsivePadding(context),
-      itemCount: filteredEpisodes.length,
-      itemBuilder: (context, index) {
-        return PodcastEpisodeCard(
-          title: filteredEpisodes[index]['title'],
-          podcastTitle: filteredEpisodes[index]['podcastTitle'],
-          duration: filteredEpisodes[index]['duration'],
-          onPlay: () => _playEpisode(context, filteredEpisodes[index]),
-          onDownload: () => _downloadEpisode(context, filteredEpisodes[index]),
-          onShare: () {
-            PodcastShareHelper.shareEpisode(
-              context,
-              episode: filteredEpisodes[index],
+    return ListenableBuilder(
+      listenable: _audioService,
+      builder: (context, _) {
+        return ListView.builder(
+          padding: ResponsiveUtils.getResponsivePadding(context),
+          itemCount: filteredEpisodes.length,
+          itemBuilder: (context, index) {
+            final ep = filteredEpisodes[index];
+            final isCurrent = _audioService.isCurrentEpisode(ep);
+            final isPlaying = isCurrent && _audioService.isPlaying;
+
+            return PodcastEpisodeCard(
+              title: ep['title'],
+              podcastTitle: ep['podcastTitle'],
+              duration: ep['duration'],
+              isPlaying: isPlaying,
+              onPlay: () {
+                if (isPlaying) {
+                  _audioService.pause();
+                } else if (isCurrent) {
+                  _audioService.resume();
+                } else {
+                  _playEpisode(context, ep);
+                }
+              },
+              onDownload: () => _downloadEpisode(context, ep),
+              onShare: () {
+                PodcastShareHelper.shareEpisode(
+                  context,
+                  episode: ep,
+                );
+              },
             );
           },
         );
@@ -544,53 +562,110 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                       final episodesAsync =
                           ref.watch(podcastEpisodesProvider(podcast.id));
                       return episodesAsync.when(
-                        data: (episodes) => ListView.builder(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: ResponsiveUtils.getResponsiveSpacing(
-                                  context, 16)),
-                          itemCount: episodes.length,
-                          itemBuilder: (context, episodeIndex) {
-                            final episodeModel = episodes[episodeIndex];
-                            final episode = _episodeToMap(episodeModel, podcast: podcast);
-                            return ListTile(
-                              leading: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.play_arrow,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                              title: Text(episodeModel.title),
-                              subtitle: Text(
-                                  '${episodeModel.duration} • ${episodeModel.publishDate.toIso8601String().split('T').first}'),
-                              trailing: Builder(
-                                builder: (buttonContext) => IconButton(
-                                  icon: const Icon(Icons.more_vert),
-                                  onPressed: () {
-                                    // Anchor the menu to this button so it opens
-                                    // beside it rather than mid-screen.
-                                    final box = buttonContext.findRenderObject();
-                                    final offset = box is RenderBox
-                                        ? box.localToGlobal(Offset.zero) & box.size
-                                        : Offset.zero & const Size(40, 40);
-                                    _showEpisodeOptions(
-                                      context,
-                                      episode,
-                                      anchor: offset.topLeft,
-                                    );
+                        data: (episodes) => ListenableBuilder(
+                          listenable: _audioService,
+                          builder: (context, _) {
+                            return ListView.builder(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: ResponsiveUtils.getResponsiveSpacing(
+                                      context, 16)),
+                              itemCount: episodes.length,
+                              itemBuilder: (context, episodeIndex) {
+                                final episodeModel = episodes[episodeIndex];
+                                final episode = _episodeToMap(episodeModel, podcast: podcast);
+                                final isCurrent = _audioService.isCurrentEpisode(episode);
+                                final isPlaying = isCurrent && _audioService.isPlaying;
+
+                                return ListTile(
+                                  leading: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () {
+                                      if (isPlaying) {
+                                        _audioService.pause();
+                                      } else if (isCurrent) {
+                                        _audioService.resume();
+                                      } else {
+                                        _playEpisode(context, episode, coverImage: podcast.coverImage);
+                                      }
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: isPlaying
+                                            ? Theme.of(context).colorScheme.primary
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                                .withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        isPlaying
+                                            ? Icons.pause_rounded
+                                            : Icons.play_arrow_rounded,
+                                        color: isPlaying
+                                            ? Theme.of(context).colorScheme.onPrimary
+                                            : Theme.of(context).colorScheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    episodeModel.title,
+                                    style: TextStyle(
+                                      fontWeight: isPlaying ? FontWeight.bold : FontWeight.w500,
+                                      color: isPlaying ? Theme.of(context).colorScheme.primary : null,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                      '${episodeModel.duration} • ${episodeModel.publishDate.toIso8601String().split('T').first}'),
+                                  trailing: Builder(
+                                    builder: (buttonContext) => IconButton(
+                                      icon: const Icon(Icons.more_vert),
+                                      onPressed: () {
+                                        // Anchor the menu to this button so it opens
+                                        // beside it rather than mid-screen.
+                                        final box = buttonContext.findRenderObject();
+                                        final offset = box is RenderBox
+                                            ? box.localToGlobal(Offset.zero) & box.size
+                                            : Offset.zero & const Size(40, 40);
+                                        _showEpisodeOptions(
+                                          context,
+                                          episode,
+                                          anchor: offset.topLeft,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    if (isPlaying) {
+                                      // Already playing: open the modal sheet so user can view live transcript
+                                      ModernPodcastPlayerSheet.show(
+                                        context,
+                                        audioPlayer: _audioService.player,
+                                        episodeData: episode,
+                                        podcastTitle:
+                                            episode['podcastTitle']?.toString() ?? podcast.title,
+                                        coverImage: podcast.coverImage,
+                                        onDownload: () => _downloadEpisode(context, episode),
+                                      );
+                                    } else if (isCurrent) {
+                                      _audioService.resume();
+                                      ModernPodcastPlayerSheet.show(
+                                        context,
+                                        audioPlayer: _audioService.player,
+                                        episodeData: episode,
+                                        podcastTitle:
+                                            episode['podcastTitle']?.toString() ?? podcast.title,
+                                        coverImage: podcast.coverImage,
+                                        onDownload: () => _downloadEpisode(context, episode),
+                                      );
+                                    } else {
+                                      _playEpisode(context, episode, coverImage: podcast.coverImage);
+                                    }
                                   },
-                                ),
-                              ),
-                              onTap: () {
-                                _playEpisode(context, episode, coverImage: podcast.coverImage);
+                                );
                               },
                             );
                           },
@@ -637,6 +712,9 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         ? Rect.fromLTWH(size.width / 4, size.height / 4, 40, 40)
         : Rect.fromPoints(anchor, anchor + const Offset(0, 40));
 
+    final isCurrent = _audioService.isCurrentEpisode(episode);
+    final isPlaying = isCurrent && _audioService.isPlaying;
+
     showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -645,16 +723,58 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         MediaQuery.sizeOf(context).width - rect.right,
         MediaQuery.sizeOf(context).height - rect.bottom,
       ),
-      items: const [
-        PopupMenuItem(value: 'play', child: Text('Play Episode')),
-        PopupMenuItem(value: 'download', child: Text('Download Episode')),
-        PopupMenuItem(value: 'share', child: Text('Share Episode')),
+      items: [
+        PopupMenuItem(
+          value: isPlaying ? 'pause' : 'play',
+          child: Row(
+            children: [
+              Icon(
+                isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                color: isPlaying ? Theme.of(context).colorScheme.primary : null,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isPlaying ? 'Pause Episode' : 'Play Episode',
+                style: TextStyle(
+                  fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
+                  color: isPlaying ? Theme.of(context).colorScheme.primary : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'download',
+          child: Row(
+            children: [
+              Icon(Icons.download_rounded),
+              SizedBox(width: 8),
+              Text('Download Episode'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'share',
+          child: Row(
+            children: [
+              Icon(Icons.share_rounded),
+              SizedBox(width: 8),
+              Text('Share Episode'),
+            ],
+          ),
+        ),
       ],
     ).then((choice) {
       if (choice == null || !context.mounted) return;
       switch (choice) {
+        case 'pause':
+          _audioService.pause();
         case 'play':
-          play(context, episode);
+          if (isCurrent) {
+            _audioService.resume();
+          } else {
+            play(context, episode);
+          }
         case 'download':
           download(context, episode);
         case 'share':

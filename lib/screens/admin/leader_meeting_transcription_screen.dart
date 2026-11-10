@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/meeting_models.dart';
 import '../../providers/meeting_provider.dart';
@@ -16,7 +14,6 @@ import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/custom_app_bar.dart';
-import 'meeting_file_sharing_screen.dart';
 
 // Backwards compatibility classes for synthesizer and references
 enum TranscriptEntryType {
@@ -83,12 +80,14 @@ class LeaderMeetingTranscriptionScreen extends ConsumerStatefulWidget {
   final String? initialMeetingTitle;
   final String? initialMeetingType;
   final String? initialRoomName;
+  final AliveScribeService? scribeService;
 
   const LeaderMeetingTranscriptionScreen({
     super.key,
     this.initialMeetingTitle,
     this.initialMeetingType,
     this.initialRoomName,
+    this.scribeService,
   });
 
   @override
@@ -156,16 +155,25 @@ class _LeaderMeetingTranscriptionScreenState
 
   void _initAliveScribe() {
     final gateway = ref.read(meetingGatewayProvider);
-    final user = AuthService.instance.currentUser;
-    final userId = user?.uid ?? 'leader_${DateTime.now().millisecondsSinceEpoch}';
-    final userName = user?.displayName ?? 'Host Leader';
 
-    _scribeService = AliveScribeService(
-      gateway: gateway,
-      localUserId: userId,
-      localUserName: userName,
-      localUserRole: 'Council Member',
-    );
+    if (widget.scribeService != null) {
+      // Bind to active background Scribe session from the meeting
+      _scribeService = widget.scribeService;
+      _transcript = List.from(_scribeService!.transcript);
+      _decisions = List.from(_scribeService!.decisions);
+      _actionItems = List.from(_scribeService!.actionItems);
+    } else {
+      final user = AuthService.instance.currentUser;
+      final userId = user?.uid ?? 'leader_${DateTime.now().millisecondsSinceEpoch}';
+      final userName = user?.displayName ?? 'Host Leader';
+
+      _scribeService = AliveScribeService(
+        gateway: gateway,
+        localUserId: userId,
+        localUserName: userName,
+        localUserRole: 'Council Member',
+      );
+    }
 
     _transcriptSub = _scribeService!.transcriptStream.listen((list) {
       if (mounted) {
@@ -192,7 +200,7 @@ class _LeaderMeetingTranscriptionScreenState
       }
     });
 
-    // Auto-listen only when an active meeting is connected
+    // Auto-listen only when an active meeting is connected and not already active
     _roomStatusSub = gateway.roomStatus.listen((status) {
       if (!mounted) return;
       if (status == RoomStatus.connected) {
@@ -202,7 +210,7 @@ class _LeaderMeetingTranscriptionScreenState
           });
         }
       } else if (status == RoomStatus.disconnected) {
-        if (_scribeService != null && _scribeService!.isListening) {
+        if (_scribeService != null && _scribeService!.isListening && widget.scribeService == null) {
           _scribeService!.stopListening().then((_) {
             if (mounted) setState(() {});
           });
@@ -210,9 +218,8 @@ class _LeaderMeetingTranscriptionScreenState
       }
     });
 
-    // If meeting is already actively connected when Scribe screen is opened, start listening;
-    // otherwise remain in Standby mode until a meeting connects.
-    if (gateway.isConnected) {
+    // If meeting is connected and scribe is not already running, start listening
+    if (gateway.isConnected && _scribeService != null && !_scribeService!.isListening) {
       _scribeService!.startListening().then((_) {
         if (mounted) setState(() {});
       });
@@ -435,7 +442,9 @@ class _LeaderMeetingTranscriptionScreenState
     _decisionsSub?.cancel();
     _actionItemsSub?.cancel();
     _roomStatusSub?.cancel();
-    _scribeService?.dispose();
+    if (widget.scribeService == null) {
+      _scribeService?.dispose();
+    }
     _tabController.dispose();
     _transcriptScrollController.dispose();
     _meetingTitleController.dispose();
@@ -460,6 +469,8 @@ class _LeaderMeetingTranscriptionScreenState
     final totalAttendeesCount =
         remoteAttendees.isNotEmpty ? remoteAttendees.length : (_scribeService?.attendees.length ?? 1);
 
+    final isListening = _scribeService?.isListening == true;
+
     return Scaffold(
       appBar: CustomAppBar(
         titleWidget: Row(
@@ -479,36 +490,86 @@ class _LeaderMeetingTranscriptionScreenState
         ),
         showBackButton: true,
         actions: [
-          // Local Microphone Listening Indicator / Toggle
-          IconButton(
-            icon: Icon(
-              _scribeService?.isListening == true
-                  ? Icons.mic_rounded
-                  : Icons.mic_off_rounded,
-              color: _scribeService?.isListening == true
-                  ? Colors.greenAccent
-                  : Colors.grey,
+          // Prominent High-Contrast Microphone / Recording Status Indicator
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: Tooltip(
+              message: isListening
+                  ? 'ALIVE Scribe Recording Active (Tap to Mute Mic)'
+                  : 'ALIVE Scribe Mic Muted (Tap to Record)',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _toggleMicrophone,
+                  borderRadius: BorderRadius.circular(20),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isListening
+                          ? (isDark
+                              ? const Color(0xFF064E3B).withValues(alpha: 0.95)
+                              : const Color(0xFFDCFCE7))
+                          : (isDark
+                              ? const Color(0xFF1E293B).withValues(alpha: 0.9)
+                              : const Color(0xFFF1F5F9)),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isListening
+                            ? (isDark ? const Color(0xFF34D399) : const Color(0xFF16A34A))
+                            : (isDark ? const Color(0xFF64748B) : const Color(0xFFCBD5E1)),
+                        width: 1.5,
+                      ),
+                      boxShadow: isListening
+                          ? [
+                              BoxShadow(
+                                color: (isDark ? const Color(0xFF10B981) : const Color(0xFF16A34A))
+                                    .withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 1),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isListening
+                                ? (isDark ? const Color(0xFF34D399) : const Color(0xFF15803D))
+                                : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          isListening ? Icons.mic_rounded : Icons.mic_off_rounded,
+                          size: 16,
+                          color: isListening
+                              ? (isDark ? const Color(0xFF34D399) : const Color(0xFF15803D))
+                              : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          isListening ? 'REC' : 'MUTED',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.6,
+                            color: isListening
+                                ? (isDark ? const Color(0xFF34D399) : const Color(0xFF15803D))
+                                : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-            tooltip: _scribeService?.isListening == true
-                ? 'Scribe Listening (Tap to Mute)'
-                : 'Scribe Mic Muted (Tap to Listen)',
-            onPressed: _toggleMicrophone,
-          ),
-          IconButton(
-            icon: const Icon(Icons.share_rounded),
-            tooltip: 'Copy or Share Minutes',
-            onPressed: _copyOrShareMinutes,
-          ),
-          IconButton(
-            icon: _isSavingToFileArea
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.cloud_upload_rounded),
-            tooltip: 'Save to Meeting Files',
-            onPressed: _isSavingToFileArea ? null : _saveToMeetingFiles,
           ),
         ],
       ),

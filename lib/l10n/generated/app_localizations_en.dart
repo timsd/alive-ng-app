@@ -1188,4 +1188,65 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get donation_success_message =>
       'Your donation has been processed successfully.';
+
+  @override
+  String get evangelism_tracts => 'Evangelism Tracts';
+
+  @override
+  String get tracts_onboarding_title => 'Evangelism Tracts Ready for Harvest';
+
+  @override
+  String get tracts_onboarding_desc =>
+      'In need of evangelism tracts? Easy to download, print, or share in softcopy with souls everywhere.';
+
+  @override
+  String get gallery_view => 'Gallery View';
+
+  @override
+  String get list_view => 'List View';
+
+  @override
+  String get waiting_room => 'Waiting Room';
+
+  @override
+  String get admit_participant => 'Admit';
+
+  @override
+  String get admit_all => 'Admit All';
+
+  @override
+  String get raise_hand => 'Raise Hand';
+
+  @override
+  String get lower_hand => 'Lower Hand';
+
+  @override
+  String get stage_presentation => 'Stage Presentation';
+
+  @override
+  String get tap_to_direct_chat => 'Tap to message directly';
+
+  @override
+  String get transcript => 'Transcript';
+
+  @override
+  String get show_notes => 'Show Notes';
+
+  @override
+  String get search_transcript => 'Search in transcript...';
+
+  @override
+  String get resume_sync => 'Resume Sync';
+
+  @override
+  String get manage_members => 'Manage Members';
+
+  @override
+  String get add_member => 'Add Member';
+
+  @override
+  String get remove_member => 'Remove Member';
+
+  @override
+  String get search_members_hint => 'Search members...';
 }

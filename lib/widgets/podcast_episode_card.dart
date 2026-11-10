@@ -5,6 +5,7 @@ class PodcastEpisodeCard extends StatelessWidget {
   final String title;
   final String podcastTitle;
   final String duration;
+  final bool isPlaying;
   final VoidCallback? onPlay;
   final VoidCallback? onDownload;
   final VoidCallback? onShare;
@@ -14,6 +15,7 @@ class PodcastEpisodeCard extends StatelessWidget {
     required this.title,
     required this.podcastTitle,
     required this.duration,
+    this.isPlaying = false,
     this.onPlay,
     this.onDownload,
     this.onShare,
@@ -74,7 +76,16 @@ class PodcastEpisodeCard extends StatelessWidget {
             Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.play_arrow),
+                  icon: Icon(
+                    isPlaying
+                        ? Icons.pause_circle_filled_rounded
+                        : Icons.play_circle_fill_rounded,
+                    color: isPlaying
+                        ? Theme.of(context).primaryColor
+                        : Theme.of(context).primaryColor.withValues(alpha: 0.85),
+                    size: ResponsiveUtils.getResponsiveIconSize(context, 26),
+                  ),
+                  tooltip: isPlaying ? 'Pause' : 'Play',
                   onPressed: onPlay,
                 ),
                 IconButton(
