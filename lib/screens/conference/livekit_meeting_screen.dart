@@ -126,7 +126,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
           }
         } else {
           // Main Plenary Room: Automatically resume or start scribe when attendees are present
-          if (!_isScribeRecording && session.participants.length >= 2) {
+          if (!_hasAutoStartedScribe && !_isScribeRecording && session.participants.length >= 2) {
             _hasAutoStartedScribe = true;
             _startScribeRecording(showNotice: true);
           }
@@ -1492,6 +1492,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
           }
         },
         onOpenChat: () => _showInMeetingChatSheet(context, gateway),
+        onOpenBreakoutRooms: () => _showBreakoutRoomsSheet(context, session, gateway, isLeader),
         onToggleHand: () async {
           final newRaised = !session.isHandRaised;
           await gateway.raiseHand(raised: newRaised);

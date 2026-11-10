@@ -442,7 +442,32 @@ class _MeetingGalleryViewState extends State<MeetingGalleryView> {
                               onTap: widget.onOpenChat!,
                             ),
 
-                          // 9. ALIVE Scribe Record Button (Slideable)
+                          // 9. Hand Raise / Lower (Slideable)
+                          _buildControlButton(
+                            icon: Icon(
+                              widget.session.isHandRaised
+                                  ? Icons.pan_tool_rounded
+                                  : Icons.pan_tool_outlined,
+                              color: widget.session.isHandRaised
+                                  ? Colors.black87
+                                  : Colors.white,
+                              size: 22,
+                            ),
+                            label: widget.session.isHandRaised
+                                ? 'Lower Hand'
+                                : 'Raise Hand',
+                            activeColor: widget.session.isHandRaised
+                                ? const Color(0xFFD49B28)
+                                : null,
+                            onTap: () async {
+                              final newRaised = !widget.session.isHandRaised;
+                              await widget.gateway.raiseHand(raised: newRaised);
+                              widget.showMessage(
+                                  newRaised ? 'Hand raised' : 'Hand lowered');
+                            },
+                          ),
+
+                          // 10. ALIVE Scribe Record Button (Slideable)
                           _buildControlButton(
                             icon: Icon(
                               widget.isScribeRecording

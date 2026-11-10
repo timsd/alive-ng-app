@@ -176,7 +176,7 @@ class SSLService {
         'ssl_enabled': isSecure,
         'url': AppwriteBackendConfig.endpoint,
         'message': isSecure
-            ? 'Secure Appwrite connection verified'
+            ? 'Secure server connection verified'
             : 'Appwrite is reachable, but the endpoint is not HTTPS',
         'components': {
           'appwrite_database': true,
@@ -186,12 +186,12 @@ class SSLService {
         'timestamp': DateTime.now().toIso8601String(),
       };
     } catch (e) {
-      _logger.error('Appwrite connection verification failed: $e');
+      _logger.error('Server connection verification failed: $e');
       return {
         'success': false,
         'ssl_enabled': false,
         'url': AppwriteBackendConfig.endpoint,
-        'error': 'Appwrite connection verification failed: $e',
+        'error': 'Server connection verification failed: $e',
         'timestamp': DateTime.now().toIso8601String(),
       };
     }
@@ -213,8 +213,8 @@ class SSLService {
         'success': true,
         'ssl_enabled': isSecure,
         'message': isSecure
-            ? 'Secure Appwrite connection verified'
-            : 'Appwrite connection verified over non-HTTPS endpoint',
+            ? 'Secure server connection verified'
+            : 'Server connection verified over non-HTTPS endpoint',
         'latency_ms': duration,
         'result_count': response.total,
         'timestamp': DateTime.now().toIso8601String(),
@@ -224,7 +224,7 @@ class SSLService {
       return {
         'success': false,
         'ssl_enabled': false,
-        'message': 'Appwrite connection test failed',
+        'message': 'Server connection test failed',
         'error': e.toString(),
         'timestamp': DateTime.now().toIso8601String(),
       };

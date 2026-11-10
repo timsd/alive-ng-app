@@ -446,7 +446,7 @@ class TractService {
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Error syncing with Appwrite', e);
-      throw DatabaseException('Failed to sync with Appwrite', originalError: e);
+      throw DatabaseException('Failed to sync with the cloud', originalError: e);
     }
   }
 

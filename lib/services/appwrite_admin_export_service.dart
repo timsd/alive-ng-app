@@ -60,7 +60,7 @@ class AppwriteAdminExportService {
         ? collections!
         : const ['profiles', 'prayer_requests', 'chapters'];
     final normalizedFormat = _normalizeFormat(format);
-    final prefix = _exportPrefix('appwrite-backup');
+    final prefix = _exportPrefix('alive-data-backup');
     final files = <String, Map<String, dynamic>>{};
 
     try {
@@ -76,7 +76,7 @@ class AppwriteAdminExportService {
                 {
                   'collection': collectionName,
                   'skipped': true,
-                  'reason': 'No Appwrite collection is configured',
+                  'reason': 'No data source is configured',
                 }
               ],
               normalizedFormat,
@@ -230,7 +230,7 @@ class AppwriteAdminExportService {
     DateTime? endDate,
     String? status,
   }) async {
-    final prefix = _exportPrefix('appwrite-donations-report');
+    final prefix = _exportPrefix('alive-donations-report');
     final normalizedFormat = _normalizeFormat(format);
 
     try {
@@ -387,7 +387,7 @@ class AppwriteAdminExportService {
     String type = 'messaging',
     Map<String, dynamic>? filter,
   }) async {
-    final prefix = _exportPrefix('appwrite-chat-backup');
+    final prefix = _exportPrefix('alive-chat-backup');
 
     try {
       final channels = await _listChatChannels(type: type, filter: filter);
@@ -419,7 +419,7 @@ class AppwriteAdminExportService {
     Map<String, dynamic>? filter,
     int limitPerChannel = 500,
   }) async {
-    final prefix = _exportPrefix('appwrite-chat-messages');
+    final prefix = _exportPrefix('alive-chat-messages');
 
     try {
       final channels = await _listChatChannels(type: type, filter: filter);

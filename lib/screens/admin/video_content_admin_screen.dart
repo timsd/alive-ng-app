@@ -372,7 +372,7 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
                       const LinearProgressIndicator(),
                       const SizedBox(height: 4),
                       const Text(
-                        'Uploading media to Appwrite storage...',
+                        'Uploading media to secure cloud storage...',
                         style: TextStyle(fontSize: 12, color: Colors.blue),
                       ),
                     ],

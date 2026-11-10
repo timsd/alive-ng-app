@@ -19,6 +19,7 @@ class MeetingControlBar extends StatefulWidget {
   final VoidCallback onToggleHand;
   final bool isGalleryView;
   final VoidCallback? onToggleViewMode;
+  final VoidCallback? onOpenBreakoutRooms;
   final bool isScribeRecording;
   final VoidCallback? onToggleScribe;
   final VoidCallback onOpenMore;
@@ -35,6 +36,7 @@ class MeetingControlBar extends StatefulWidget {
     required this.unreadChatCount,
     this.isGalleryView = false,
     this.onToggleViewMode,
+    this.onOpenBreakoutRooms,
     this.isScribeRecording = false,
     this.onToggleScribe,
     required this.onToggleAudio,
@@ -53,7 +55,7 @@ class MeetingControlBar extends StatefulWidget {
 class _MeetingControlBarState extends State<MeetingControlBar> {
   final ScrollController _scrollController = ScrollController();
   bool _canScrollLeft = false;
-  bool _canScrollRight = false;
+  bool _canScrollRight = true;
 
   @override
   void initState() {
@@ -113,20 +115,31 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: isDestructive
-                      ? Colors.red.shade700
-                      : (activeColor ?? (isDark ? const Color(0xFF263245) : Colors.grey.shade200)),
+                      ? Colors.red.shade900
+                      : (activeColor ??
+                          (isDark
+                              ? const Color(0xFF1E293B)
+                              : Colors.grey.shade200)),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    if (activeColor != null || isDestructive)
+                      BoxShadow(
+                        color: (activeColor ?? Colors.red).withValues(alpha: 0.35),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                  ],
                 ),
                 child: Center(child: icon),
               ),
@@ -134,7 +147,7 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: isDestructive
                       ? Colors.red.shade400
@@ -190,41 +203,32 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Mic
+                      // 1. Mic (Primary Visible)
                       _buildButton(
                         context: context,
                         icon: Icon(
                           widget.isAudioMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                          color: widget.isAudioMuted ? Colors.white : (isDark ? Colors.white : Colors.black87),
+                          color: Colors.white,
                           size: 22,
                         ),
                         label: !widget.isLeader && widget.session.isRoomAudioLocked && widget.isAudioMuted
                             ? 'Locked'
                             : (widget.isAudioMuted ? 'Unmute' : 'Mute'),
-                        activeColor: widget.isAudioMuted ? Colors.red.shade700 : null,
+                        activeColor: widget.isAudioMuted
+                            ? Colors.red.shade700
+                            : Colors.green.shade700,
                         onTap: widget.onToggleAudio,
                       ),
 
-                      // Video
-                      _buildButton(
-                        context: context,
-                        icon: Icon(
-                          widget.isVideoMuted ? Icons.videocam_off_rounded : Icons.videocam_rounded,
-                          color: widget.isVideoMuted ? Colors.white : (isDark ? Colors.white : Colors.black87),
-                          size: 22,
-                        ),
-                        label: widget.isVideoMuted ? 'Camera Off' : 'Camera On',
-                        activeColor: widget.isVideoMuted ? Colors.red.shade700 : null,
-                        onTap: widget.onToggleVideo,
-                      ),
-
-                      // Screen share
+                      // 2. Screen Share (Primary Visible)
                       if (widget.canShareScreen)
                         _buildButton(
                           context: context,
                           icon: Icon(
-                            widget.session.isScreenShareEnabled ? Icons.stop_screen_share_rounded : Icons.screen_share_rounded,
-                            color: widget.session.isScreenShareEnabled ? Colors.white : (isDark ? Colors.white : Colors.black87),
+                            widget.session.isScreenShareEnabled
+                                ? Icons.stop_screen_share_rounded
+                                : Icons.screen_share_rounded,
+                            color: Colors.white,
                             size: 22,
                           ),
                           label: widget.session.isScreenShareEnabled ? 'Stop Share' : 'Share',
@@ -232,7 +236,76 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                           onTap: widget.onToggleScreenShare,
                         ),
 
-                      // Chat
+                      // 3. More (•••) (Primary Visible)
+                      _buildButton(
+                        context: context,
+                        icon: Icon(
+                          Icons.more_horiz_rounded,
+                          color: isDark ? Colors.white : Colors.black87,
+                          size: 24,
+                        ),
+                        label: 'More',
+                        onTap: widget.onOpenMore,
+                      ),
+
+                      // 4. Leave / End (Primary Visible)
+                      _buildButton(
+                        context: context,
+                        icon: const Icon(
+                          Icons.call_end_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                        label: widget.isLeader ? 'Leave / End' : 'Leave',
+                        isDestructive: true,
+                        onTap: widget.onLeaveOrEnd,
+                      ),
+
+                      // 5. Camera (Slideable)
+                      _buildButton(
+                        context: context,
+                        icon: Icon(
+                          widget.isVideoMuted ? Icons.videocam_off_rounded : Icons.videocam_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                        label: widget.isVideoMuted ? 'Camera Off' : 'Camera On',
+                        activeColor: widget.isVideoMuted
+                            ? Colors.red.shade700
+                            : const Color(0xFF2563EB),
+                        onTap: widget.onToggleVideo,
+                      ),
+
+                      // 6. View Mode Toggle (Gallery vs List View) (Slideable)
+                      if (widget.onToggleViewMode != null)
+                        _buildButton(
+                          context: context,
+                          icon: Icon(
+                            widget.isGalleryView
+                                ? Icons.view_list_rounded
+                                : Icons.grid_view_rounded,
+                            color: isDark ? Colors.white : Colors.black87,
+                            size: 22,
+                          ),
+                          label: widget.isGalleryView ? 'List View' : 'Gallery',
+                          onTap: widget.onToggleViewMode!,
+                        ),
+
+                      // 7. Breakout Rooms (Slideable)
+                      if (widget.isLeader || widget.session.isBreakoutActive)
+                        _buildButton(
+                          context: context,
+                          icon: const Icon(
+                            Icons.workspaces_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          label: 'Breakout',
+                          activeColor: widget.session.isBreakoutActive ? Colors.teal.shade700 : null,
+                          onTap: widget.onOpenBreakoutRooms ?? () {},
+                        ),
+
+                      // 8. Chat (Slideable)
                       _buildButton(
                         context: context,
                         icon: Badge(
@@ -248,7 +321,7 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                         onTap: widget.onOpenChat,
                       ),
 
-                      // Hand
+                      // 9. Hand (Slideable)
                       _buildButton(
                         context: context,
                         icon: Icon(
@@ -261,7 +334,7 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                         onTap: widget.onToggleHand,
                       ),
 
-                      // ALIVE Scribe Record / Notes Button
+                      // 10. ALIVE Scribe Record / Notes Button (Slideable)
                       _buildButton(
                         context: context,
                         icon: Icon(
@@ -277,46 +350,6 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                         activeColor: widget.isScribeRecording ? Colors.red.shade700 : null,
                         onTap: widget.onToggleScribe ?? () {},
                       ),
-
-                      // View Mode Toggle (Gallery vs List View)
-                      if (widget.onToggleViewMode != null)
-                        _buildButton(
-                          context: context,
-                          icon: Icon(
-                            widget.isGalleryView
-                                ? Icons.view_list_rounded
-                                : Icons.grid_view_rounded,
-                            color: isDark ? Colors.white : Colors.black87,
-                            size: 22,
-                          ),
-                          label: widget.isGalleryView ? 'List View' : 'Gallery',
-                          onTap: widget.onToggleViewMode!,
-                        ),
-
-                      // More (•••)
-                      _buildButton(
-                        context: context,
-                        icon: Icon(
-                          Icons.more_horiz_rounded,
-                          color: isDark ? Colors.white : Colors.black87,
-                          size: 24,
-                        ),
-                        label: 'More',
-                        onTap: widget.onOpenMore,
-                      ),
-
-                      // Leave / End
-                      _buildButton(
-                        context: context,
-                        icon: const Icon(
-                          Icons.call_end_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                        label: widget.isLeader ? 'Leave / End' : 'Leave',
-                        isDestructive: true,
-                        onTap: widget.onLeaveOrEnd,
-                      ),
                     ],
                   ),
                 ),
@@ -330,63 +363,56 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                       child: GestureDetector(
                         onTap: () => _scrollBy(-140),
                         child: Container(
-                          width: 26,
-                          height: 38,
+                          width: 28,
+                          height: 28,
                           decoration: BoxDecoration(
-                            color: (isDark ? const Color(0xFF1E293B) : Colors.white).withValues(alpha: 0.95),
-                            borderRadius: BorderRadius.circular(14),
+                            color: (isDark ? Colors.black : const Color(0xFF1E293B)).withValues(alpha: 0.85),
+                            shape: BoxShape.circle,
                             border: Border.all(
-                              color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-                              width: 1.5,
+                              color: Colors.white24,
+                              width: 1,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 4,
-                                offset: const Offset(1, 1),
-                              ),
-                            ],
                           ),
-                          child: Icon(
+                          child: const Icon(
                             Icons.chevron_left_rounded,
                             size: 20,
-                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                            color: Colors.white,
                           ),
                         ),
                       ),
                     ),
                   ),
 
-                // Right Scroll Affordance Arrow (Visual sign where user circled blue dot!)
+                // Right Scroll Affordance Arrow (With Blue Dot / Ring indicator matching user requirement)
                 if (_canScrollRight)
                   Positioned(
                     right: 4,
                     child: Tooltip(
-                      message: 'Slide right for More tools & Leave',
+                      message: 'Slide right to see more options',
                       child: GestureDetector(
                         onTap: () => _scrollBy(140),
                         child: Container(
-                          width: 26,
-                          height: 38,
+                          width: 28,
+                          height: 28,
                           decoration: BoxDecoration(
-                            color: (isDark ? const Color(0xFF1E293B) : Colors.white).withValues(alpha: 0.95),
-                            borderRadius: BorderRadius.circular(14),
+                            color: (isDark ? Colors.black : const Color(0xFF1E293B)).withValues(alpha: 0.85),
+                            shape: BoxShape.circle,
                             border: Border.all(
-                              color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                              color: const Color(0xFF38BDF8),
                               width: 1.5,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 4,
-                                offset: const Offset(-1, 1),
+                                color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+                                blurRadius: 6,
+                                spreadRadius: 1,
                               ),
                             ],
                           ),
-                          child: Icon(
+                          child: const Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
-                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                            color: Color(0xFF38BDF8),
                           ),
                         ),
                       ),

@@ -9,6 +9,7 @@ import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/loading_widget.dart';
+import '../../utils/app_exception.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'leader_meeting_transcription_screen.dart';
@@ -609,15 +610,16 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
 
   Future<void> _deleteFile(MeetingFile file) async {
     try {
-      // Delete from Appwrite Storage and database.
+      // Delete from cloud storage, database and offline cache.
       await _meetingFileService.deleteMeetingFile(file.id, file.filePath);
 
       if (mounted) {
         ToastUtils.showSuccess('File deleted successfully');
+        await _loadFiles();
       }
     } catch (e) {
       if (mounted) {
-        ToastUtils.showError('Error deleting file: $e');
+        ToastUtils.showError(e is AppException ? e.message : 'Could not delete this file. Please try again.');
       }
     }
   }

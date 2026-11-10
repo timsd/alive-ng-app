@@ -54,15 +54,23 @@ class AppwriteMeetingFileService {
       }
     }
 
-    // Merge with local offline meeting files
+    // Merge with local offline meeting files (dedupe by row id, storage
+    // file path and file name so a cloud-synced copy is never listed twice).
     final localFiles = await _getLocalMeetingFiles();
-    final seenIds = results.map((f) => f['id'] ?? f['file_name']).toSet();
-    for (final local in localFiles) {
-      final id = local['id'] ?? local['file_name'];
-      if (!seenIds.contains(id)) {
-        results.add(local);
-        seenIds.add(id);
+    final seenKeys = <String>{};
+    for (final f in results) {
+      for (final k in [f['id'], f['file_path'], f['file_name']]) {
+        if (k != null && k.toString().isNotEmpty) seenKeys.add(k.toString());
       }
+    }
+    for (final local in localFiles) {
+      final keys = [local['id'], local['file_path'], local['file_name']]
+          .where((k) => k != null && k.toString().isNotEmpty)
+          .map((k) => k.toString())
+          .toList();
+      if (keys.any(seenKeys.contains)) continue;
+      results.add({...local, 'is_local_only': true});
+      seenKeys.addAll(keys);
     }
 
     results.sort((a, b) {
@@ -87,6 +95,43 @@ class AppwriteMeetingFileService {
       _logger.warning('Failed to read local meeting files: $e');
     }
     return [];
+  }
+
+  Future<void> _removeLocalMeetingFile({
+    required String documentId,
+    required String filePath,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final current = await _getLocalMeetingFiles();
+      final before = current.length;
+      current.removeWhere((f) {
+        final id = f['id']?.toString() ?? '';
+        final path = f['file_path']?.toString() ?? '';
+        final name = f['file_name']?.toString() ?? '';
+        return (documentId.isNotEmpty &&
+                (id == documentId || path == documentId || name == documentId)) ||
+            (filePath.isNotEmpty && (path == filePath || id == filePath));
+      });
+      if (current.length != before) {
+        await prefs.setString(_localMeetingFilesKey, jsonEncode(current));
+      }
+    } catch (e) {
+      _logger.warning('Failed to remove local meeting file: $e');
+    }
+  }
+
+  List<String> _ownerPermissions(String uploaderId) {
+    final perms = <String>[Permission.read(Role.any())];
+    final looksReal = uploaderId.isNotEmpty &&
+        uploaderId != 'alive-scribe' &&
+        !uploaderId.startsWith('user_') &&
+        !uploaderId.startsWith('leader_');
+    if (looksReal) {
+      perms.add(Permission.update(Role.user(uploaderId)));
+      perms.add(Permission.delete(Role.user(uploaderId)));
+    }
+    return perms;
   }
 
   Future<void> _saveLocalMeetingFile(Map<String, dynamic> fileData) async {
@@ -135,9 +180,7 @@ class AppwriteMeetingFileService {
             filename: '${timestamp}_$fileName',
             contentType: 'text/markdown',
           ),
-          permissions: [
-            Permission.read(Role.any()),
-          ],
+          permissions: _ownerPermissions(uploaderId),
         );
         storageSucceeded = true;
       } catch (storageErr) {
@@ -162,9 +205,7 @@ class AppwriteMeetingFileService {
               filename: '${timestamp}_$fileName',
               contentType: 'text/markdown',
             ),
-            permissions: [
-              Permission.read(Role.any()),
-            ],
+            permissions: _ownerPermissions(uploaderId),
           );
           storageSucceeded = true;
         } catch (secondaryErr) {
@@ -246,30 +287,81 @@ class AppwriteMeetingFileService {
   }
 
   Future<void> deleteMeetingFile(String documentId, String filePath) async {
-    try {
-      if (filePath.isNotEmpty &&
-          !filePath.startsWith('http://') &&
-          !filePath.startsWith('https://')) {
+    // 1. Best-effort removal of the stored binary (tries both buckets).
+    //    Missing files (404) or legacy read-only files (401) must not block
+    //    removing the listing itself.
+    if (filePath.isNotEmpty &&
+        !filePath.startsWith('http://') &&
+        !filePath.startsWith('https://')) {
+      for (final bucketId in [
+        AppwriteBackendConfig.meetingFilesBucketId,
+        AppwriteBackendConfig.contentMediaBucketId,
+      ]) {
         try {
-          await _storage.deleteFile(
-            bucketId: AppwriteBackendConfig.meetingFilesBucketId,
-            fileId: filePath,
-          );
+          await _storage.deleteFile(bucketId: bucketId, fileId: filePath);
+          break;
         } on AppwriteException catch (e) {
-          if (e.code != 404) rethrow;
+          if (e.code == 404) continue;
+          _logger.warning('Storage delete note ($bucketId): ${e.code} ${e.message}');
+          break;
+        } catch (e) {
+          _logger.warning('Storage delete note ($bucketId): $e');
+          break;
         }
       }
+    }
 
-      await _tables.deleteRow(
-        databaseId: AppwriteBackendConfig.databaseId,
-        tableId: AppwriteBackendConfig.meetingFilesCollectionId,
-        rowId: documentId,
-      );
+    // 2. Always clear the offline cache copy so it never reappears.
+    await _removeLocalMeetingFile(documentId: documentId, filePath: filePath);
+
+    // 3. Remove the database record. The listing id may be a real row id
+    //    (cloud) or a storage file id (offline-cached auto-saved minutes),
+    //    so fall back to locating the row by file_path.
+    Object? lastError;
+    final candidateRowIds = <String>{};
+    if (documentId.isNotEmpty) candidateRowIds.add(documentId);
+    try {
+      if (filePath.isNotEmpty) {
+        final match = await _tables.listRows(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.meetingFilesCollectionId,
+          queries: [Query.equal('file_path', filePath), Query.limit(5)],
+        );
+        candidateRowIds.addAll(match.rows.map((r) => r.$id));
+      }
     } catch (e) {
-      _logger.error('Error deleting meeting file', e);
+      _logger.warning('Lookup by file_path note: $e');
+    }
+
+    var deletedAny = false;
+    var allMissing = true;
+    for (final rowId in candidateRowIds) {
+      try {
+        await _tables.deleteRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.meetingFilesCollectionId,
+          rowId: rowId,
+        );
+        deletedAny = true;
+        allMissing = false;
+      } on AppwriteException catch (e) {
+        if (e.code == 404) continue; // not a row id (e.g. storage id)
+        allMissing = false;
+        lastError = e;
+      } catch (e) {
+        allMissing = false;
+        lastError = e;
+      }
+    }
+
+    if (!deletedAny && !allMissing && lastError != null) {
+      _logger.error('Error deleting meeting file', lastError);
+      final code = lastError is AppwriteException ? lastError.code : null;
       throw DatabaseException(
-        'Failed to delete meeting file',
-        originalError: e,
+        code == 401
+            ? 'You do not have permission to delete this file'
+            : 'Could not delete this file. Please try again.',
+        originalError: lastError,
       );
     }
   }
