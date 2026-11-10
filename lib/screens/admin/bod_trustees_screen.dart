@@ -15,6 +15,7 @@ import 'board_documents_screen.dart';
 import '../conference/livekit_meeting_screen.dart';
 import '../../config/meeting_links_config.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/custom_image.dart';
 
 class BodTrusteesScreen extends StatefulWidget {
   const BodTrusteesScreen({super.key});

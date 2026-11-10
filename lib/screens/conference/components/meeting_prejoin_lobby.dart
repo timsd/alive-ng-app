@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/chapter_constants.dart';
+import '../../../constants/chapters.dart';
 
 /// Pre-join lobby form for configuring meeting room settings before joining.
 class MeetingPrejoinLobby extends StatelessWidget {

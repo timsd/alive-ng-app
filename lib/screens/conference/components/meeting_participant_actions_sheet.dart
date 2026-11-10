@@ -256,7 +256,8 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
               ),
             ],
           ],
-        ),
+        ],
+      ),
       ),
     );
   }

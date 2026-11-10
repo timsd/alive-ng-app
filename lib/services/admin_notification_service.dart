@@ -5,6 +5,7 @@ import 'appwrite_admin_notification_store.dart';
 import 'approval_link_service.dart';
 import 'email_service.dart';
 import 'notification_service.dart';
+import '../config/appwrite_backend_config.dart';
 
 /// Service for sending admin notifications for new user registrations
 class AdminNotificationService {

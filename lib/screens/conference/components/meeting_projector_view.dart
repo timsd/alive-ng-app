@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/error_handler.dart';
+import '../../../utils/error_handler.dart';
 import '../../../models/meeting_models.dart';
 import '../../../services/ports/meeting_gateway.dart';
 import 'meeting_stage_view.dart';

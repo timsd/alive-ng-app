@@ -19,6 +19,7 @@ import 'admin_chapters_screen.dart';
 import 'chapter_reports_screen.dart';
 import 'app_settings_screen.dart';
 import '../../models/podcast_models.dart';
+import '../../models/app_models.dart';
 import 'storage_admin_screen.dart';
 import 'ssl_status_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
@@ -66,7 +67,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   UserProfile? _adminProfile;
 
   String get _adminDisplayName {
-    final profileName = _adminProfile?.name?.trim();
+    final profileName = _adminProfile?.fullName?.trim();
     if (profileName != null && profileName.isNotEmpty) {
       return profileName;
     }

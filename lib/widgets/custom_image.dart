@@ -8,6 +8,7 @@ class CustomImage extends StatelessWidget {
   final double? height;
   final BoxFit fit;
   final Widget? placeholder;
+  final Widget? errorWidget;
   final BorderRadius? borderRadius;
   final Color? backgroundColor;
 
@@ -18,6 +19,7 @@ class CustomImage extends StatelessWidget {
     this.height,
     this.fit = BoxFit.cover,
     this.placeholder,
+    this.errorWidget,
     this.borderRadius,
     this.backgroundColor,
   });
@@ -50,7 +52,7 @@ class CustomImage extends StatelessWidget {
           gaplessPlayback: true,
           webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
           errorBuilder: (context, error, stackTrace) {
-            return _buildPlaceholder(theme);
+            return errorWidget ?? _buildPlaceholder(theme);
           },
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
@@ -67,7 +69,7 @@ class CustomImage extends StatelessWidget {
           fadeInDuration: const Duration(milliseconds: 120),
           fadeOutDuration: Duration.zero,
           errorWidget: (context, url, error) {
-            return _buildPlaceholder(theme);
+            return errorWidget ?? _buildPlaceholder(theme);
           },
           placeholder: (context, url) {
             return placeholder ?? _buildLoadingWidget(theme);
@@ -75,7 +77,7 @@ class CustomImage extends StatelessWidget {
         );
       }
     } else {
-      imageWidget = _buildPlaceholder(theme);
+      imageWidget = errorWidget ?? _buildPlaceholder(theme);
     }
 
     if (borderRadius != null) {
