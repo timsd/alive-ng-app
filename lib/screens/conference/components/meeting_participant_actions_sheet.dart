@@ -57,13 +57,20 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final isHost = gateway.isParticipantHost(participant.identity);
     final isCoHost = gateway.isParticipantCoHost(participant.identity);
+    final subtitleStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+      fontSize: 12,
+      height: 1.3,
+    );
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+    return ListTileTheme(
+      data: ListTileThemeData(subtitleTextStyle: subtitleStyle),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -259,6 +266,7 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
         ],
       ),
       ),
+    ),
     );
   }
 

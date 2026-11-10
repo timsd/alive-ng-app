@@ -270,7 +270,7 @@ class MeetingSession {
     this.roomName = '',
     this.status = RoomStatus.disconnected,
     this.isAudioMuted = true,
-    this.isVideoMuted = false,
+    this.isVideoMuted = true,
     this.participants = const [],
     this.isRoomAudioLocked = false,
     this.isMuteOnEntry = true,

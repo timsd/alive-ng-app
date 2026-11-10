@@ -40,7 +40,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   lk.EventsListener<lk.RoomEvent>? _roomListener;
 
   bool _isAudioMuted = true; // "Mute on Entry by Default"
-  bool _isVideoMuted = false;
+  bool _isVideoMuted = true; // "Video off on Entry by Default"
   bool _isScreenShareEnabled = false;
   bool _isScreenSharePermitted = false;
   final Set<String> _screenSharePermittedIdentities = {};
@@ -1078,21 +1078,15 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _isAudioMuted = true;
       }
 
-      // Enable camera only if participant is already admitted to the call
-      if (_isAdmitted) {
-        try {
-          await _room!.localParticipant?.setCameraEnabled(true);
-          _isVideoMuted = false;
-        } catch (videoErr) {
-          debugPrint('Camera unavailable or permission denied: $videoErr');
-          _isVideoMuted = true;
-        }
-      } else {
-        try {
-          await _room!.localParticipant?.setCameraEnabled(false);
-        } catch (_) {}
-        _isVideoMuted = true;
+      // ── VIDEO OFF ON ENTRY BY DEFAULT ──
+      // Camera is initialized in disabled mode (cameraTrack.enabled = false)
+      // to ensure a private entry until user explicitly activates it.
+      try {
+        await _room!.localParticipant?.setCameraEnabled(false);
+      } catch (videoErr) {
+        debugPrint('[LiveKitMeetingGateway] Camera prime note: $videoErr');
       }
+      _isVideoMuted = true;
 
       final finalRoomName = (room.name != null && room.name!.isNotEmpty)
           ? room.name!
@@ -1890,7 +1884,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     } finally {
       _room = null;
       _isAudioMuted = true;
-      _isVideoMuted = false;
+      _isVideoMuted = true;
       _isScreenShareEnabled = false;
       _isScreenSharePermitted = false;
       _screenSharePermittedIdentities.clear();
