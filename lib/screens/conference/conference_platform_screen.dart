@@ -70,33 +70,6 @@ class ConferencePlatformScreen extends StatelessWidget {
                 context.push(AppConstants.scribeRoute);
               },
             ),
-            const SizedBox(height: 16),
-            Card(
-              elevation: 0,
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-                ),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(14),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline, size: 20),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'ALIVE Scribe captures speech-to-text meeting minutes, action items, and executive summaries. It operates both during live calls and as a standalone scribe.',
-                        style: TextStyle(fontSize: 12.5, height: 1.35),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),

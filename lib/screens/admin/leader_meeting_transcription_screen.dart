@@ -123,13 +123,13 @@ class _LeaderMeetingTranscriptionScreenState
 
   static const List<Color> _avatarColors = [
     Color(0xFF1B365D), // Host Navy
-    Color(0xFF00897B), // Teal
-    Color(0xFFE65100), // Amber
-    Color(0xFF6A1B9A), // Purple
-    Color(0xFFC2185B), // Pink
-    Color(0xFF2E7D32), // Forest Green
-    Color(0xFF0277BD), // Blue
-    Color(0xFFD84315), // Deep Orange
+    Color(0xFF0D9488), // Teal
+    Color(0xFF2563EB), // Blue
+    Color(0xFF7C3AED), // Violet
+    Color(0xFF059669), // Emerald
+    Color(0xFFD97706), // Warm Amber
+    Color(0xFF0891B2), // Cyan
+    Color(0xFF4F46E5), // Indigo
   ];
 
   @override
@@ -603,9 +603,10 @@ class _LeaderMeetingTranscriptionScreenState
                     Text(
                       'Attendees ($totalAttendeesCount):',
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.outline,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                        letterSpacing: 0.1,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -692,10 +693,12 @@ class _LeaderMeetingTranscriptionScreenState
           // ──────────────────────────────────────────────────────────
           TabBar(
             controller: _tabController,
-            labelColor: theme.colorScheme.primary,
-            unselectedLabelColor: theme.colorScheme.outline,
-            indicatorColor: theme.colorScheme.primary,
+            labelColor: isDark ? const Color(0xFF60A5FA) : theme.colorScheme.primary,
+            unselectedLabelColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+            indicatorColor: isDark ? const Color(0xFF60A5FA) : theme.colorScheme.primary,
             indicatorWeight: 3,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
             tabs: [
               Tab(
                 child: Row(
@@ -949,16 +952,6 @@ class _LeaderMeetingTranscriptionScreenState
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                   color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'As participants state agreements ("we agreed to...", "it is resolved that...") or commitments ("I will...", "Bro. Samuel to follow up..."), ALIVE Scribe will extract them here with exact verbatim citations.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                  fontSize: 13,
-                  height: 1.45,
                 ),
               ),
             ],
