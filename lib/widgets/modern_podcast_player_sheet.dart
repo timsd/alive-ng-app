@@ -1182,7 +1182,6 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                   },
                   child: ListView.separated(
                     controller: _transcriptScrollController,
-                    cacheExtent: 3000.0,
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {

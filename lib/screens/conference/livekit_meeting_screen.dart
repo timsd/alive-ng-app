@@ -119,15 +119,17 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       if (!mounted) return;
       if (session.isConnected) {
         _ensureScribeInitialized(gateway);
-        // Requirement: "once a meeting is open and we have two member inside/on the call, the alive scribe can start taking the note via the live transcript as we have set it up capturing from each speakers end"
-        if (!_hasAutoStartedScribe && session.participants.length >= 2) {
-          _hasAutoStartedScribe = true;
-          _startScribeRecording(showNotice: true);
-        }
-      } else if (session.status == RoomStatus.disconnected) {
-        _hasAutoStartedScribe = false;
-        if (_isScribeRecording) {
-          _stopScribeRecording();
+        if (session.isInBreakoutRoom) {
+          // Breakout Sub-room: Pause plenary recording to keep private group chats separate
+          if (_isScribeRecording) {
+            _stopScribeRecording(isRemoteTrigger: true);
+          }
+        } else {
+          // Main Plenary Room: Automatically resume or start scribe when attendees are present
+          if (!_isScribeRecording && session.participants.length >= 2) {
+            _hasAutoStartedScribe = true;
+            _startScribeRecording(showNotice: true);
+          }
         }
       }
     });
