@@ -239,6 +239,9 @@ class AliveScribeService {
             _restartListening();
           }
         },
+        options: [
+          stt.SpeechToText.webDoNotAggregate,
+        ],
       );
 
       // Resolve the best available STT locale from the fallback chain (matching Bible Game accuracy: en-NG → en-GB → en-US)
@@ -367,28 +370,144 @@ class AliveScribeService {
   }
 
   // ──────────────────────────────────────────────────────────
-  //  Pass 1: Disfluency & Filler Stripping
+  //  Pass 1: Disfluency & Filler Stripping & Intelligent Deduplication
   // ──────────────────────────────────────────────────────────
   static String cleanDisfluencies(String input) {
     if (input.trim().isEmpty) return '';
 
-    // Only clean pure speech hesitation noises (um, uh, er, ah, hmm), preserving all actual vocabulary
+    // Step 1: Collapse progressive prefix accumulations and repeated phrases
+    var cleaned = collapseCumulativePrefixes(input);
+
+    // Step 2: Clean pure speech hesitation noises (um, uh, er, ah, hmm), preserving all actual vocabulary
     final fillerRegex = RegExp(
       r'\b(um|uh|er|ah|hmm|erm)\b',
       caseSensitive: false,
     );
 
-    var cleaned = input.replaceAll(fillerRegex, ' ');
+    cleaned = cleaned.replaceAll(fillerRegex, ' ');
 
-    // Collapse multiple spaces
+    // Step 3: Collapse multiple spaces
     cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
 
-    // Capitalize first character
+    // Step 4: Capitalize first character
     if (cleaned.isNotEmpty) {
       cleaned = cleaned[0].toUpperCase() + cleaned.substring(1);
     }
 
     return cleaned;
+  }
+
+  /// Collapses progressive prefix accumulations caused by Web Speech API
+  /// (e.g. "Mymy namemy name is... my name is Timothy Olo today" -> "My name is Timothy Olodude",
+  ///  or "Soso byso by the... so by the end of today's meeting" -> "So by the end of today's meeting").
+  static String collapseCumulativePrefixes(String text) {
+    var s = text.trim();
+    if (s.length < 4) return s;
+
+    // First check if the text contains repeating prefix accumulations of its trailing sentence.
+    final words = s.split(RegExp(r'\s+'));
+    if (words.length <= 1) {
+      // Handle glued single words like "Mymy" or "Soso"
+      final half = s.length ~/ 2;
+      if (half >= 2 && s.substring(0, half).toLowerCase() == s.substring(half).toLowerCase()) {
+        return s.substring(half);
+      }
+      return s;
+    }
+
+    // Try finding the longest plausible final utterance suffix S
+    // Starting with candidate lengths from words.length down to 2 words
+    for (int wordCount = words.length; wordCount >= 2; wordCount--) {
+      final candidateWords = words.sublist(words.length - wordCount);
+      final candidate = candidateWords.join(' ');
+
+      final candidateIndex = s.lastIndexOf(candidate);
+      if (candidateIndex <= 0) continue;
+
+      final prefixPart = s.substring(0, candidateIndex).trim();
+      if (_isComposedOfPrefixes(prefixPart, candidate)) {
+        return _collapseAdjacentRepeats(candidate);
+      }
+    }
+
+    // Also collapse adjacent repeating phrases and duplicate words
+    return _collapseAdjacentRepeats(s);
+  }
+
+  static bool _isComposedOfPrefixes(String prefixPart, String candidate) {
+    if (prefixPart.isEmpty) return true;
+    final lowerCandidate = candidate.toLowerCase();
+    var rem = prefixPart.trim();
+
+    int iterations = 0;
+    while (rem.isNotEmpty && iterations < 60) {
+      iterations++;
+      rem = rem.trimLeft();
+      final lowerRem = rem.toLowerCase();
+
+      int matchLen = 0;
+      for (int len = lowerCandidate.length; len >= 2; len--) {
+        final sub = lowerCandidate.substring(0, len);
+        if (lowerRem.startsWith(sub)) {
+          matchLen = len;
+          break;
+        }
+      }
+
+      if (matchLen == 0) {
+        return false;
+      }
+
+      rem = rem.substring(matchLen);
+    }
+
+    return rem.isEmpty;
+  }
+
+  static String _collapseAdjacentRepeats(String text) {
+    final words = text.split(RegExp(r'\s+'));
+    if (words.length <= 1) return text;
+
+    final cleanedWords = <String>[];
+    for (int i = 0; i < words.length; i++) {
+      final current = words[i];
+      if (cleanedWords.isNotEmpty) {
+        final prev = cleanedWords.last.replaceAll(RegExp(r'[^\w]'), '').toLowerCase();
+        final curr = current.replaceAll(RegExp(r'[^\w]'), '').toLowerCase();
+        if (prev.isNotEmpty && prev == curr) {
+          continue; // skip immediate duplicate word
+        }
+      }
+      cleanedWords.add(current);
+    }
+
+    var result = cleanedWords.join(' ');
+
+    // Collapse adjacent repeated phrases (from 6 words down to 2 words)
+    // e.g. "so by the end of today's meeting so by the end of today's meeting" -> "so by the end of today's meeting"
+    for (int phraseLen = 6; phraseLen >= 2; phraseLen--) {
+      final pWords = result.split(RegExp(r'\s+'));
+      if (pWords.length < phraseLen * 2) continue;
+
+      final newWords = <String>[];
+      int i = 0;
+      while (i < pWords.length) {
+        if (i + phraseLen * 2 <= pWords.length) {
+          final phrase1 = pWords.sublist(i, i + phraseLen).join(' ').toLowerCase();
+          final phrase2 = pWords.sublist(i + phraseLen, i + phraseLen * 2).join(' ').toLowerCase();
+          if (phrase1 == phrase2) {
+            newWords.addAll(pWords.sublist(i, i + phraseLen));
+            i += phraseLen * 2;
+            continue;
+          }
+        }
+        newWords.add(pWords[i]);
+        i++;
+      }
+      result = newWords.join(' ');
+    }
+
+    return result;
   }
 
   // ──────────────────────────────────────────────────────────
@@ -402,7 +521,30 @@ class AliveScribeService {
       final last = _transcript.last;
       final diff = packet.timestamp.difference(last.timestamp).inMilliseconds;
       if (last.speakerId == packet.speakerId && diff < 3500) {
-        final combinedText = '${last.text}. ${packet.text}';
+        final lastTrimmed = last.text.trim();
+        final currentTrimmed = packet.text.trim();
+        final lastLower = lastTrimmed.toLowerCase();
+        final currentLower = currentTrimmed.toLowerCase();
+
+        // 1. If current packet is an expanded superset of the last fragment, replace it cleanly
+        if (currentLower.startsWith(lastLower)) {
+          final updated = last.copyWith(
+            text: currentTrimmed,
+            timestamp: packet.timestamp,
+          );
+          _transcript[_transcript.length - 1] = updated;
+          _transcriptStreamController.add(List.unmodifiable(_transcript));
+          _runPass2Extraction(updated);
+          return;
+        }
+
+        // 2. If current packet was already included or is identical, do not duplicate
+        if (lastLower.endsWith(currentLower) || lastLower == currentLower) {
+          return;
+        }
+
+        // 3. Otherwise merge with punctuation
+        final combinedText = '$lastTrimmed. $currentTrimmed';
         final updated = last.copyWith(
           text: combinedText,
           timestamp: packet.timestamp,

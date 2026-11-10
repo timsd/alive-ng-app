@@ -54,7 +54,7 @@ class ConferencePlatformScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              icon: Icon(Icons.edit_note, color: theme.colorScheme.primary),
+              icon: Icon(Icons.draw_rounded, color: theme.colorScheme.primary),
               label: const Text('Open Scribe & Meeting Notes'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),

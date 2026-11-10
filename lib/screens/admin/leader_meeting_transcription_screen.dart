@@ -462,7 +462,21 @@ class _LeaderMeetingTranscriptionScreenState
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'ALIVE Scribe',
+        titleWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.draw_rounded, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'ALIVE Scribe',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
         showBackButton: true,
         actions: [
           // Local Microphone Listening Indicator / Toggle
@@ -704,7 +718,7 @@ class _LeaderMeetingTranscriptionScreenState
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.subtitles_outlined, size: 18),
+                    const Icon(Icons.draw_rounded, size: 18),
                     const SizedBox(width: 6),
                     Text('Live Transcript (${_transcript.length})'),
                   ],
@@ -806,7 +820,7 @@ class _LeaderMeetingTranscriptionScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isListening ? Icons.record_voice_over_rounded : Icons.mic_none_rounded,
+                isListening ? Icons.draw_rounded : Icons.draw_outlined,
                 size: 52,
                 color: isListening
                     ? const Color(0xFF16A34A)

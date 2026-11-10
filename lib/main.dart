@@ -539,7 +539,7 @@ class MainNavigationScreen extends ConsumerWidget {
                     'route': AppConstants.discipleshipTrackerRoute,
                   },
                   {
-                    'icon': Icons.record_voice_over_rounded,
+                    'icon': Icons.draw_rounded,
                     'label': 'scribe',
                     'customLabel': 'ALIVE Scribe',
                     'route': AppConstants.scribeRoute,

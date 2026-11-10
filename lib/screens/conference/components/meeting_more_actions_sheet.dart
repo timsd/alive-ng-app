@@ -152,7 +152,7 @@ class MeetingMoreActionsSheet extends StatelessWidget {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.note_alt_outlined, color: Color(0xFFD49B28)),
+                  leading: const Icon(Icons.draw_rounded, color: Color(0xFFD49B28)),
                   title: const Text('ALIVE Scribe & Minutes'),
                   subtitle: Text(
                     'Real-time speech-to-text notes and transcript export',

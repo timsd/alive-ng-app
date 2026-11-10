@@ -772,7 +772,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       _MgmtSection('Storage & Meeting Documents', Icons.cloud_upload_outlined, [
         _MgmtTile('File Storage', 'Manage buckets, audio, PDFs and profile pictures', Icons.folder_outlined, () => _navigateToStorageAdmin()),
         _MgmtTile('Meeting File Sharing', 'Manage and share leadership files and meeting documents', Icons.folder_shared_outlined, () => context.push(AppConstants.meetingFileSharingRoute)),
-        _MgmtTile('ALIVE Scribe (Meeting Minutes)', 'View on-device transcripts, resolutions, and action items', Icons.record_voice_over_outlined, () => context.push(AppConstants.scribeRoute)),
+        _MgmtTile('ALIVE Scribe (Meeting Minutes)', 'View on-device transcripts, resolutions, and action items', Icons.draw_rounded, () => context.push(AppConstants.scribeRoute)),
       ]),
       _MgmtSection('Communication & Data Export', Icons.import_export_rounded, [
         _MgmtTile('Chat & Messages Export', 'Export chat channels, messages, and communication backups', Icons.chat_outlined, () => _showChatExportDialog()),
