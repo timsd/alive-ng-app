@@ -26,6 +26,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       'color': const Color(0xFFD49B28),
     },
     {
+      'title': 'Evangelism & Gospel Tracts',
+      'body':
+          'In need of evangelism tracts? Access an uplifting library of gospel tracts ready for outreach. Easy to download and print for field evangelism, or share instantly in softcopy with friends and seekers.',
+      'icon': Icons.library_books_rounded,
+      'color': const Color(0xFF0D9488),
+    },
+    {
       'title': 'Roles & Organization',
       'body':
           'We are organized to serve! From dedicated Members and Chapter Leaders to Coordinators, Directors, and BODs, every role is vital.',
@@ -42,8 +49,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     {
       'title': 'Kids & Discipleship',
       'body':
-          'A rich library of Books, Tracts, and Podcasts awaits you. Plus special mission activities and Bible memorization features for both Kids and Adults.',
-      'icon': Icons.menu_book_rounded,
+          'Grow in Christ through interactive discipleship lessons, audio podcasts, and children’s mission adventures with illustrated Bible stories and memory verses.',
+      'icon': Icons.child_care_rounded,
       'color': Colors.orange,
     },
   ];
