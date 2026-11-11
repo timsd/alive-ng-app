@@ -381,10 +381,10 @@ async function main() {
               language: 'en-US',
               text:
                 `What's New in v${versionName}:\n` +
-                `• Unified Conference Controls: Harmonized control bar across List and Gallery views with side slide navigation.\n` +
-                `• ALIVE Scribe & Minutes: Automated meeting note taking and transcript sync across all attendees.\n` +
-                `• Real-Time Conference Chat: Instant in-meeting messaging with low latency delivery.\n` +
-                `• Enhanced Cloud Storage: Streamlined file sharing and improved minutes document management.`,
+                `• Leadership Directory: Centralized directory for Board of Trustees, Directors, and Ministry Leadership with linked account bindings.\n` +
+                `• Board of Directors Portal: Streamlined meeting resolutions, decisions, and governance tools.\n` +
+                `• Secure Live Payments: Direct live Paystack integration for seamless donations and ministry support.\n` +
+                `• ALIVE Meet & Scribe: Unified conference controls, automated minutes sync, and low-latency meeting collaboration.`,
             },
           ],
         },

@@ -348,7 +348,7 @@ class MeetingMoreActionsSheet extends StatelessWidget {
                         ? 'Stop YouTube Live Broadcast'
                         : 'Go Live (Broadcast to YouTube)'),
                     subtitle: Text(
-                      'Stream meeting output via LiveKit cloud egress',
+                      'Stream meeting output',
                       style: subtitleStyle,
                     ),
                     onTap: () {

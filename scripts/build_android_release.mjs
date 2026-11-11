@@ -79,7 +79,7 @@ async function prepareProductionJson() {
     APPWRITE_RESOURCES_BASE_URL: 'https://app.alivenigeria.org/resources',
     APPWRITE_SUPER_ADMIN_EMAILS: 'alivenigeria2011@gmail.com,dammyolodude@gmail.com,app@alivenigeria.org',
     LIVEKIT_URL: 'wss://livekit.alivenigeria.org',
-    PAYSTACK_PUBLIC_KEY: 'pk_test_92de7a66b011a1f6491a53faa05b64fe9afe0976',
+    PAYSTACK_PUBLIC_KEY: 'pk_live_4d497ec0f12f944e22598c8daa40ce716e8971cf',
     PAYSTACK_WEBHOOK_URL: 'https://api.alivenigeria.org/webhooks/paystack',
     PAYSTACK_CALLBACK_URL: 'https://app.alivenigeria.org/payment/callback',
     RECAPTCHA_SITE_KEY: '6LcKstkrAAAAAMWfR5Ki5eBh1TdCLQD-e7ofMi4S',
