@@ -139,19 +139,19 @@ class ErrorHandler {
     }
 
     // 3. Live Broadcast & Streaming Errors
-    if (lower.contains('invalid api key') ||
-        lower.contains('broadcast failed') ||
-        lower.contains('livekit_api_key') ||
-        lower.contains('egress')) {
-      return 'Live broadcast service configuration error: invalid streaming API credentials. Please contact the administrator to verify streaming settings.';
+    if (lower.contains('timeout') || lower.contains('aborted due to timeout')) {
+      return 'Live broadcast connection timed out. Please verify your stream server connection and try again.';
     }
     if (lower.contains('youtube stream key') ||
         lower.contains('stream key is not configured') ||
         lower.contains('stream key is required')) {
       return 'YouTube live stream key is not configured. Please check the YouTube stream key in settings.';
     }
-    if (lower.contains('permission to broadcast')) {
+    if (lower.contains('permission to broadcast') || lower.contains('not authorized to broadcast')) {
       return 'You do not have permission to start a live broadcast from this room.';
+    }
+    if (lower.contains('broadcast failed') || lower.contains('egress')) {
+      return 'Live broadcast could not be started. Please check streaming settings and try again.';
     }
 
     // 4. Meeting & Conference Room Policies

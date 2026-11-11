@@ -2,6 +2,7 @@ import '../../utils/appwrite_id_utils.dart';
 import '../../services/appwrite_facade.dart';
 import 'package:flutter/material.dart';
 import '../../config/appwrite_backend_config.dart';
+import '../../config/payment_config.dart';
 import '../../main.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
@@ -233,6 +234,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Paystack Mode Toggle Card
+          _buildPaystackModeCard(),
+
           // Settings by category
           ..._settingsByCategory.entries.map((entry) {
             return _buildCategorySection(entry.key, entry.value);
@@ -242,6 +246,147 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildPaystackModeCard() {
+    final isTest = PaymentConfig.isTestMode;
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isTest ? Colors.orange.shade300 : Colors.green.shade300,
+          width: 1.5,
+        ),
+      ),
+      color: isTest
+          ? Colors.orange.withValues(alpha: 0.06)
+          : Colors.green.withValues(alpha: 0.06),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: isTest ? Colors.orange : Colors.green,
+                  radius: 18,
+                  child: Icon(
+                    isTest ? Icons.bug_report_rounded : Icons.verified_user_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isTest ? 'Paystack: Test Sandbox Mode' : 'Paystack: Live Production Mode',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isTest
+                            ? 'Test payments active. Transactions are tagged as test records and do not affect live church finances.'
+                            : 'Live payments active. Real donor contributions are processed and recorded to official ministry finances.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch.adaptive(
+                  value: isTest,
+                  activeThumbColor: Colors.orange,
+                  onChanged: (val) => _togglePaystackTestMode(val),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.key, size: 14, color: Colors.grey),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Active Public Key: ',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      PaymentConfig.paystackPublicKey.isEmpty
+                          ? '(Not configured)'
+                          : PaymentConfig.paystackPublicKey,
+                      style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _togglePaystackTestMode(bool enableTest) async {
+    try {
+      PaymentConfig.setTestMode(enableTest);
+      setState(() {});
+
+      final setting = _findSettingByKey('paystack_test_mode');
+      if (setting != null) {
+        await _updateSetting(setting['id'], {
+          'setting_value': enableTest ? 'true' : 'false',
+          'value': enableTest ? 'true' : 'false',
+        });
+      } else {
+        await _createSetting({
+          'key': 'paystack_test_mode',
+          'setting_key': 'paystack_test_mode',
+          'value': enableTest ? 'true' : 'false',
+          'setting_value': enableTest ? 'true' : 'false',
+          'category': 'payment',
+          'data_type': 'boolean',
+          'display_name': 'Paystack Test Mode',
+          'description': 'Toggle between Paystack Test sandbox and Live production keys',
+          'is_active': true,
+        });
+      }
+
+      final keySetting = _findSettingByKey('paystack_public_key');
+      final targetKey = enableTest ? PaymentConfig.testPublicKey : PaymentConfig.livePublicKey;
+      if (keySetting != null) {
+        await _updateSetting(keySetting['id'], {
+          'setting_value': targetKey,
+          'value': targetKey,
+        });
+      }
+
+      ToastUtils.showSuccess(
+        enableTest ? 'Switched to Paystack Test Mode' : 'Switched to Paystack Live Production Mode',
+      );
+      await _loadSettings();
+    } catch (e) {
+      ToastUtils.showError('Failed to update Paystack mode: $e');
+    }
   }
 
   Widget _buildCategorySection(String category, List<Map<String, dynamic>> settings) {

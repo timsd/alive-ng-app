@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/appwrite_backend_config.dart';
+import '../config/payment_config.dart';
 import '../main.dart';
 import 'payment_service.dart';
 import 'ports/payment_gateway.dart';
@@ -396,6 +397,8 @@ class DonationService {
           final data = _appwriteData(donation.toJson());
           data['reference'] = donation.id;
           data['amount_kobo'] = (donation.amount * 100).round();
+          data['is_test'] = PaymentConfig.isTestMode;
+          data['mode'] = PaymentConfig.isTestMode ? 'test' : 'live';
           await _tables.createRow(
             databaseId: _databaseId,
             tableId: _donationsCollectionId,
@@ -412,6 +415,8 @@ class DonationService {
       final data = _appwriteData(donation.toJson());
       data['reference'] = donation.id;
       data['amount_kobo'] = (donation.amount * 100).round();
+      data['is_test'] = PaymentConfig.isTestMode;
+      data['mode'] = PaymentConfig.isTestMode ? 'test' : 'live';
 
       await _tables.createRow(
         databaseId: _databaseId,

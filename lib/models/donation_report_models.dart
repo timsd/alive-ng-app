@@ -10,6 +10,7 @@ class DonationReportEntry {
     required this.currency,
     required this.status,
     required this.createdAt,
+    this.isTest = false,
   });
 
   final String reference;
@@ -20,6 +21,7 @@ class DonationReportEntry {
   final String currency;
   final String status;
   final DateTime? createdAt;
+  final bool isTest;
 
   factory DonationReportEntry.fromJson(Map<String, dynamic> json) {
     String firstText(List<String> keys, [String fallback = '']) {
@@ -85,6 +87,16 @@ class DonationReportEntry {
       resolvedPurpose = 'General';
     }
 
+    final parsedMeta = _parseMetadata(json['metadata']);
+    final isTestTransaction = json['is_test'] == true ||
+        json['is_test'] == 'true' ||
+        json['mode'] == 'test' ||
+        parsedMeta?['is_test'] == true ||
+        parsedMeta?['is_test'] == 'true' ||
+        parsedMeta?['domain'] == 'test' ||
+        firstText(['reference']).toLowerCase().startsWith('test_') ||
+        firstText(['reference']).toLowerCase().startsWith('t_');
+
     return DonationReportEntry(
       reference: firstText(['reference', 'transaction_id', r'$id', 'id']),
       donorName: resolvedDonorName,
@@ -94,6 +106,7 @@ class DonationReportEntry {
       currency: firstText(['currency'], 'NGN').toUpperCase(),
       status: firstText(['status'], 'completed').toLowerCase(),
       createdAt: DateTime.tryParse(firstText(['created_at', r'$createdAt'])),
+      isTest: isTestTransaction,
     );
   }
 

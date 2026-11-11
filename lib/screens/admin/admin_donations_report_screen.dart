@@ -49,6 +49,7 @@ class _AdminDonationsReportContentState
 
   String _statusFilter = 'all';
   String _datePreset = 'all';
+  String _modeFilter = 'live';
   DateTime? _customStartDate;
   DateTime? _customEndDate;
   String _searchQuery = '';
@@ -121,6 +122,10 @@ class _AdminDonationsReportContentState
     }
 
     _filteredDonations = _allDonations.where((d) {
+      // Transaction mode filter: strictly isolate test transactions from live financial totals
+      if (_modeFilter == 'live' && d.isTest) return false;
+      if (_modeFilter == 'test' && !d.isTest) return false;
+
       // Status filter
       final status = d.status;
       if (_statusFilter != 'all' && status != _statusFilter.toLowerCase()) {
@@ -518,6 +523,33 @@ class _AdminDonationsReportContentState
             },
           ),
           const SizedBox(height: 12),
+          // Mode Selector: Live Production vs Test Transactions
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'Mode:',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              _buildFilterChip('Live Production', 'live', _modeFilter, (val) {
+                _modeFilter = val;
+                setState(() => _applyFilters());
+              }),
+              _buildFilterChip('Test Transactions', 'test', _modeFilter, (val) {
+                _modeFilter = val;
+                setState(() => _applyFilters());
+              }),
+              _buildFilterChip('All Records', 'all', _modeFilter, (val) {
+                _modeFilter = val;
+                setState(() => _applyFilters());
+              }),
+            ],
+          ),
+          const SizedBox(height: 12),
           // Filter Chips
           Wrap(
             spacing: 8,
@@ -629,11 +661,35 @@ class _AdminDonationsReportContentState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    d.donorName,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        d.donorName,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (d.isTest) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.amber.shade700, width: 0.5),
+                          ),
+                          child: Text(
+                            'TEST',
+                            style: TextStyle(
+                              color: Colors.amber.shade900,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   Text(d.donorEmail, style: theme.textTheme.bodySmall),
                 ],
@@ -687,11 +743,35 @@ class _AdminDonationsReportContentState
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    d.donorName,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        d.donorName,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (d.isTest) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.amber.shade700, width: 0.5),
+                          ),
+                          child: Text(
+                            'TEST',
+                            style: TextStyle(
+                              color: Colors.amber.shade900,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   Text(
                     currency == 'USD'
