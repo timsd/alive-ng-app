@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../models/app_models.dart' as app_models;
 import '../../../models/discipleship_models.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/discipleship_service.dart';
+import '../../../services/prayer_requests_service.dart';
 import '../../../utils/error_handler.dart';
 import '../../../utils/text_formatter.dart';
 
@@ -52,7 +54,41 @@ class DiscipleshipPrayerCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
-              if (isAnswered)
+              if (prayer.isPublicOnPrayerWall) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.public_rounded,
+                        size: 10,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        'PRAYER WALL',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (isAnswered) ...[
+                const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
@@ -68,6 +104,7 @@ class DiscipleshipPrayerCard extends StatelessWidget {
                     ),
                   ),
                 ),
+              ],
             ],
           ),
           subtitle: Column(
@@ -158,71 +195,106 @@ void showMarkAnsweredDialog(
   VoidCallback onSuccess,
 ) {
   final testimonyController = TextEditingController();
+  String? inDialogError;
+  bool isSaving = false;
+
   showDialog(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      icon: const Icon(Icons.celebration_rounded, color: Colors.amber, size: 44),
-      title: const Text('Mark Prayer Answered'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Prayer: "${prayer.request}"',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: testimonyController,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Testimony / Notes on Answer (Optional)',
-                hintText: 'Share how God answered this prayer...',
-                border: OutlineInputBorder(),
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setDialogState) => AlertDialog(
+        icon: const Icon(Icons.celebration_rounded, color: Colors.amber, size: 44),
+        title: const Text('Mark Prayer Answered'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (inDialogError != null) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(dialogContext).colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    inDialogError!,
+                    style: TextStyle(
+                      color: Theme.of(dialogContext).colorScheme.onErrorContainer,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+              Text(
+                'Prayer: "${prayer.request}"',
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
+              const SizedBox(height: 14),
+              TextField(
+                controller: testimonyController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Testimony / Notes on Answer (Optional)',
+                  hintText: 'Share how God answered this prayer...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
           ),
-          onPressed: () async {
-            final user = AuthService.instance.currentUser;
-            final navigator = Navigator.of(dialogContext);
-            final messenger = ScaffoldMessenger.of(context);
-            try {
-              await DiscipleshipService().markPrayerAnswered(
-                requestId: prayer.id,
-                testimony: testimonyController.text.trim(),
-                actorName: user?.displayName ?? 'Disciple Maker',
-              );
-              if (dialogContext.mounted) {
-                navigator.pop();
-              }
-              messenger.showSnackBar(
-                const SnackBar(content: Text('Prayer marked as answered. Praise the Lord!')),
-              );
-              onSuccess();
-            } catch (e) {
-              if (dialogContext.mounted) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  SnackBar(content: Text('Failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
-                );
-              }
-            }
-          },
-          child: const Text('Confirm Answered'),
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: isSaving
+                ? null
+                : () async {
+                    setDialogState(() {
+                      isSaving = true;
+                      inDialogError = null;
+                    });
+                    final user = AuthService.instance.currentUser;
+                    final navigator = Navigator.of(dialogContext);
+                    final messenger = ScaffoldMessenger.of(context);
+                    try {
+                      await DiscipleshipService().markPrayerAnswered(
+                        requestId: prayer.id,
+                        testimony: testimonyController.text.trim(),
+                        actorName: user?.displayName ?? 'Disciple Maker',
+                      );
+                      if (dialogContext.mounted) {
+                        navigator.pop();
+                      }
+                      messenger.showSnackBar(
+                        const SnackBar(content: Text('Prayer marked as answered. Praise the Lord!')),
+                      );
+                      onSuccess();
+                    } catch (e) {
+                      if (dialogContext.mounted) {
+                        setDialogState(() {
+                          isSaving = false;
+                          inDialogError = 'Failed: ${ErrorHandler.getUserFriendlyMessage(e)}';
+                        });
+                      }
+                    }
+                  },
+            child: isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text('Confirm Answered'),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -235,6 +307,9 @@ void showUpdatePrayerStatusDialog(
 ) {
   var status = prayer.status;
   final notesController = TextEditingController(text: prayer.notes ?? '');
+  String? inDialogError;
+  bool isSaving = false;
+
   showDialog(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
@@ -245,6 +320,23 @@ void showUpdatePrayerStatusDialog(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (inDialogError != null) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(dialogContext).colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    inDialogError!,
+                    style: TextStyle(
+                      color: Theme.of(dialogContext).colorScheme.onErrorContainer,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
               Text('Prayer: "${prayer.request}"', style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               DropdownButtonFormField<PrayerRequestStatus>(
@@ -278,35 +370,48 @@ void showUpdatePrayerStatusDialog(
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () async {
-              final user = AuthService.instance.currentUser;
-              try {
-                await DiscipleshipService().updatePrayerStatusAndNotes(
-                  requestId: prayer.id,
-                  status: status,
-                  note: notesController.text.trim(),
-                  actorName: user?.displayName ?? 'Disciple Maker',
-                );
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Prayer status updated.')),
-                  );
-                  onSuccess();
-                }
-              } catch (e) {
-                if (dialogContext.mounted) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    SnackBar(content: Text('Failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
-                  );
-                }
-              }
-            },
-            child: const Text('Save Status'),
+            onPressed: isSaving
+                ? null
+                : () async {
+                    setDialogState(() {
+                      isSaving = true;
+                      inDialogError = null;
+                    });
+                    final user = AuthService.instance.currentUser;
+                    try {
+                      await DiscipleshipService().updatePrayerStatusAndNotes(
+                        requestId: prayer.id,
+                        status: status,
+                        note: notesController.text.trim(),
+                        actorName: user?.displayName ?? 'Disciple Maker',
+                      );
+                      if (dialogContext.mounted) {
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Prayer status updated.')),
+                        );
+                        onSuccess();
+                      }
+                    } catch (e) {
+                      if (dialogContext.mounted) {
+                        setDialogState(() {
+                          isSaving = false;
+                          inDialogError = 'Failed: ${ErrorHandler.getUserFriendlyMessage(e)}';
+                        });
+                      }
+                    }
+                  },
+            child: isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Save Status'),
           ),
         ],
       ),
@@ -393,17 +498,61 @@ void showAddPrayerRequestDialog(
 }) {
   final requestController = TextEditingController();
   String? selectedContactId = forContact?.id ?? (contacts.isNotEmpty ? contacts.first.id : null);
+  bool shareToGeneralPrayerWall = false;
+  String? inDialogError;
+  bool isSaving = false;
 
   showDialog(
     context: context,
     builder: (dialogCtx) => StatefulBuilder(
       builder: (dialogContext, setDialogState) => AlertDialog(
-        title: Text(forContact != null ? 'Prayer for ${forContact.fullName}' : 'Add Prayer Request'),
+        title: Row(
+          children: [
+            Icon(Icons.favorite_rounded, color: Theme.of(dialogContext).colorScheme.primary, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                forContact != null ? 'Prayer for ${forContact.fullName}' : 'Add Discipleship Prayer',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (inDialogError != null) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(dialogContext).colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(dialogContext).colorScheme.error.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline_rounded,
+                          size: 18, color: Theme.of(dialogContext).colorScheme.error),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          inDialogError!,
+                          style: TextStyle(
+                            color: Theme.of(dialogContext).colorScheme.onErrorContainer,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               if (forContact == null) ...[
                 const Text('Select Disciple *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 const SizedBox(height: 6),
@@ -427,7 +576,10 @@ void showAddPrayerRequestDialog(
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) {
-                        setDialogState(() => selectedContactId = val);
+                        setDialogState(() {
+                          selectedContactId = val;
+                          inDialogError = null;
+                        });
                       }
                     },
                   ),
@@ -438,9 +590,45 @@ void showAddPrayerRequestDialog(
               TextField(
                 controller: requestController,
                 maxLines: 3,
+                onChanged: (_) {
+                  if (inDialogError != null) {
+                    setDialogState(() => inDialogError = null);
+                  }
+                },
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   hintText: 'What specific prayer need would you like to log?',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(dialogContext).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Theme.of(dialogContext).colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: shareToGeneralPrayerWall,
+                  title: const Text(
+                    'Show on General Prayer Wall',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  subtitle: Text(
+                    shareToGeneralPrayerWall
+                        ? 'Visible to the entire ALIVE community for intercession'
+                        : 'Private to this discipleship record only',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  onChanged: (val) {
+                    setDialogState(() => shareToGeneralPrayerWall = val);
+                  },
                 ),
               ),
             ],
@@ -448,46 +636,107 @@ void showAddPrayerRequestDialog(
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
+            onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () async {
-              if (requestController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(content: Text('Please enter prayer request details')),
-                );
-                return;
-              }
-              if (selectedContactId == null || selectedContactId!.isEmpty) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(content: Text('Please select a disciple for this prayer')),
-                );
-                return;
-              }
-              final user = AuthService.instance.currentUser;
-              if (user == null) return;
-              try {
-                await DiscipleshipService().createPrayerRequest(PrayerRequest(
-                  id: '',
-                  contactId: selectedContactId!,
-                  discipleMakerId: user.uid,
-                  request: requestController.text.trim(),
-                  dateRequested: DateTime.now(),
-                  createdAt: DateTime.now(),
-                  updatedAt: DateTime.now(),
-                ));
-                if (dialogContext.mounted) Navigator.pop(dialogCtx);
-                onSuccess();
-              } catch (e) {
-                if (dialogContext.mounted) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    SnackBar(content: Text('Save failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
-                  );
-                }
-              }
-            },
-            child: const Text('Save Prayer'),
+            onPressed: isSaving
+                ? null
+                : () async {
+                    final text = requestController.text.trim();
+                    if (text.isEmpty) {
+                      setDialogState(() => inDialogError = 'Please enter prayer request details.');
+                      return;
+                    }
+                    if (selectedContactId == null || selectedContactId!.isEmpty) {
+                      setDialogState(() => inDialogError = 'Please select a disciple for this prayer.');
+                      return;
+                    }
+                    final user = AuthService.instance.currentUser;
+                    if (user == null) {
+                      setDialogState(() => inDialogError = 'Please sign in to save prayer.');
+                      return;
+                    }
+
+                    setDialogState(() {
+                      isSaving = true;
+                      inDialogError = null;
+                    });
+
+                    try {
+                      await DiscipleshipService().createPrayerRequest(PrayerRequest(
+                        id: '',
+                        contactId: selectedContactId!,
+                        discipleMakerId: user.uid,
+                        request: text,
+                        isPublicOnPrayerWall: shareToGeneralPrayerWall,
+                        dateRequested: DateTime.now(),
+                        createdAt: DateTime.now(),
+                        updatedAt: DateTime.now(),
+                      ));
+
+                      // When enabled, also mirror to public prayer wall for community intercession
+                      if (shareToGeneralPrayerWall) {
+                        try {
+                          String contactName = '';
+                          if (forContact != null) {
+                            contactName = forContact.fullName;
+                          } else {
+                            final match = contacts.where((c) => c.id == selectedContactId);
+                            if (match.isNotEmpty) {
+                              contactName = match.first.fullName;
+                            }
+                          }
+
+                          await PrayerRequestsService.instance.createPrayerRequest(
+                            app_models.PrayerRequest(
+                              id: '',
+                              userId: user.uid,
+                              title: contactName.isNotEmpty
+                                  ? 'Prayer for $contactName'
+                                  : 'Discipleship Prayer Request',
+                              description: text,
+                              category: 'Discipleship',
+                              isAnonymous: false,
+                              isPrivate: false,
+                              createdAt: DateTime.now(),
+                              updatedAt: DateTime.now(),
+                            ),
+                          );
+                        } catch (mirrorErr) {
+                          debugPrint('Note: public prayer wall mirroring error: $mirrorErr');
+                        }
+                      }
+
+                      if (dialogContext.mounted) Navigator.pop(dialogCtx);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              shareToGeneralPrayerWall
+                                  ? 'Prayer saved & published to Prayer Wall.'
+                                  : 'Discipleship prayer request saved.',
+                            ),
+                          ),
+                        );
+                      }
+                      onSuccess();
+                    } catch (e) {
+                      if (dialogContext.mounted) {
+                        setDialogState(() {
+                          isSaving = false;
+                          inDialogError = ErrorHandler.getUserFriendlyMessage(e);
+                        });
+                      }
+                    }
+                  },
+            child: isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Save Prayer'),
           ),
         ],
       ),

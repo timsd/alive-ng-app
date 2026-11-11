@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../models/discipleship_models.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/discipleship_service.dart';
@@ -454,9 +457,26 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            'Received Reports for ${selectedOffice?.officeTitle ?? 'Office'} (${reports.length})',
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  'Received Reports for ${selectedOffice?.officeTitle ?? 'Office'} (${reports.length})',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              if (reports.isNotEmpty)
+                FilledButton.tonalIcon(
+                  icon: const Icon(Icons.description_rounded, size: 16),
+                  label: const Text('Export All (.doc)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  ),
+                  onPressed: () => _exportReportsToDoc(context, selectedOffice, reports),
+                ),
+            ],
           ),
           const SizedBox(height: 10),
           if (reports.isEmpty)
@@ -569,6 +589,188 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _exportReportsToDoc(
+    BuildContext context,
+    OfficerOfficeAssignment? office,
+    List<DiscipleshipReport> reports,
+  ) async {
+    if (reports.isEmpty) return;
+
+    final officeTitle = office?.officeTitle ?? 'General Office';
+    final officerName = office?.officerName ?? 'Officer';
+    final generatedDate = DateFormat('MMMM dd, yyyy HH:mm').format(DateTime.now());
+
+    int totalContacts = 0;
+    int totalActive = 0;
+    int totalNew = 0;
+    int totalBaptisms = 0;
+    int totalStudies = 0;
+    int totalInteractions = 0;
+
+    for (final r in reports) {
+      totalContacts += r.totalContacts;
+      totalActive += r.activeContacts;
+      totalNew += r.newContacts;
+      totalBaptisms += r.baptisms;
+      totalStudies += r.studySessions;
+      totalInteractions += r.interactions;
+    }
+
+    final buffer = StringBuffer();
+    buffer.writeln('''<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>ALIVE Nigeria Discipleship Office Reports - $officeTitle</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1e293b; line-height: 1.6; margin: 30pt; }
+  h1 { color: #1B365D; font-size: 20pt; border-bottom: 2pt solid #1B365D; padding-bottom: 6pt; margin-bottom: 4pt; }
+  .subtitle { color: #64748b; font-size: 11pt; margin-bottom: 18pt; }
+  h2 { color: #0D9488; font-size: 14pt; margin-top: 20pt; margin-bottom: 8pt; border-bottom: 1pt solid #cbd5e1; padding-bottom: 4pt; }
+  h3 { color: #1e293b; font-size: 12pt; margin-top: 14pt; margin-bottom: 6pt; }
+  table { border-collapse: collapse; width: 100%; margin: 10pt 0 16pt 0; }
+  th, td { border: 1pt solid #cbd5e1; padding: 7pt 10pt; text-align: left; font-size: 10pt; }
+  th { background-color: #f1f5f9; color: #1B365D; font-weight: bold; }
+  .summary-card { background-color: #f8fafc; border: 1pt solid #e2e8f0; border-radius: 6pt; padding: 12pt; margin-bottom: 18pt; }
+  .report-card { border: 1pt solid #cbd5e1; border-radius: 6pt; padding: 14pt; margin-bottom: 18pt; }
+  .badge { display: inline-block; padding: 3pt 8pt; border-radius: 4pt; font-size: 9pt; font-weight: bold; text-transform: uppercase; }
+  .badge-reviewed { background-color: #dcfce7; color: #166534; }
+  .badge-submitted { background-color: #ffedd5; color: #9a3412; }
+  .thread-msg { border-left: 3pt solid #0D9488; background-color: #f0fdf4; padding: 8pt 12pt; margin: 6pt 0; border-radius: 0 4pt 4pt 0; }
+  .thread-msg-officer { border-left-color: #f59e0b; background-color: #fffbeb; }
+  .thread-meta { font-size: 9pt; font-weight: bold; margin-bottom: 3pt; color: #0f766e; }
+  .thread-meta-officer { color: #b45309; }
+  .footer { margin-top: 30pt; border-top: 1pt solid #cbd5e1; padding-top: 8pt; font-size: 9pt; color: #94a3b8; text-align: center; }
+</style>
+</head>
+<body>
+<h1>ALIVE Nigeria Discipleship Office Reports</h1>
+<div class="subtitle">Holding Office: <b>$officeTitle</b> • Officer: <b>$officerName</b> • Generated: <b>$generatedDate</b></div>
+
+<div class="summary-card">
+  <h3>Executive Summary of Received Reports (${reports.length} Total)</h3>
+  <table>
+    <tr>
+      <th>Total Disciples</th>
+      <th>Active Disciples</th>
+      <th>New Disciples</th>
+      <th>Baptisms</th>
+      <th>Bible Studies</th>
+      <th>Interactions</th>
+    </tr>
+    <tr style="font-weight: bold; font-size: 11pt; background-color: #ffffff;">
+      <td>$totalContacts</td>
+      <td>$totalActive</td>
+      <td>$totalNew</td>
+      <td>$totalBaptisms</td>
+      <td>$totalStudies</td>
+      <td>$totalInteractions</td>
+    </tr>
+  </table>
+</div>
+''');
+
+    for (int i = 0; i < reports.length; i++) {
+      final r = reports[i];
+      final periodStart = DateFormat.yMMMd().format(r.reportPeriodStart);
+      final periodEnd = DateFormat.yMMMd().format(r.reportPeriodEnd);
+      final isReviewed = r.status.toLowerCase() == 'reviewed';
+
+      buffer.writeln('''
+<div class="report-card">
+  <h2>Report #${i + 1}: $periodStart – $periodEnd
+    <span class="badge ${isReviewed ? 'badge-reviewed' : 'badge-submitted'}">${r.status.toUpperCase()}</span>
+  </h2>
+  <table>
+    <tr>
+      <th>Total Disciples</th>
+      <th>Active</th>
+      <th>New</th>
+      <th>Baptisms</th>
+      <th>Study Sessions</th>
+      <th>Interactions</th>
+    </tr>
+    <tr>
+      <td>${r.totalContacts}</td>
+      <td>${r.activeContacts}</td>
+      <td>${r.newContacts}</td>
+      <td>${r.baptisms}</td>
+      <td>${r.studySessions}</td>
+      <td>${r.interactions}</td>
+    </tr>
+  </table>
+''');
+
+      if (r.highlights != null && r.highlights!.isNotEmpty) {
+        buffer.writeln('<p><b>Ministry Highlights:</b> ${r.highlights}</p>');
+      }
+      if (r.challenges != null && r.challenges!.isNotEmpty) {
+        buffer.writeln('<p><b>Challenges & Needs:</b> ${r.challenges}</p>');
+      }
+      if (r.goals != null && r.goals!.isNotEmpty) {
+        buffer.writeln('<p><b>Next Goals:</b> ${r.goals}</p>');
+      }
+
+      final thread = parseDiscipleshipFeedbackThread(r.feedback ?? '', officerName);
+      if (thread.isNotEmpty) {
+        buffer.writeln('<h3>Officer Feedback & Discussion (${thread.length} entries)</h3>');
+        for (final msg in thread) {
+          final isOfficer = msg.isOfficer;
+          buffer.writeln('''
+<div class="thread-msg ${isOfficer ? 'thread-msg-officer' : ''}">
+  <div class="thread-meta ${isOfficer ? 'thread-meta-officer' : ''}">
+    ${isOfficer ? 'Officer Feedback' : 'Disciple Maker Response'} by ${msg.author}${msg.date != null ? ' (${msg.date})' : ''}:
+  </div>
+  <div>${msg.content}</div>
+</div>
+''');
+        }
+      }
+
+      buffer.writeln('</div>');
+    }
+
+    buffer.writeln('''
+<div class="footer">
+  ALIVE Nigeria Discipleship Ministry Management System • Confidential Office Record
+</div>
+</body>
+</html>
+''');
+
+    final cleanTitle = officeTitle.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+    final fileName = 'discipleship_reports_${cleanTitle}_${DateFormat('yyyyMMdd').format(DateTime.now())}.doc';
+
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile.fromData(
+              Uint8List.fromList(utf8.encode(buffer.toString())),
+              name: fileName,
+              mimeType: 'application/msword',
+            ),
+          ],
+          subject: 'ALIVE Nigeria Discipleship Reports - $officeTitle',
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
+        );
+      }
+    }
   }
 }
 

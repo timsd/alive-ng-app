@@ -184,10 +184,17 @@ async function getConfiguredUsdToNgnRate(log) {
   return { rate: FALLBACK_USD_TO_NGN, source: 'fallback' };
 }
 
-async function getPaystackPublicKey(log) {
-  if (process.env.PAYSTACK_PUBLIC_KEY && process.env.PAYSTACK_PUBLIC_KEY.trim()) {
-    return process.env.PAYSTACK_PUBLIC_KEY.trim();
-  }
+async function getPaystackConfigKeys(log, options = {}) {
+  let isTestMode = options.forceTestMode === true || process.env.PAYSTACK_TEST_MODE === 'true';
+
+  let testPublicKey = process.env.PAYSTACK_TEST_PUBLIC_KEY?.trim() || '';
+  let testSecretKey = process.env.PAYSTACK_TEST_SECRET_KEY?.trim() || '';
+  let livePublicKey = process.env.PAYSTACK_LIVE_PUBLIC_KEY?.trim() || (process.env.PAYSTACK_PUBLIC_KEY?.trim()?.startsWith('pk_live_') ? process.env.PAYSTACK_PUBLIC_KEY.trim() : '');
+  let liveSecretKey = process.env.PAYSTACK_LIVE_SECRET_KEY?.trim() || (process.env.PAYSTACK_SECRET_KEY?.trim()?.startsWith('sk_live_') ? process.env.PAYSTACK_SECRET_KEY.trim() : '');
+
+  let dynamicPublicKey = '';
+  let dynamicSecretKey = '';
+
   try {
     const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;
     const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
@@ -199,49 +206,65 @@ async function getPaystackPublicKey(log) {
         .setKey(apiKey);
       const databases = new Databases(client);
       const res = await databases.listDocuments(databaseId, appSettingsCollectionId, [
-        Query.equal('key', 'paystack_public_key'),
-        Query.limit(1),
+        Query.limit(50),
       ]);
-      const match = res?.documents?.[0];
-      const val = match?.value ?? match?.setting_value;
-      if (typeof val === 'string' && val.trim().startsWith('pk_')) {
-        return val.trim();
+      for (const doc of (res?.documents || [])) {
+        const k = doc.key || doc.setting_key;
+        const v = (doc.value ?? doc.setting_value ?? '').toString().trim();
+        if (k === 'paystack_test_mode') {
+          if (options.forceTestMode === undefined) {
+            isTestMode = v === 'true';
+          }
+        } else if (k === 'paystack_test_public_key' && v.startsWith('pk_')) {
+          testPublicKey = v;
+        } else if (k === 'paystack_test_secret_key' && v.startsWith('sk_')) {
+          testSecretKey = v;
+        } else if (k === 'paystack_live_public_key' && v.startsWith('pk_')) {
+          livePublicKey = v;
+        } else if (k === 'paystack_live_secret_key' && v.startsWith('sk_')) {
+          liveSecretKey = v;
+        } else if (k === 'paystack_public_key' && v.startsWith('pk_')) {
+          dynamicPublicKey = v;
+        } else if (k === 'paystack_secret_key' && v.startsWith('sk_')) {
+          dynamicSecretKey = v;
+        }
       }
     }
   } catch (e) {
-    if (log) log(`Paystack public key lookup failed: ${e.message}`);
+    if (log) log(`Appwrite settings lookup note: ${e.message}`);
   }
-  return '';
+
+  let secret = isTestMode ? testSecretKey : liveSecretKey;
+  let publicKey = isTestMode ? testPublicKey : livePublicKey;
+
+  if (dynamicSecretKey) {
+    if (isTestMode && dynamicSecretKey.startsWith('sk_test_')) secret = dynamicSecretKey;
+    if (!isTestMode && dynamicSecretKey.startsWith('sk_live_')) secret = dynamicSecretKey;
+  }
+  if (dynamicPublicKey) {
+    if (isTestMode && dynamicPublicKey.startsWith('pk_test_')) publicKey = dynamicPublicKey;
+    if (!isTestMode && dynamicPublicKey.startsWith('pk_live_')) publicKey = dynamicPublicKey;
+  }
+
+  // CRITICAL FAIL-SAFE: Paystack test and live keys must NEVER be mismatched.
+  // If secret is live, public key MUST be live. If secret is test, public key MUST be test.
+  if (secret.startsWith('sk_live_') && !publicKey.startsWith('pk_live_')) {
+    publicKey = livePublicKey;
+  } else if (secret.startsWith('sk_test_') && !publicKey.startsWith('pk_test_')) {
+    publicKey = testPublicKey;
+  }
+
+  return { secret, publicKey, isTestMode };
 }
 
-async function getPaystackSecretKey(log) {
-  if (process.env.PAYSTACK_SECRET_KEY && process.env.PAYSTACK_SECRET_KEY.trim()) {
-    return process.env.PAYSTACK_SECRET_KEY.trim();
-  }
-  try {
-    const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;
-    const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
-    const projId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || '';
-    if (apiKey && endpoint) {
-      const client = new Client()
-        .setEndpoint(endpoint)
-        .setProject(projId)
-        .setKey(apiKey);
-      const databases = new Databases(client);
-      const res = await databases.listDocuments(databaseId, appSettingsCollectionId, [
-        Query.equal('key', 'paystack_secret_key'),
-        Query.limit(1),
-      ]);
-      const match = res?.documents?.[0];
-      const val = match?.value ?? match?.setting_value;
-      if (typeof val === 'string' && val.trim().startsWith('sk_')) {
-        return val.trim();
-      }
-    }
-  } catch (e) {
-    if (log) log(`Paystack secret key lookup failed: ${e.message}`);
-  }
-  return '';
+async function getPaystackPublicKey(log, options = {}) {
+  const conf = await getPaystackConfigKeys(log, options);
+  return conf.publicKey;
+}
+
+async function getPaystackSecretKey(log, options = {}) {
+  const conf = await getPaystackConfigKeys(log, options);
+  return conf.secret;
 }
 
 export default async ({ req, res, log, error }) => {
@@ -250,12 +273,6 @@ export default async ({ req, res, log, error }) => {
   }
 
   try {
-    const secret = await getPaystackSecretKey(log);
-    if (!secret) {
-      error('Missing PAYSTACK_SECRET_KEY in function environment or app_settings.');
-      return res.json({ error: 'Paystack is not configured.' }, 500);
-    }
-
     let parsedBody = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
     if (parsedBody && typeof parsedBody.body === 'string') {
       try { parsedBody = JSON.parse(parsedBody.body); } catch (_) { }
@@ -267,13 +284,23 @@ export default async ({ req, res, log, error }) => {
       return res.json({ error: 'Raw card data must be submitted only to Paystack checkout.' }, 400);
     }
 
+    const paystackConfig = await getPaystackConfigKeys(log, {
+      forceTestMode: body?.test_mode !== undefined ? (body.test_mode === true || body.test_mode === 'true') : undefined,
+    });
+    const secret = paystackConfig.secret;
+    const publicKey = paystackConfig.publicKey;
+
+    if (!secret) {
+      error('Missing PAYSTACK_SECRET_KEY in function environment or app_settings.');
+      return res.json({ error: 'Paystack is not configured.' }, 500);
+    }
+
     const action = body.action || 'initialize_transaction';
 
     // ── Public rate lookup (no Paystack call). Lets web + Flutter show a
     // ── live "$1 ≈ ₦X" label from the market rate instead of a constant. ──
     if (action === 'get_exchange_rate' || action === 'get_payment_config') {
       const { rate, source } = await getConfiguredUsdToNgnRate(log);
-      const publicKey = await getPaystackPublicKey(log);
       return res.json({
         rate,
         source,
@@ -290,13 +317,34 @@ export default async ({ req, res, log, error }) => {
       if (!ref) {
         return res.json({ error: 'Missing reference to verify.' }, 400);
       }
-      const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
+      let verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
         headers: {
           Authorization: `Bearer ${secret}`,
           'Content-Type': 'application/json',
         },
       });
-      const verifyData = await verifyRes.json();
+      let verifyData = await verifyRes.json();
+
+      // If verification failed with invalid key / auth error, attempt alternative key fallback
+      if (!verifyData.status && (verifyData.message?.toLowerCase().includes('key') || verifyRes.status === 401)) {
+        const altSecret = paystackConfig.isTestMode
+          ? (process.env.PAYSTACK_LIVE_SECRET_KEY || process.env.PAYSTACK_SECRET_KEY || '')
+          : (process.env.PAYSTACK_TEST_SECRET_KEY || '');
+        if (altSecret && altSecret !== secret) {
+          log(`Retrying verification with alternative key: ${altSecret.substring(0, 10)}...`);
+          const retryRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
+            headers: {
+              Authorization: `Bearer ${altSecret}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          const retryData = await retryRes.json();
+          if (retryData.status) {
+            verifyRes = retryRes;
+            verifyData = retryData;
+          }
+        }
+      }
       if (!verifyData.status) {
         return res.json({ error: verifyData.message || 'Verification failed.' }, 400);
       }
@@ -740,7 +788,6 @@ export default async ({ req, res, log, error }) => {
       }, 502);
     }
 
-    const publicKey = await getPaystackPublicKey(log);
     return res.json({
       ...(json.data || {}),
       public_key: publicKey,

@@ -389,6 +389,7 @@ class DiscipleshipService {
         request: request.request,
         category: request.category,
         status: request.status,
+        isPublicOnPrayerWall: request.isPublicOnPrayerWall,
         dateRequested: request.dateRequested,
         dateAnswered: request.dateAnswered,
         answer: request.answer,
@@ -398,12 +399,25 @@ class DiscipleshipService {
         updatedAt: now,
       );
 
-      final document = await _tables.createRow(
-        databaseId: AppwriteBackendConfig.databaseId,
-        tableId: _prayerRequestsCollection,
-        rowId: AppwriteIdUtils.toValidUid(newRequest.id),
-        data: _prayerRequestData(newRequest),
-      );
+      dynamic document;
+      try {
+        document = await _tables.createRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: _prayerRequestsCollection,
+          rowId: AppwriteIdUtils.toValidUid(newRequest.id),
+          data: _prayerRequestData(newRequest),
+        );
+      } catch (e) {
+        // Graceful fallback if database collection lacks is_public_on_prayer_wall attribute
+        final fallbackData = _prayerRequestData(newRequest);
+        fallbackData.remove('is_public_on_prayer_wall');
+        document = await _tables.createRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: _prayerRequestsCollection,
+          rowId: AppwriteIdUtils.toValidUid(newRequest.id),
+          data: fallbackData,
+        );
+      }
       return _prayerRequestFromDocument(document);
     } catch (e) {
       _logger.error('Failed to create prayer request', e);
@@ -1326,6 +1340,7 @@ class DiscipleshipService {
       'request': request.request,
       'category': request.category,
       'status': request.status.name,
+      'is_public_on_prayer_wall': request.isPublicOnPrayerWall,
       'date_requested': _iso(request.dateRequested),
       'date_answered': _nullableIso(request.dateAnswered),
       'answer': request.answer,

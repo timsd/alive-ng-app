@@ -174,6 +174,8 @@ class AliveScribeService {
 
   StreamSubscription? _dataChannelSub;
   DateTime? _meetingStartTime;
+  Timer? _watchdogTimer;
+  Timer? _speechPauseCommitTimer;
 
   AliveScribeService({
     required MeetingGateway gateway,
@@ -286,6 +288,16 @@ class AliveScribeService {
     _isListening = true;
     _lastRecognizedWords = '';
     _startSttSession();
+
+    // Active Watchdog: continuously monitors STT engine health and revives listening
+    // if the mobile/web speech recognizer silently times out or drops during pauses.
+    _watchdogTimer?.cancel();
+    _watchdogTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (_isListening && !_speechToText.isListening && !_isRestarting) {
+        debugPrint('[AliveScribeService] Watchdog: reviving idle STT listener...');
+        _startSttSession();
+      }
+    });
   }
 
   void _startSttSession() {
@@ -299,6 +311,15 @@ class AliveScribeService {
           if (rawText.isEmpty) return;
           _lastRecognizedWords = rawText;
 
+          // Smart continuous commit: if user pauses speaking for ~1.8s, commit words
+          // into the live transcript immediately so no utterances are lost if engine stops.
+          _speechPauseCommitTimer?.cancel();
+          _speechPauseCommitTimer = Timer(const Duration(milliseconds: 1800), () {
+            if (_isListening && _lastRecognizedWords.isNotEmpty) {
+              _commitPendingSpeech();
+            }
+          });
+
           if (result.finalResult) {
             _commitPendingSpeech();
           }
@@ -307,8 +328,8 @@ class AliveScribeService {
           partialResults: true,
           cancelOnError: false,
           listenMode: stt.ListenMode.dictation,
-          listenFor: const Duration(seconds: 60),
-          pauseFor: const Duration(seconds: 4),
+          listenFor: const Duration(hours: 1),
+          pauseFor: const Duration(seconds: 10),
           localeId: _resolvedSttLocale,
         ),
       );
@@ -321,6 +342,7 @@ class AliveScribeService {
   }
 
   void _commitPendingSpeech() {
+    _speechPauseCommitTimer?.cancel();
     final pending = _lastRecognizedWords.trim();
     if (pending.isEmpty) return;
     _lastRecognizedWords = '';
@@ -345,7 +367,7 @@ class AliveScribeService {
   void _restartListening() {
     if (!_isListening || _isRestarting) return;
     _isRestarting = true;
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(const Duration(milliseconds: 60), () {
       _isRestarting = false;
       if (_isListening) {
         _startSttSession();
@@ -355,6 +377,10 @@ class AliveScribeService {
 
   Future<void> stopListening() async {
     _isListening = false;
+    _watchdogTimer?.cancel();
+    _watchdogTimer = null;
+    _speechPauseCommitTimer?.cancel();
+    _speechPauseCommitTimer = null;
     _commitPendingSpeech();
     try {
       await _speechToText.stop();

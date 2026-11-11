@@ -11,6 +11,8 @@ class PaymentConfig {
 
   static String? _cachedDynamicPublicKey;
   static bool? _cachedTestMode;
+  static String? _livePublicKeyFromSettings;
+  static String? _testPublicKeyFromSettings;
 
   /// Whether Paystack is currently operating in Test Sandbox mode.
   static bool get isTestMode {
@@ -40,24 +42,26 @@ class PaymentConfig {
   );
 
   /// Returns the active Paystack Public Key.
-  /// Priority:
-  /// 1. If Test Mode is ON: returns the test public key
-  /// 2. If Test Mode is OFF: dynamic key from Appwrite app_settings (if live) or livePublicKey
+  /// Guaranteed to strictly match current test/live mode so "invalid key" never occurs:
+  /// - If Test Mode is ON: always returns a valid pk_test_ key
+  /// - If Test Mode is OFF: always returns a valid pk_live_ key
   static String get paystackPublicKey {
     if (isTestMode) {
-      return testPublicKey;
+      if (_cachedDynamicPublicKey != null && _cachedDynamicPublicKey!.startsWith('pk_test_')) {
+        return _cachedDynamicPublicKey!;
+      }
+      return _testPublicKeyFromSettings ?? testPublicKey;
     }
-    if (_cachedDynamicPublicKey != null &&
-        _cachedDynamicPublicKey!.isNotEmpty &&
-        !_cachedDynamicPublicKey!.startsWith('pk_test_')) {
+
+    if (_cachedDynamicPublicKey != null && _cachedDynamicPublicKey!.startsWith('pk_live_')) {
       return _cachedDynamicPublicKey!;
     }
     const envKey = String.fromEnvironment(
       'PAYSTACK_PUBLIC_KEY',
       defaultValue: '',
     );
-    if (envKey.isNotEmpty && !envKey.startsWith('pk_test_')) return envKey;
-    return livePublicKey;
+    if (envKey.startsWith('pk_live_')) return envKey;
+    return _livePublicKeyFromSettings ?? livePublicKey;
   }
 
   /// Sets the dynamic public key at runtime (e.g. from Appwrite function response
@@ -87,8 +91,8 @@ class PaymentConfig {
     } catch (_) {}
   }
 
-  /// Queries the live Appwrite `app_settings` table for `paystack_public_key`
-  /// and `paystack_test_mode` so that updating settings applies immediately.
+  /// Queries the live Appwrite `app_settings` table for `paystack_public_key`,
+  /// `paystack_test_mode`, `paystack_live_public_key`, and `paystack_test_public_key`.
   static Future<String> syncPublicKeyFromAppwrite() async {
     try {
       final tables = TablesDB(appwriteClient);
@@ -97,7 +101,7 @@ class PaymentConfig {
             databaseId: AppwriteBackendConfig.databaseId,
             tableId: AppwriteBackendConfig.appSettingsCollectionId,
             queries: [
-              Query.limit(20),
+              Query.limit(50),
             ],
           )
           .timeout(const Duration(seconds: 6));
@@ -112,6 +116,10 @@ class PaymentConfig {
           setTestMode(isEnabled);
         } else if (k == 'paystack_public_key' && raw is String && raw.trim().startsWith('pk_')) {
           setDynamicPublicKey(raw.trim());
+        } else if (k == 'paystack_live_public_key' && raw is String && raw.trim().startsWith('pk_live_')) {
+          _livePublicKeyFromSettings = raw.trim();
+        } else if (k == 'paystack_test_public_key' && raw is String && raw.trim().startsWith('pk_test_')) {
+          _testPublicKeyFromSettings = raw.trim();
         }
       }
     } catch (_) {}

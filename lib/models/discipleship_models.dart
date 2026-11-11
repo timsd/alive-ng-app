@@ -378,6 +378,7 @@ class PrayerRequest {
   final DateTime? dateAnswered;
   final String? answer;
   final String? notes;
+  final bool isPublicOnPrayerWall;
   final List<PrayerHistoryEntry> history;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -389,6 +390,7 @@ class PrayerRequest {
     required this.request,
     this.category,
     this.status = PrayerRequestStatus.active,
+    this.isPublicOnPrayerWall = false,
     required this.dateRequested,
     this.dateAnswered,
     this.answer,
@@ -405,6 +407,7 @@ class PrayerRequest {
     String? request,
     String? category,
     PrayerRequestStatus? status,
+    bool? isPublicOnPrayerWall,
     DateTime? dateRequested,
     DateTime? dateAnswered,
     String? answer,
@@ -420,6 +423,7 @@ class PrayerRequest {
       request: request ?? this.request,
       category: category ?? this.category,
       status: status ?? this.status,
+      isPublicOnPrayerWall: isPublicOnPrayerWall ?? this.isPublicOnPrayerWall,
       dateRequested: dateRequested ?? this.dateRequested,
       dateAnswered: dateAnswered ?? this.dateAnswered,
       answer: answer ?? this.answer,
@@ -445,6 +449,9 @@ class PrayerRequest {
         (status) => status.name == json['status'],
         orElse: () => PrayerRequestStatus.active,
       ),
+      isPublicOnPrayerWall: json['is_public_on_prayer_wall'] as bool? ??
+          json['is_public'] as bool? ??
+          false,
       dateRequested: DateTime.parse(json['date_requested'] as String),
       dateAnswered: json['date_answered'] != null
           ? DateTime.parse(json['date_answered'] as String)
@@ -465,6 +472,7 @@ class PrayerRequest {
       'request': request,
       'category': category,
       'status': status.name,
+      'is_public_on_prayer_wall': isPublicOnPrayerWall,
       'date_requested': dateRequested.toIso8601String().split('T')[0],
       'date_answered': dateAnswered?.toIso8601String().split('T')[0],
       'answer': answer,

@@ -172,16 +172,30 @@ export default async ({ req, res, log, error }) => {
   }
 
   try {
-    const secret = process.env.PAYSTACK_SECRET_KEY;
-    if (!secret) {
-      error('Missing PAYSTACK_SECRET_KEY.');
+    const candidateSecrets = [
+      process.env.PAYSTACK_SECRET_KEY,
+      process.env.PAYSTACK_LIVE_SECRET_KEY,
+      process.env.PAYSTACK_TEST_SECRET_KEY,
+    ].filter((s) => typeof s === 'string' && s.trim());
+
+    if (candidateSecrets.length === 0) {
+      error('Missing PAYSTACK_SECRET_KEY in environment.');
       return res.text('Paystack is not configured.', 500);
     }
 
     const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
     const signature = req.headers['x-paystack-signature'];
-    const computed = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
-    if (!isValidSignature(signature, computed)) {
+    
+    let matchedSecret = null;
+    for (const sec of candidateSecrets) {
+      const computed = crypto.createHmac('sha512', sec).update(rawBody).digest('hex');
+      if (isValidSignature(signature, computed)) {
+        matchedSecret = sec;
+        break;
+      }
+    }
+
+    if (!matchedSecret) {
       return res.text('Invalid signature', 401);
     }
 

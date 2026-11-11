@@ -532,6 +532,8 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
     final titleController = TextEditingController();
     final descController = TextEditingController();
     bool isAnonymous = false;
+    String? inDialogError;
+    bool isSubmitting = false;
 
     showDialog(
       context: context,
@@ -543,10 +545,39 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (inDialogError != null) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(ctx).colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(ctx).colorScheme.error.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline_rounded,
+                            size: 18, color: Theme.of(ctx).colorScheme.error),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            inDialogError!,
+                            style: TextStyle(
+                              color: Theme.of(ctx).colorScheme.onErrorContainer,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 TextField(
                   controller: titleController,
                   decoration: const InputDecoration(
-                    labelText: 'Prayer Title',
+                    labelText: 'Prayer Title (Optional - auto-derived if empty)',
                     hintText: 'e.g. Guidance for board decision',
                   ),
                 ),
@@ -555,7 +586,7 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
                   controller: descController,
                   maxLines: 4,
                   decoration: const InputDecoration(
-                    labelText: 'Description / Details',
+                    labelText: 'Description / Details *',
                     hintText: 'Share what you need prayer for...',
                   ),
                 ),
@@ -574,42 +605,64 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () async {
-                final title = titleController.text.trim();
-                final desc = descController.text.trim();
-                if (title.isEmpty || desc.isEmpty) {
-                  _showSnack('Please fill all fields', isError: true);
-                  return;
-                }
-                Navigator.pop(ctx);
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      final desc = descController.text.trim();
+                      if (desc.isEmpty) {
+                        setDlgState(() => inDialogError = 'Please enter prayer details.');
+                        return;
+                      }
 
-                try {
-                  final user = ref.read(currentUserProvider);
-                  await _prayerService.createPrayerRequest(
-                    PrayerRequest(
-                      id: '',
-                      userId: user?.uid ?? '',
-                      title: title,
-                      description: desc,
-                      category: 'private_room',
-                      isAnonymous: isAnonymous,
-                      isPrivate: true,
-                      roomId: _selectedRoom!.id,
-                      createdAt: DateTime.now(),
-                      updatedAt: DateTime.now(),
-                    ),
-                  );
-                  _showSnack('Confidential prayer request posted.');
-                  _loadRoomRequests(_selectedRoom!.id);
-                } catch (e) {
-                  _showSnack('Error posting prayer: $e', isError: true);
-                }
-              },
-              child: const Text('Post Request'),
+                      var title = titleController.text.trim();
+                      if (title.isEmpty) {
+                        title = desc.length > 35 ? '${desc.substring(0, 35)}...' : desc;
+                      }
+
+                      setDlgState(() {
+                        isSubmitting = true;
+                        inDialogError = null;
+                      });
+
+                      try {
+                        final user = ref.read(currentUserProvider);
+                        await _prayerService.createPrayerRequest(
+                          PrayerRequest(
+                            id: '',
+                            userId: user?.uid ?? '',
+                            title: title,
+                            description: desc,
+                            category: 'private_room',
+                            isAnonymous: isAnonymous,
+                            isPrivate: true,
+                            roomId: _selectedRoom!.id,
+                            createdAt: DateTime.now(),
+                            updatedAt: DateTime.now(),
+                          ),
+                        );
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        _showSnack('Confidential prayer request posted.');
+                        _loadRoomRequests(_selectedRoom!.id);
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          setDlgState(() {
+                            isSubmitting = false;
+                            inDialogError = 'Error posting prayer: ${ErrorHandler.getUserFriendlyMessage(e)}';
+                          });
+                        }
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Post Request'),
             ),
           ],
         ),
