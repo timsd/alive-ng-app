@@ -889,8 +889,8 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                           final match =
                               _registeredUsers.where((u) => u.id == selectedUserId).firstOrNull;
                           if (match != null) {
-                            nameCtrl.text = match.fullName;
-                            emailCtrl.text = match.email;
+                            nameCtrl.text = match.fullName ?? '';
+                            emailCtrl.text = match.email ?? '';
                           }
                         }
                       });

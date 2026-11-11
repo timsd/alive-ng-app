@@ -61,9 +61,9 @@ function loadServiceAccount() {
   if (!fs.existsSync(keyPath)) {
     throw new Error(
       `Service Account JSON not found at ${keyPath}.\n` +
-        `Please download a Service Account JSON key from Google Cloud Console ` +
-        `(linked to Google Play Console with Release Manager permissions) and save it at:\n` +
-        `  android/play-store-service-account.json`
+      `Please download a Service Account JSON key from Google Cloud Console ` +
+      `(linked to Google Play Console with Release Manager permissions) and save it at:\n` +
+      `  android/play-store-service-account.json`
     );
   }
   return JSON.parse(fs.readFileSync(keyPath, 'utf8'));

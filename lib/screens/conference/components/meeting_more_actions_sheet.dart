@@ -216,7 +216,7 @@ class MeetingMoreActionsSheet extends StatelessWidget {
                   subtitle: Text(
                     isScribeRecording
                         ? 'Recording active in background • Tap to view live transcript'
-                        : 'Real-time speech-to-text notes and transcript export',
+                        : 'Real-time speech-to-text notetaker',
                     style: subtitleStyle,
                   ),
                   trailing: onToggleScribe != null
