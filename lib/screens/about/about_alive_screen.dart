@@ -197,7 +197,7 @@ class AboutAliveScreen extends ConsumerWidget {
                       const SizedBox(height: 18),
                       // ── Executive & Directors ──────────────────────────────
                       Text(
-                        'Executive & Directors',
+                        'Directors',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: colorScheme.primary,
@@ -205,17 +205,23 @@ class AboutAliveScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       ...leadershipPeople
-                          .where((p) => !p.isRestricted)
+                          .where((p) => p.isDirector)
                           .map(
                         (person) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _LeaderTile(
                             name: person.name,
                             role: person.offices
+                                .where((o) => o.id != 'trustee' && o.id != 'board_of_trustees' && o.id != 'bod' && o.id != 'board_of_directors')
                                 .map((o) => o.title)
                                 .join(' • '),
                             icon: _officeIcon(
-                              person.offices.first.iconName,
+                              person.offices
+                                  .firstWhere(
+                                    (o) => o.id != 'trustee' && o.id != 'board_of_trustees' && o.id != 'bod' && o.id != 'board_of_directors',
+                                    orElse: () => person.offices.first,
+                                  )
+                                  .iconName,
                             ),
                           ),
                         ),
@@ -223,9 +229,9 @@ class AboutAliveScreen extends ConsumerWidget {
                       const SizedBox(height: 8),
                       const Divider(height: 24),
                       const SizedBox(height: 8),
-                      // ── Board of Trustees ─────────────────────────────────
+                      // ── Board of Directors ────────────────────────────────
                       Text(
-                        'Board of Trustees',
+                        'Board of Directors',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: colorScheme.primary,
@@ -233,7 +239,7 @@ class AboutAliveScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'The Board of Trustees provides governance, spiritual counsel, and oversight.',
+                        'Strategic governance and oversight. Executive leaders serve dual functions connecting operations and finances to the Board.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                           fontStyle: FontStyle.italic,
@@ -242,19 +248,66 @@ class AboutAliveScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       if (canSeeLeadership)
                         ...leadershipPeople
-                            .where((p) => p.isRestricted)
+                            .where((p) => p.isBodMember)
+                            .map(
+                          (person) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _LeaderTile(
+                              name: person.name,
+                              role: person.name == 'Nwoko Patience Mfon'
+                                  ? 'Board Member (Affairs Liaison) • President'
+                                  : person.name == 'Timothy Olodude'
+                                      ? 'Board Member (Finance Liaison) • Treasurer'
+                                      : 'Director (Board Member)',
+                              icon: _officeIcon('business_center'),
+                            ),
+                          ),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _LeaderTile(
+                            name: 'Leadership team',
+                            role: 'Board of Directors',
+                            icon: _officeIcon('business_center'),
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      const Divider(height: 24),
+                      const SizedBox(height: 8),
+                      // ── Trustees ──────────────────────────────────────────
+                      Text(
+                        'Trustees',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'The Trustees provide apex governance, spiritual counsel, and oversight.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (canSeeLeadership)
+                        ...leadershipPeople
+                            .where((p) => p.isTrustee)
                             .map(
                           (person) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _LeaderTile(
                               name: person.name,
                               role: person.offices
+                                  .where((o) => o.id == 'trustee' || o.id == 'board_of_trustees')
                                   .map((o) => o.title)
                                   .join(' • '),
                               icon: _officeIcon(
                                 person.isBoardChair
                                     ? 'shield'
-                                    : person.offices.first.iconName,
+                                    : 'verified_user',
                               ),
                             ),
                           ),
@@ -264,7 +317,7 @@ class AboutAliveScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _LeaderTile(
                             name: 'Leadership team',
-                            role: 'Board of Trustees',
+                            role: 'Trustees',
                             icon: _officeIcon('shield'),
                           ),
                         ),
@@ -731,6 +784,8 @@ IconData _officeIcon(String name) {
       return Icons.event_note_rounded;
     case 'health_and_safety':
       return Icons.health_and_safety_rounded;
+    case 'business_center':
+      return Icons.business_center_rounded;
     default:
       return Icons.badge_rounded;
   }

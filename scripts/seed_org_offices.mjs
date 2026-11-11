@@ -62,27 +62,52 @@ async function api(method, path, body) {
 
 
 // ── The registry, mirroring lib/config/org_structure.dart ───────────────────
-// Chain: Board of Trustees -> President -> the director-level offices.
+// Chain: Trustees (apex) -> Board of Directors -> Executive President & Directors.
 // A body with several holders is ONE office with a members list: routing and
 // the org_offices key are both `office_id`, so a repeated id would break them.
 const OFFICES = [
   {
     id: 'board_of_trustees',
-    title: 'Board of Trustees',
+    title: 'Trustees',
     reportsTo: null,
     holder: 'Jerry Kwarba',
     members: [
-      'Jerry Kwarba', 'Okey Elechi', 'Imoh Imeh', 'Ajibade Ayodeji',
-      'Fatola Samson', 'Bassey Etido', 'Joshua Umahi', 'Frank A', 'Emeka', 'Nancy Elechi',
+      'Jerry Kwarba',
+      'Imoh Imeh',
     ],
   },
   {
     id: 'trustee',
-    title: 'Trustee (Board Member)',
-    reportsTo: 'board_of_trustees',
+    title: 'Trustee',
+    reportsTo: null,
     holder: 'Jerry Kwarba',
   },
-  { id: 'executive_president', title: 'Executive President', reportsTo: 'board_of_trustees', holder: 'Nwoko Patience Mfon' },
+  {
+    id: 'board_of_directors',
+    title: 'Board of Directors',
+    reportsTo: 'board_of_trustees',
+    holder: 'Nwoko Patience Mfon',
+    members: [
+      'Nwoko Patience Mfon',
+      'Timothy Olodude',
+      'Okechukwu Elechi',
+      'Imoh Imeh',
+      'Ajibade Ayodeji',
+      'Fatola Samson',
+      'Bassey Etido',
+      'Joshua Umahi',
+      'Frank A',
+      'Emeka Okoro',
+      'Nancy Elechi',
+    ],
+  },
+  {
+    id: 'bod',
+    title: 'Director (Board Member)',
+    reportsTo: 'board_of_directors',
+    holder: 'Nwoko Patience Mfon',
+  },
+  { id: 'executive_president', title: 'Executive President', reportsTo: 'board_of_directors', holder: 'Nwoko Patience Mfon' },
   { id: 'secretary', title: 'Secretary', reportsTo: 'executive_president', holder: 'Caleb Peters' },
   { id: 'communication_director', title: 'Communication Director', reportsTo: 'executive_president', holder: 'Caleb Peters' },
   { id: 'speaker', title: 'Speaker', reportsTo: 'executive_president', holder: 'Godstime Esuku' },
@@ -129,7 +154,6 @@ for (const office of OFFICES) {
     is_active: true,
     term_start: now,
     term_end: '',
-    notes: '',
     created_at: now,
     updated_at: now,
   };
@@ -137,8 +161,10 @@ for (const office of OFFICES) {
   const prior = byOfficeId.get(office.id);
   if (prior) {
     if (
+      prior.title === data.title &&
       prior.holder_name === data.holder_name &&
-      prior.supervisor_office_id === data.supervisor_office_id
+      prior.supervisor_office_id === data.supervisor_office_id &&
+      prior.notes === data.notes
     ) {
       console.log(`  = ${office.id} (unchanged)`);
       continue;

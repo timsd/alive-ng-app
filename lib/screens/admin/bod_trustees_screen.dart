@@ -75,10 +75,15 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
   Future<void> _loadLeadership() async {
     try {
       final results = await Future.wait([
+        _leadershipService.getRecordsByPosition(LeadershipPosition.director),
         _leadershipService.getRecordsByPosition(LeadershipPosition.bod),
         _leadershipService.getRecordsByPosition(LeadershipPosition.trustee),
       ]);
-      final merged = <LeadershipRecord>[...results[0], ...results[1]];
+      final merged = <LeadershipRecord>[
+        ...results[0],
+        ...results[1],
+        ...results[2],
+      ];
       merged.sort((a, b) => b.startDate.compareTo(a.startDate));
       if (mounted) setState(() => _records = merged);
     } catch (_) {
@@ -335,16 +340,16 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             ),
             const SizedBox(height: 18),
 
-            // Board of Directors Section
+            // Directors Section (Executive Directorate)
             _buildLeadershipSection(
               'Directors',
-              Icons.business_center_rounded,
-              _filteredRecords(LeadershipPosition.bod),
+              Icons.groups_rounded,
+              _filteredRecords(LeadershipPosition.director),
               fallback: [
                 _buildMemberCard(
                   'Nwoko Patience Mfon',
-                  'Executive President & Chairman',
-                  'Leading the strategic direction of ALIVE Nigeria',
+                  'Executive President',
+                  'Leading the strategic direction and operations of ALIVE Nigeria',
                   Icons.person_rounded,
                 ),
                 _buildMemberCard(
@@ -367,9 +372,86 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                 ),
                 _buildMemberCard(
                   'Emenike Ekechi',
-                  'Director of Evangelism & Programming',
-                  'Evangelistic campaigns, campus missions, and ministry programming',
+                  'Director of Evangelism, Programming & Health',
+                  'Evangelistic campaigns, campus missions, programming, and health ministry',
                   Icons.campaign_rounded,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Board of Directors Section
+            _buildLeadershipSection(
+              'Board of Directors',
+              Icons.business_center_rounded,
+              _filteredRecords(LeadershipPosition.bod),
+              fallback: [
+                _buildMemberCard(
+                  'Nwoko Patience Mfon',
+                  'Board Member (Affairs Liaison) • President',
+                  'Connecting executive operations and ministry affairs to the Board',
+                  Icons.business_center_rounded,
+                ),
+                _buildMemberCard(
+                  'Timothy Olodude',
+                  'Board Member (Finance Liaison) • Treasurer',
+                  'Connecting financial stewardship and reporting to the Board',
+                  Icons.account_balance_wallet_rounded,
+                ),
+                _buildMemberCard(
+                  'Okechukwu Elechi',
+                  'Director (Board Member)',
+                  'Strategic leadership, advisory, and governance',
+                  Icons.business_center_rounded,
+                ),
+                _buildMemberCard(
+                  'Imoh Imeh',
+                  'Director (Board Member)',
+                  'Strategic leadership, advisory, and governance',
+                  Icons.business_center_rounded,
+                ),
+                _buildMemberCard(
+                  'Ajibade Ayodeji',
+                  'Director (Board Member)',
+                  'Strategic leadership, advisory, and governance',
+                  Icons.business_center_rounded,
+                ),
+                _buildMemberCard(
+                  'Fatola Samson',
+                  'Director (Board Member)',
+                  'Strategic leadership, advisory, and governance',
+                  Icons.business_center_rounded,
+                ),
+                _buildMemberCard(
+                  'Bassey Etido',
+                  'Director (Board Member)',
+                  'Strategic leadership, advisory, and governance',
+                  Icons.business_center_rounded,
+                ),
+                _buildMemberCard(
+                  'Joshua Umahi',
+                  'Director (Board Member)',
+                  'Strategic leadership, advisory, and governance',
+                  Icons.business_center_rounded,
+                ),
+                _buildMemberCard(
+                  'Frank A',
+                  'Director (Board Member)',
+                  'Strategic leadership, advisory, and governance',
+                  Icons.business_center_rounded,
+                ),
+                _buildMemberCard(
+                  'Emeka Okoro',
+                  'Director (Board Member)',
+                  'Strategic leadership, advisory, and governance',
+                  Icons.business_center_rounded,
+                ),
+                _buildMemberCard(
+                  'Nancy Elechi',
+                  'Director (Board Member)',
+                  'Strategic leadership, advisory, and governance',
+                  Icons.business_center_rounded,
                 ),
               ],
             ),
@@ -378,21 +460,15 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
 
             // Trustees Section
             _buildLeadershipSection(
-              'Board of Trustees',
+              'Trustees',
               Icons.security_rounded,
               _filteredRecords(LeadershipPosition.trustee),
               fallback: [
                 _buildMemberCard(
                   'Jerry Kwarba',
-                  'Chairman, Board of Trustees',
+                  'Chairman of Trustees',
                   'Overseeing organizational governance, spiritual counsel, and compliance',
                   Icons.gavel_rounded,
-                ),
-                _buildMemberCard(
-                  'Okechukwu Elechi',
-                  'Trustee',
-                  'Board governance, oversight, and advisory',
-                  Icons.security_rounded,
                 ),
                 _buildMemberCard(
                   'Imoh Imeh',

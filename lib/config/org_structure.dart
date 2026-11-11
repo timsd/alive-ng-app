@@ -48,27 +48,45 @@ class OrgOffice {
 }
 
 /// The reporting chain:
-///   Board of Trustees -> President -> Directors
-/// A director is supervised by a trustee.
+///   Trustees (apex, reports to no one)
+///     └── Board of Directors (governance, oversight, strategy)
+///           └── Executive President & Directors (operations, ministry execution)
+///               * Nwoko Patience Mfon and Timothy Olodude hold dual functions
+///                 connecting Directors to the Board of Directors on affairs and finance.
 const List<OrgOffice> kOrgOffices = [
-  // ── Board of Trustees ────────────────────────────────────────────────────
-  // A Board is ONE office held by SEVERAL people, so the board is modelled
-  // once and the trustees are listed as its members. Giving each trustee their
-  // own `id` would duplicate the office and break routing, which is keyed on
-  // `office_id`.
+  // ── Trustees (Apex - reports to no one) ──────────────────────────────────
   OrgOffice(
     id: 'board_of_trustees',
-    title: 'Board of Trustees',
+    title: 'Trustees',
     iconName: 'shield',
     reportsTo: null,
     holderName: 'Jerry Kwarba',
-    // Trustee names are not shown to members or the public -- only to
-    // leadership and above. The office is still listed, just not its people.
     namesRestrictedToLeadership: true,
-    // Everyone serving on the board. The first entry is the chair shown above.
     memberNames: [
       'Jerry Kwarba',
-      'Okey Elechi',
+      'Imoh Imeh',
+    ],
+  ),
+  OrgOffice(
+    id: 'trustee',
+    title: 'Trustee (Board Member)',
+    iconName: 'verified_user',
+    reportsTo: null,
+    holderName: 'Jerry Kwarba',
+    namesRestrictedToLeadership: true,
+  ),
+
+  // ── Board of Directors (BOD - reports to Board of Trustees) ───────────────
+  OrgOffice(
+    id: 'board_of_directors',
+    title: 'Board of Directors',
+    iconName: 'business_center',
+    reportsTo: 'board_of_trustees',
+    holderName: 'Nwoko Patience Mfon',
+    memberNames: [
+      'Nwoko Patience Mfon',
+      'Timothy Olodude',
+      'Okechukwu Elechi',
       'Imoh Imeh',
       'Ajibade Ayodeji',
       'Fatola Samson',
@@ -80,24 +98,22 @@ const List<OrgOffice> kOrgOffices = [
     ],
   ),
   OrgOffice(
-    id: 'trustee',
-    title: 'Trustee (Board Member)',
-    iconName: 'verified_user',
-    reportsTo: 'board_of_trustees',
-    holderName: 'Jerry Kwarba',
-    namesRestrictedToLeadership: true,
+    id: 'bod',
+    title: 'Director (Board Member)',
+    iconName: 'business_center',
+    reportsTo: 'board_of_directors',
   ),
 
-  // ── Executive ────────────────────────────────────────────────────────────
+  // ── Executive Directorate (reports to Board of Directors) ─────────────────
   OrgOffice(
     id: 'executive_president',
     title: 'Executive President',
     iconName: 'person',
-    reportsTo: 'board_of_trustees',
+    reportsTo: 'board_of_directors',
     holderName: 'Nwoko Patience Mfon',
   ),
 
-  // ── Directors (each supervised by a trustee) ─────────────────────────────
+  // ── Directors (report to Executive President) ─────────────────────────────
   OrgOffice(
     id: 'secretary',
     title: 'Secretary',
@@ -193,6 +209,22 @@ class OrgPerson {
   /// The chair of the board is the first named member, and is called out
   /// rather than being lost among the other trustees.
   bool get isBoardChair => offices.any((o) => o.id == 'board_of_trustees');
+
+  /// True if this person is a Trustee (Jerry Kwarba, Imoh Imeh).
+  bool get isTrustee =>
+      offices.any((o) => o.id == 'trustee' || o.id == 'board_of_trustees');
+
+  /// True if this person is a member of the Board of Directors (BOD).
+  bool get isBodMember =>
+      offices.any((o) => o.id == 'bod' || o.id == 'board_of_directors');
+
+  /// True if this person is an Executive / Departmental Director (Nwoko, Caleb, Godstime, Timothy, Emenike).
+  bool get isDirector =>
+      offices.any((o) => o.id != 'trustee' && o.id != 'board_of_trustees' && o.id != 'bod' && o.id != 'board_of_directors');
+
+  /// True if this leader holds a dual function connecting Directors to the Board of Directors
+  /// (Nwoko Patience Mfon on affairs, Timothy Olodude on finance).
+  bool get hasDualFunction => isDirector && isBodMember;
 }
 
 /// The leadership roster, one entry per person, grouped from [kOrgOffices].
@@ -217,25 +249,30 @@ List<OrgPerson> _buildLeadershipPeople() {
     }
     if (office.memberNames.isEmpty) continue;
 
-    // A member of a multi-member body (the board) who is not already the
-    // named holder is listed against the trustee office, so each trustee
-    // appears once holding one office rather than a row per person.
-    final trusteeOffice = office.id == 'board_of_trustees'
-        ? orgOfficeById('trustee')
-        : null;
+    final memberOffice = office.id == 'board_of_directors'
+        ? (orgOfficeById('bod') ??
+            const OrgOffice(
+              id: 'bod',
+              title: 'Director (Board Member)',
+              iconName: 'business_center',
+              reportsTo: 'board_of_directors',
+            ))
+        : office.id == 'board_of_trustees'
+            ? (orgOfficeById('trustee') ??
+                const OrgOffice(
+                  id: 'trustee',
+                  title: 'Trustee (Board Member)',
+                  iconName: 'verified_user',
+                  reportsTo: null,
+                  namesRestrictedToLeadership: true,
+                ))
+            : null;
+
+    if (memberOffice == null) continue;
+
     for (final member in office.memberNames) {
       if (member == office.holderName) continue; // added above
-      add(
-        member,
-        trusteeOffice ??
-            OrgOffice(
-              id: 'trustee',
-              title: 'Trustee (Board Member)',
-              iconName: 'verified_user',
-              reportsTo: office.id,
-              namesRestrictedToLeadership: office.namesRestrictedToLeadership,
-            ),
-      );
+      add(member, memberOffice);
     }
   }
 

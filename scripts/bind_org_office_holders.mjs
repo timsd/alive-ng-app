@@ -49,11 +49,12 @@ const patch = async (id, data) => {
 };
 
 const BINDINGS = [
-  { email: 'dammyolodude@gmail.com',    fullName: 'Timothy Olodude',     offices: ['treasurer', 'director_logistics'] },
-  { email: 'peterscaleb50@gmail.com',    fullName: 'Caleb Peters',        offices: ['secretary', 'communication_director'] },
-  { email: 'jamespat84@gmail.com',       fullName: 'Nwoko Patience Mfon', offices: ['executive_president'] },
-  { email: 'praiseelechi@gmail.com',     fullName: 'Emenike Ekechi',      offices: ['director_evangelism', 'director_programming', 'director_health'] },
-  { email: 'deovolente52@gmail.com',     fullName: 'Godstime Esuku',      offices: ['speaker', 'director_amtc'] },
+  { email: 'dammyolodude@gmail.com',     fullName: 'Timothy Olodude',     offices: ['treasurer', 'director_logistics', 'bod'] },
+  { email: 'peterscaleb50@gmail.com',     fullName: 'Caleb Peters',        offices: ['secretary', 'communication_director'] },
+  { email: 'jamespat84@gmail.com',        fullName: 'Nwoko Patience Mfon', offices: ['executive_president', 'board_of_directors', 'bod'] },
+  { email: 'praiseelechi@gmail.com',      fullName: 'Emenike Ekechi',      offices: ['director_evangelism', 'director_programming', 'director_health'] },
+  { email: 'deovolente52@gmail.com',      fullName: 'Godstime Esuku',      offices: ['speaker', 'director_amtc'] },
+  { email: 'okechukwuelechi33@gmail.com', fullName: 'Okechukwu Elechi',    offices: ['bod'] },
 ];
 
 // The board chair is Jerry Kwarba in `org_structure.dart`. The seed wrote a
