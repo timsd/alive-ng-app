@@ -457,7 +457,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   Widget _buildContentPagesTab() {
-    return LayoutFixUtils.safeColumn(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSectionHeader(
           context,
@@ -873,7 +874,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   Widget _buildProjectsTab() {
-    return LayoutFixUtils.safeColumn(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -1430,7 +1432,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       animation: lessonsService,
       builder: (context, _) {
         final lessons = lessonsService.lessons;
-        return LayoutFixUtils.safeColumn(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildSectionHeader(
               context,

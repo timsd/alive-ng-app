@@ -4,6 +4,7 @@ import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
+import 'appwrite_profile_service.dart';
 import 'auth_service.dart';
 
 /// Generates and validates single-use approval tokens with expiry
@@ -64,17 +65,9 @@ class ApprovalLinkService {
       final approverId =
           AuthService.instance.currentUser?.uid ?? 'approval_link';
 
-      await _tables.updateRow(
-        databaseId: AppwriteBackendConfig.databaseId,
-        tableId: AppwriteBackendConfig.usersCollectionId,
-        rowId: userId,
-        data: {
-          'is_approved': true,
-          'approval_status': 'approved',
-          'approved_by': approverId,
-          'approved_at': now,
-          'updated_at': now,
-        },
+      await AppwriteProfileService().approveUserAndChapter(
+        userId: userId,
+        approverUserId: approverId,
       );
 
       await _tables.updateRow(

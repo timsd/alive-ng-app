@@ -43,6 +43,27 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   LeadershipPosition? _selectedPosition;
+  String _tenureFilter = 'all';
+
+  List<String> get _availableTenures {
+    final tenures = <String>{'2026'};
+    for (final r in _activeRecords) {
+      tenures.add(r.startDate.year.toString());
+    }
+    for (final r in _completedRecords) {
+      tenures.add(r.startDate.year.toString());
+    }
+    for (final r in _archivedRecords) {
+      tenures.add(r.startDate.year.toString());
+    }
+    for (final h in [..._directors, ..._bod, ..._trustees]) {
+      final start = h['term_start'] != null ? DateTime.tryParse(h['term_start'].toString()) : null;
+      final y = start?.year.toString() ?? (h['tenure_year']?.toString());
+      if (y != null && y.isNotEmpty) tenures.add(y);
+    }
+    final sorted = tenures.toList()..sort((a, b) => b.compareTo(a));
+    return ['all', ...sorted];
+  }
 
   @override
   void initState() {
@@ -189,6 +210,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Jerry Kwarba',
           'email': '',
           'user_id': '',
+          'description': 'Overseeing organizational governance, spiritual counsel, and compliance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'trustee',
@@ -196,6 +221,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Imoh Imeh',
           'email': '',
           'user_id': '',
+          'description': 'Board governance, oversight, and advisory',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
       ];
 
@@ -206,6 +235,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Nwoko Patience Mfon',
           'email': 'jamespat84@gmail.com',
           'user_id': '',
+          'description': 'Strategic leadership, advisory, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'bod',
@@ -213,6 +246,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Timothy Olodude',
           'email': 'dammyolodude@gmail.com',
           'user_id': '6a875b8ec9a90f0a6a55',
+          'description': 'Strategic leadership, financial oversight, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'bod',
@@ -220,6 +257,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Okechukwu Elechi',
           'email': 'okechukwuelechi33@gmail.com',
           'user_id': '6af371a672420765763b',
+          'description': 'Strategic leadership, advisory, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'bod',
@@ -227,6 +268,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Imoh Imeh',
           'email': '',
           'user_id': '',
+          'description': 'Strategic leadership, advisory, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'bod',
@@ -234,6 +279,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Ajibade Ayodeji',
           'email': '',
           'user_id': '',
+          'description': 'Strategic leadership, advisory, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'bod',
@@ -241,6 +290,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Fatola Samson',
           'email': '',
           'user_id': '',
+          'description': 'Strategic leadership, advisory, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'bod',
@@ -248,6 +301,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Bassey Etido',
           'email': '',
           'user_id': '',
+          'description': 'Strategic leadership, advisory, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'bod',
@@ -255,6 +312,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Joshua Umahi',
           'email': '',
           'user_id': '',
+          'description': 'Strategic leadership, advisory, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'bod',
@@ -262,6 +323,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Frank A',
           'email': '',
           'user_id': '',
+          'description': 'Strategic leadership, advisory, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'bod',
@@ -269,6 +334,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Emeka Okoro',
           'email': '',
           'user_id': '',
+          'description': 'Strategic leadership, advisory, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'bod',
@@ -276,6 +345,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Nancy Elechi',
           'email': '',
           'user_id': '',
+          'description': 'Strategic leadership, advisory, and governance',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
       ];
 
@@ -286,6 +359,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Nwoko Patience Mfon',
           'email': 'jamespat84@gmail.com',
           'user_id': '',
+          'description': 'Leading the strategic direction and operations of ALIVE Nigeria',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'secretary',
@@ -293,6 +370,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Caleb Peters',
           'email': 'peterscaleb50@gmail.com',
           'user_id': '6abceded858b8dff1858',
+          'description': 'Secretariat, media communications, and public relations',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'speaker',
@@ -300,6 +381,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Godstime Esuku',
           'email': 'deovolente52@gmail.com',
           'user_id': '6ad7c8bf4cbbd6a3395a',
+          'description': 'Spiritual preaching and missionary training center direction',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'treasurer',
@@ -307,6 +392,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Timothy Olodude',
           'email': 'dammyolodude@gmail.com',
           'user_id': '6a875b8ec9a90f0a6a55',
+          'description': 'Financial stewardship, resource deployment, and event logistics',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
         {
           'office_id': 'director_evangelism',
@@ -314,6 +403,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           'full_name': 'Emenike Ekechi',
           'email': 'praiseelechi@gmail.com',
           'user_id': '',
+          'description': 'Evangelistic campaigns, campus missions, programming, and health ministry',
+          'term_start': '2026-09-01T00:00:00.000Z',
+          'tenure_year': '2026',
+          'status': 'active',
         },
       ];
 
@@ -343,6 +436,12 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           .toList();
     }
 
+    if (_tenureFilter != 'all') {
+      filtered = filtered
+          .where((record) => record.startDate.year.toString() == _tenureFilter)
+          .toList();
+    }
+
     return filtered;
   }
 
@@ -360,7 +459,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             tooltip: 'Refresh',
           ),
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.person_add_rounded),
             onPressed: _showAddChooserDialog,
             tooltip: 'Add Leadership / Board Member',
           ),
@@ -450,6 +549,55 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       ),
       child: Column(
         children: [
+          // Leadership by tenure dropdown filter (Images 2 & 3)
+          Row(
+            children: [
+              Icon(Icons.history_edu_rounded, color: theme.colorScheme.primary, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Leadership by tenure',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _tenureFilter,
+                    borderRadius: BorderRadius.circular(12),
+                    dropdownColor: theme.colorScheme.surface,
+                    items: _availableTenures
+                        .map((tenure) => DropdownMenuItem(
+                              value: tenure,
+                              child: Text(
+                                tenure == 'all' ? 'All Tenures' : tenure,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) setState(() => _tenureFilter = value);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
           // Search bar
           TextField(
             controller: _searchController,
@@ -609,11 +757,20 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     final theme = Theme.of(context);
     final query = _searchQuery.trim().toLowerCase();
     final holders = rawHolders.where((h) {
-      if (query.isEmpty) return true;
-      final name = (h['full_name'] ?? '').toString().toLowerCase();
-      final email = (h['email'] ?? '').toString().toLowerCase();
-      final title = (h['office_title'] ?? '').toString().toLowerCase();
-      return name.contains(query) || email.contains(query) || title.contains(query);
+      if (query.isNotEmpty) {
+        final name = (h['full_name'] ?? '').toString().toLowerCase();
+        final email = (h['email'] ?? '').toString().toLowerCase();
+        final title = (h['office_title'] ?? '').toString().toLowerCase();
+        if (!name.contains(query) && !email.contains(query) && !title.contains(query)) {
+          return false;
+        }
+      }
+      if (_tenureFilter != 'all') {
+        final start = h['term_start'] != null ? DateTime.tryParse(h['term_start'].toString()) : null;
+        final year = start?.year.toString() ?? (h['tenure_year']?.toString() ?? '2026');
+        if (year != _tenureFilter) return false;
+      }
+      return true;
     }).toList();
 
     final isTrustee = category == 'trustee';
@@ -682,7 +839,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'No $label found',
+                        'No $label found for selected tenure',
                         style: TextStyle(
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
@@ -720,17 +877,42 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             ? 'Director (Board Member)'
             : 'Director';
     final officeTitle = (holder['office_title'] ?? defaultTitle).toString();
+    final description = (holder['description'] ?? holder['bio'] ?? '').toString();
     final email = (holder['email'] ?? '').toString();
     final userId = (holder['user_id'] ?? '').toString();
     final isLinked = userId.isNotEmpty;
+    final statusStr = (holder['status'] ?? (isLinked ? 'active' : 'pending')).toString().toLowerCase();
+    final isPending = statusStr == 'pending' || !isLinked;
+
+    IconData getLeadingIcon() {
+      final t = officeTitle.toLowerCase();
+      if (t.contains('president')) return Icons.person_rounded;
+      if (t.contains('secretary') || t.contains('communication')) return Icons.description_rounded;
+      if (t.contains('speaker') || t.contains('amtc') || t.contains('school')) return Icons.school_rounded;
+      if (t.contains('treasurer') || t.contains('finance') || t.contains('logistics')) return Icons.account_balance_wallet_rounded;
+      if (t.contains('evangelism') || t.contains('health')) return Icons.campaign_rounded;
+      if (isTrustee || t.contains('chairman') || t.contains('trustee')) return Icons.gavel_rounded;
+      if (isBod || t.contains('board')) return Icons.business_center_rounded;
+      return Icons.person_rounded;
+    }
+
+    String getTenureText() {
+      final start = holder['term_start'] != null ? DateTime.tryParse(holder['term_start'].toString()) : null;
+      final end = holder['term_end'] != null ? DateTime.tryParse(holder['term_end'].toString()) : null;
+      final startYear = start?.year ?? 2026;
+      final startMonth = start != null ? DateFormat('MMM yyyy').format(start) : 'Sep 2026';
+      final endMonth = end != null ? DateFormat('MMM yyyy').format(end) : 'Present';
+      return '$startYear ($startMonth - $endMonth)';
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
+      color: theme.colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -741,34 +923,49 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
               children: [
                 CircleAvatar(
                   radius: 22,
-                  backgroundColor: isTrustee
-                      ? Colors.amber.withValues(alpha: 0.2)
-                      : isBod
-                          ? Colors.indigo.withValues(alpha: 0.15)
-                          : theme.colorScheme.primary.withValues(alpha: 0.15),
+                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
                   child: Icon(
-                    isTrustee
-                        ? Icons.security_rounded
-                        : isBod
-                            ? Icons.business_center_rounded
-                            : Icons.person_rounded,
-                    color: isTrustee
-                        ? Colors.amber.shade900
-                        : isBod
-                            ? Colors.indigo
-                            : theme.colorScheme.primary,
+                    getLeadingIcon(),
+                    color: theme.colorScheme.primary,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        fullName,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              fullName,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isPending ? const Color(0xFFECE6D8) : Colors.green.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isPending ? 'PENDING' : 'ACTIVE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isPending ? const Color(0xFF6B6355) : Colors.green.shade800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -777,6 +974,24 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
+                        ),
+                      ),
+                      if (description.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          description,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tenure: ${getTenureText()}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 12,
                         ),
                       ),
                       if (email.isNotEmpty) ...[
@@ -979,6 +1194,12 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     final titleCtrl = TextEditingController(
       text: holder?['office_title'] ?? defaultTitle,
     );
+    final descriptionCtrl = TextEditingController(
+      text: (holder?['description'] ?? holder?['bio'] ?? '').toString(),
+    );
+    final tenureYearCtrl = TextEditingController(
+      text: (holder?['tenure_year'] ?? '2026').toString(),
+    );
     final emailCtrl = TextEditingController(text: holder?['email'] ?? '');
     String selectedUserId = holder?['user_id'] ?? '';
     final defaultOfficeId = isTrustee ? 'trustee' : (isBod ? 'bod' : 'director');
@@ -1064,6 +1285,26 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descriptionCtrl,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Role Summary / Description',
+                      hintText: 'e.g. Leading strategic direction and operations of ALIVE Nigeria',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: tenureYearCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Tenure Start Year',
+                      hintText: 'e.g. 2026',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   if (selectedUserId.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Container(
@@ -1107,6 +1348,8 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                     docId: holder?['\$id'],
                     fullName: nameCtrl.text.trim(),
                     officeTitle: titleCtrl.text.trim(),
+                    description: descriptionCtrl.text.trim(),
+                    tenureYear: tenureYearCtrl.text.trim(),
                     email: emailCtrl.text.trim(),
                     userId: selectedUserId,
                     category: category,
@@ -1126,6 +1369,8 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     String? docId,
     required String fullName,
     required String officeTitle,
+    required String description,
+    required String tenureYear,
     required String email,
     required String userId,
     required String category,
@@ -1135,9 +1380,12 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       final tables = TablesDB(appwriteClient);
       final isTrustee = category == 'trustee';
       final isBod = category == 'bod';
+      final parsedYear = int.tryParse(tenureYear) ?? DateTime.now().year;
+      final termStartDate = DateTime.utc(parsedYear, 9, 1);
       final payload = <String, dynamic>{
         'office_id': officeId.isNotEmpty ? officeId : (isTrustee ? 'trustee' : (isBod ? 'bod' : 'director')),
         'office_title': officeTitle.trim(),
+        'description': description.trim(),
         'scope': 'national',
         'chapter_id': '',
         'user_id': userId.trim(),
@@ -1145,8 +1393,9 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         'email': email.trim(),
         'supervisor_user_id': '',
         'supervisor_name': isTrustee ? 'Trustees' : (isBod ? 'Trustees' : 'Board of Directors'),
-        'term_start': DateTime.now().toUtc().toIso8601String(),
-        'term_end': DateTime.now().add(const Duration(days: 365 * 3)).toUtc().toIso8601String(),
+        'term_start': termStartDate.toIso8601String(),
+        'term_end': termStartDate.add(const Duration(days: 365 * 3)).toIso8601String(),
+        'tenure_year': parsedYear.toString(),
         'ended_reason': '',
         'is_current': true,
         'updated_at': DateTime.now().toUtc().toIso8601String(),

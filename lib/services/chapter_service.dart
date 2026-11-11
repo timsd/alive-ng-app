@@ -226,7 +226,7 @@ class ChapterService {
   }
 
   Future<ChapterMember> addMember(
-      String chapterId, String userId, MemberRole role) async {
+      String chapterId, String userId, MemberRole role, {bool isActive = true}) async {
     final now = DateTime.now().toUtc();
     final member = ChapterMember(
       id: AppwriteIdUtils.uniqueId(),
@@ -234,7 +234,7 @@ class ChapterService {
       userId: userId,
       role: role,
       joinedAt: now,
-      isActive: true,
+      isActive: isActive,
       permissions: _rolePermissions(role),
       metadata: {},
     );
@@ -250,6 +250,54 @@ class ChapterService {
     } catch (e) {
       throw DatabaseException('Failed to add chapter member', originalError: e);
     }
+  }
+
+  Future<void> activateMemberByUserId({
+    required String userId,
+    required String chapterIdentifier,
+  }) async {
+    try {
+      var resolvedChapterId = chapterIdentifier;
+      final existingChapter = await getChapterById(chapterIdentifier);
+      if (existingChapter == null) {
+        final chapters = await getChapters(searchQuery: chapterIdentifier, limit: 1);
+        if (chapters.isNotEmpty) {
+          resolvedChapterId = chapters.first.id;
+        }
+      }
+
+      final existingMember = await getChapterMember(resolvedChapterId, userId);
+      if (existingMember != null) {
+        await _tables.updateRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: _membersCollection,
+          rowId: AppwriteIdUtils.toValidUid(existingMember.id),
+          data: {
+            'is_active': true,
+            'updated_at': _iso(DateTime.now()),
+          },
+        );
+      } else {
+        await addMember(resolvedChapterId, userId, MemberRole.member, isActive: true);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> deactivateMemberByUserId({
+    required String userId,
+    required String chapterIdentifier,
+  }) async {
+    try {
+      var resolvedChapterId = chapterIdentifier;
+      final existingChapter = await getChapterById(chapterIdentifier);
+      if (existingChapter == null) {
+        final chapters = await getChapters(searchQuery: chapterIdentifier, limit: 1);
+        if (chapters.isNotEmpty) {
+          resolvedChapterId = chapters.first.id;
+        }
+      }
+      await removeMember(resolvedChapterId, userId);
+    } catch (_) {}
   }
 
   Future<ChapterMember> updateMemberRole(

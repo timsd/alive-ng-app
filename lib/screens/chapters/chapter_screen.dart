@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../utils/error_handler.dart';
 import 'package:appwrite/appwrite.dart';
+import '../../models/app_models.dart';
 import '../../models/chapter_models.dart';
+import '../../services/appwrite_profile_service.dart';
 import '../../services/chapter_service.dart';
 import '../../services/auth_service.dart';
 import '../../main.dart';
@@ -26,6 +28,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ChapterService _chapterService = ChapterService();
+  final AppwriteProfileService _profileService = AppwriteProfileService();
   final AuthService _authService = AuthService.instance;
 
   List<Chapter> _chapters = [];
@@ -33,11 +36,17 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
   List<ChapterActivity> _userActivities = [];
   List<ChapterTask> _userTasks = [];
   ChapterUserStatistics _userStatistics = ChapterUserStatistics.empty;
+  UserProfile? _currentUserProfile;
 
   bool _isLoading = true;
   String _searchQuery = '';
   WorkersType? _selectedType;
   String? _currentUserId;
+
+  bool get _isUserChapterApproved {
+    if (_currentUserProfile == null) return false;
+    return _currentUserProfile!.isChapterApproved;
+  }
 
   @override
   void initState() {
@@ -71,6 +80,11 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       var statistics = ChapterUserStatistics.empty;
 
       if (_currentUserId != null) {
+        try {
+          _currentUserProfile =
+              await _profileService.getUserProfileModel(_currentUserId!);
+        } catch (_) {}
+
         final results = await Future.wait([
           _chapterService.getUserMemberships(_currentUserId!),
           _chapterService.getUserActivities(_currentUserId!),
@@ -541,58 +555,147 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
   }
 
   Widget _buildMyChaptersTab() {
+    final pendingChapterName = _currentUserProfile?.localChapter;
+    final isPendingApproval = _currentUserProfile != null &&
+        !_currentUserProfile!.isChapterApproved &&
+        pendingChapterName != null &&
+        pendingChapterName.trim().isNotEmpty;
+
     if (_userMemberships.isEmpty) {
+      if (isPendingApproval) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildPendingApprovalCard(pendingChapterName),
+          ],
+        );
+      }
       return const Center(child: Text('You are not a member of any chapters'));
     }
 
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      itemCount: _userMemberships.length,
-      itemBuilder: (context, index) {
-        final membership = _userMemberships[index];
-        final chapter = _chapters.cast<Chapter?>().firstWhere(
-              (c) => c?.id == membership.chapterId,
-              orElse: () => null,
-            );
+      children: [
+        if (isPendingApproval) ...[
+          _buildPendingApprovalCard(pendingChapterName),
+          const SizedBox(height: 12),
+        ],
+        ..._userMemberships.map((membership) {
+          final chapter = _chapters.cast<Chapter?>().firstWhere(
+                (c) => c?.id == membership.chapterId,
+                orElse: () => null,
+              );
 
-        final chapterDisplayName = chapter != null
-            ? (chapter.name.toLowerCase().contains('chapter')
-                ? chapter.name
-                : '${chapter.name} Chapter')
-            : 'Chapter (${membership.chapterId.length > 8 ? membership.chapterId.substring(0, 8) : membership.chapterId}...)';
+          final chapterDisplayName = chapter != null
+              ? (chapter.name.toLowerCase().contains('chapter')
+                  ? chapter.name
+                  : '${chapter.name} Chapter')
+              : 'Chapter (${membership.chapterId.length > 8 ? membership.chapterId.substring(0, 8) : membership.chapterId}...)';
 
-        return Card(
-          elevation: 2,
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Icon(
-                Icons.groups_rounded,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
               ),
             ),
-            title: Text(
-              chapterDisplayName,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.groups_rounded,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
+              ),
+              title: Text(
+                chapterDisplayName,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                'Role: ${_formatRole(membership.role)}${chapter != null ? ' • ${_chapterService.getTypeDescription(chapter.type)}' : ''}',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _navigateToChapterDetails(
+                chapter,
+                chapterId: membership.chapterId,
+              ),
             ),
-            subtitle: Text(
-              'Role: ${_formatRole(membership.role)}${chapter != null ? ' • ${_chapterService.getTypeDescription(chapter.type)}' : ''}',
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildPendingApprovalCard(String chapterName) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.amber.shade300, width: 1.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: Colors.amber.shade100,
+                  child: Icon(Icons.hourglass_top_rounded, color: Colors.amber.shade900),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        chapterName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Awaiting Leadership Approval',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade300),
+                  ),
+                  child: Text(
+                    'Pending',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber.shade900,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _navigateToChapterDetails(
-              chapter,
-              chapterId: membership.chapterId,
+            const SizedBox(height: 12),
+            Text(
+              'Your membership request has been submitted to the chapter coordinator and admin team. Once approved, all chapter activities, tasks, team communications, and local mission schedules will be accessible.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
@@ -612,6 +715,31 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
   }
 
   Widget _buildActivitiesTab() {
+    if (_currentUserId != null && !_isUserChapterApproved) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.lock_clock_rounded, size: 54, color: Colors.amber.shade700),
+              const SizedBox(height: 14),
+              const Text(
+                'Chapter Activities Awaiting Approval',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Your chapter assignment is currently awaiting leadership approval. Once approved, local fellowship activities, outreach schedules, and meetings will be accessible here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_userActivities.isEmpty) {
       return const Center(child: Text('No activities found'));
     }
@@ -626,6 +754,31 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
   }
 
   Widget _buildTasksTab() {
+    if (_currentUserId != null && !_isUserChapterApproved) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.task_alt_rounded, size: 54, color: Colors.amber.shade700),
+              const SizedBox(height: 14),
+              const Text(
+                'Chapter Tasks Awaiting Approval',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Team tasks and assignments will appear here once your chapter membership is confirmed and approved by leadership.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_userTasks.isEmpty) {
       return const Center(child: Text('No tasks found'));
     }
@@ -781,14 +934,25 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
                         Icon(Icons.check_circle, size: 16, color: Colors.green),
                     label: Text('Active Member'),
                   )
-                : FilledButton.icon(
-                    icon: const Icon(Icons.group_add_rounded, size: 18),
-                    label: const Text('Join Chapter'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      _handleJoinChapterFlow(targetChapter!);
-                    },
-                  ),
+                : (_currentUserProfile != null &&
+                        !_currentUserProfile!.isChapterApproved &&
+                        (_currentUserProfile!.localChapter?.toLowerCase() ==
+                                targetChapter!.name.toLowerCase() ||
+                            _currentUserProfile!.chapterId == targetChapter!.id))
+                    ? Chip(
+                        avatar: Icon(Icons.hourglass_top_rounded,
+                            size: 16, color: Colors.amber.shade900),
+                        label: const Text('Pending Approval'),
+                        backgroundColor: Colors.amber.shade50,
+                      )
+                    : FilledButton.icon(
+                        icon: const Icon(Icons.group_add_rounded, size: 18),
+                        label: const Text('Join Chapter'),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _handleJoinChapterFlow(targetChapter!);
+                        },
+                      ),
         ],
       ),
     );

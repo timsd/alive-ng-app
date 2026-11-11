@@ -37,7 +37,25 @@ class UserProfile {
   // Verification fields
   final String? localChapter;
   final bool isChapterVerified;
+  final String chapterApprovalStatus; // pending, approved, rejected
   final bool isChurchVerified;
+
+  bool get isChapterApproved {
+    final r = role.toLowerCase();
+    if (r == 'admin' ||
+        r == 'super_admin' ||
+        r == 'superadmin' ||
+        r == 'coordinator' ||
+        r == 'director' ||
+        r == 'bod' ||
+        r == 'trustee') {
+      return true;
+    }
+    return isApproved &&
+        (isChapterVerified ||
+            chapterApprovalStatus == 'approved' ||
+            approvalStatus == 'approved');
+  }
 
   // Commitment tracking
   final String? commitmentType; // financial, active_availability, both
@@ -94,6 +112,7 @@ class UserProfile {
     // Verification fields
     this.localChapter,
     this.isChapterVerified = false,
+    this.chapterApprovalStatus = 'pending',
     this.isChurchVerified = false,
 
     // Commitment tracking
@@ -160,6 +179,10 @@ class UserProfile {
       // Verification fields
       localChapter: json['local_chapter'] as String?,
       isChapterVerified: json['is_chapter_verified'] as bool? ?? false,
+      chapterApprovalStatus: json['chapter_approval_status'] as String? ??
+          (json['is_chapter_verified'] == true || json['is_approved'] == true
+              ? 'approved'
+              : 'pending'),
       isChurchVerified: json['is_church_verified'] as bool? ?? false,
 
       // Commitment tracking
@@ -222,6 +245,7 @@ class UserProfile {
       // Verification fields
       'local_chapter': localChapter,
       'is_chapter_verified': isChapterVerified,
+      'chapter_approval_status': chapterApprovalStatus,
       'is_church_verified': isChurchVerified,
 
       // Commitment tracking
@@ -281,6 +305,7 @@ class UserProfile {
     String? generalInfo,
     String? localChapter,
     bool? isChapterVerified,
+    String? chapterApprovalStatus,
     bool? isChurchVerified,
     String? commitmentType,
     double? financialCommitment,
@@ -326,6 +351,7 @@ class UserProfile {
       generalInfo: generalInfo ?? this.generalInfo,
       localChapter: localChapter ?? this.localChapter,
       isChapterVerified: isChapterVerified ?? this.isChapterVerified,
+      chapterApprovalStatus: chapterApprovalStatus ?? this.chapterApprovalStatus,
       isChurchVerified: isChurchVerified ?? this.isChurchVerified,
       commitmentType: commitmentType ?? this.commitmentType,
       financialCommitment: financialCommitment ?? this.financialCommitment,

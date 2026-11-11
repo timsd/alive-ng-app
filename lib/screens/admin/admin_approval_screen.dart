@@ -118,22 +118,10 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
           ? user.requestedRole!.trim()
           : user.role;
 
-      final updateData = <String, dynamic>{
-        'is_approved': true,
-        'approval_status': 'approved',
-        'approved_by': _currentUserId,
-        'approved_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      };
-      if (targetRole.isNotEmpty) {
-        updateData['role'] = targetRole;
-      }
-
-      await _tables.updateRow(
-        databaseId: AppwriteBackendConfig.databaseId,
-        tableId: AppwriteBackendConfig.usersCollectionId,
-        rowId: user.id,
-        data: updateData,
+      await _profileService.approveUserAndChapter(
+        userId: user.id,
+        approverUserId: _currentUserId ?? 'admin',
+        targetRole: targetRole.isNotEmpty ? targetRole : null,
       );
 
       await _loadUsers();
@@ -141,7 +129,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('${user.fullName ?? 'User'} approved successfully as ${targetRole.toUpperCase()}'),
+            content: Text('${user.fullName ?? 'User'} approved successfully as ${targetRole.toUpperCase()}${user.localChapter != null ? ' in ${user.localChapter}' : ''}'),
             backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
@@ -161,18 +149,10 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   Future<void> _rejectUser(UserProfile user, String reason) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await _tables.updateRow(
-        databaseId: AppwriteBackendConfig.databaseId,
-        tableId: AppwriteBackendConfig.usersCollectionId,
-        rowId: user.id,
-        data: {
-          'is_approved': false,
-          'approval_status': 'rejected',
-          'rejection_reason': reason,
-          'approved_by': _currentUserId,
-          'approved_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
-        },
+      await _profileService.rejectUserAndChapter(
+        userId: user.id,
+        approverUserId: _currentUserId ?? 'admin',
+        reason: reason,
       );
 
       await _loadUsers();

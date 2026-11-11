@@ -11,6 +11,8 @@ import '../models/app_models.dart';
 import '../models/leadership_models.dart' show RoleHistoryRecord;
 import 'appwrite_client.dart';
 import 'auth_service.dart';
+import 'channel_membership_sync_service.dart';
+import 'chapter_service.dart';
 import 'role_access_service.dart';
 
 final appwriteProfileServiceProvider = Provider<AppwriteProfileService>((ref) {
@@ -166,13 +168,122 @@ class AppwriteProfileService {
     try {
       final updated = await getUserProfileModel(userId);
       if (updated != null) {
-        _userProfileUpdatedController.add(updated);
+        if (!_userProfileUpdatedController.isClosed) {
+          _userProfileUpdatedController.add(updated);
+        }
         final currentAuthUser = AuthService.instance.currentUser;
         if (currentAuthUser != null && updated.id == currentAuthUser.uid) {
           RoleAccessService.instance.notifyRoleChanged(updated);
         }
+        // Sync channel memberships across general, coordinators, bod, leadership
+        await ChannelMembershipSyncService.instance.syncUserChannels(updated);
       }
     } catch (_) {}
+  }
+
+  /// Atomically approve a member and activate their chapter membership.
+  Future<void> approveUserAndChapter({
+    required String userId,
+    required String approverUserId,
+    String? targetRole,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final updateData = <String, dynamic>{
+      'is_approved': true,
+      'approval_status': 'approved',
+      'is_chapter_verified': true,
+      'chapter_approval_status': 'approved',
+      'approved_by': approverUserId,
+      'approved_at': now,
+      'updated_at': now,
+    };
+    if (targetRole != null && targetRole.trim().isNotEmpty) {
+      updateData['role'] = targetRole.trim();
+    }
+
+    await _tables.updateRow(
+      databaseId: AppwriteBackendConfig.databaseId,
+      tableId: AppwriteBackendConfig.usersCollectionId,
+      rowId: userId,
+      data: updateData,
+    );
+
+    final updated = await getUserProfileModel(userId);
+    if (updated != null) {
+      if (!_userProfileUpdatedController.isClosed) {
+        _userProfileUpdatedController.add(updated);
+      }
+      final currentAuthUser = AuthService.instance.currentUser;
+      if (currentAuthUser != null && updated.id == currentAuthUser.uid) {
+        RoleAccessService.instance.notifyRoleChanged(updated);
+      }
+
+      // Activate chapter membership in chapter_members table
+      final chapterIdOrName = updated.chapterId ?? updated.localChapter;
+      if (chapterIdOrName != null && chapterIdOrName.trim().isNotEmpty) {
+        try {
+          final chapterService = ChapterService();
+          await chapterService.activateMemberByUserId(
+            userId: userId,
+            chapterIdentifier: chapterIdOrName.trim(),
+          );
+        } catch (_) {}
+      }
+
+      // Sync chat channels across general, chapter, leadership
+      await ChannelMembershipSyncService.instance.syncUserChannels(updated);
+    }
+  }
+
+  /// Reject a member and deactivate/remove their chapter membership.
+  Future<void> rejectUserAndChapter({
+    required String userId,
+    required String approverUserId,
+    required String reason,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final updateData = <String, dynamic>{
+      'is_approved': false,
+      'approval_status': 'rejected',
+      'is_chapter_verified': false,
+      'chapter_approval_status': 'rejected',
+      'rejection_reason': reason.trim(),
+      'approved_by': approverUserId,
+      'approved_at': now,
+      'updated_at': now,
+    };
+
+    await _tables.updateRow(
+      databaseId: AppwriteBackendConfig.databaseId,
+      tableId: AppwriteBackendConfig.usersCollectionId,
+      rowId: userId,
+      data: updateData,
+    );
+
+    final updated = await getUserProfileModel(userId);
+    if (updated != null) {
+      if (!_userProfileUpdatedController.isClosed) {
+        _userProfileUpdatedController.add(updated);
+      }
+      final currentAuthUser = AuthService.instance.currentUser;
+      if (currentAuthUser != null && updated.id == currentAuthUser.uid) {
+        RoleAccessService.instance.notifyRoleChanged(updated);
+      }
+
+      // Deactivate chapter membership
+      final chapterIdOrName = updated.chapterId ?? updated.localChapter;
+      if (chapterIdOrName != null && chapterIdOrName.trim().isNotEmpty) {
+        try {
+          final chapterService = ChapterService();
+          await chapterService.deactivateMemberByUserId(
+            userId: userId,
+            chapterIdentifier: chapterIdOrName.trim(),
+          );
+        } catch (_) {}
+      }
+
+      await ChannelMembershipSyncService.instance.syncUserChannels(updated);
+    }
   }
 
   Future<void> archiveUser(String userId) async {
