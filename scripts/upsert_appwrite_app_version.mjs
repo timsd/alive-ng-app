@@ -16,13 +16,16 @@ function loadDotEnv(filePath = resolve(process.cwd(), '.env')) {
   }
 }
 
-function pubspecVersion() {
+function pubspecVersionInfo() {
   const pubspecPath = resolve(process.cwd(), 'pubspec.yaml');
-  if (!existsSync(pubspecPath)) return '1.0.0';
+  if (!existsSync(pubspecPath)) return { version: '1.0.0', build: 1 };
 
   const content = readFileSync(pubspecPath, 'utf8');
-  const match = content.match(/^version:\s*([^\s+]+)/m);
-  return match?.[1] || '1.0.0';
+  const match = content.match(/^version:\s*([^\s+]+)(?:\+(\d+))?/m);
+  return {
+    version: match?.[1] || '1.0.0',
+    build: match?.[2] ? parseInt(match[2], 10) : 1,
+  };
 }
 
 function requireEnv(name, fallback) {
@@ -41,7 +44,9 @@ const projectId = requireEnv('APPWRITE_PROJECT_ID', '6a3bef53002f5090dedf');
 const databaseId = requireEnv('APPWRITE_DATABASE_ID', '6a089307002e54291a32');
 const apiKey = requireEnv('APPWRITE_API_KEY');
 
-const latestVersion = process.env.APP_VERSION_LATEST || pubspecVersion();
+const { version: detectedVersion, build: detectedBuild } = pubspecVersionInfo();
+const latestVersion = process.env.APP_VERSION_LATEST || detectedVersion;
+const buildNumber = process.env.APP_BUILD_NUMBER ? parseInt(process.env.APP_BUILD_NUMBER, 10) : detectedBuild;
 const forceUpdate = (process.env.APP_VERSION_FORCE_UPDATE || 'false') === 'true';
 const updateUrl =
   process.env.APP_VERSION_UPDATE_URL ||
@@ -50,8 +55,10 @@ const now = new Date().toISOString();
 
 const appVersionPayload = {
   latest_version: latestVersion,
+  build_number: buildNumber,
   force_update: forceUpdate,
   update_url: updateUrl,
+  play_store_url: 'https://play.google.com/store/apps/details?id=com.alive.alivengandroidapp',
 };
 
 const documentData = {

@@ -137,20 +137,46 @@ void main() {
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      InAppUpdateService.checkForUpdates();
-    });
   }, (error, stack) {
     debugPrint('Unhandled: $error');
     CrashReportingService.instance.captureError(error, stack, fatal: true);
   });
 }
 
-class AliveApp extends ConsumerWidget {
+class AliveApp extends ConsumerStatefulWidget {
   const AliveApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AliveApp> createState() => _AliveAppState();
+}
+
+class _AliveAppState extends ConsumerState<AliveApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      InAppUpdateService.checkForUpdates();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Whenever the user switches back into the app, check for Play Store updates
+      InAppUpdateService.checkForUpdates();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     final router = ref.watch(routerProvider);
     // Watching the locale provider makes the whole app rebuild whenever the

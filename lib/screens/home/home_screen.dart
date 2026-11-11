@@ -21,6 +21,7 @@ import '../../widgets/shimmer_loading.dart';
 import '../../widgets/app_tour/app_tour_service.dart';
 import '../../constants/app_constants.dart';
 import '../../providers/news_feed_provider.dart';
+import '../../services/in_app_update_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -36,6 +37,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Warm up offline Bible database as soon as user lands in the app
     unawaited(OfflineBibleService().prewarmBundle());
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Check for updates when user opens and lands on the home feed
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          InAppUpdateService.checkForUpdates(context);
+        }
+      });
       // Allow the home feed widgets to render and settle before presenting tour
       Future.delayed(const Duration(milliseconds: 800), () {
         if (mounted) {

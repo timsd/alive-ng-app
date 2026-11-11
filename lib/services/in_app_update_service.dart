@@ -12,48 +12,196 @@ import '../utils/navigation_keys.dart';
 
 class InAppUpdateService {
   static bool _updateDialogShown = false;
+  static bool _isChecking = false;
 
-  static Future<void> checkForUpdates([BuildContext? context]) async {
-    if (kIsWeb) return;
-    if (!Platform.isAndroid) return;
+  static const String playStorePackageName = 'com.alive.alivengandroidapp';
+  static const String playStoreMarketUri =
+      'market://details?id=$playStorePackageName';
+  static const String playStoreWebUri =
+      'https://play.google.com/store/apps/details?id=$playStorePackageName';
 
-    // 1. Try Google Play In-App Update API first (for Play Store installs)
-    var googlePlayHandled = false;
+  /// Launches Google Play Store directly to the app listing page.
+  static Future<bool> openPlayStore() async {
     try {
-      final info = await InAppUpdate.checkForUpdate();
-      if (info.immediateUpdateAllowed == true) {
-        await InAppUpdate.performImmediateUpdate();
-        googlePlayHandled = true;
-        return;
-      } else if (info.flexibleUpdateAllowed == true) {
-        await InAppUpdate.startFlexibleUpdate();
-        await InAppUpdate.completeFlexibleUpdate();
-        googlePlayHandled = true;
-        final ctx = context ?? rootNavigatorKey.currentContext;
-        if (ctx != null && ctx.mounted) {
-          ScaffoldMessenger.of(ctx).showSnackBar(
-            const SnackBar(content: Text('App updated successfully')),
-          );
-        }
-        return;
+      final marketUri = Uri.parse(playStoreMarketUri);
+      if (await canLaunchUrl(marketUri)) {
+        return await launchUrl(marketUri, mode: LaunchMode.externalApplication);
       }
-    } catch (_) {
-      // Not installed via Google Play or Play Store update not available.
-    }
-
-    // 2. Fallback to Appwrite-managed OTA updates (for direct APK downloads)
-    if (!googlePlayHandled) {
-      await _checkSelfHostedOtaUpdate();
+      final webUri = Uri.parse(playStoreWebUri);
+      return await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Failed to open Play Store via market URI: $e');
+      try {
+        final webUri = Uri.parse(playStoreWebUri);
+        return await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        return false;
+      }
     }
   }
 
-  static Future<void> _checkSelfHostedOtaUpdate() async {
+  /// Automatically checks for updates on Google Play Store, falling back to
+  /// Appwrite remote version control.
+  static Future<void> checkForUpdates([
+    BuildContext? context,
+    bool manual = false,
+  ]) async {
+    if (kIsWeb) return;
+    if (!Platform.isAndroid) return;
+    if (_isChecking) return;
+
+    _isChecking = true;
+    try {
+      var googlePlayHandled = false;
+
+      // 1. Google Play In-App Updates API (official Play Store mechanism)
+      try {
+        final info = await InAppUpdate.checkForUpdate();
+        debugPrint(
+          'InAppUpdate info: availability=${info.updateAvailability}, '
+          'immediateAllowed=${info.immediateUpdateAllowed}, '
+          'flexibleAllowed=${info.flexibleUpdateAllowed}, '
+          'installStatus=${info.installStatus}',
+        );
+
+        // A. If an update was previously downloaded via flexible mode, complete it
+        if (info.installStatus == InstallStatus.downloaded) {
+          await InAppUpdate.completeFlexibleUpdate();
+          googlePlayHandled = true;
+          return;
+        }
+
+        // B. If an immediate update is already in progress, resume it
+        if (info.updateAvailability ==
+            UpdateAvailability.developerTriggeredUpdateInProgress) {
+          await InAppUpdate.performImmediateUpdate();
+          googlePlayHandled = true;
+          return;
+        }
+
+        // C. An update is available on Google Play
+        if (info.updateAvailability == UpdateAvailability.updateAvailable) {
+          if (info.immediateUpdateAllowed == true) {
+            // Full-screen native Google Play immediate update dialog
+            await InAppUpdate.performImmediateUpdate();
+            googlePlayHandled = true;
+            return;
+          } else if (info.flexibleUpdateAllowed == true) {
+            // Flexible update in background
+            await InAppUpdate.startFlexibleUpdate();
+            await InAppUpdate.completeFlexibleUpdate();
+            googlePlayHandled = true;
+            final ctx = context ?? rootNavigatorKey.currentContext;
+            if (ctx != null && ctx.mounted) {
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(content: Text('App updated successfully')),
+              );
+            }
+            return;
+          } else {
+            // Update is available on Google Play, but in-app flags weren't set by priority.
+            // Automatically prompt or navigate to Google Play Store listing.
+            final ctx = context ?? rootNavigatorKey.currentContext;
+            if (ctx != null && ctx.mounted && !_updateDialogShown) {
+              _updateDialogShown = true;
+              _showPlayStoreUpdatePrompt(ctx);
+              googlePlayHandled = true;
+              return;
+            } else {
+              await openPlayStore();
+              googlePlayHandled = true;
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Google Play in-app update check skipped/failed: $e');
+        // May fail on sideloaded APKs or if Play Core service is unreachable.
+      }
+
+      // 2. Fallback: Appwrite-managed remote version check
+      if (!googlePlayHandled) {
+        await _checkRemoteAppUpdate(context, manual);
+      }
+    } finally {
+      _isChecking = false;
+    }
+  }
+
+  static void _showPlayStoreUpdatePrompt(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(
+                Icons.system_update_rounded,
+                color: Theme.of(dialogCtx).colorScheme.primary,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(child: Text('Update Available')),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'A newer version of ALIVE Nigeria is available on Google Play.',
+                style: Theme.of(dialogCtx).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Please update to the latest version to ensure continuous access to community, study, and meeting features.',
+                style: Theme.of(dialogCtx).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(dialogCtx)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.7),
+                    ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _updateDialogShown = false;
+                Navigator.of(dialogCtx).pop();
+              },
+              child: const Text('Later'),
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.shop_two_rounded, size: 18),
+              onPressed: () async {
+                _updateDialogShown = false;
+                Navigator.of(dialogCtx).pop();
+                await openPlayStore();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(dialogCtx).colorScheme.primary,
+                foregroundColor: Theme.of(dialogCtx).colorScheme.onPrimary,
+              ),
+              label: const Text('Update on Google Play'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Future<void> _checkRemoteAppUpdate([
+    BuildContext? context,
+    bool manual = false,
+  ]) async {
     if (_updateDialogShown) return;
 
     try {
       final databases = Databases(appwriteClient);
-      // Kept on getDocument for compatibility with the self-hosted Appwrite
-      // server; TablesDB.getRow requires the newer /tablesdb endpoints.
       // ignore: deprecated_member_use
       final doc = await databases.getDocument(
         databaseId: AppwriteBackendConfig.databaseId,
@@ -77,9 +225,17 @@ class InAppUpdateService {
 
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version.trim();
+      final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
+      final latestBuildNumber = data['build_number'] is int
+          ? data['build_number'] as int
+          : (int.tryParse(data['build_number']?.toString() ?? '') ?? 0);
 
-      if (_isVersionNewer(latestVersion, currentVersion)) {
-        final ctx = rootNavigatorKey.currentContext;
+      final isNewerVersion = _isVersionNewer(latestVersion, currentVersion);
+      final isNewerBuild =
+          latestBuildNumber > 0 && latestBuildNumber > currentBuildNumber;
+
+      if (isNewerVersion || isNewerBuild) {
+        final ctx = context ?? rootNavigatorKey.currentContext;
         if (ctx != null && ctx.mounted) {
           _updateDialogShown = true;
           _showOtaUpdateDialog(
@@ -90,18 +246,30 @@ class InAppUpdateService {
             forceUpdate: forceUpdate,
           );
         }
+      } else if (manual) {
+        final ctx = context ?? rootNavigatorKey.currentContext;
+        if (ctx != null && ctx.mounted) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(
+              content: Text(
+                'You are using the latest version of ALIVE Nigeria (v$currentVersion).',
+              ),
+            ),
+          );
+        }
       }
     } catch (e) {
-      debugPrint('Self-hosted OTA check failed: $e');
+      debugPrint('Remote app update check failed: $e');
     }
   }
 
-  /// Compares semantic versions (e.g. 1.0.1 > 1.0.0)
+  /// Compares semantic versions (e.g. 2.0.9 > 2.0.7)
   static bool _isVersionNewer(String latest, String current) {
     try {
       final lParts = latest.split('.').map(int.parse).toList();
       final cParts = current.split('.').map(int.parse).toList();
-      final length = lParts.length > cParts.length ? lParts.length : cParts.length;
+      final length =
+          lParts.length > cParts.length ? lParts.length : cParts.length;
       for (var i = 0; i < length; i++) {
         final l = i < lParts.length ? lParts[i] : 0;
         final c = i < cParts.length ? cParts[i] : 0;
@@ -127,7 +295,8 @@ class InAppUpdateService {
       builder: (dialogCtx) => PopScope(
         canPop: !forceUpdate,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
               Icon(
@@ -143,7 +312,7 @@ class InAppUpdateService {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'A new version ($latestVersion) of ALIVE Nigeria is available. '
+                'A new version ($latestVersion) of ALIVE Nigeria is available on Google Play. '
                 'You are currently using version $currentVersion.',
                 style: Theme.of(dialogCtx).textTheme.bodyMedium,
               ),
@@ -151,7 +320,7 @@ class InAppUpdateService {
               Text(
                 forceUpdate
                     ? 'This update is required to continue using the application.'
-                    : 'We recommend updating now to enjoy the latest features and bug fixes.',
+                    : 'We recommend updating now from Google Play Store to enjoy the latest features and fixes.',
                 style: Theme.of(dialogCtx).textTheme.bodySmall?.copyWith(
                       color: Theme.of(dialogCtx)
                           .colorScheme
@@ -164,23 +333,40 @@ class InAppUpdateService {
           actions: [
             if (!forceUpdate)
               TextButton(
-                onPressed: () => Navigator.of(dialogCtx).pop(),
+                onPressed: () {
+                  _updateDialogShown = false;
+                  Navigator.of(dialogCtx).pop();
+                },
                 child: const Text('Later'),
               ),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.download_rounded, size: 18),
+            TextButton.icon(
+              icon: const Icon(Icons.download_rounded, size: 16),
+              label: const Text('Direct APK', style: TextStyle(fontSize: 12)),
               onPressed: () async {
-                if (!forceUpdate) Navigator.of(dialogCtx).pop();
+                if (!forceUpdate) {
+                  _updateDialogShown = false;
+                  Navigator.of(dialogCtx).pop();
+                }
                 final uri = Uri.parse(updateUrl);
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 }
               },
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.shop_two_rounded, size: 18),
+              onPressed: () async {
+                if (!forceUpdate) {
+                  _updateDialogShown = false;
+                  Navigator.of(dialogCtx).pop();
+                }
+                await openPlayStore();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(dialogCtx).colorScheme.primary,
                 foregroundColor: Theme.of(dialogCtx).colorScheme.onPrimary,
               ),
-              label: const Text('Download & Update'),
+              label: const Text('Update on Google Play'),
             ),
           ],
         ),

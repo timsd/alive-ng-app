@@ -190,21 +190,21 @@ class AboutAppScreen extends ConsumerWidget {
                               ? _formatVersionLabel(snapshot.data!)
                               : 'Version information loading...';
                           return Row(
-                            children: [
-                              Icon(
-                                Icons.verified_rounded,
-                                size: 18,
-                                color: colorScheme.primary,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                versionText,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          );
+                                children: [
+                                  Icon(
+                                    Icons.verified_rounded,
+                                    size: 18,
+                                    color: colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    versionText,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              );
                         },
                       ),
                     ],
