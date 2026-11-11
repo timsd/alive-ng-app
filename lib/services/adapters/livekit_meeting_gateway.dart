@@ -939,7 +939,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
       if (avatarUrl != null && avatarUrl.isNotEmpty) {
         try {
-          _room?.localParticipant?.setMetadata(jsonEncode({'avatarUrl': avatarUrl}));
+          await _room?.localParticipant?.setMetadata(jsonEncode({'avatarUrl': avatarUrl})).catchError((_) {});
         } catch (_) {}
       }
 

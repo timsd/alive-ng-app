@@ -165,14 +165,14 @@ class AppwriteChatService extends ChangeNotifier {
     _logger.info('Opening Appwrite realtime channel for room: $roomId');
 
     _subscription = _realtime.subscribe([
-      'databases.$databaseId.tables.$messagesCollectionId.rows',
+      'databases.$databaseId.collections.$messagesCollectionId.documents',
     ]);
 
     _subscription!.stream.listen(
       (event) {
         final isCreateEvent = event.events.any((name) =>
             name.endsWith('.create') ||
-            name == 'databases.*.tables.*.rows.*.create');
+            name.contains('.documents.'));
         if (!isCreateEvent) return;
 
         final document = _rowToDocument(models.Row.fromMap(event.payload));
@@ -196,22 +196,26 @@ class AppwriteChatService extends ChangeNotifier {
     final messages = <ChatMessage>[];
 
     getChannelMessages(channelId).then((history) {
-      messages
-        ..clear()
-        ..addAll(history);
-      controller.add(List.unmodifiable(messages));
+      if (!controller.isClosed) {
+        messages
+          ..clear()
+          ..addAll(history);
+        controller.add(List.unmodifiable(messages));
+      }
     }).catchError((error) {
-      controller.addError(error);
+      if (!controller.isClosed) {
+        controller.addError(error);
+      }
     });
 
     final subscription = _realtime.subscribe([
-      'databases.$databaseId.tables.$messagesCollectionId.rows',
+      'databases.$databaseId.collections.$messagesCollectionId.documents',
     ]);
 
     subscription.stream.listen(
       (event) {
         final isCreateEvent =
-            event.events.any((name) => name.endsWith('.create'));
+            event.events.any((name) => name.endsWith('.create') || name.contains('.documents.'));
         if (!isCreateEvent) return;
 
         final row = models.Row.fromMap(event.payload);
@@ -220,13 +224,24 @@ class AppwriteChatService extends ChangeNotifier {
         if (messageRoomId != channelId) return;
 
         messages.add(_messageFromRow(row));
-        controller.add(List.unmodifiable(messages));
+        if (!controller.isClosed) {
+          controller.add(List.unmodifiable(messages));
+        }
       },
-      onError: controller.addError,
+      onError: (err) {
+        if (!controller.isClosed) {
+          controller.addError(err);
+        }
+      },
     );
 
     controller.onCancel = () async {
-      await subscription.close();
+      try {
+        await subscription.close();
+      } catch (_) {}
+      if (!controller.isClosed) {
+        await controller.close();
+      }
     };
 
     return controller.stream;

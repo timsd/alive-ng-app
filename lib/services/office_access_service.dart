@@ -148,12 +148,16 @@ class OfficeAccessService {
             .toList();
         _cache = holders;
         _cachedAt = DateTime.now();
-        completer.complete(holders);
+        if (!completer.isCompleted) {
+          completer.complete(holders);
+        }
       } catch (e, s) {
         // A failed read must not crash the caller, and must not grant access:
         // completing empty means "holds no office", so the caller denies.
         _logger.error('Failed to load office holders', e, s);
-        completer.complete(const <OfficeHolder>[]);
+        if (!completer.isCompleted) {
+          completer.complete(const <OfficeHolder>[]);
+        }
       } finally {
         _loading = false;
         _inFlight = null;

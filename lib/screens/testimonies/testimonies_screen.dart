@@ -360,6 +360,9 @@ class _TestimoniesScreenState extends ConsumerState<TestimoniesScreen>
                             backgroundImage: testimony.userAvatarUrl != null
                                 ? NetworkImage(testimony.userAvatarUrl!)
                                 : null,
+                            onBackgroundImageError: testimony.userAvatarUrl != null
+                                ? (_, __) {}
+                                : null,
                             child: testimony.userAvatarUrl == null
                                 ? Text(
                                     testimony.userName.isNotEmpty

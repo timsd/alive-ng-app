@@ -69,6 +69,7 @@ class AuthService {
       final user = _mapUser(sdkUser);
       if (user != null) {
         _authStateController.add(user);
+        _profileService.initRealtimeForUser(user.uid);
       }
       return user;
     } catch (_) {
@@ -221,6 +222,7 @@ class AuthService {
 
   Future<void> signOut() async {
     try {
+      _profileService.stopRealtime();
       await _appwriteAuth.logout();
       _authStateController.add(null);
     } catch (e) {

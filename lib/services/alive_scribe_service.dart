@@ -533,7 +533,9 @@ class AliveScribeService {
             timestamp: packet.timestamp,
           );
           _transcript[_transcript.length - 1] = updated;
-          _transcriptStreamController.add(List.unmodifiable(_transcript));
+          if (!_transcriptStreamController.isClosed) {
+            _transcriptStreamController.add(List.unmodifiable(_transcript));
+          }
           _runPass2Extraction(updated);
           return;
         }
@@ -550,7 +552,9 @@ class AliveScribeService {
           timestamp: packet.timestamp,
         );
         _transcript[_transcript.length - 1] = updated;
-        _transcriptStreamController.add(List.unmodifiable(_transcript));
+        if (!_transcriptStreamController.isClosed) {
+          _transcriptStreamController.add(List.unmodifiable(_transcript));
+        }
 
         // Run Pass 2 on the consolidated text
         _runPass2Extraction(updated);
@@ -559,7 +563,9 @@ class AliveScribeService {
     }
 
     _transcript.add(packet);
-    _transcriptStreamController.add(List.unmodifiable(_transcript));
+    if (!_transcriptStreamController.isClosed) {
+      _transcriptStreamController.add(List.unmodifiable(_transcript));
+    }
 
     // Run Pass 2 Extraction
     _runPass2Extraction(packet);
@@ -627,7 +633,9 @@ class AliveScribeService {
                         : 'Resolution',
           );
           _decisions.add(decisionObj);
-          _decisionsStreamController.add(List.unmodifiable(_decisions));
+          if (!_decisionsStreamController.isClosed) {
+            _decisionsStreamController.add(List.unmodifiable(_decisions));
+          }
         }
         break;
       }
@@ -693,7 +701,9 @@ class AliveScribeService {
             verbatimQuote: text,
           );
           _actionItems.add(actionObj);
-          _actionItemsStreamController.add(List.unmodifiable(_actionItems));
+          if (!_actionItemsStreamController.isClosed) {
+            _actionItemsStreamController.add(List.unmodifiable(_actionItems));
+          }
         }
         break;
       }

@@ -43,7 +43,7 @@ class Podcast {
       orElse: () => PodcastCategory.devotional,
     );
     return Podcast(
-      id: json['id'] as String,
+      id: (json['id'] ?? json[r'$id'] ?? '').toString(),
       title: json['title'] as String? ?? 'Podcast',
       description: json['description'] as String? ?? '',
       category: matchedCategory,

@@ -264,6 +264,7 @@ class MeetingVideoGridStage extends ConsumerWidget {
                                     ? const Color(0xFF3B82F6)
                                     : const Color(0xFF10B981),
                                 backgroundImage: hasAvatar ? NetworkImage(effectiveAvatar) : null,
+                                onBackgroundImageError: hasAvatar ? (_, __) {} : null,
                                 child: hasAvatar
                                     ? null
                                     : Text(
@@ -464,6 +465,7 @@ class MeetingParticipantStrip extends ConsumerWidget {
                             ? const Color(0xFF3B82F6)
                             : const Color(0xFF10B981),
                         backgroundImage: hasAvatar ? NetworkImage(effectiveAvatar) : null,
+                        onBackgroundImageError: hasAvatar ? (_, __) {} : null,
                         child: hasAvatar
                             ? null
                             : Text(

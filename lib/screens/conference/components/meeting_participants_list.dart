@@ -76,6 +76,9 @@ class MeetingParticipantsList extends StatelessWidget {
               backgroundImage: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
                   ? NetworkImage(participant.avatarUrl!)
                   : null,
+              onBackgroundImageError: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
+                  ? (_, __) {}
+                  : null,
               child: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
                   ? null
                   : Text(

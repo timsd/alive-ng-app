@@ -804,6 +804,7 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
           radius: 20,
           backgroundImage:
               avatarUrl != null ? CustomImage.provider(avatarUrl!) : null,
+          onBackgroundImageError: avatarUrl != null ? (_, __) {} : null,
           child: avatarUrl == null
               ? LayoutFixUtils.responsiveIcon(
                   Icons.person,

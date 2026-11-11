@@ -316,14 +316,18 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     String collectionId, {
     List<String> queries = const [],
   }) async {
-    final response = await _tables.listRows(
-      databaseId: AppwriteBackendConfig.databaseId,
-      tableId: collectionId,
-      queries: queries,
-    );
-    return response.rows
-        .map((row) => Podcast.fromJson({...row.data, 'id': row.$id}))
-        .toList();
+    try {
+      final response = await _tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: collectionId,
+        queries: queries,
+      );
+      return response.rows
+          .map((row) => Podcast.fromJson({...row.data, 'id': row.$id}))
+          .toList();
+    } catch (_) {
+      return <Podcast>[];
+    }
   }
 
 

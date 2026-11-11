@@ -31,19 +31,27 @@ class AppwriteProfileService {
       _userProfileUpdatedController.stream;
 
   RealtimeSubscription? _usersSubscription;
+  String? _subscribedUserId;
 
   AppwriteProfileService._internal() {
     _tables = TablesDB(appwriteClient);
-    _initRealtime();
   }
 
-  void _initRealtime() {
+  /// Initialize realtime listener for the specified authenticated user.
+  void initRealtimeForUser(String userId) {
+    if (userId.trim().isEmpty) return;
+    if (_subscribedUserId == userId && _usersSubscription != null) return;
+    stopRealtime();
+    _subscribedUserId = userId;
+    _initRealtime(userId);
+  }
+
+  void _initRealtime(String userId) {
     try {
       final dbId = AppwriteBackendConfig.databaseId;
       final usersTable = AppwriteBackendConfig.usersCollectionId;
       _usersSubscription = appwriteRealtime.subscribe([
-        'databases.$dbId.tables.$usersTable.rows',
-        'databases.$dbId.collections.$usersTable.documents',
+        'databases.$dbId.collections.$usersTable.documents.$userId',
       ]);
       _usersSubscription?.stream.listen(
         (event) {
@@ -56,27 +64,41 @@ class AppwriteProfileService {
                 fallbackEmail: (userDoc.data['email'] ?? '').toString(),
                 fallbackFullName: (userDoc.data['fullName'] ?? userDoc.data['full_name'])?.toString(),
               );
-              _userProfileUpdatedController.add(updatedProfile);
-
-              // If this is the currently authenticated user, update role cache immediately!
-              final currentAuthUser = AuthService.instance.currentUser;
-              if (currentAuthUser != null && updatedProfile.id == currentAuthUser.uid) {
-                RoleAccessService.instance.notifyRoleChanged(updatedProfile);
+              if (!_userProfileUpdatedController.isClosed) {
+                _userProfileUpdatedController.add(updatedProfile);
               }
+
+              // Update role cache immediately
+              RoleAccessService.instance.notifyRoleChanged(updatedProfile);
             }
           } catch (e) {
             debugPrint('[AppwriteProfileService] Realtime sync notice: $e');
           }
         },
         onError: (err) {
-          // Gracefully absorb network dropouts and websocket reconnect notices
           debugPrint('[AppwriteProfileService] Realtime subscription notice: $err');
+          final errStr = err.toString().toLowerCase();
+          if (errStr.contains('1008') ||
+              errStr.contains('policy violation') ||
+              errStr.contains('unauthorized')) {
+            // Avoid reconnection storm on permissions/policy rejection
+            stopRealtime();
+          }
         },
         cancelOnError: false,
       );
     } catch (e) {
       debugPrint('[AppwriteProfileService] Realtime subscription init error: $e');
     }
+  }
+
+  /// Closes any active realtime subscription cleanly.
+  void stopRealtime() {
+    try {
+      _usersSubscription?.close();
+    } catch (_) {}
+    _usersSubscription = null;
+    _subscribedUserId = null;
   }
 
   Future<models.Row?> getUserProfile(String userId) async {

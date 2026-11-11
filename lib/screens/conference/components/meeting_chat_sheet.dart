@@ -207,6 +207,9 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                       backgroundImage: (p.avatarUrl != null && p.avatarUrl!.isNotEmpty)
                           ? NetworkImage(p.avatarUrl!)
                           : null,
+                      onBackgroundImageError: (p.avatarUrl != null && p.avatarUrl!.isNotEmpty)
+                          ? (_, __) {}
+                          : null,
                       child: (p.avatarUrl == null || p.avatarUrl!.isEmpty)
                           ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'M',
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
@@ -354,6 +357,9 @@ class _MeetingChatSheetState extends State<MeetingChatSheet> {
                                     : theme.colorScheme.primaryContainer,
                                 backgroundImage: (msg.senderAvatar != null && msg.senderAvatar!.isNotEmpty)
                                     ? NetworkImage(msg.senderAvatar!)
+                                    : null,
+                                onBackgroundImageError: (msg.senderAvatar != null && msg.senderAvatar!.isNotEmpty)
+                                    ? (_, __) {}
                                     : null,
                                 child: (msg.senderAvatar != null && msg.senderAvatar!.isNotEmpty)
                                     ? null
