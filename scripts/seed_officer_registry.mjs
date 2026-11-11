@@ -43,10 +43,12 @@ const call = async (method, p, body) => {
 
 // The officers confirmed by the ministry, and the offices each holds.
 const OFFICERS = [
-  { email: 'peterscaleb50@gmail.com',    fullName: 'Caleb Peters',        offices: ['secretary', 'communication_director'] },
-  { email: 'jamespat84@gmail.com',       fullName: 'Nwoko Patience Mfon', offices: ['executive_president'] },
-  { email: 'praiseelechi@gmail.com',     fullName: 'Emenike Ekechi',      offices: ['director_evangelism', 'director_programming', 'director_health'] },
-  { email: 'deovolente52@gmail.com',     fullName: 'Godstime Esuku',      offices: ['speaker', 'director_amtc'] },
+  { email: 'peterscaleb50@gmail.com',     fullName: 'Caleb Peters',        offices: ['secretary', 'communication_director'] },
+  { email: 'jamespat84@gmail.com',        fullName: 'Nwoko Patience Mfon', offices: ['executive_president', 'bod'] },
+  { email: 'praiseelechi@gmail.com',      fullName: 'Emenike Ekechi',      offices: ['director_evangelism', 'director_programming', 'director_health'] },
+  { email: 'deovolente52@gmail.com',      fullName: 'Godstime Esuku',      offices: ['speaker', 'director_amtc'] },
+  { email: 'dammyolodude@gmail.com',      fullName: 'Timothy Olodude',     offices: ['treasurer', 'director_logistics', 'bod'] },
+  { email: 'okechukwuelechi33@gmail.com',  fullName: 'Okechukwu Elechi',    offices: ['bod'] },
 ];
 
 console.log(`mode: ${APPLY ? 'APPLY' : 'report only'}\n`);

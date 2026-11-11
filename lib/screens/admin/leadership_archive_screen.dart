@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:appwrite/appwrite.dart' hide Row;
+import 'package:appwrite/appwrite.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../services/appwrite_client.dart';
 import '../../services/appwrite_profile_service.dart';
@@ -33,6 +33,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
   Map<String, dynamic> _statistics = {};
 
   List<Map<String, dynamic>> _trustees = [];
+  List<Map<String, dynamic>> _bod = [];
   List<Map<String, dynamic>> _directors = [];
   List<UserProfile> _registeredUsers = [];
 
@@ -46,7 +47,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _loadData();
     _searchController.addListener(_onSearchChanged);
   }
@@ -115,21 +116,55 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         return officeId == 'trustee' || officeId == 'board_of_trustees';
       }).toList();
 
+      final bodRows = rows.where((r) {
+        final officeId = (r['office_id'] ?? '').toString().toLowerCase();
+        return officeId == 'bod' || officeId == 'board_of_directors';
+      }).toList();
+
       final directorRows = rows.where((r) {
         final officeId = (r['office_id'] ?? '').toString().toLowerCase();
-        return officeId != 'trustee' && officeId != 'board_of_trustees';
+        return officeId != 'trustee' &&
+            officeId != 'board_of_trustees' &&
+            officeId != 'bod' &&
+            officeId != 'board_of_directors';
       }).toList();
+
+      List<Map<String, dynamic>> dedupe(List<Map<String, dynamic>> list) {
+        final seen = <String, Map<String, dynamic>>{};
+        for (final item in list) {
+          final name = (item['full_name'] ?? '').toString().trim().toLowerCase();
+          if (name.isEmpty) continue;
+          if (!seen.containsKey(name)) {
+            seen[name] = Map<String, dynamic>.from(item);
+          } else {
+            final existing = seen[name]!;
+            final curTitle = (existing['office_title'] ?? '').toString();
+            final newTitle = (item['office_title'] ?? '').toString();
+            if (newTitle.isNotEmpty && !curTitle.contains(newTitle)) {
+              existing['office_title'] = '$curTitle • $newTitle';
+            }
+            if ((existing['user_id'] ?? '').toString().isEmpty &&
+                (item['user_id'] ?? '').toString().isNotEmpty) {
+              existing['user_id'] = item['user_id'];
+              existing['email'] = item['email'];
+            }
+          }
+        }
+        return seen.values.toList();
+      }
 
       if (mounted) {
         setState(() {
-          _trustees = trusteeRows.isNotEmpty ? trusteeRows : _defaultTrustees();
-          _directors = directorRows.isNotEmpty ? directorRows : _defaultDirectors();
+          _trustees = trusteeRows.isNotEmpty ? dedupe(trusteeRows) : _defaultTrustees();
+          _bod = bodRows.isNotEmpty ? dedupe(bodRows) : _defaultBod();
+          _directors = directorRows.isNotEmpty ? dedupe(directorRows) : _defaultDirectors();
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _trustees = _defaultTrustees();
+          _bod = _defaultBod();
           _directors = _defaultDirectors();
         });
       }
@@ -150,7 +185,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
   List<Map<String, dynamic>> _defaultTrustees() => [
         {
           'office_id': 'trustee',
-          'office_title': 'Chairman, Board of Trustees',
+          'office_title': 'Chairman of Trustees',
           'full_name': 'Jerry Kwarba',
           'email': '',
           'user_id': '',
@@ -164,10 +199,90 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         },
       ];
 
+  List<Map<String, dynamic>> _defaultBod() => [
+        {
+          'office_id': 'bod',
+          'office_title': 'Board Member (Affairs Liaison) • President',
+          'full_name': 'Nwoko Patience Mfon',
+          'email': 'jamespat84@gmail.com',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Board Member (Finance Liaison) • Treasurer',
+          'full_name': 'Timothy Olodude',
+          'email': 'dammyolodude@gmail.com',
+          'user_id': '6a875b8ec9a90f0a6a55',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (Board Member)',
+          'full_name': 'Okechukwu Elechi',
+          'email': 'okechukwuelechi33@gmail.com',
+          'user_id': '6af371a672420765763b',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (Board Member)',
+          'full_name': 'Imoh Imeh',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (Board Member)',
+          'full_name': 'Ajibade Ayodeji',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (Board Member)',
+          'full_name': 'Fatola Samson',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (Board Member)',
+          'full_name': 'Bassey Etido',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (Board Member)',
+          'full_name': 'Joshua Umahi',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (Board Member)',
+          'full_name': 'Frank A',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (Board Member)',
+          'full_name': 'Emeka Okoro',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (Board Member)',
+          'full_name': 'Nancy Elechi',
+          'email': '',
+          'user_id': '',
+        },
+      ];
+
   List<Map<String, dynamic>> _defaultDirectors() => [
         {
           'office_id': 'executive_president',
-          'office_title': 'Executive President & Chairman',
+          'office_title': 'Executive President',
           'full_name': 'Nwoko Patience Mfon',
           'email': 'jamespat84@gmail.com',
           'user_id': '',
@@ -195,72 +310,9 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         },
         {
           'office_id': 'director_evangelism',
-          'office_title': 'Director of Evangelism & Programming',
+          'office_title': 'Director of Evangelism, Programming & Health',
           'full_name': 'Emenike Ekechi',
           'email': 'praiseelechi@gmail.com',
-          'user_id': '',
-        },
-        {
-          'office_id': 'bod',
-          'office_title': 'Director (BOD)',
-          'full_name': 'Okechukwu Elechi',
-          'email': 'okechukwuelechi33@gmail.com',
-          'user_id': '6af371a672420765763b',
-        },
-        {
-          'office_id': 'bod',
-          'office_title': 'Director (BOD & Trustee)',
-          'full_name': 'Imoh Imeh',
-          'email': '',
-          'user_id': '',
-        },
-        {
-          'office_id': 'bod',
-          'office_title': 'Director (BOD)',
-          'full_name': 'Ajibade Ayodeji',
-          'email': '',
-          'user_id': '',
-        },
-        {
-          'office_id': 'bod',
-          'office_title': 'Director (BOD)',
-          'full_name': 'Fatola Samson',
-          'email': '',
-          'user_id': '',
-        },
-        {
-          'office_id': 'bod',
-          'office_title': 'Director (BOD)',
-          'full_name': 'Bassey Etido',
-          'email': '',
-          'user_id': '',
-        },
-        {
-          'office_id': 'bod',
-          'office_title': 'Director (BOD)',
-          'full_name': 'Joshua Umahi',
-          'email': '',
-          'user_id': '',
-        },
-        {
-          'office_id': 'bod',
-          'office_title': 'Director (BOD)',
-          'full_name': 'Frank A',
-          'email': '',
-          'user_id': '',
-        },
-        {
-          'office_id': 'bod',
-          'office_title': 'Director (BOD)',
-          'full_name': 'Emeka Okoro',
-          'email': '',
-          'user_id': '',
-        },
-        {
-          'office_id': 'bod',
-          'office_title': 'Director (BOD)',
-          'full_name': 'Nancy Elechi',
-          'email': '',
           'user_id': '',
         },
       ];
@@ -367,13 +419,17 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                       child: TabBarView(
                         controller: _tabController,
                         children: [
-                          _buildOfficeHoldersTab(_directors, false),
-                          _buildOfficeHoldersTab(_trustees, true),
+                          _buildOfficeHoldersTab(_directors, 'director'),
+                          _buildOfficeHoldersTab(_bod, 'bod'),
+                          _buildOfficeHoldersTab(_trustees, 'trustee'),
                           _buildRecordsTab(_getFilteredRecords(_activeRecords),
                               'Active Leaders'),
                           _buildRecordsTab(
                               _getFilteredRecords(_completedRecords),
                               'Completed Service'),
+                          _buildRecordsTab(
+                              _getFilteredRecords(_archivedRecords),
+                              'Archived Records'),
                           _buildStatisticsTab(theme),
                         ],
                       ),
@@ -478,9 +534,19 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.business_center_rounded, size: 18),
+                const Icon(Icons.groups_rounded, size: 18),
                 const SizedBox(width: 6),
                 Text('Directors (${_directors.length})'),
+              ],
+            ),
+          ),
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.business_center_rounded, size: 18),
+                const SizedBox(width: 6),
+                Text('BOD (${_bod.length})'),
               ],
             ),
           ),
@@ -514,6 +580,16 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
               ],
             ),
           ),
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.archive_rounded, size: 18),
+                const SizedBox(width: 6),
+                Text('Archive (${_archivedRecords.length})'),
+              ],
+            ),
+          ),
           const Tab(
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -529,7 +605,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     );
   }
 
-  Widget _buildOfficeHoldersTab(List<Map<String, dynamic>> rawHolders, bool isTrustee) {
+  Widget _buildOfficeHoldersTab(List<Map<String, dynamic>> rawHolders, String category) {
     final theme = Theme.of(context);
     final query = _searchQuery.trim().toLowerCase();
     final holders = rawHolders.where((h) {
@@ -539,6 +615,24 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       final title = (h['office_title'] ?? '').toString().toLowerCase();
       return name.contains(query) || email.contains(query) || title.contains(query);
     }).toList();
+
+    final isTrustee = category == 'trustee';
+    final isBod = category == 'bod';
+    final label = isTrustee
+        ? 'Trustees'
+        : isBod
+            ? 'Board of Directors'
+            : 'Directors';
+    final icon = isTrustee
+        ? Icons.security_rounded
+        : isBod
+            ? Icons.business_center_rounded
+            : Icons.groups_rounded;
+    final addLabel = isTrustee
+        ? 'Add Trustee'
+        : isBod
+            ? 'Add Board Member'
+            : 'Add Director';
 
     return Column(
       children: [
@@ -553,23 +647,21 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           child: Row(
             children: [
               Icon(
-                isTrustee ? Icons.security_rounded : Icons.business_center_rounded,
+                icon,
                 color: theme.colorScheme.primary,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  isTrustee
-                      ? 'Board of Trustees (${holders.length})'
-                      : 'Board of Directors (${holders.length})',
+                  '$label (${holders.length})',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ),
               FilledButton.icon(
-                onPressed: () => _showAddOfficeHolderDialog(isTrustee),
+                onPressed: () => _showAddOfficeHolderDialog(category),
                 icon: const Icon(Icons.add, size: 16),
-                label: Text(isTrustee ? 'Add Trustee' : 'Add Director'),
+                label: Text(addLabel),
                 style: FilledButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                 ),
@@ -584,22 +676,22 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        isTrustee ? Icons.security_rounded : Icons.business_center_rounded,
+                        icon,
                         size: 48,
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'No ${isTrustee ? 'trustees' : 'directors'} found',
+                        'No $label found',
                         style: TextStyle(
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                       const SizedBox(height: 12),
                       ElevatedButton.icon(
-                        onPressed: () => _showAddOfficeHolderDialog(isTrustee),
+                        onPressed: () => _showAddOfficeHolderDialog(category),
                         icon: const Icon(Icons.add),
-                        label: Text('Add ${isTrustee ? 'Trustee' : 'Director'}'),
+                        label: Text(addLabel),
                       ),
                     ],
                   ),
@@ -609,7 +701,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                   itemCount: holders.length,
                   itemBuilder: (context, index) {
                     final holder = holders[index];
-                    return _buildOfficeHolderCard(holder, isTrustee);
+                    return _buildOfficeHolderCard(holder, category);
                   },
                 ),
         ),
@@ -617,10 +709,17 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     );
   }
 
-  Widget _buildOfficeHolderCard(Map<String, dynamic> holder, bool isTrustee) {
+  Widget _buildOfficeHolderCard(Map<String, dynamic> holder, String category) {
     final theme = Theme.of(context);
     final fullName = (holder['full_name'] ?? 'Unnamed').toString();
-    final officeTitle = (holder['office_title'] ?? (isTrustee ? 'Trustee' : 'Director')).toString();
+    final isTrustee = category == 'trustee';
+    final isBod = category == 'bod';
+    final defaultTitle = isTrustee
+        ? 'Trustee'
+        : isBod
+            ? 'Director (Board Member)'
+            : 'Director';
+    final officeTitle = (holder['office_title'] ?? defaultTitle).toString();
     final email = (holder['email'] ?? '').toString();
     final userId = (holder['user_id'] ?? '').toString();
     final isLinked = userId.isNotEmpty;
@@ -644,10 +743,20 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                   radius: 22,
                   backgroundColor: isTrustee
                       ? Colors.amber.withValues(alpha: 0.2)
-                      : theme.colorScheme.primary.withValues(alpha: 0.15),
+                      : isBod
+                          ? Colors.indigo.withValues(alpha: 0.15)
+                          : theme.colorScheme.primary.withValues(alpha: 0.15),
                   child: Icon(
-                    isTrustee ? Icons.shield_rounded : Icons.person_rounded,
-                    color: isTrustee ? Colors.amber.shade900 : theme.colorScheme.primary,
+                    isTrustee
+                        ? Icons.security_rounded
+                        : isBod
+                            ? Icons.business_center_rounded
+                            : Icons.person_rounded,
+                    color: isTrustee
+                        ? Colors.amber.shade900
+                        : isBod
+                            ? Colors.indigo
+                            : theme.colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -696,7 +805,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
                   tooltip: 'Edit details / Link account',
-                  onPressed: () => _showEditOfficeHolderDialog(holder, isTrustee),
+                  onPressed: () => _showEditOfficeHolderDialog(holder, category),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
@@ -777,13 +886,25 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
               ListTile(
                 leading: const CircleAvatar(
                   backgroundColor: Colors.blue,
-                  child: Icon(Icons.business_center_rounded, color: Colors.white, size: 20),
+                  child: Icon(Icons.groups_rounded, color: Colors.white, size: 20),
                 ),
-                title: const Text('Add Board Director'),
-                subtitle: const Text('Executive, Directorate, or Board of Directors member'),
+                title: const Text('Add Director'),
+                subtitle: const Text('Executive Directorate officer (President, Secretary, Treasurer, etc.)'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _showAddOfficeHolderDialog(false);
+                  _showAddOfficeHolderDialog('director');
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.indigo,
+                  child: Icon(Icons.business_center_rounded, color: Colors.white, size: 20),
+                ),
+                title: const Text('Add Board Member (BOD)'),
+                subtitle: const Text('Board of Directors strategic governance member'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showAddOfficeHolderDialog('bod');
                 },
               ),
               ListTile(
@@ -791,11 +912,11 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                   backgroundColor: Colors.amber,
                   child: Icon(Icons.security_rounded, color: Colors.white, size: 20),
                 ),
-                title: const Text('Add Board Trustee'),
-                subtitle: const Text('Board of Trustees governance and oversight member'),
+                title: const Text('Add Trustee'),
+                subtitle: const Text('Trustees apex governance and oversight member'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _showAddOfficeHolderDialog(true);
+                  _showAddOfficeHolderDialog('trustee');
                 },
               ),
               ListTile(
@@ -817,33 +938,51 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     );
   }
 
-  void _showAddOfficeHolderDialog(bool isTrustee) {
+  void _showAddOfficeHolderDialog(String category) {
+    final isTrustee = category == 'trustee';
+    final isBod = category == 'bod';
     _showOfficeHolderFormDialog(
-      isTrustee: isTrustee,
-      title: isTrustee ? 'Add Board Trustee' : 'Add Board Director',
+      category: category,
+      title: isTrustee
+          ? 'Add Trustee'
+          : isBod
+              ? 'Add Board Member (BOD)'
+              : 'Add Director',
     );
   }
 
-  void _showEditOfficeHolderDialog(Map<String, dynamic> holder, bool isTrustee) {
+  void _showEditOfficeHolderDialog(Map<String, dynamic> holder, String category) {
+    final isTrustee = category == 'trustee';
+    final isBod = category == 'bod';
     _showOfficeHolderFormDialog(
-      isTrustee: isTrustee,
-      title: isTrustee ? 'Edit Board Trustee' : 'Edit Board Director',
+      category: category,
+      title: isTrustee
+          ? 'Edit Trustee'
+          : isBod
+              ? 'Edit Board Member (BOD)'
+              : 'Edit Director',
       holder: holder,
     );
   }
 
   void _showOfficeHolderFormDialog({
-    required bool isTrustee,
+    required String category,
     required String title,
     Map<String, dynamic>? holder,
   }) {
+    final isTrustee = category == 'trustee';
+    final isBod = category == 'bod';
     final nameCtrl = TextEditingController(text: holder?['full_name'] ?? '');
+    final defaultTitle = isTrustee
+        ? 'Trustee'
+        : (isBod ? 'Director (Board Member)' : 'Director');
     final titleCtrl = TextEditingController(
-      text: holder?['office_title'] ?? (isTrustee ? 'Trustee' : 'Director (BOD)'),
+      text: holder?['office_title'] ?? defaultTitle,
     );
     final emailCtrl = TextEditingController(text: holder?['email'] ?? '');
     String selectedUserId = holder?['user_id'] ?? '';
-    final officeId = holder?['office_id'] ?? (isTrustee ? 'trustee' : 'bod');
+    final defaultOfficeId = isTrustee ? 'trustee' : (isBod ? 'bod' : 'director');
+    final officeId = holder?['office_id'] ?? defaultOfficeId;
 
     showDialog(
       context: context,
@@ -911,8 +1050,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                       labelText: 'Office / Role Title *',
                       border: const OutlineInputBorder(),
                       helperText: isTrustee
-                          ? 'e.g. Chairman, Board of Trustees or Trustee'
-                          : 'e.g. Executive President, Secretary, Director (BOD)',
+                          ? 'e.g. Chairman of Trustees or Trustee'
+                          : isBod
+                              ? 'e.g. Director (Board Member), Affairs Liaison'
+                              : 'e.g. Executive President, Secretary, Treasurer',
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -937,7 +1078,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Linked Account ID: $selectedUserId\nRole will be updated to ${isTrustee ? 'trustee' : 'bod'} & enrolled in leadership channels.',
+                              'Linked Account ID: $selectedUserId\nRole will be updated to ${isTrustee ? 'trustee' : (isBod ? 'bod' : 'director')} & enrolled in leadership channels.',
                               style: const TextStyle(fontSize: 11, color: Colors.green),
                             ),
                           ),
@@ -968,7 +1109,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                     officeTitle: titleCtrl.text.trim(),
                     email: emailCtrl.text.trim(),
                     userId: selectedUserId,
-                    isTrustee: isTrustee,
+                    category: category,
                     officeId: officeId,
                   );
                 },
@@ -987,13 +1128,15 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     required String officeTitle,
     required String email,
     required String userId,
-    required bool isTrustee,
+    required String category,
     required String officeId,
   }) async {
     try {
       final tables = TablesDB(appwriteClient);
+      final isTrustee = category == 'trustee';
+      final isBod = category == 'bod';
       final payload = <String, dynamic>{
-        'office_id': officeId.isNotEmpty ? officeId : (isTrustee ? 'trustee' : 'bod'),
+        'office_id': officeId.isNotEmpty ? officeId : (isTrustee ? 'trustee' : (isBod ? 'bod' : 'director')),
         'office_title': officeTitle.trim(),
         'scope': 'national',
         'chapter_id': '',
@@ -1001,7 +1144,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         'full_name': fullName.trim(),
         'email': email.trim(),
         'supervisor_user_id': '',
-        'supervisor_name': isTrustee ? 'Board of Trustees' : 'Executive President',
+        'supervisor_name': isTrustee ? 'Trustees' : (isBod ? 'Trustees' : 'Board of Directors'),
         'term_start': DateTime.now().toUtc().toIso8601String(),
         'term_end': DateTime.now().add(const Duration(days: 365 * 3)).toUtc().toIso8601String(),
         'ended_reason': '',
@@ -1027,7 +1170,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       }
 
       if (userId.trim().isNotEmpty) {
-        final targetRole = isTrustee ? 'trustee' : 'bod';
+        final targetRole = isTrustee ? 'trustee' : (isBod ? 'bod' : 'director');
         try {
           await AppwriteProfileService().updateUserRole(userId.trim(), targetRole);
           final profile = await AppwriteProfileService().getUserProfileModel(userId.trim());
@@ -1041,7 +1184,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${isTrustee ? 'Trustee' : 'Director'} saved successfully',
+              '${isTrustee ? 'Trustee' : (isBod ? 'Board Member' : 'Director')} saved successfully',
             ),
             backgroundColor: Colors.green,
           ),

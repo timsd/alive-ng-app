@@ -146,9 +146,10 @@ async function main() {
 // Reporting lines are modelled explicitly so access control comes from the app's
 // role, never from who knows which email address:
 //
-//   member -> chapter coordinator -> director -> president -> board of trustees
+//   member -> chapter coordinator -> directors -> board of directors -> trustees
 //
-// A director is supervised by a trustee. Every office holder is a row in
+// Directors report to the Board of Directors, which reports to the Trustees.
+// Trustees report to no one (apex of hierarchy). Every office holder is a row in
 // `org_offices` with a TERM (term_start/term_end), so a change of person closes
 // the old row and opens a new one instead of overwriting history.
 const SCHEMA = {
@@ -159,7 +160,7 @@ const SCHEMA = {
     title: S(200),
     scope: S(32),                 // 'chapter' | 'national'
     chapter_id: S(64),
-    office_type: S(32),           // coordinator | director | president | trustee
+    office_type: S(32),           // coordinator | director | president | bod | trustee
     holder_user_id: S(64),        // null when vacant
     holder_name: S(200),
     holder_email: S(200),
