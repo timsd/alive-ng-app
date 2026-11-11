@@ -24,12 +24,12 @@ class AppConstants {
   static const String adminRoute = '/admin';
   static const String adminDonationsReportRoute = '/admin-donations-report';
   static const String contentManagementRoute = '/content-management';
-  static const String bodTrusteesRoute = '/bod-trustees';
+  static const String bodRoute = '/board-of-directors';
   static const String userArchiveRoute = '/user-archive';
   static const String roleManagementRoute = '/role-management';
   static const String adminApprovalRoute = '/admin-approval';
   static const String adminApprovalLinkRoute = '/admin-approve';
-  static const String leadershipArchiveRoute = '/leadership-archive';
+  static const String leadershipDirectoryRoute = '/leadership-directory';
   static const String sampleContentAdminRoute = '/admin-sample-content';
   static const String videoContentAdminRoute = '/admin-videos';
   static const String studyGuideRoute = '/study-guide';

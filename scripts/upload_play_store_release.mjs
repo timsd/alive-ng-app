@@ -381,10 +381,10 @@ async function main() {
               language: 'en-US',
               text:
                 `What's New in v${versionName}:\n` +
-                `• Smart First-Time Onboarding: Returning visitors skip straight to the app while new visitors enjoy the guided onboarding & commitment oath.\n` +
-                `• Interactive Tracts & Dynamic Themes: Automatic PDF question/scripture extraction with 6 dynamic brand colour palettes.\n` +
-                `• Admin Tenure Handover: Instant in-place officer email and name editing for seamless leadership transitions.\n` +
-                `• Payment & UI Refinements: Synchronized Paystack configuration and responsive mobile card actions.`,
+                `• Unified Conference Controls: Harmonized control bar across List and Gallery views with side slide navigation.\n` +
+                `• ALIVE Scribe & Minutes: Automated meeting note taking and transcript sync across all attendees.\n` +
+                `• Real-Time Conference Chat: Instant in-meeting messaging with low latency delivery.\n` +
+                `• Enhanced Cloud Storage: Streamlined file sharing and improved minutes document management.`,
             },
           ],
         },

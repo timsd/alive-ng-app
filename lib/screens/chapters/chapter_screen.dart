@@ -253,7 +253,6 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       final role = (userProfileAsync.value!.role).toLowerCase();
       const allowedRoles = [
         'super_admin',
-        'superadmin',
         'admin',
         'bod',
         'director',
@@ -263,7 +262,6 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       ];
       const moderatorRoles = [
         'super_admin',
-        'superadmin',
         'admin',
         'bod',
         'director',

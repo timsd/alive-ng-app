@@ -499,9 +499,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
 
-          // BOD Trustees Route
+          // Board of Directors Route
           GoRoute(
-            path: AppConstants.bodTrusteesRoute,
+            path: AppConstants.bodRoute,
             builder: (context, state) => const BodTrusteesScreen(),
             redirect: (context, state) {
               final roleService = RoleAccessService.instance;
@@ -829,7 +829,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const StudyGuideScreen(),
           ),
           GoRoute(
-            path: AppConstants.leadershipArchiveRoute,
+            path: AppConstants.leadershipDirectoryRoute,
             builder: (context, state) => const LeadershipArchiveScreen(),
             redirect: (context, state) {
               final roleService = RoleAccessService.instance;

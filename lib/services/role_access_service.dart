@@ -53,7 +53,6 @@ class RoleAccessService {
     'trustee',
     'admin',
     'super_admin',
-    'superadmin',
   ];
 
   /// Cache duration - standard 5 minutes for balanced performance
@@ -88,7 +87,6 @@ class RoleAccessService {
           'trustee',
           'admin',
           'super_admin',
-          'superadmin',
         };
         if (elevatedRoles.contains(normalized)) {
           return 'member';
@@ -231,7 +229,6 @@ class RoleAccessService {
     const allChannelsRoles = {
       'admin',
       'super_admin',
-      'superadmin',
       'bod',
       'director',
       'trustee',
@@ -254,7 +251,6 @@ class RoleAccessService {
       'trustee',
       'admin',
       'super_admin',
-      'superadmin',
     };
     return conferenceLeaderRoles.contains(role);
   }

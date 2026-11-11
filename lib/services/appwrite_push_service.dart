@@ -77,7 +77,7 @@ class AppwritePushService {
       if (!isAdmin) {
         final profile = await AuthService.instance.getCurrentUserProfile();
         final role = profile?.role.toLowerCase().trim() ?? '';
-        if (role == 'admin' || role == 'super_admin' || role == 'superadmin') {
+        if (role == 'admin' || role == 'super_admin') {
           isAdmin = true;
         }
       }

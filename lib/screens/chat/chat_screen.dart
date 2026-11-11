@@ -458,7 +458,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final role = (profile.role).toLowerCase();
       const allowedRoles = [
         'super_admin',
-        'superadmin',
         'admin',
         'bod',
         'director',
@@ -472,7 +471,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ];
       const moderatorRoles = [
         'super_admin',
-        'superadmin',
         'admin',
         'bod',
         'director',

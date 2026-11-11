@@ -54,7 +54,6 @@ class ChapterConstants {
     'trustee',
     'admin',
     'super_admin',
-    'superadmin',
   ];
 
   /// Roles that grant the Health+ content editor (recipes + remedies) but no
@@ -69,7 +68,6 @@ class ChapterConstants {
     'trustee',
     'admin',
     'super_admin',
-    'superadmin',
   };
 
   static const List<String> teamTypes = [

@@ -280,7 +280,7 @@ class MainNavigationScreen extends ConsumerWidget {
       case AppConstants.aboutAppRoute:
       case AppConstants.aboutAliveRoute:
       case AppConstants.adminRoute:
-      case AppConstants.bodTrusteesRoute:
+      case AppConstants.bodRoute:
       case AppConstants.userArchiveRoute:
       case AppConstants.roleManagementRoute:
       case AppConstants.conferenceRoute:
@@ -302,7 +302,7 @@ class MainNavigationScreen extends ConsumerWidget {
       case AppConstants.helpSupportRoute:
       case AppConstants.donationRoute:
       case '/donate':
-      case AppConstants.leadershipArchiveRoute:
+      case AppConstants.leadershipDirectoryRoute:
       case AppConstants.tractPodcastAdminRoute:
       case AppConstants.contentManagementRoute:
       case AppConstants.adminApprovalRoute:
@@ -530,8 +530,9 @@ class MainNavigationScreen extends ConsumerWidget {
                   },
                   {
                     'icon': Icons.shield_rounded,
-                    'label': 'bod_trustees',
-                    'route': AppConstants.bodTrusteesRoute,
+                    'label': 'board_of_directors',
+                    'customLabel': 'Board of Directors',
+                    'route': AppConstants.bodRoute,
                     'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee']
                   },
                   {

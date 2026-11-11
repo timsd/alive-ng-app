@@ -372,7 +372,7 @@ class AppwriteChatService extends ChangeNotifier {
               Query.limit(100),
             ],
           );
-          const leaderKeywords = {'admin', 'super_admin', 'superadmin', 'bod', 'director', 'trustee', 'president'};
+          const leaderKeywords = {'admin', 'super_admin', 'bod', 'director', 'trustee', 'president'};
           for (final doc in leadershipRows.rows) {
             final role = (doc.data['role'] ?? '').toString().toLowerCase();
             final email = (doc.data['email'] ?? '').toString().toLowerCase();

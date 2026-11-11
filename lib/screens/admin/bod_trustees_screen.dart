@@ -53,15 +53,13 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
         final role = userProfile?.role ?? '';
         _hasAccess = role == 'admin' ||
             role == 'super_admin' ||
-            role == 'superadmin' ||
             role == 'leader' ||
             role == 'bod' ||
             role == 'trustee' ||
             RoleAccessService.instance.canAccessAdmin();
         _isAdmin = RoleAccessService.instance.canAccessAdmin() ||
             role == 'admin' ||
-            role == 'super_admin' ||
-            role == 'superadmin';
+            role == 'super_admin';
         if (_hasAccess) await _loadLeadership();
       }
     } catch (e) {
@@ -175,7 +173,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Board of Directors & Trustees',
+        title: 'Board of Directors',
         showBackButton: true,
         actions: [
           if (_isAdmin)
@@ -246,13 +244,42 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'This is the exclusive Board of Directors and Trustees portal for ALIVE Nigeria leadership.',
+                      'This is the exclusive Board of Directors portal for ALIVE Nigeria executive leadership.',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Link to Leadership Directory
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: colorScheme.outlineVariant),
+              ),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.badge_rounded, color: colorScheme.primary, size: 24),
+                ),
+                title: Text(
+                  'Leadership Directory',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('View, edit and update Trustees & Directors roster'),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                onTap: () => context.push(AppConstants.leadershipDirectoryRoute),
               ),
             ),
             const SizedBox(height: 18),
@@ -361,55 +388,13 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                   Icons.gavel_rounded,
                 ),
                 _buildMemberCard(
-                  'Okey Elechi',
+                  'Okechukwu Elechi',
                   'Trustee',
                   'Board governance, oversight, and advisory',
                   Icons.security_rounded,
                 ),
                 _buildMemberCard(
                   'Imoh Imeh',
-                  'Trustee',
-                  'Board governance, oversight, and advisory',
-                  Icons.security_rounded,
-                ),
-                _buildMemberCard(
-                  'Ajibade Ayodeji',
-                  'Trustee',
-                  'Board governance, oversight, and advisory',
-                  Icons.security_rounded,
-                ),
-                _buildMemberCard(
-                  'Fatola Samson',
-                  'Trustee',
-                  'Board governance, oversight, and advisory',
-                  Icons.security_rounded,
-                ),
-                _buildMemberCard(
-                  'Bassey Etido',
-                  'Trustee',
-                  'Board governance, oversight, and advisory',
-                  Icons.security_rounded,
-                ),
-                _buildMemberCard(
-                  'Joshua Umahi',
-                  'Trustee',
-                  'Board governance, oversight, and advisory',
-                  Icons.security_rounded,
-                ),
-                _buildMemberCard(
-                  'Frank A',
-                  'Trustee',
-                  'Board governance, oversight, and advisory',
-                  Icons.security_rounded,
-                ),
-                _buildMemberCard(
-                  'Emeka Okoro',
-                  'Trustee',
-                  'Board governance, oversight, and advisory',
-                  Icons.security_rounded,
-                ),
-                _buildMemberCard(
-                  'Nancy Elechi',
                   'Trustee',
                   'Board governance, oversight, and advisory',
                   Icons.security_rounded,

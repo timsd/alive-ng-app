@@ -23,6 +23,11 @@ class PaymentConfig {
       defaultValue: '',
     );
     if (envKey.isNotEmpty) return envKey;
+    const liveEnvKey = String.fromEnvironment(
+      'PAYSTACK_LIVE_PUBLIC_KEY',
+      defaultValue: '',
+    );
+    if (liveEnvKey.isNotEmpty) return liveEnvKey;
     return '';
   }
 

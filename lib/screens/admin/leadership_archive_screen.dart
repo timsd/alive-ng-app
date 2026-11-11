@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:appwrite/appwrite.dart' hide Row;
+import '../../config/appwrite_backend_config.dart';
+import '../../services/appwrite_client.dart';
+import '../../services/appwrite_profile_service.dart';
+import '../../services/channel_membership_sync_service.dart';
+import '../../models/app_models.dart';
 import '../../utils/error_handler.dart';
 import '../../models/leadership_models.dart';
 import '../../services/leadership_service.dart';
@@ -26,6 +32,10 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
   List<LeadershipRecord> _archivedRecords = [];
   Map<String, dynamic> _statistics = {};
 
+  List<Map<String, dynamic>> _trustees = [];
+  List<Map<String, dynamic>> _directors = [];
+  List<UserProfile> _registeredUsers = [];
+
   bool _isLoading = true;
   String? _error;
 
@@ -36,7 +46,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _loadData();
     _searchController.addListener(_onSearchChanged);
   }
@@ -67,6 +77,8 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         _leadershipService.getAllRecords(status: ServiceStatus.completed),
         _leadershipService.getArchivedRecords(),
         _leadershipService.getLeadershipStatistics(),
+        _loadOfficeHolders(),
+        _loadRegisteredUsers(),
       ]);
 
       setState(() {
@@ -83,6 +95,175 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       });
     }
   }
+
+  Future<void> _loadOfficeHolders() async {
+    try {
+      final tables = TablesDB(appwriteClient);
+      final res = await tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.orgOfficeHoldersCollectionId,
+        queries: [Query.limit(100)],
+      );
+      final rows = res.rows.map((r) {
+        final map = Map<String, dynamic>.from(r.data);
+        map['\$id'] = r.$id;
+        return map;
+      }).toList();
+
+      final trusteeRows = rows.where((r) {
+        final officeId = (r['office_id'] ?? '').toString().toLowerCase();
+        return officeId == 'trustee' || officeId == 'board_of_trustees';
+      }).toList();
+
+      final directorRows = rows.where((r) {
+        final officeId = (r['office_id'] ?? '').toString().toLowerCase();
+        return officeId != 'trustee' && officeId != 'board_of_trustees';
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _trustees = trusteeRows.isNotEmpty ? trusteeRows : _defaultTrustees();
+          _directors = directorRows.isNotEmpty ? directorRows : _defaultDirectors();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _trustees = _defaultTrustees();
+          _directors = _defaultDirectors();
+        });
+      }
+    }
+  }
+
+  Future<void> _loadRegisteredUsers() async {
+    try {
+      final users = await AppwriteProfileService().getAllUsers();
+      if (mounted) {
+        setState(() {
+          _registeredUsers = users;
+        });
+      }
+    } catch (_) {}
+  }
+
+  List<Map<String, dynamic>> _defaultTrustees() => [
+        {
+          'office_id': 'trustee',
+          'office_title': 'Chairman, Board of Trustees',
+          'full_name': 'Jerry Kwarba',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'trustee',
+          'office_title': 'Trustee',
+          'full_name': 'Imoh Imeh',
+          'email': '',
+          'user_id': '',
+        },
+      ];
+
+  List<Map<String, dynamic>> _defaultDirectors() => [
+        {
+          'office_id': 'executive_president',
+          'office_title': 'Executive President & Chairman',
+          'full_name': 'Nwoko Patience Mfon',
+          'email': 'jamespat84@gmail.com',
+          'user_id': '',
+        },
+        {
+          'office_id': 'secretary',
+          'office_title': 'Secretary & Communication Director',
+          'full_name': 'Caleb Peters',
+          'email': 'peterscaleb50@gmail.com',
+          'user_id': '6abceded858b8dff1858',
+        },
+        {
+          'office_id': 'speaker',
+          'office_title': 'Speaker & Director, AMTC',
+          'full_name': 'Godstime Esuku',
+          'email': 'deovolente52@gmail.com',
+          'user_id': '6ad7c8bf4cbbd6a3395a',
+        },
+        {
+          'office_id': 'treasurer',
+          'office_title': 'Treasurer & Director of Logistics',
+          'full_name': 'Timothy Olodude',
+          'email': 'dammyolodude@gmail.com',
+          'user_id': '6a875b8ec9a90f0a6a55',
+        },
+        {
+          'office_id': 'director_evangelism',
+          'office_title': 'Director of Evangelism & Programming',
+          'full_name': 'Emenike Ekechi',
+          'email': 'praiseelechi@gmail.com',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (BOD)',
+          'full_name': 'Okechukwu Elechi',
+          'email': 'okechukwuelechi33@gmail.com',
+          'user_id': '6af371a672420765763b',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (BOD & Trustee)',
+          'full_name': 'Imoh Imeh',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (BOD)',
+          'full_name': 'Ajibade Ayodeji',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (BOD)',
+          'full_name': 'Fatola Samson',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (BOD)',
+          'full_name': 'Bassey Etido',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (BOD)',
+          'full_name': 'Joshua Umahi',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (BOD)',
+          'full_name': 'Frank A',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (BOD)',
+          'full_name': 'Emeka Okoro',
+          'email': '',
+          'user_id': '',
+        },
+        {
+          'office_id': 'bod',
+          'office_title': 'Director (BOD)',
+          'full_name': 'Nancy Elechi',
+          'email': '',
+          'user_id': '',
+        },
+      ];
 
   List<LeadershipRecord> _getFilteredRecords(List<LeadershipRecord> records) {
     var filtered = records;
@@ -119,7 +300,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Leadership Archive',
+        title: 'Leadership Directory',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -128,8 +309,8 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           ),
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: _showCreateRecordDialog,
-            tooltip: 'Add Leadership Record',
+            onPressed: _showAddChooserDialog,
+            tooltip: 'Add Leadership / Board Member',
           ),
         ],
       ),
@@ -185,17 +366,15 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                     Expanded(
                       child: TabBarView(
                         controller: _tabController,
-
                         children: [
-                          _buildStatisticsTab(theme),
+                          _buildOfficeHoldersTab(_directors, false),
+                          _buildOfficeHoldersTab(_trustees, true),
                           _buildRecordsTab(_getFilteredRecords(_activeRecords),
                               'Active Leaders'),
                           _buildRecordsTab(
                               _getFilteredRecords(_completedRecords),
                               'Completed Service'),
-                          _buildRecordsTab(
-                              _getFilteredRecords(_archivedRecords),
-                              'Archived Records'),
+                          _buildStatisticsTab(theme),
                         ],
                       ),
                     ),
@@ -289,54 +468,654 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       color: theme.colorScheme.surface,
       child: TabBar(
         controller: _tabController,
-
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
         indicatorColor: theme.colorScheme.primary,
         labelColor: theme.colorScheme.primary,
         unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
         tabs: [
-          const Tab(
-            child: Column(
+          Tab(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.analytics),
-                SizedBox(height: 4),
-                Text('Statistics'),
+                const Icon(Icons.business_center_rounded, size: 18),
+                const SizedBox(width: 6),
+                Text('Directors (${_directors.length})'),
               ],
             ),
           ),
           Tab(
-            child: Column(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.person),
-                const SizedBox(height: 4),
+                const Icon(Icons.security_rounded, size: 18),
+                const SizedBox(width: 6),
+                Text('Trustees (${_trustees.length})'),
+              ],
+            ),
+          ),
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.person, size: 18),
+                const SizedBox(width: 6),
                 Text('Active (${_activeRecords.length})'),
               ],
             ),
           ),
           Tab(
-            child: Column(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle),
-                const SizedBox(height: 4),
+                const Icon(Icons.check_circle, size: 18),
+                const SizedBox(width: 6),
                 Text('Completed (${_completedRecords.length})'),
               ],
             ),
           ),
-          Tab(
-            child: Column(
+          const Tab(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.archive),
-                const SizedBox(height: 4),
-                Text('Archived (${_archivedRecords.length})'),
+                Icon(Icons.analytics, size: 18),
+                SizedBox(width: 6),
+                Text('Statistics'),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildOfficeHoldersTab(List<Map<String, dynamic>> rawHolders, bool isTrustee) {
+    final theme = Theme.of(context);
+    final query = _searchQuery.trim().toLowerCase();
+    final holders = rawHolders.where((h) {
+      if (query.isEmpty) return true;
+      final name = (h['full_name'] ?? '').toString().toLowerCase();
+      final email = (h['email'] ?? '').toString().toLowerCase();
+      final title = (h['office_title'] ?? '').toString().toLowerCase();
+      return name.contains(query) || email.contains(query) || title.contains(query);
+    }).toList();
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            border: Border(
+              bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5)),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isTrustee ? Icons.security_rounded : Icons.business_center_rounded,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isTrustee
+                      ? 'Board of Trustees (${holders.length})'
+                      : 'Board of Directors (${holders.length})',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: () => _showAddOfficeHolderDialog(isTrustee),
+                icon: const Icon(Icons.add, size: 16),
+                label: Text(isTrustee ? 'Add Trustee' : 'Add Director'),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: holders.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isTrustee ? Icons.security_rounded : Icons.business_center_rounded,
+                        size: 48,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No ${isTrustee ? 'trustees' : 'directors'} found',
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => _showAddOfficeHolderDialog(isTrustee),
+                        icon: const Icon(Icons.add),
+                        label: Text('Add ${isTrustee ? 'Trustee' : 'Director'}'),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: holders.length,
+                  itemBuilder: (context, index) {
+                    final holder = holders[index];
+                    return _buildOfficeHolderCard(holder, isTrustee);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOfficeHolderCard(Map<String, dynamic> holder, bool isTrustee) {
+    final theme = Theme.of(context);
+    final fullName = (holder['full_name'] ?? 'Unnamed').toString();
+    final officeTitle = (holder['office_title'] ?? (isTrustee ? 'Trustee' : 'Director')).toString();
+    final email = (holder['email'] ?? '').toString();
+    final userId = (holder['user_id'] ?? '').toString();
+    final isLinked = userId.isNotEmpty;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: isTrustee
+                      ? Colors.amber.withValues(alpha: 0.2)
+                      : theme.colorScheme.primary.withValues(alpha: 0.15),
+                  child: Icon(
+                    isTrustee ? Icons.shield_rounded : Icons.person_rounded,
+                    color: isTrustee ? Colors.amber.shade900 : theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        fullName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        officeTitle,
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      if (email.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.email_outlined,
+                                size: 14,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                email,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  tooltip: 'Edit details / Link account',
+                  onPressed: () => _showEditOfficeHolderDialog(holder, isTrustee),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                  tooltip: 'Remove',
+                  onPressed: () => _confirmDeleteOfficeHolder(holder),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isLinked
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.amber.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isLinked
+                      ? Colors.green.withValues(alpha: 0.3)
+                      : Colors.amber.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isLinked ? Icons.verified_user_rounded : Icons.pending_actions_rounded,
+                    size: 14,
+                    color: isLinked ? Colors.green.shade700 : Colors.amber.shade900,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    isLinked ? 'Linked App Account' : 'Pending App Registration',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isLinked ? Colors.green.shade800 : Colors.amber.shade900,
+                    ),
+                  ),
+                  if (isLinked) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      '($userId)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddChooserDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  'Add to Leadership Directory',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.blue,
+                  child: Icon(Icons.business_center_rounded, color: Colors.white, size: 20),
+                ),
+                title: const Text('Add Board Director'),
+                subtitle: const Text('Executive, Directorate, or Board of Directors member'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showAddOfficeHolderDialog(false);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.amber,
+                  child: Icon(Icons.security_rounded, color: Colors.white, size: 20),
+                ),
+                title: const Text('Add Board Trustee'),
+                subtitle: const Text('Board of Trustees governance and oversight member'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showAddOfficeHolderDialog(true);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.teal,
+                  child: Icon(Icons.history_edu_rounded, color: Colors.white, size: 20),
+                ),
+                title: const Text('Add Leadership Service Record'),
+                subtitle: const Text('Track active, completed, or historical ministry tenure'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showCreateRecordDialog();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddOfficeHolderDialog(bool isTrustee) {
+    _showOfficeHolderFormDialog(
+      isTrustee: isTrustee,
+      title: isTrustee ? 'Add Board Trustee' : 'Add Board Director',
+    );
+  }
+
+  void _showEditOfficeHolderDialog(Map<String, dynamic> holder, bool isTrustee) {
+    _showOfficeHolderFormDialog(
+      isTrustee: isTrustee,
+      title: isTrustee ? 'Edit Board Trustee' : 'Edit Board Director',
+      holder: holder,
+    );
+  }
+
+  void _showOfficeHolderFormDialog({
+    required bool isTrustee,
+    required String title,
+    Map<String, dynamic>? holder,
+  }) {
+    final nameCtrl = TextEditingController(text: holder?['full_name'] ?? '');
+    final titleCtrl = TextEditingController(
+      text: holder?['office_title'] ?? (isTrustee ? 'Trustee' : 'Director (BOD)'),
+    );
+    final emailCtrl = TextEditingController(text: holder?['email'] ?? '');
+    String selectedUserId = holder?['user_id'] ?? '';
+    final officeId = holder?['office_id'] ?? (isTrustee ? 'trustee' : 'bod');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            title: Text(title),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Link Registered User Account',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedUserId.isNotEmpty ? selectedUserId : null,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      hintText: 'Select registered app member...',
+                    ),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: '',
+                        child: Text('-- Unlinked / Not yet registered --'),
+                      ),
+                      ..._registeredUsers.map((u) {
+                        final label = '${u.fullName} (${u.email})';
+                        return DropdownMenuItem<String>(
+                          value: u.id,
+                          child: Text(label, overflow: TextOverflow.ellipsis),
+                        );
+                      }),
+                    ],
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedUserId = val ?? '';
+                        if (selectedUserId.isNotEmpty) {
+                          final match =
+                              _registeredUsers.where((u) => u.id == selectedUserId).firstOrNull;
+                          if (match != null) {
+                            nameCtrl.text = match.fullName;
+                            emailCtrl.text = match.email;
+                          }
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name *',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Office / Role Title *',
+                      border: const OutlineInputBorder(),
+                      helperText: isTrustee
+                          ? 'e.g. Chairman, Board of Trustees or Trustee'
+                          : 'e.g. Executive President, Secretary, Director (BOD)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: emailCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Email Address',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (selectedUserId.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Linked Account ID: $selectedUserId\nRole will be updated to ${isTrustee ? 'trustee' : 'bod'} & enrolled in leadership channels.',
+                              style: const TextStyle(fontSize: 11, color: Colors.green),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  if (nameCtrl.text.trim().isEmpty || titleCtrl.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Name and title are required')),
+                    );
+                    return;
+                  }
+                  Navigator.pop(ctx);
+                  await _saveOfficeHolder(
+                    docId: holder?['\$id'],
+                    fullName: nameCtrl.text.trim(),
+                    officeTitle: titleCtrl.text.trim(),
+                    email: emailCtrl.text.trim(),
+                    userId: selectedUserId,
+                    isTrustee: isTrustee,
+                    officeId: officeId,
+                  );
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _saveOfficeHolder({
+    String? docId,
+    required String fullName,
+    required String officeTitle,
+    required String email,
+    required String userId,
+    required bool isTrustee,
+    required String officeId,
+  }) async {
+    try {
+      final tables = TablesDB(appwriteClient);
+      final payload = <String, dynamic>{
+        'office_id': officeId.isNotEmpty ? officeId : (isTrustee ? 'trustee' : 'bod'),
+        'office_title': officeTitle.trim(),
+        'scope': 'national',
+        'chapter_id': '',
+        'user_id': userId.trim(),
+        'full_name': fullName.trim(),
+        'email': email.trim(),
+        'supervisor_user_id': '',
+        'supervisor_name': isTrustee ? 'Board of Trustees' : 'Executive President',
+        'term_start': DateTime.now().toUtc().toIso8601String(),
+        'term_end': DateTime.now().add(const Duration(days: 365 * 3)).toUtc().toIso8601String(),
+        'ended_reason': '',
+        'is_current': true,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      if (docId != null && docId.isNotEmpty) {
+        await tables.updateRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.orgOfficeHoldersCollectionId,
+          rowId: docId,
+          data: payload,
+        );
+      } else {
+        payload['created_at'] = DateTime.now().toUtc().toIso8601String();
+        await tables.createRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.orgOfficeHoldersCollectionId,
+          rowId: ID.unique(),
+          data: payload,
+        );
+      }
+
+      if (userId.trim().isNotEmpty) {
+        final targetRole = isTrustee ? 'trustee' : 'bod';
+        try {
+          await AppwriteProfileService().updateUserRole(userId.trim(), targetRole);
+          final profile = await AppwriteProfileService().getUserProfileModel(userId.trim());
+          if (profile != null) {
+            await ChannelMembershipSyncService.instance.syncUserChannels(profile);
+          }
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${isTrustee ? 'Trustee' : 'Director'} saved successfully',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      await _loadData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: ${ErrorHandler.getUserFriendlyMessage(e)}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteOfficeHolder(Map<String, dynamic> holder) async {
+    final name = (holder['full_name'] ?? 'Member').toString();
+    final docId = (holder['\$id'] ?? '').toString();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Removal'),
+        content: Text('Are you sure you want to remove "$name" from leadership?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        if (docId.isNotEmpty) {
+          final tables = TablesDB(appwriteClient);
+          await tables.deleteRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.orgOfficeHoldersCollectionId,
+            rowId: docId,
+          );
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$name removed successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        await _loadData();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to remove: ${ErrorHandler.getUserFriendlyMessage(e)}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildStatisticsTab(ThemeData theme) {

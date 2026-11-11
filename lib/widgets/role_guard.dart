@@ -126,9 +126,7 @@ class RoleVisibility extends StatelessWidget {
     final normalized = currentRole?.trim().toLowerCase().replaceAll('-', '_');
 
     // Super Admin has universal access across all administrative and leadership surfaces
-    if (normalized == 'super_admin' ||
-        normalized == 'superadmin' ||
-        roleService.isSuperAdmin()) {
+    if (normalized == 'super_admin' || roleService.isSuperAdmin()) {
       return child;
     }
 
@@ -139,8 +137,7 @@ class RoleVisibility extends StatelessWidget {
     if (normalized != null &&
         (normalizedAllowed.contains(normalized) ||
             (normalized == 'admin' &&
-                (normalizedAllowed.contains('super_admin') ||
-                    normalizedAllowed.contains('superadmin'))))) {
+                normalizedAllowed.contains('super_admin')))) {
       return child;
     }
 
