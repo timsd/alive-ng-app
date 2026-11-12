@@ -506,6 +506,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
 
                       // Category (dynamic from Appwrite)
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         value: _selectedCategoryName,
                         decoration: InputDecoration(
                           labelText: 'Category *',
@@ -1294,32 +1295,39 @@ class _StandaloneLessonFormDialogState
                       ),
                       const SizedBox(height: 16),
 
+                      // Category (full width to comfortably fit long category names without clipping)
+                      DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        initialValue: _selectedCategory,
+                        decoration: const InputDecoration(
+                          labelText: 'Category *',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.category),
+                        ),
+                        items: _categories.map((c) {
+                          return DropdownMenuItem(
+                            value: c,
+                            child: Text(
+                              c,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedCategory = val);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Level and Duration side-by-side
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              initialValue: _selectedCategory,
-                              decoration: const InputDecoration(
-                                labelText: 'Category *',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.category),
-                              ),
-                              items: _categories.map((c) {
-                                return DropdownMenuItem(
-                                  value: c,
-                                  child: Text(c, overflow: TextOverflow.ellipsis),
-                                );
-                              }).toList(),
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() => _selectedCategory = val);
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
+                              isExpanded: true,
                               initialValue: _selectedLevel,
                               decoration: const InputDecoration(
                                 labelText: 'Level *',
@@ -1327,7 +1335,13 @@ class _StandaloneLessonFormDialogState
                                 prefixIcon: Icon(Icons.signal_cellular_alt),
                               ),
                               items: _levels.map((l) {
-                                return DropdownMenuItem(value: l, child: Text(l));
+                                return DropdownMenuItem(
+                                  value: l,
+                                  child: Text(
+                                    l,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
                               }).toList(),
                               onChanged: (val) {
                                 if (val != null) {
@@ -1336,22 +1350,23 @@ class _StandaloneLessonFormDialogState
                               },
                             ),
                           ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _durationController,
+                              decoration: const InputDecoration(
+                                labelText: 'Estimated Duration *',
+                                hintText: 'e.g. 20 min',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.access_time),
+                              ),
+                              validator: (value) =>
+                                  value == null || value.trim().isEmpty
+                                      ? 'Please specify duration'
+                                      : null,
+                            ),
+                          ),
                         ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      TextFormField(
-                        controller: _durationController,
-                        decoration: const InputDecoration(
-                          labelText: 'Estimated Duration *',
-                          hintText: 'e.g. 20 min',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.access_time),
-                        ),
-                        validator: (value) =>
-                            value == null || value.trim().isEmpty
-                                ? 'Please specify duration'
-                                : null,
                       ),
                       const SizedBox(height: 16),
 

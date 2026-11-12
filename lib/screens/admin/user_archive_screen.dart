@@ -9,6 +9,7 @@ import '../../utils/logger.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_image.dart';
+import '../../widgets/admin_filter_header.dart';
 
 class UserArchiveScreen extends StatefulWidget {
   const UserArchiveScreen({super.key});
@@ -183,104 +184,43 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       ),
       body: Column(
         children: [
-          // Search Bar
+          // Search & Metric Header (Option 3)
           Padding(
-            padding: ResponsiveUtils.getResponsivePadding(context),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search archived users...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(
-                      ResponsiveUtils.getResponsiveBorderRadiusValue(
-                          context, 10)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(
-                      ResponsiveUtils.getResponsiveBorderRadiusValue(
-                          context, 10)),
-                  borderSide:
-                      BorderSide(color: theme.colorScheme.outlineVariant),
-                ),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
-              ),
-              onChanged: (value) {
+            padding: EdgeInsets.symmetric(
+              horizontal: ResponsiveUtils.getResponsivePaddingValue(context),
+              vertical: 8,
+            ),
+            child: AdminFilterHeader<String>(
+              searchController: _searchController,
+              searchHint: 'Search archived users by name or email...',
+              onSearchChanged: (value) {
                 setState(() {
                   _searchQuery = value;
                 });
               },
-            ),
-          ),
-
-          // Info Card
-          Padding(
-            padding: EdgeInsets.symmetric(
-                horizontal: ResponsiveUtils.getResponsivePaddingValue(context)),
-            child: Card(
-              color:
-                  theme.colorScheme.secondaryContainer.withValues(alpha: 0.3),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-                side: BorderSide(
-                  color:
-                      theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+              onSearchCleared: () {
+                setState(() {
+                  _searchQuery = '';
+                });
+              },
+              metricPills: [
+                AdminMetricPill<String>(
+                  label: 'All Archived',
+                  value: 'all',
+                  count: _archivedUsers.length,
+                  color: theme.colorScheme.secondary,
+                  icon: Icons.archive_outlined,
                 ),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(
-                    ResponsiveUtils.getResponsiveSpacing(context, 12)),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
-                    SizedBox(
-                        width:
-                            ResponsiveUtils.getResponsiveSpacing(context, 12)),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Archived Users',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      Theme.of(context).colorScheme.secondary,
-                                ),
-                          ),
-                          Text(
-                            'Users who have left the organization. Found ${_filteredUsers.length} archived users.',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                    ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
+              selectedMetric: 'all',
+              onSelectMetric: (_) {},
+              hasActiveNonDefaultFilters: _searchQuery.isNotEmpty,
+              onClearAllFilters: () {
+                _searchController.clear();
+                setState(() {
+                  _searchQuery = '';
+                });
+              },
             ),
           ),
 

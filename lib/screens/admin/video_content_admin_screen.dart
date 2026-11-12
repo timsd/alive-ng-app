@@ -594,138 +594,191 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thumbnail container with play button overlay
-            Stack(
-              alignment: Alignment.center,
+            // Top Section: Thumbnail + Metadata
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: SizedBox(
-                    width: 140,
-                    height: 84,
-                    child: thumbnailUrl.isNotEmpty
-                        ? CustomImage(
-                            imageUrl: thumbnailUrl,
-                            width: 140,
-                            height: 84,
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-                            child: Icon(Icons.video_library_rounded, color: theme.colorScheme.primary),
+                // Thumbnail container with play button overlay
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: SizedBox(
+                        width: 120,
+                        height: 72,
+                        child: thumbnailUrl.isNotEmpty
+                            ? CustomImage(
+                                imageUrl: thumbnailUrl,
+                                width: 120,
+                                height: 72,
+                                fit: BoxFit.cover,
+                              )
+                            : Container(
+                                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                                child: Icon(Icons.video_library_rounded, color: theme.colorScheme.primary),
+                              ),
+                      ),
+                    ),
+                    // Play preview button overlay
+                    InkWell(
+                      onTap: () => _previewVideo(video),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    // Duration pill badge
+                    if (duration.isNotEmpty)
+                      Positioned(
+                        bottom: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(4),
                           ),
+                          child: Text(
+                            duration,
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+
+                // Title, Author, Category
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                category,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          // Active status indicator with switch
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                isActive ? 'Active' : 'Hidden',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: isActive
+                                      ? (theme.brightness == Brightness.dark
+                                          ? const Color(0xFF81C784)
+                                          : Colors.green.shade700)
+                                      : theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              Transform.scale(
+                                scale: 0.75,
+                                child: Switch(
+                                  value: isActive,
+                                  onChanged: (_) => _toggleActive(video),
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        author,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                // Play preview button
-                InkWell(
-                  onTap: () => _previewVideo(video),
-                  borderRadius: BorderRadius.circular(24),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.65),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
-                  ),
-                ),
-                // Duration pill badge
-                if (duration.isNotEmpty)
-                  Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        duration,
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
               ],
             ),
-            const SizedBox(width: 14),
 
-            // Metadata info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          category,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Switch(
-                        value: isActive,
-                        onChanged: (_) => _toggleActive(video),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    author,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 8),
+            const SizedBox(height: 10),
+            Divider(
+              height: 1,
+              thickness: 0.6,
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 8),
 
-                  // Actions row
-                  Row(
-                    children: [
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.play_circle_outline, size: 16),
-                        label: const Text('Preview', style: TextStyle(fontSize: 12)),
-                        onPressed: () => _previewVideo(video),
-                        style: OutlinedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        tooltip: 'Edit Video',
-                        onPressed: () => _showVideoEditorDialog(video: video),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                        tooltip: 'Delete Video',
-                        onPressed: () => _deleteVideo(video),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
+            // Bottom Full-width Action Bar
+            Row(
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.play_circle_outline, size: 16),
+                  label: const Text('Preview', style: TextStyle(fontSize: 12)),
+                  onPressed: () => _previewVideo(video),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    side: BorderSide(
+                      color: theme.colorScheme.outline.withValues(alpha: 0.4),
+                    ),
                   ),
-                ],
-              ),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit', style: TextStyle(fontSize: 12)),
+                  onPressed: () => _showVideoEditorDialog(video: video),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                  tooltip: 'Delete Video',
+                  onPressed: () => _deleteVideo(video),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
             ),
           ],
         ),

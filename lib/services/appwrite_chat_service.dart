@@ -13,6 +13,8 @@ import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
 import 'role_access_service.dart';
+import 'org_structure_service.dart';
+import 'channel_membership_sync_service.dart';
 
 class AppwriteChatService extends ChangeNotifier {
   AppwriteChatService() {
@@ -311,6 +313,43 @@ class AppwriteChatService extends ChangeNotifier {
       await _storeMessageTags(row.$id, tags);
       await _updateChannelLastMessage(channelId, content, user.$id);
 
+      // If message tags a dedicated channel (like #bod, #coordinators, #field_workers, etc.)
+      // and it was posted in a different channel, post an attention bridge notice into that target channel
+      for (final group in taggedGroups) {
+        final targetChannelId = _getChannelIdForRoleTag(group);
+        if (targetChannelId != null && targetChannelId != channelId) {
+          try {
+            await _tables.createRow(
+              databaseId: databaseId,
+              tableId: messagesCollectionId,
+              rowId: ID.unique(),
+              data: {
+                'channel_id': targetChannelId,
+                'roomId': targetChannelId,
+                'sender_id': user.$id,
+                'senderId': user.$id,
+                'sender_name': user.name.isNotEmpty
+                    ? user.name
+                    : user.email.split('@').first,
+                'sender_avatar': senderAvatar,
+                'content': '📢 [Attention #${group.toUpperCase()} from conversation]:\n"$content"',
+                'messageText': '📢 [Attention #${group.toUpperCase()} from conversation]:\n"$content"',
+                'timestamp': now.millisecondsSinceEpoch + 1,
+                'type': MessageType.text.name,
+                'tagged_users': taggedUsers,
+                'tagged_groups': taggedGroups,
+                'reply_to_id': null,
+                'attachments': const <String>[],
+                'is_edited': false,
+              },
+            );
+            await _updateChannelLastMessage(targetChannelId, content, user.$id);
+          } catch (bridgeErr) {
+            _logger.warning('Could not bridge attention note to $targetChannelId: $bridgeErr');
+          }
+        }
+      }
+
       return _messageFromRow(row);
     } catch (e) {
       _logger.error('Failed to send Appwrite chat message: $e');
@@ -437,6 +476,148 @@ class AppwriteChatService extends ChangeNotifier {
     }
   }
 
+  String? _getChannelIdForRoleTag(String tag) {
+    final clean = tag.toLowerCase().replaceAll('#', '').replaceAll(' ', '_');
+    switch (clean) {
+      case 'bod':
+      case 'board':
+      case 'board_of_directors':
+        return ChannelMembershipSyncService.channelBodId;
+      case 'coordinator':
+      case 'coordinators':
+      case 'chap_coor':
+        return ChannelMembershipSyncService.channelCoordinatorsId;
+      case 'field_worker':
+      case 'field_workers':
+      case 'fieldwork':
+        return ChannelMembershipSyncService.channelFieldWorkersId;
+      case 'campus_missionary':
+      case 'campus_missionaries':
+      case 'campus_mission':
+        return ChannelMembershipSyncService.channelCampusMissionariesId;
+      case 'amtc':
+      case 'amtc_team':
+        return ChannelMembershipSyncService.channelAmtcId;
+      case 'donor':
+      case 'donors':
+        return ChannelMembershipSyncService.channelDonorsId;
+      default:
+        return null;
+    }
+  }
+
+  List<TaggedEntity>? _cachedUserEntities;
+  DateTime? _cachedUserEntitiesTime;
+
+  Future<List<TaggedEntity>> _loadAllUserEntities() async {
+    final now = DateTime.now();
+    if (_cachedUserEntities != null &&
+        _cachedUserEntitiesTime != null &&
+        now.difference(_cachedUserEntitiesTime!) < const Duration(minutes: 5)) {
+      return _cachedUserEntities!;
+    }
+
+    try {
+      final response = await _tables.listRows(
+        databaseId: databaseId,
+        tableId: AppwriteBackendConfig.usersCollectionId,
+        queries: [
+          Query.equal('is_archived', false),
+          Query.limit(250),
+        ],
+      );
+
+      final entities = <TaggedEntity>[];
+      final seenNames = <String>{};
+
+      // Also grab BOD and Leadership offices from OrgStructureService
+      final bodOffices = await OrgStructureService.instance.getBodMembers();
+      final bodHolders = bodOffices
+          .where((o) => o.holderName != null && o.holderName!.isNotEmpty)
+          .toList();
+
+      for (final row in response.rows) {
+        final data = row.data;
+        final rawName = (data['fullName'] ??
+                data['full_name'] ??
+                data['name'] ??
+                data['email'] ??
+                'User')
+            .toString()
+            .trim();
+        final displayName = rawName.contains('@')
+            ? rawName.split('@').first
+            : rawName;
+        if (displayName.isEmpty) continue;
+
+        final role = (data['role'] ?? '').toString().toLowerCase();
+        final isBodUser = role == 'bod' ||
+            role.contains('bod') ||
+            bodHolders.any((b) =>
+                b.holderUserId == row.$id ||
+                (b.holderName != null &&
+                    b.holderName!.toLowerCase() == displayName.toLowerCase()));
+
+        String? subtitle;
+        if (isBodUser) {
+          subtitle = 'Board of Directors';
+        } else if (role.contains('director')) {
+          subtitle = 'Director';
+        } else if (role.contains('coordinator')) {
+          subtitle = 'Coordinator';
+        } else if (role == 'admin' || role == 'super_admin') {
+          subtitle = 'Admin';
+        }
+
+        final key = displayName.toLowerCase();
+        if (seenNames.add(key)) {
+          entities.add(
+            TaggedEntity(
+              id: row.$id,
+              name: displayName,
+              type: TagType.user,
+              avatar: (data['avatar_url'] ?? data['photo_url']) as String?,
+              subtitle: subtitle,
+            ),
+          );
+        }
+      }
+
+      // Add any BOD members from OrgStructureService that weren't in the Appwrite rows
+      for (final bod in bodHolders) {
+        final name = bod.holderName!;
+        final key = name.toLowerCase();
+        if (seenNames.add(key)) {
+          entities.insert(
+            0,
+            TaggedEntity(
+              id: bod.holderUserId ?? 'bod_${bod.id}',
+              name: name,
+              type: TagType.user,
+              subtitle: 'Board of Directors',
+            ),
+          );
+        }
+      }
+
+      // Sort: BOD and Directors first, then alphabetically
+      entities.sort((a, b) {
+        final aIsBod = a.subtitle == 'Board of Directors';
+        final bIsBod = b.subtitle == 'Board of Directors';
+        if (aIsBod && !bIsBod) return -1;
+        if (!aIsBod && bIsBod) return 1;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+
+      _cachedUserEntities = entities;
+      _cachedUserEntitiesTime = now;
+      return entities;
+    } catch (e) {
+      _logger.error('Error loading taggable entities: $e');
+      return _cachedUserEntities ?? [];
+    }
+  }
+
   Future<List<TaggedEntity>> getTaggableEntities(String query,
       [TagType? tagType]) async {
     try {
@@ -444,43 +625,18 @@ class AppwriteChatService extends ChangeNotifier {
         return _getSpecialTags(query);
       }
 
-      final response = await _tables.listRows(
-        databaseId: databaseId,
-        tableId: AppwriteBackendConfig.usersCollectionId,
-        queries: [
-          if (query.trim().isNotEmpty) Query.search('fullName', query.trim()),
-          Query.limit(20),
-        ],
-      );
-
-      final seenNames = <String>{};
-      final users = <TaggedEntity>[];
-      for (final row in response.rows) {
-        final data = row.data;
-        final rawName =
-            (data['fullName'] ?? data['full_name'] ?? data['email'] ?? 'User')
-                .toString()
-                .trim();
-        final displayName = rawName.contains('@')
-            ? rawName.split('@').first
-            : rawName;
-        if (displayName.isEmpty) continue;
-        final key = displayName.toLowerCase();
-        if (!seenNames.add(key)) continue;
-        users.add(
-          TaggedEntity(
-            id: row.$id,
-            name: displayName,
-            type: TagType.user,
-            avatar: (data['avatar_url'] ?? data['photo_url']) as String?,
-          ),
-        );
+      final allEntities = await _loadAllUserEntities();
+      final q = query.trim().toLowerCase();
+      if (q.isEmpty) {
+        return allEntities.take(15).toList();
       }
 
-      if (tagType == TagType.user || tagType == null) return users;
-      return _getSpecialTags(query);
+      return allEntities.where((e) {
+        return e.name.toLowerCase().contains(q) ||
+            (e.subtitle != null && e.subtitle!.toLowerCase().contains(q));
+      }).take(15).toList();
     } catch (e) {
-      _logger.error('Error fetching Appwrite taggable entities: $e');
+      _logger.error('Error filtering taggable entities: $e');
       return [];
     }
   }

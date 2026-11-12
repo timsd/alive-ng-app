@@ -26,6 +26,9 @@ class ChannelMembershipSyncService {
   static const String channelCoordinatorsId = 'channel_coordinators';
   static const String channelDonorsId = 'channel_donors';
   static const String channelBodId = 'channel_bod';
+  static const String channelFieldWorkersId = 'channel_field_workers';
+  static const String channelCampusMissionariesId = 'channel_campus_missionaries';
+  static const String channelAmtcId = 'channel_amtc';
 
   /// Synchronize a user's channel memberships based on their current profile.
   /// Automatically handles:
@@ -109,8 +112,8 @@ class ChannelMembershipSyncService {
         shouldBeMember: isBod,
       );
 
-      // 6. Organization Leadership Auto-Access (Admin, Super Admin, BOD, Directors, Trustees)
-      // Automatically enrolls leadership across all active non-secluded channels and chapters
+      // 6. Leadership & Admin Oversight Flag
+      // (Admins, Super Admins, BOD, Directors, Trustees, and President)
       final isLeadership = !profile.isArchived && (
           role == 'admin' ||
           role == 'super_admin' ||
@@ -121,6 +124,38 @@ class ChannelMembershipSyncService {
           role.contains('president') ||
           AppwriteBackendConfig.isSuperAdminEmail(profile.email)
       );
+
+      // 7. Field Workers Channel (Field Workers + Full Leadership/Admin Oversight)
+      final isFieldWorker = !profile.isArchived &&
+          (role == 'field_worker' || role.contains('field_worker') || isLeadership);
+      await _ensureMembership(
+        tables: tables,
+        channelId: channelFieldWorkersId,
+        userId: userId,
+        shouldBeMember: isFieldWorker,
+      );
+
+      // 8. Campus Missionary Team Channel (Campus Missionaries + Full Leadership/Admin Oversight)
+      final isCampusMissionary = !profile.isArchived &&
+          (role == 'campus_missionary' || role.contains('campus_missionary') || isLeadership);
+      await _ensureMembership(
+        tables: tables,
+        channelId: channelCampusMissionariesId,
+        userId: userId,
+        shouldBeMember: isCampusMissionary,
+      );
+
+      // 9. AMTC Team Channel (AMTC Team + Full Leadership/Admin Oversight)
+      final isAmtc = !profile.isArchived &&
+          (role == 'amtc_team' || role.contains('amtc_team') || isLeadership);
+      await _ensureMembership(
+        tables: tables,
+        channelId: channelAmtcId,
+        userId: userId,
+        shouldBeMember: isAmtc,
+      );
+
+      // 10. Organization Leadership Auto-Access across active channels and chapters
 
       if (isLeadership) {
         try {

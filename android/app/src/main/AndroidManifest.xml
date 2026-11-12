@@ -64,6 +64,7 @@
     <uses-feature android:name="android.hardware.touchscreen.multitouch.jazzhand" android:required="false" />
     <uses-feature android:name="android.hardware.faketouch" android:required="false" />
     <uses-feature android:name="android.hardware.fingerprint" android:required="false" />
+    <uses-feature android:name="android.hardware.biometrics" android:required="false" />
     <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
     <uses-feature android:name="android.hardware.screen.landscape" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />

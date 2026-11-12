@@ -10,6 +10,7 @@ import '../../services/appwrite_admin_export_service.dart';
 import '../../models/donation_report_models.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/role_guard.dart';
+import '../../widgets/admin_filter_header.dart';
 import '../../utils/responsive_utils.dart';
 
 class AdminDonationsReportScreen extends StatelessWidget {
@@ -497,133 +498,114 @@ class _AdminDonationsReportContentState
   }
 
   Widget _buildFilterToolbar(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Search Input
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Search by donor name, email, or reference ID...',
-              prefixIcon: const Icon(Icons.search),
-              isDense: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onChanged: (val) {
-              _searchQuery = val;
-              setState(() => _applyFilters());
-            },
-          ),
-          const SizedBox(height: 12),
-          // Mode Selector: Live Production vs Test Transactions
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                'Mode:',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              _buildFilterChip('Live Production', 'live', _modeFilter, (val) {
-                _modeFilter = val;
-                setState(() => _applyFilters());
-              }),
-              _buildFilterChip('Test Transactions', 'test', _modeFilter, (val) {
-                _modeFilter = val;
-                setState(() => _applyFilters());
-              }),
-              _buildFilterChip('All Records', 'all', _modeFilter, (val) {
-                _modeFilter = val;
-                setState(() => _applyFilters());
-              }),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Filter Chips
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                'Status:',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              _buildFilterChip('All', 'all', _statusFilter, (val) {
-                _statusFilter = val;
-                setState(() => _applyFilters());
-              }),
-              _buildFilterChip('Completed', 'completed', _statusFilter, (val) {
-                _statusFilter = val;
-                setState(() => _applyFilters());
-              }),
-              _buildFilterChip('Pending', 'pending', _statusFilter, (val) {
-                _statusFilter = val;
-                setState(() => _applyFilters());
-              }),
-              _buildFilterChip('Checkout Opened', 'initialized', _statusFilter,
-                  (val) {
-                _statusFilter = val;
-                setState(() => _applyFilters());
-              }),
-              _buildFilterChip('Failed', 'failed', _statusFilter, (val) {
-                _statusFilter = val;
-                setState(() => _applyFilters());
-              }),
-              const SizedBox(width: 12),
-              Text(
-                'Timeframe:',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              _buildFilterChip('All Time', 'all', _datePreset, (val) {
-                _datePreset = val;
-                setState(() => _applyFilters());
-              }),
-              _buildFilterChip('This Month', 'month', _datePreset, (val) {
-                _datePreset = val;
-                setState(() => _applyFilters());
-              }),
-              _buildFilterChip('Last 7 Days', 'week', _datePreset, (val) {
-                _datePreset = val;
-                setState(() => _applyFilters());
-              }),
-              _buildFilterChip('Today', 'today', _datePreset, (val) {
-                _datePreset = val;
-                setState(() => _applyFilters());
-              }),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+    final baseRecords = _allDonations.where((d) {
+      if (_modeFilter == 'live' && d.isTest) return false;
+      if (_modeFilter == 'test' && !d.isTest) return false;
+      return true;
+    }).toList();
 
-  Widget _buildFilterChip(
-    String label,
-    String value,
-    String current,
-    ValueChanged<String> onSelected,
-  ) {
-    final isSelected = current == value;
-    return ChoiceChip(
-      label: Text(label, style: Theme.of(context).textTheme.labelMedium),
-      selected: isSelected,
-      onSelected: (_) => onSelected(value),
+    final allCount = baseRecords.length;
+    final completedCount = baseRecords
+        .where((d) => d.status == 'completed' || d.status == 'success')
+        .length;
+    final pendingCount =
+        baseRecords.where((d) => d.status == 'pending').length;
+    final checkoutCount =
+        baseRecords.where((d) => d.status == 'initialized').length;
+    final failedCount =
+        baseRecords.where((d) => d.status == 'failed').length;
+
+    return AdminFilterHeader<String>(
+      searchHint: 'Search by donor name, email, or reference ID...',
+      onSearchChanged: (val) {
+        _searchQuery = val;
+        setState(() => _applyFilters());
+      },
+      dropdownFilters: [
+        AdminDropdownPill<String>(
+          label: 'Mode',
+          icon: Icons.shield_outlined,
+          selectedValue: _modeFilter,
+          items: const [
+            DropdownMenuItem(value: 'live', child: Text('Live Production')),
+            DropdownMenuItem(value: 'test', child: Text('Test Transactions')),
+            DropdownMenuItem(value: 'all', child: Text('All Records')),
+          ],
+          onChanged: (val) {
+            if (val != null) {
+              _modeFilter = val;
+              setState(() => _applyFilters());
+            }
+          },
+        ),
+        AdminDropdownPill<String>(
+          label: 'Timeframe',
+          icon: Icons.calendar_today_outlined,
+          selectedValue: _datePreset,
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('All Time')),
+            DropdownMenuItem(value: 'month', child: Text('This Month')),
+            DropdownMenuItem(value: 'week', child: Text('Last 7 Days')),
+            DropdownMenuItem(value: 'today', child: Text('Today')),
+          ],
+          onChanged: (val) {
+            if (val != null) {
+              _datePreset = val;
+              setState(() => _applyFilters());
+            }
+          },
+        ),
+      ],
+      metricPills: [
+        AdminMetricPill<String>(
+          label: 'All',
+          value: 'all',
+          count: allCount,
+          color: theme.colorScheme.primary,
+        ),
+        AdminMetricPill<String>(
+          label: 'Completed',
+          value: 'completed',
+          count: completedCount,
+          color: Colors.green,
+        ),
+        AdminMetricPill<String>(
+          label: 'Pending',
+          value: 'pending',
+          count: pendingCount,
+          color: Colors.amber,
+        ),
+        AdminMetricPill<String>(
+          label: 'Checkout Opened',
+          value: 'initialized',
+          count: checkoutCount,
+          color: Colors.blue,
+        ),
+        AdminMetricPill<String>(
+          label: 'Failed',
+          value: 'failed',
+          count: failedCount,
+          color: Colors.red,
+        ),
+      ],
+      selectedMetric: _statusFilter,
+      onSelectMetric: (val) {
+        _statusFilter = val;
+        setState(() => _applyFilters());
+      },
+      hasActiveNonDefaultFilters: _modeFilter != 'live' ||
+          _datePreset != 'all' ||
+          _statusFilter != 'all' ||
+          _searchQuery.isNotEmpty,
+      onClearAllFilters: () {
+        setState(() {
+          _modeFilter = 'live';
+          _datePreset = 'all';
+          _statusFilter = 'all';
+          _searchQuery = '';
+          _applyFilters();
+        });
+      },
     );
   }
 

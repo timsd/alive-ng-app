@@ -108,8 +108,12 @@ class ChatConfig {
       'coordinator',
       'assistant',
       'bod',
+      'board',
       'trustees',
       'chap_coor',
+      'field_worker',
+      'campus_missionary',
+      'amtc_team',
       'member',
     ];
   }

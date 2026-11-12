@@ -69,7 +69,14 @@ class MeetingPrejoinLobby extends StatelessWidget {
               color: requireHostApproval ? const Color(0xFFD49B28) : null,
             ),
             title: const Text('Require Host Approval (Waiting Room)'),
-            subtitle: const Text('Participants wait in virtual lobby until admitted by host/leader'),
+            subtitle: Text(
+              'Participants wait in virtual lobby until admitted by host/leader',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
+            ),
             value: requireHostApproval,
             activeThumbColor: const Color(0xFFD49B28),
             onChanged: onToggleRequireHostApproval,
@@ -80,7 +87,14 @@ class MeetingPrejoinLobby extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.notifications_active_outlined),
             title: const Text('Notify members via push notification'),
-            subtitle: const Text('Sends a background push notification when meeting starts'),
+            subtitle: Text(
+              'Sends a background push notification when meeting starts',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
+            ),
             value: notifyMembers,
             onChanged: onToggleNotifyMembers,
           ),

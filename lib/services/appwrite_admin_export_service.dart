@@ -170,8 +170,35 @@ class AppwriteAdminExportService {
           Query.limit(limit),
         ],
       );
+      final profileService = AppwriteProfileService();
+      final userCache = <String, Map<String, String>>{};
       for (final row in matRes.rows) {
         final data = _rowData(row);
+        final userId = (data['user_id'] ?? '').toString();
+        if (userId.isNotEmpty && !userCache.containsKey(userId)) {
+          try {
+            final profile = await profileService.getUserProfileModel(userId);
+            if (profile != null) {
+              final name = (profile.fullName != null && profile.fullName!.trim().isNotEmpty)
+                  ? profile.fullName!.trim()
+                  : (profile.email.contains('@') ? profile.email.split('@').first : 'Donor');
+              userCache[userId] = {
+                'name': name,
+                'email': profile.email,
+              };
+            }
+          } catch (_) {}
+        }
+        if (userId.isNotEmpty && userCache.containsKey(userId)) {
+          data['user_name'] ??= userCache[userId]!['name'];
+          data['user_email'] ??= userCache[userId]!['email'];
+        }
+        // Resolve currency: if missing or default, amounts <= 200 are USD tract presets ($12, $25, $50, $100)
+        final amountNum = num.tryParse(data['donation_amount']?.toString() ?? '0')?.toDouble() ?? 0.0;
+        final rawCurrency = data['currency']?.toString();
+        if (rawCurrency == null || rawCurrency.isEmpty) {
+          data['currency'] = (amountNum > 0 && amountNum <= 200) ? 'USD' : 'NGN';
+        }
         final entry = DonationReportEntry.fromJson(data);
         if (entry.amount > 0 &&
             !entries.any((e) => e.reference == entry.reference && entry.reference.isNotEmpty)) {

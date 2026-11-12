@@ -155,6 +155,8 @@ class _DonationDialogState extends State<DonationDialog> {
       await _donationService.recordDownload(
         widget.material.id,
         widget.material.title,
+        donation.id,
+        _donationAmount,
       );
 
       if (mounted) {

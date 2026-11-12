@@ -200,11 +200,13 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
               style: theme.textTheme.bodyMedium,
               overflow: TextOverflow.ellipsis,
             ),
-            subtitle: Text(
-              entity.id,
-              style: theme.textTheme.bodySmall,
-              overflow: TextOverflow.ellipsis,
-            ),
+            subtitle: (entity.subtitle != null && entity.subtitle!.isNotEmpty)
+                ? Text(
+                    entity.subtitle!,
+                    style: theme.textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  )
+                : null,
             onTap: () => _insertTagSuggestion(entity),
           );
         },

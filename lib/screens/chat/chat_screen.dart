@@ -15,6 +15,7 @@ import '../../services/tag_parser.dart';
 import '../conference/livekit_meeting_screen.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../services/channel_membership_sync_service.dart';
+import '../../services/org_structure_service.dart';
 import '../../utils/text_formatter.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -549,12 +550,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       : 'Expand Channels',
                   onPressed: () =>
                       setState(() => _channelsExpanded = !_channelsExpanded),
-                )
-              else
-                IconButton(
-                  icon: const Icon(Icons.menu_rounded),
-                  tooltip: 'Channels',
-                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                 ),
               if (canCreateChannel)
                 IconButton(
@@ -1034,24 +1029,65 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   List<ChatMessage> _filterMentions(List<ChatMessage> input) {
     final currentUser = AuthService.instance.currentUser;
     final currentUserId = currentUser?.uid;
-    final currentNameToken = currentUser?.displayName != null &&
-            currentUser!.displayName!.trim().isNotEmpty
-        ? currentUser.displayName!
-            .trim()
-            .replaceAll(RegExp(r'\s+'), '_')
-            .toLowerCase()
-        : null;
-    final currentRole = RoleAccessService.instance.getCurrentUserRole();
-    if (currentUserId == null && currentRole == null && currentNameToken == null) {
+    final profile = ref.read(currentUserProfileProvider).value;
+    final userRole = (profile?.role ?? RoleAccessService.instance.getCurrentUserRole() ?? '').toLowerCase();
+
+    final isBod = userRole == 'bod' ||
+        userRole == 'board' ||
+        userRole.contains('bod') ||
+        userRole.contains('board') ||
+        OrgStructureService.instance.isBodMemberSync(userId: currentUserId);
+    final isAdmin = userRole == 'admin' ||
+        userRole == 'super_admin' ||
+        AppwriteBackendConfig.isSuperAdminEmail(currentUser?.email);
+    final isDirector = userRole.contains('director');
+    final isCoordinator = userRole.contains('coordinator') || userRole.contains('coor');
+
+    final relevantGroups = <String>{};
+    if (userRole.isNotEmpty) relevantGroups.add(userRole);
+    if (isBod || isAdmin) {
+      relevantGroups.addAll(['bod', 'board', 'board_of_directors', 'leadership']);
+    }
+    if (isDirector || isAdmin) {
+      relevantGroups.addAll(['director', 'directors', 'leadership']);
+    }
+    if (isAdmin) {
+      relevantGroups.addAll(['admin', 'super_admin', 'leadership']);
+    }
+    if (isCoordinator) {
+      relevantGroups.addAll(['coordinator', 'coordinators', 'chap_coor']);
+    }
+
+    final nameTokens = <String>{};
+    if (currentUserId != null) nameTokens.add(currentUserId.toLowerCase());
+    if (profile?.fullName != null && profile!.fullName!.trim().isNotEmpty) {
+      final fn = profile.fullName!.trim().toLowerCase();
+      nameTokens.add(fn.replaceAll(RegExp(r'\s+'), '_'));
+      nameTokens.add(fn);
+      for (final part in fn.split(RegExp(r'\s+'))) {
+        if (part.length > 2) nameTokens.add(part);
+      }
+    }
+    if (currentUser?.displayName != null && currentUser!.displayName!.trim().isNotEmpty) {
+      final dn = currentUser.displayName!.trim().toLowerCase();
+      nameTokens.add(dn.replaceAll(RegExp(r'\s+'), '_'));
+      nameTokens.add(dn);
+      for (final part in dn.split(RegExp(r'\s+'))) {
+        if (part.length > 2) nameTokens.add(part);
+      }
+    }
+
+    if (nameTokens.isEmpty && relevantGroups.isEmpty) {
       return input;
     }
+
     return input.where((m) {
       final lowerUsers = m.taggedUsers.map((u) => u.toLowerCase()).toSet();
-      final mentionsUser =
-          (currentUserId != null && lowerUsers.contains(currentUserId.toLowerCase())) ||
-          (currentNameToken != null && lowerUsers.contains(currentNameToken));
-      final mentionsRole =
-          currentRole != null && m.taggedGroups.contains(currentRole);
+      final lowerGroups = m.taggedGroups.map((g) => g.toLowerCase()).toSet();
+      final lowerContent = m.content.toLowerCase();
+
+      final mentionsUser = nameTokens.any((t) => lowerUsers.contains(t) || lowerContent.contains('@$t'));
+      final mentionsRole = relevantGroups.any((g) => lowerGroups.contains(g) || lowerContent.contains('#$g'));
       return mentionsUser || mentionsRole;
     }).toList();
   }

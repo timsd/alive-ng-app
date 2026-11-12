@@ -38,13 +38,16 @@ class RoleAccessService {
 
   /// User roles in hierarchical order (lowest to highest privilege)
   ///
-  /// `dietist` sits directly above `member`: it is the lowest
-  /// elevated role and exists purely to unlock the Health+ content editor
-  /// (recipes + remedies). Being second-lowest means it cannot reach any other
-  /// gated feature, including the admin dashboard.
+  /// `field_worker`, `campus_missionary`, `amtc_team`, and `dietist` sit directly
+  /// above `member`: they are functional non-administrative roles that unlock
+  /// dedicated mission chat channels, team badges, and targeted directives
+  /// without granting any admin or financial privileges.
   static const List<String> _roleHierarchy = [
     'guest',
     'member',
+    'field_worker',
+    'campus_missionary',
+    'amtc_team',
     'dietist',
     'coordinator',
     'leader',

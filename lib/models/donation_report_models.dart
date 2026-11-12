@@ -105,7 +105,7 @@ class DonationReportEntry {
       amount: num.tryParse(json['amount']?.toString() ?? json['donation_amount']?.toString() ?? '')?.toDouble() ?? 0,
       currency: firstText(['currency'], 'NGN').toUpperCase(),
       status: firstText(['status'], 'completed').toLowerCase(),
-      createdAt: DateTime.tryParse(firstText(['created_at', r'$createdAt'])),
+      createdAt: DateTime.tryParse(firstText(['created_at', r'$createdAt', 'downloaded_at'])),
       isTest: isTestTransaction,
     );
   }

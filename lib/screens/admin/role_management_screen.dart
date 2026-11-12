@@ -13,6 +13,7 @@ import '../../widgets/custom_image.dart';
 import '../../constants/chapters.dart';
 import '../../utils/text_formatter.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/admin_filter_header.dart';
 import 'package:intl/intl.dart';
 
 class RoleManagementScreen extends StatefulWidget {
@@ -110,6 +111,30 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
     }
   }
 
+  bool _matchesRoleFilter(String userRole, String selectedRole) {
+    if (selectedRole == 'all') return true;
+    switch (selectedRole) {
+      case 'admin':
+        return userRole == 'admin' || userRole == 'super_admin';
+      case 'director':
+        return userRole.contains('director');
+      case 'coordinator':
+        return userRole.contains('coordinator');
+      case 'bod':
+        return userRole == 'bod' || userRole.contains('bod');
+      case 'field_worker':
+        return userRole.contains('field_worker');
+      case 'campus_missionary':
+        return userRole.contains('campus_missionary');
+      case 'amtc_team':
+        return userRole.contains('amtc_team');
+      case 'member':
+        return userRole == 'member';
+      default:
+        return userRole == selectedRole;
+    }
+  }
+
   List<UserProfile> get _filteredUsers {
     return _users.where((user) {
       // Don't show archived users
@@ -126,7 +151,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       }
 
       // Role filter
-      if (_selectedRole != 'all' && user.role != _selectedRole) {
+      if (!_matchesRoleFilter(user.role, _selectedRole)) {
         return false;
       }
 
@@ -166,165 +191,146 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       ),
       body: Column(
         children: [
-          // Search and Filter Section
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            child: Column(
-              children: [
-                // Search Bar
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search users...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                              });
-                            },
-                          )
-                        : null,
-                  ),
-                  onChanged: (value) {
+          // Search, Filters & Interactive Metric Header (Option 3)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Builder(
+              builder: (context) {
+                final activeUsers = _users.where((u) => !u.isArchived).toList();
+                final allCount = activeUsers.length;
+                final adminCount = activeUsers
+                    .where((u) => u.role == 'admin' || u.role == 'super_admin')
+                    .length;
+                final directorCount =
+                    activeUsers.where((u) => u.role.contains('director')).length;
+                final coordinatorCount =
+                    activeUsers.where((u) => u.role.contains('coordinator')).length;
+                final bodCount = activeUsers
+                    .where((u) => u.role == 'bod' || u.role.contains('bod'))
+                    .length;
+                final fieldWorkerCount = activeUsers
+                    .where((u) => u.role.contains('field_worker'))
+                    .length;
+                final campusMissCount = activeUsers
+                    .where((u) => u.role.contains('campus_missionary'))
+                    .length;
+                final amtcCount =
+                    activeUsers.where((u) => u.role.contains('amtc_team')).length;
+                final memberCount =
+                    activeUsers.where((u) => u.role == 'member').length;
+
+                return AdminFilterHeader<String>(
+                  searchController: _searchController,
+                  searchHint: 'Search users by name or email...',
+                  onSearchChanged: (value) {
                     setState(() {
                       _searchQuery = value;
                     });
                   },
-                ),
-
-                const SizedBox(height: 12),
-
-                // Filter Row
-                Row(
-                  children: [
-                    // Role Filter
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedRole,
-                        borderRadius: BorderRadius.circular(12),
-                        dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        icon: const Icon(Icons.arrow_drop_down_rounded),
-                        decoration: const InputDecoration(
-                          labelText: 'Filter by Role',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
+                  onSearchCleared: () {
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                  dropdownFilters: [
+                    AdminDropdownPill<String>(
+                      label: 'Chapter',
+                      icon: Icons.location_on_outlined,
+                      selectedValue: _selectedChapter,
+                      items: [
+                        const DropdownMenuItem(
+                          value: 'all',
+                          child: Text('All Chapters'),
+                        ),
+                        ...ChapterConstants.availableChapters.map(
+                          (chapter) => DropdownMenuItem(
+                            value: chapter,
+                            child: Text(chapter),
                           ),
                         ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: 'all',
-                            child: Text('All Roles'),
-                          ),
-                          ...ChapterConstants.userRoles.map(
-                            (role) => DropdownMenuItem(
-                              value: role,
-                              child: Text(TextFormatter.formatRole(role)),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedRole = value ?? 'all';
-                          });
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // Chapter Filter
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedChapter,
-                        decoration: const InputDecoration(
-                          labelText: 'Filter by Chapter',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: 'all',
-                            child: Text('All Chapters'),
-                          ),
-                          ...ChapterConstants.availableChapters.map(
-                            (chapter) => DropdownMenuItem(
-                              value: chapter,
-                              child: Text(chapter),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedChapter = value ?? 'all';
-                          });
-                        },
-                      ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedChapter = value ?? 'all';
+                        });
+                      },
                     ),
                   ],
-                ),
-              ],
-            ),
-          ),
-
-          // Stats Card
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Card(
-              color: Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: 0.3),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.people_outline,
+                  metricPills: [
+                    AdminMetricPill<String>(
+                      label: 'All',
+                      value: 'all',
+                      count: allCount,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    AdminMetricPill<String>(
+                      label: 'Admins',
+                      value: 'admin',
+                      count: adminCount,
+                      color: Colors.red,
+                    ),
+                    AdminMetricPill<String>(
+                      label: 'Directors',
+                      value: 'director',
+                      count: directorCount,
+                      color: Colors.purple,
+                    ),
+                    AdminMetricPill<String>(
+                      label: 'Coordinators',
+                      value: 'coordinator',
+                      count: coordinatorCount,
+                      color: Colors.orange,
+                    ),
+                    AdminMetricPill<String>(
+                      label: 'BOD',
+                      value: 'bod',
+                      count: bodCount,
+                      color: Colors.blue,
+                    ),
+                    AdminMetricPill<String>(
+                      label: 'Field Workers',
+                      value: 'field_worker',
+                      count: fieldWorkerCount,
+                      color: Colors.teal,
+                    ),
+                    AdminMetricPill<String>(
+                      label: 'Campus Missionaries',
+                      value: 'campus_missionary',
+                      count: campusMissCount,
                       color: Colors.indigo,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'User Management',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                          ),
-                          Text(
-                            'Managing ${_filteredUsers.length} users. Promote or demote users as needed.',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                    ),
-                          ),
-                        ],
-                      ),
+                    AdminMetricPill<String>(
+                      label: 'AMTC Team',
+                      value: 'amtc_team',
+                      count: amtcCount,
+                      color: Colors.deepOrange,
+                    ),
+                    AdminMetricPill<String>(
+                      label: 'Members',
+                      value: 'member',
+                      count: memberCount,
+                      color: Colors.grey,
                     ),
                   ],
-                ),
-              ),
+                  selectedMetric: _selectedRole,
+                  onSelectMetric: (value) {
+                    setState(() {
+                      _selectedRole = value;
+                    });
+                  },
+                  hasActiveNonDefaultFilters: _selectedRole != 'all' ||
+                      _selectedChapter != 'all' ||
+                      _searchQuery.isNotEmpty,
+                  onClearAllFilters: () {
+                    _searchController.clear();
+                    setState(() {
+                      _selectedRole = 'all';
+                      _selectedChapter = 'all';
+                      _searchQuery = '';
+                    });
+                  },
+                );
+              },
             ),
           ),
 
@@ -561,6 +567,12 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         return colorScheme.tertiary;
       case 'coordinator':
         return colorScheme.primary;
+      case 'field_worker':
+        return Colors.teal;
+      case 'campus_missionary':
+        return Colors.indigo;
+      case 'amtc_team':
+        return Colors.deepOrange;
       case 'dietist':
         return colorScheme.tertiary;
       case 'member':
@@ -577,6 +589,10 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       case 'leader':
       case 'dietist':
         return colorScheme.onTertiary;
+      case 'field_worker':
+      case 'campus_missionary':
+      case 'amtc_team':
+        return Colors.white;
       case 'coordinator':
         return colorScheme.onPrimary;
       case 'member':
@@ -678,7 +694,10 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       case 'coordinator':
         newRole = 'member';
         break;
-      // Health+ contributors drop straight back to a plain member.
+      // Functional mission roles drop straight back to a plain member.
+      case 'field_worker':
+      case 'campus_missionary':
+      case 'amtc_team':
       case 'dietist':
         newRole = 'member';
         break;

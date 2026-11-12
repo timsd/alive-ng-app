@@ -925,7 +925,7 @@ class DiscipleshipService {
         OfficerOfficeAssignment(
           id: 'def-dir-evang',
           officerId: 'dir-evang',
-          officerName: 'Emenike Praise',
+          officerName: 'Director of Evangelism',
           officerEmail: 'evangelism@alivenigeria.org',
           officeTitle: 'Director of Evangelism',
           officeType: 'director',
@@ -934,7 +934,7 @@ class DiscipleshipService {
         OfficerOfficeAssignment(
           id: 'def-amtc-coord',
           officerId: 'amtc-coord',
-          officerName: 'Godstime Esuku',
+          officerName: 'AMTC Coordinator',
           officerEmail: 'training@alivenigeria.org',
           officeTitle: 'AMTC Coordinator',
           officeType: 'coordinator',

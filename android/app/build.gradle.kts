@@ -28,13 +28,17 @@ android {
         applicationId = "com.alive.alivengandroidapp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = maxOf(flutter.minSdkVersion, 26)
+        minSdk = maxOf(flutter.minSdkVersion, 21)
         targetSdk = maxOf(flutter.targetSdkVersion, 35)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
 
-        // Ensure 32-bit (armeabi-v7a for devices like Nokia G20) and 64-bit ABIs are packaged
+        // Ensure 32-bit and 64-bit ABIs are packaged for broadest device support.
+        // Play Store / AAB will auto-deliver only the matching ABI to each device.
+        // armeabi-v7a = 32-bit ARM (budget phones, Nokia G20 fallback)
+        // arm64-v8a   = 64-bit ARM (most modern smartphones)
+        // x86_64      = 64-bit Intel/AMD (emulators, Chromebooks)
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86_64"))
         }
@@ -42,9 +46,9 @@ android {
 
     packaging {
         jniLibs {
-            // Allow the Play Store to compress native libs inside the AAB.
-            // This reduces per-user download size significantly.
-            useLegacyPackaging = false
+            // Set to true so 32-bit ARM devices (e.g. Nokia G20 with MediaTek Helio G35)
+            // can cleanly extract native libraries on install without 16KB/4KB mmap alignment failures.
+            useLegacyPackaging = true
         }
     }
 

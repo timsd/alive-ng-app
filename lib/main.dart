@@ -35,6 +35,8 @@ import 'services/onboarding_service.dart';
 import 'services/offline_bible_service.dart';
 import 'utils/url_strategy.dart';
 import 'screens/conference/components/meeting_floating_overlay.dart';
+import 'constants/chapters.dart';
+import 'services/org_structure_service.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -129,6 +131,19 @@ void main() {
           PaymentConfig.syncPublicKeyFromAppwrite().catchError((_) => '');
         } catch (e) {
           debugPrint('Payment config initialization failed: $e');
+        }
+
+        // Pre-load dynamic org structure + chapters from Appwrite
+        // so dropdowns, leadership screens, and reports use live data.
+        try {
+          await ChapterConstants.loadDynamicChapters();
+        } catch (e) {
+          debugPrint('Dynamic chapters pre-load failed; seed data remains: $e');
+        }
+        try {
+          await OrgStructureService.instance.getOffices();
+        } catch (e) {
+          debugPrint('Dynamic org structure pre-load failed; seed data remains: $e');
         }
       } else {
         debugPrint(

@@ -51,6 +51,16 @@ class TextFormatter {
     
     // Special cases for common roles
     switch (role.toLowerCase()) {
+      case 'field_worker':
+        return 'Field Worker';
+      case 'field_workers':
+        return 'Field Workers';
+      case 'campus_missionary':
+        return 'Campus Missionary';
+      case 'campus_missionaries':
+        return 'Campus Missionaries';
+      case 'amtc_team':
+        return 'AMTC Team';
       case 'field_director':
         return 'Field Director';
       case 'campus_mission':

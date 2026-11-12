@@ -369,6 +369,16 @@ class DonationService {
               ? 'Tract Production: $materialTitle'
               : (metadata?['project_title'] as String?));
 
+      final meta = Map<String, dynamic>.from(metadata ?? {});
+      meta['is_test'] = PaymentConfig.isTestMode;
+      meta['mode'] = PaymentConfig.isTestMode ? 'test' : 'live';
+      if (materialTitle != null && materialTitle.isNotEmpty) {
+        meta['material_title'] = materialTitle;
+      }
+      if (materialId != null && materialId.isNotEmpty) {
+        meta['material_id'] = materialId;
+      }
+
       final donation = DonationRecord(
         id: AppwriteIdUtils.uniqueId(),
         userId: userId,
@@ -384,7 +394,7 @@ class DonationService {
         notes: notes,
         purpose: resolvedPurpose,
         projectTitle: metadata?['project_title'] as String? ?? resolvedPurpose,
-        metadata: metadata,
+        metadata: meta,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -397,8 +407,11 @@ class DonationService {
           final data = _appwriteData(donation.toJson());
           data['reference'] = donation.id;
           data['amount_kobo'] = (donation.amount * 100).round();
-          data['is_test'] = PaymentConfig.isTestMode;
-          data['mode'] = PaymentConfig.isTestMode ? 'test' : 'live';
+          data['userId'] = donation.userId;
+          data['full_name'] = donation.userName;
+          data['email'] = donation.userEmail;
+          data.remove('is_test');
+          data.remove('mode');
           await _tables.createRow(
             databaseId: _databaseId,
             tableId: _donationsCollectionId,
@@ -415,8 +428,11 @@ class DonationService {
       final data = _appwriteData(donation.toJson());
       data['reference'] = donation.id;
       data['amount_kobo'] = (donation.amount * 100).round();
-      data['is_test'] = PaymentConfig.isTestMode;
-      data['mode'] = PaymentConfig.isTestMode ? 'test' : 'live';
+      data['userId'] = donation.userId;
+      data['full_name'] = donation.userName;
+      data['email'] = donation.userEmail;
+      data.remove('is_test');
+      data.remove('mode');
 
       await _tables.createRow(
         databaseId: _databaseId,
@@ -543,47 +559,58 @@ class DonationService {
   }
 
   // Record user download
-  Future<void> recordDownload(String materialId,
-      [String materialTitle = '']) async {
+  Future<void> recordDownload(
+    String materialId, [
+    String materialTitle = '',
+    String? donationId,
+    double? donationAmount,
+  ]) async {
     try {
       final user = await _currentUser();
       final userId = user?.uid;
       if (userId == null) return;
 
-      // Find associated donation if any
-      final donationsSnap = await _tables.listRows(
-        databaseId: _databaseId,
-        tableId: _donationsCollectionId,
-        queries: [
-          Query.equal('user_id', userId),
-          Query.equal('material_id', materialId),
-          Query.equal('status', DonationStatus.completed.name),
-          Query.limit(100),
-        ],
-      );
-      final donationDataList = donationsSnap.rows.map(_rowData).toList();
-      donationDataList.sort((a, b) {
-        final ad = a['completed_at'] as String?;
-        final bd = b['completed_at'] as String?;
-        final at = ad != null
-            ? DateTime.parse(ad)
-            : DateTime.fromMillisecondsSinceEpoch(0);
-        final bt = bd != null
-            ? DateTime.parse(bd)
-            : DateTime.fromMillisecondsSinceEpoch(0);
-        return bt.compareTo(at);
-      });
-      final donation =
-          donationDataList.isNotEmpty ? donationDataList.first : null;
+      String? resolvedDonationId = donationId;
+      double? resolvedDonationAmount = donationAmount;
+
+      if (resolvedDonationId == null || resolvedDonationAmount == null) {
+        // Find associated donation if any
+        final donationsSnap = await _tables.listRows(
+          databaseId: _databaseId,
+          tableId: _donationsCollectionId,
+          queries: [
+            Query.equal('user_id', userId),
+            Query.equal('material_id', materialId),
+            Query.equal('status', DonationStatus.completed.name),
+            Query.limit(100),
+          ],
+        );
+        final donationDataList = donationsSnap.rows.map(_rowData).toList();
+        donationDataList.sort((a, b) {
+          final ad = a['completed_at'] as String?;
+          final bd = b['completed_at'] as String?;
+          final at = ad != null
+              ? DateTime.parse(ad)
+              : DateTime.fromMillisecondsSinceEpoch(0);
+          final bt = bd != null
+              ? DateTime.parse(bd)
+              : DateTime.fromMillisecondsSinceEpoch(0);
+          return bt.compareTo(at);
+        });
+        final donation =
+            donationDataList.isNotEmpty ? donationDataList.first : null;
+        resolvedDonationId ??= donation != null ? donation['id'] as String? : null;
+        resolvedDonationAmount ??=
+            donation != null ? (donation['amount'] as num?)?.toDouble() : null;
+      }
 
       final download = UserDownload(
         id: AppwriteIdUtils.uniqueId(),
         userId: userId,
         materialId: materialId,
         materialTitle: materialTitle,
-        donationId: donation != null ? donation['id'] as String? : null,
-        donationAmount:
-            donation != null ? (donation['amount'] as num?)?.toDouble() : null,
+        donationId: resolvedDonationId,
+        donationAmount: resolvedDonationAmount,
         downloadedAt: DateTime.now(),
       );
 

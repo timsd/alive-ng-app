@@ -50,6 +50,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
   final List<String> _audiences = [
     'all',
     'members',
+    'field_workers',
+    'campus_missionaries',
+    'amtc_team',
     'coordinators',
     'admins',
     'new_members',

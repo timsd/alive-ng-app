@@ -138,22 +138,57 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         return map;
       }).toList();
 
-      final trusteeRows = rows.where((r) {
+      final activeRows = rows.where((r) {
+        final isCurrent = r['is_current'] != false && r['is_current'] != 'false';
+        final status = (r['status'] ?? '').toString().toLowerCase();
+        return isCurrent && status != 'archived' && status != 'completed';
+      }).toList();
+
+      final trusteeRows = activeRows.where((r) {
         final officeId = (r['office_id'] ?? '').toString().toLowerCase();
         return officeId == 'trustee' || officeId == 'board_of_trustees';
       }).toList();
 
-      final bodRows = rows.where((r) {
+      final bodRows = activeRows.where((r) {
         final officeId = (r['office_id'] ?? '').toString().toLowerCase();
         return officeId == 'bod' || officeId == 'board_of_directors';
       }).toList();
 
-      final directorRows = rows.where((r) {
+      final directorRows = activeRows.where((r) {
         final officeId = (r['office_id'] ?? '').toString().toLowerCase();
         return officeId != 'trustee' &&
             officeId != 'board_of_trustees' &&
             officeId != 'bod' &&
             officeId != 'board_of_directors';
+      }).toList();
+
+      // Collect archived office holders to show in archive tab
+      final archivedOfficeHolders = rows.where((r) {
+        final isCurrent = r['is_current'] == false || r['is_current'] == 'false';
+        final status = (r['status'] ?? '').toString().toLowerCase();
+        return isCurrent || status == 'archived' || status == 'completed';
+      }).map((r) {
+        final start = r['term_start'] != null ? DateTime.tryParse(r['term_start'].toString()) : null;
+        final end = r['term_end'] != null ? DateTime.tryParse(r['term_end'].toString()) : null;
+        final offId = (r['office_id'] ?? '').toString().toLowerCase();
+        final pos = offId == 'trustee' || offId == 'board_of_trustees'
+            ? LeadershipPosition.trustee
+            : (offId == 'bod' || offId == 'board_of_directors'
+                ? LeadershipPosition.bod
+                : LeadershipPosition.director);
+        return LeadershipRecord(
+          id: r['\$id'] ?? '',
+          userId: r['user_id'] ?? '',
+          userName: r['full_name'] ?? 'Member',
+          userEmail: r['email'] ?? '',
+          position: pos,
+          positionTitle: r['office_title'] ?? 'Leader',
+          startDate: start ?? DateTime(2023, 1, 1),
+          endDate: end ?? DateTime.now(),
+          status: ServiceStatus.archived,
+          isCurrent: false,
+          achievements: r['description'] ?? '',
+        );
       }).toList();
 
       List<Map<String, dynamic>> dedupe(List<Map<String, dynamic>> list) {
@@ -185,6 +220,11 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           _trustees = trusteeRows.isNotEmpty ? dedupe(trusteeRows) : _defaultTrustees();
           _bod = bodRows.isNotEmpty ? dedupe(bodRows) : _defaultBod();
           _directors = directorRows.isNotEmpty ? dedupe(directorRows) : _defaultDirectors();
+          for (final arc in archivedOfficeHolders) {
+            if (!_archivedRecords.any((r) => r.id == arc.id || (r.userName == arc.userName && r.positionTitle == arc.positionTitle))) {
+              _archivedRecords.add(arc);
+            }
+          }
         });
       }
     } catch (e) {
@@ -1032,6 +1072,11 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                   onPressed: () => _showEditOfficeHolderDialog(holder, category),
                 ),
                 IconButton(
+                  icon: const Icon(Icons.archive_outlined, size: 20, color: Colors.orange),
+                  tooltip: 'Archive (Out of Tenure)',
+                  onPressed: () => _confirmArchiveOfficeHolder(holder, category),
+                ),
+                IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
                   tooltip: 'Remove',
                   onPressed: () => _confirmDeleteOfficeHolder(holder),
@@ -1206,9 +1251,18 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     final descriptionCtrl = TextEditingController(
       text: (holder?['description'] ?? holder?['bio'] ?? '').toString(),
     );
-    final tenureYearCtrl = TextEditingController(
-      text: (holder?['tenure_year'] ?? '2026').toString(),
-    );
+    final initialTenureRaw = (holder?['tenure_year'] ?? '2026').toString();
+    final parts = initialTenureRaw.split(RegExp(r'[-–]'));
+    final startYearStr = parts.isNotEmpty ? parts.first.trim() : '2026';
+    final endYearStr = parts.length > 1
+        ? parts.last.trim()
+        : (holder?['tenure_end_year']?.toString() ?? '2029');
+    final tenureStartCtrl =
+        TextEditingController(text: startYearStr.isEmpty ? '2026' : startYearStr);
+    final tenureEndCtrl =
+        TextEditingController(text: endYearStr.isEmpty ? '2029' : endYearStr);
+    bool isCurrentTenure = holder?['is_current'] != false &&
+        (holder?['status'] ?? '').toString().toLowerCase() != 'archived';
     final emailCtrl = TextEditingController(text: holder?['email'] ?? '');
     String selectedUserId = holder?['user_id'] ?? '';
     final defaultOfficeId = isTrustee ? 'trustee' : (isBod ? 'bod' : 'director');
@@ -1218,6 +1272,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
+          final theme = Theme.of(ctx);
           return AlertDialog(
             title: Text(title),
             content: SingleChildScrollView(
@@ -1294,6 +1349,59 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Tenure Period',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: tenureStartCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Start Year *',
+                            hintText: 'e.g. 2026',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.calendar_today_outlined, size: 18),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: tenureEndCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'End Year',
+                            hintText: 'e.g. 2029',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.event_available_outlined, size: 18),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Currently in Tenure (Active)'),
+                    subtitle: Text(
+                      isCurrentTenure
+                          ? 'Actively serving in this office / role'
+                          : 'Tenure completed; record will be archived',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                    value: isCurrentTenure,
+                    activeThumbColor: Colors.green,
+                    onChanged: (val) => setDialogState(() => isCurrentTenure = val),
+                  ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: descriptionCtrl,
@@ -1301,16 +1409,6 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                     decoration: const InputDecoration(
                       labelText: 'Role Summary / Description',
                       hintText: 'e.g. Leading strategic direction and operations of ALIVE Nigeria',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: tenureYearCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Tenure Start Year',
-                      hintText: 'e.g. 2026',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -1358,7 +1456,9 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                     fullName: nameCtrl.text.trim(),
                     officeTitle: titleCtrl.text.trim(),
                     description: descriptionCtrl.text.trim(),
-                    tenureYear: tenureYearCtrl.text.trim(),
+                    tenureYear: tenureStartCtrl.text.trim(),
+                    tenureEndYear: tenureEndCtrl.text.trim(),
+                    isCurrent: isCurrentTenure,
                     email: emailCtrl.text.trim(),
                     userId: selectedUserId,
                     category: category,
@@ -1380,6 +1480,8 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     required String officeTitle,
     required String description,
     required String tenureYear,
+    String? tenureEndYear,
+    bool isCurrent = true,
     required String email,
     required String userId,
     required String category,
@@ -1390,7 +1492,9 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       final isTrustee = category == 'trustee';
       final isBod = category == 'bod';
       final parsedYear = int.tryParse(tenureYear) ?? DateTime.now().year;
+      final parsedEndYear = int.tryParse(tenureEndYear ?? '') ?? (parsedYear + 3);
       final termStartDate = DateTime.utc(parsedYear, 9, 1);
+      final termEndDate = DateTime.utc(parsedEndYear, 8, 31);
       final payload = <String, dynamic>{
         'office_id': officeId.isNotEmpty ? officeId : (isTrustee ? 'trustee' : (isBod ? 'bod' : 'director')),
         'office_title': officeTitle.trim(),
@@ -1403,10 +1507,13 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         'supervisor_user_id': '',
         'supervisor_name': isTrustee ? 'Trustees' : (isBod ? 'Trustees' : 'Board of Directors'),
         'term_start': termStartDate.toIso8601String(),
-        'term_end': termStartDate.add(const Duration(days: 365 * 3)).toIso8601String(),
-        'tenure_year': parsedYear.toString(),
-        'ended_reason': '',
-        'is_current': true,
+        'term_end': termEndDate.toIso8601String(),
+        'tenure_year': '$parsedYear - $parsedEndYear',
+        'tenure_start_year': parsedYear.toString(),
+        'tenure_end_year': parsedEndYear.toString(),
+        'ended_reason': isCurrent ? '' : 'Tenure Completed',
+        'is_current': isCurrent,
+        'status': isCurrent ? 'active' : 'archived',
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
@@ -1428,7 +1535,9 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       }
 
       if (userId.trim().isNotEmpty) {
-        final targetRole = isTrustee ? 'trustee' : (isBod ? 'bod' : 'director');
+        final targetRole = isCurrent
+            ? (isTrustee ? 'trustee' : (isBod ? 'bod' : 'director'))
+            : 'member';
         try {
           await AppwriteProfileService().updateUserRole(userId.trim(), targetRole);
           final profile = await AppwriteProfileService().getUserProfileModel(userId.trim());
@@ -1457,6 +1566,91 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _confirmArchiveOfficeHolder(
+      Map<String, dynamic> holder, String category) async {
+    final name = (holder['full_name'] ?? 'Member').toString();
+    final docId = (holder['\$id'] ?? '').toString();
+    final userId = (holder['user_id'] ?? '').toString();
+    final officeTitle = (holder['office_title'] ?? 'Leader').toString();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.archive_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Archive (Tenure Ended)'),
+          ],
+        ),
+        content: Text(
+          'Mark tenure for "$name" ($officeTitle) as completed and move to Leadership Archive?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.archive_rounded, size: 16),
+            label: const Text('Archive Member'),
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade800),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        if (docId.isNotEmpty) {
+          final tables = TablesDB(appwriteClient);
+          await tables.updateRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.orgOfficeHoldersCollectionId,
+            rowId: docId,
+            data: {
+              'is_current': false,
+              'status': 'archived',
+              'ended_reason': 'Tenure Completed',
+              'updated_at': DateTime.now().toUtc().toIso8601String(),
+            },
+          );
+        }
+
+        // Demote role to regular member so they lose elevated admin permissions when tenure ends
+        if (userId.trim().isNotEmpty) {
+          try {
+            await AppwriteProfileService().updateUserRole(userId.trim(), 'member');
+            final profile = await AppwriteProfileService().getUserProfileModel(userId.trim());
+            if (profile != null) {
+              await ChannelMembershipSyncService.instance.syncUserChannels(profile);
+            }
+          } catch (_) {}
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$name archived successfully (Tenure Ended)'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        await _loadData();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to archive: ${ErrorHandler.getUserFriendlyMessage(e)}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -1520,54 +1714,73 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
   }
 
   Widget _buildStatisticsTab(ThemeData theme) {
+    final activeDirectors = _directors.length;
+    final activeBod = _bod.length;
+    final activeTrustees = _trustees.length;
+    final activeOther = _activeRecords.length;
+    final liveActiveLeaders = activeDirectors + activeBod + activeTrustees + activeOther;
+    final liveCompleted = _completedRecords.length;
+    final liveArchived = _archivedRecords.length;
+    final liveTotal = liveActiveLeaders + liveCompleted + liveArchived;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Leadership Overview',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Leadership Overview',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.sync_rounded),
+                tooltip: 'Sync Statistics',
+                onPressed: _loadData,
+              ),
+            ],
           ),
-
           const SizedBox(height: 16),
 
-          // Summary cards
+          // Primary 4 Stat Cards
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.5,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
+            childAspectRatio: 1.45,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
             children: [
               _buildStatCard(
                 'Active Leaders',
-                _statistics['active_leaders']?.toString() ?? '0',
-                Icons.person,
+                liveActiveLeaders.toString(),
+                Icons.people_alt_rounded,
                 Colors.green,
                 theme,
               ),
               _buildStatCard(
                 'Completed Services',
-                _statistics['completed_services']?.toString() ?? '0',
-                Icons.check_circle,
+                liveCompleted.toString(),
+                Icons.check_circle_rounded,
                 Colors.blue,
                 theme,
               ),
               _buildStatCard(
                 'Archived Records',
-                _statistics['archived_records']?.toString() ?? '0',
-                Icons.archive,
+                liveArchived.toString(),
+                Icons.archive_rounded,
                 Colors.orange,
                 theme,
               ),
               _buildStatCard(
-                'Total Records',
-                _statistics['total_records']?.toString() ?? '0',
-                Icons.analytics,
+                'Total Roster Records',
+                liveTotal.toString(),
+                Icons.analytics_rounded,
                 Colors.purple,
                 theme,
               ),
@@ -1576,18 +1789,127 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
 
           const SizedBox(height: 24),
 
-          // Position breakdown
+          // Active Governing & Executive Breakdown
           Text(
-            'Active Positions',
-            style: theme.textTheme.titleLarge?.copyWith(
+            'Active Leadership Groups',
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: 12),
 
-          const SizedBox(height: 16),
-
-          if (_statistics['position_counts'] != null)
-            ..._buildPositionBreakdown(_statistics['position_counts'], theme),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFF1E3A5F),
+                    child: Icon(Icons.groups_rounded, color: Colors.white, size: 20),
+                  ),
+                  title: const Text('Executive Directors', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(
+                    'Operational leadership & ministry department heads',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$activeDirectors Active',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFF2E4057),
+                    child: Icon(Icons.business_center_rounded, color: Colors.white, size: 20),
+                  ),
+                  title: const Text('Board of Directors (BOD)', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(
+                    'Strategic governance & executive advisory members',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$activeBod Active',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFF3B2F2F),
+                    child: Icon(Icons.gavel_rounded, color: Colors.white, size: 20),
+                  ),
+                  title: const Text('Board of Trustees', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(
+                    'Custodians of organizational integrity & compliance',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$activeTrustees Active',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.amber),
+                    ),
+                  ),
+                ),
+                if (activeOther > 0) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0xFF335C67),
+                      child: Icon(Icons.share_location_rounded, color: Colors.white, size: 20),
+                    ),
+                    title: const Text('Chapter & Ministry Coordinators', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(
+                      'Field coordinators and operational appointment holders',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                      ),
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$activeOther Active',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purple),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );

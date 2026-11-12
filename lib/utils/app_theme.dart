@@ -388,9 +388,15 @@ class AppTheme {
         thickness: 1,
         space: 1,
       ),
-      listTileTheme: const ListTileThemeData(
+      listTileTheme: ListTileThemeData(
         iconColor: lightCardForeground,
         textColor: lightCardForeground,
+        subtitleTextStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.normal,
+          color: lightCardForeground.withValues(alpha: 0.6),
+          height: 1.3,
+        ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: lightCard,
@@ -758,9 +764,15 @@ class AppTheme {
         thickness: 1,
         space: 1,
       ),
-      listTileTheme: const ListTileThemeData(
+      listTileTheme: ListTileThemeData(
         iconColor: darkCardForeground,
         textColor: darkCardForeground,
+        subtitleTextStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.normal,
+          color: darkCardForeground.withValues(alpha: 0.55),
+          height: 1.3,
+        ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: darkCard,

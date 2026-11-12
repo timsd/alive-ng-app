@@ -276,12 +276,14 @@ class TaggedEntity {
   final String name;
   final TagType type;
   final String? avatar;
+  final String? subtitle;
 
   const TaggedEntity({
     required this.id,
     required this.name,
     required this.type,
     this.avatar,
+    this.subtitle,
   });
 
   factory TaggedEntity.fromJson(Map<String, dynamic> json) {
@@ -293,6 +295,7 @@ class TaggedEntity {
         orElse: () => TagType.user,
       ),
       avatar: json['avatar'] as String?,
+      subtitle: json['subtitle'] as String?,
     );
   }
 
@@ -302,6 +305,7 @@ class TaggedEntity {
       'name': name,
       'type': type.name,
       'avatar': avatar,
+      if (subtitle != null) 'subtitle': subtitle,
     };
   }
 }

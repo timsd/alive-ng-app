@@ -502,6 +502,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
 
                       // Category (dynamic from Appwrite)
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         value: _selectedPodcastCategoryName,
                         decoration: InputDecoration(
                           labelText: 'Category *',

@@ -254,9 +254,9 @@ class AboutAliveScreen extends ConsumerWidget {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _LeaderTile(
                               name: person.name,
-                              role: person.name == 'Nwoko Patience Mfon'
+                              role: person.offices.any((o) => o.id == 'executive_president')
                                   ? 'Board Member (Affairs Liaison) • President'
-                                  : person.name == 'Timothy Olodude'
+                                  : person.offices.any((o) => o.id == 'treasurer')
                                       ? 'Board Member (Finance Liaison) • Treasurer'
                                       : 'Director (Board Member)',
                               icon: _officeIcon('business_center'),

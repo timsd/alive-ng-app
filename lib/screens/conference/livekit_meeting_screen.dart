@@ -1336,7 +1336,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       Expanded(
-                                        flex: 72,
+                                        flex: 80,
                                         child: MeetingScreenShareStage(
                                           session: session,
                                           gateway: gateway,
@@ -1344,7 +1344,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        flex: 28,
+                                        flex: 20,
                                         child: Column(
                                           children: [
                                             _buildStageHeaderCard(session, isLeader),
@@ -1373,7 +1373,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       Expanded(
-                                        flex: 56,
+                                        flex: 65,
                                         child: MeetingScreenShareStage(
                                           session: session,
                                           gateway: gateway,
@@ -1382,7 +1382,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                       const SizedBox(height: 8),
                                       _buildStageHeaderCard(session, isLeader),
                                       Expanded(
-                                        flex: 44,
+                                        flex: 35,
                                         child: MeetingParticipantsList(
                                           session: session,
                                           gateway: gateway,

@@ -39,6 +39,30 @@ class AppwriteBoardService {
     return true;
   }
 
+  Future<bool> updateBoardReportReview({
+    required String reportId,
+    required String status,
+    String? feedback,
+    String? reviewerName,
+    Map<String, dynamic>? updatedMetadata,
+  }) async {
+    final updateData = <String, dynamic>{
+      'status': status,
+      'updated_at': _now(),
+      'reviewed_at': _now(),
+    };
+    if (updatedMetadata != null) {
+      updateData['metadata'] = jsonEncode(updatedMetadata);
+    }
+    await _tables.updateRow(
+      databaseId: AppwriteBackendConfig.databaseId,
+      tableId: AppwriteBackendConfig.boardReportsCollectionId,
+      rowId: AppwriteIdUtils.toValidUid(reportId),
+      data: updateData,
+    );
+    return true;
+  }
+
   Future<List<Map<String, dynamic>>> getBoardDecisions() async {
     return _list(AppwriteBackendConfig.boardDecisionsCollectionId);
   }

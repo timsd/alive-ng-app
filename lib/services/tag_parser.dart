@@ -75,7 +75,8 @@ class TagParser {
       'evangelism_coor', 'amtc_coor',
       'admin', 'treasurer', 'secretary', 'media', 'tech', 'health',
       'fieldwork', 'campus_mission', 'amtc', 'youth', 'women', 'men',
-      'north', 'south', 'east', 'west', 'central'
+      'north', 'south', 'east', 'west', 'central',
+      'board', 'field_worker', 'campus_missionary', 'amtc_team'
     ];
     
     // Check for chapter tags (chapter_[name])
