@@ -9,6 +9,7 @@ import '../models/donation_report_models.dart';
 import '../main.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
+import 'appwrite_profile_service.dart';
 
 class AppwriteAdminExportService {
   AppwriteAdminExportService._();

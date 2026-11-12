@@ -260,7 +260,7 @@ class ChapterService {
       var resolvedChapterId = chapterIdentifier;
       final existingChapter = await getChapterById(chapterIdentifier);
       if (existingChapter == null) {
-        final chapters = await getChapters(searchQuery: chapterIdentifier, limit: 1);
+        final chapters = await getChapters(searchQuery: chapterIdentifier);
         if (chapters.isNotEmpty) {
           resolvedChapterId = chapters.first.id;
         }
@@ -291,7 +291,7 @@ class ChapterService {
       var resolvedChapterId = chapterIdentifier;
       final existingChapter = await getChapterById(chapterIdentifier);
       if (existingChapter == null) {
-        final chapters = await getChapters(searchQuery: chapterIdentifier, limit: 1);
+        final chapters = await getChapters(searchQuery: chapterIdentifier);
         if (chapters.isNotEmpty) {
           resolvedChapterId = chapters.first.id;
         }

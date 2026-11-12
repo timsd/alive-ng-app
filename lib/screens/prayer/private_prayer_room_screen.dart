@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/prayer_requests_service.dart';
 import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../utils/error_handler.dart';
 
 class PrivatePrayerRoomScreen extends ConsumerStatefulWidget {
   const PrivatePrayerRoomScreen({super.key});

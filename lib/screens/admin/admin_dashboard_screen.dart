@@ -761,7 +761,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _MgmtTile('Chapter Overview', 'View all chapters and their statistics', Icons.dashboard_outlined, () => _navigateToChapterManagement()),
         _MgmtTile('Leadership Directory', 'Directory of Trustees, Directors & Ministry Leadership', Icons.badge_outlined, () => context.push(AppConstants.leadershipDirectoryRoute)),
         _MgmtTile('Board of Directors', 'Manage Board meetings, records, resolutions, decisions', Icons.account_balance_outlined, () => context.push(AppConstants.bodRoute)),
-        _MgmtTile('Chapter Reports', 'Review chapter activity reports', Icons.assessment_outlined, () => _navigateToChapterReports()),
+        _MgmtTile('Organizational Reports', 'Review activity reports across chapters, workers, and leadership', Icons.assessment_outlined, () => _navigateToChapterReports()),
       ]),
       if (_canAccessFinance)
         _MgmtSection('Donations & Finance', Icons.savings_outlined, [

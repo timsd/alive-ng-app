@@ -26,10 +26,14 @@ enum ReportingLevel {
 
 class ChapterReportsScreen extends StatefulWidget {
   final String? initialChapter;
+  final ReportingLevel initialLevel;
+  final bool openSubmitOnLaunch;
 
   const ChapterReportsScreen({
     super.key,
     this.initialChapter,
+    this.initialLevel = ReportingLevel.all,
+    this.openSubmitOnLaunch = false,
   });
 
   @override
@@ -66,11 +70,17 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedLevel = widget.initialLevel;
     if (widget.initialChapter != null) {
       _selectedChapter = widget.initialChapter!;
     }
     _initDynamicOffices();
     _loadReports();
+    if (widget.openSubmitOnLaunch) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showSubmitChapterReportDialog();
+      });
+    }
   }
 
   Future<void> _initDynamicOffices() async {
@@ -78,7 +88,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
       final user = _authService.currentUser;
       if (user != null) {
         final offices = await _officeService.officesFor(
-          userId: user.id,
+          userId: user.uid,
           email: user.email,
         );
         final isPres = offices.any((o) =>

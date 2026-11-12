@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_constants.dart';
 import 'package:go_router/go_router.dart';
+import '../admin/chapter_reports_screen.dart';
 
 class ChapterScreen extends ConsumerStatefulWidget {
   const ChapterScreen({super.key});
@@ -46,6 +47,46 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
   bool get _isUserChapterApproved {
     if (_currentUserProfile == null) return false;
     return _currentUserProfile!.isChapterApproved;
+  }
+
+  bool get _canSubmitReport {
+    final role = (_currentUserProfile?.role ?? '').toLowerCase();
+    final isWorkerOrCoordRole = role.contains('coordinator') ||
+        role.contains('coor') ||
+        role.contains('field_worker') ||
+        role.contains('campus_missionary') ||
+        role.contains('amtc') ||
+        role.contains('director') ||
+        role == 'admin' ||
+        role == 'super_admin';
+    final hasCoordMembership = _userMemberships.any((m) =>
+        m.role == MemberRole.coordinator ||
+        m.role == MemberRole.director ||
+        m.role == MemberRole.bod);
+    return isWorkerOrCoordRole || hasCoordMembership;
+  }
+
+  void _openSubmitReport() {
+    String? defaultChapter;
+    if (_userMemberships.isNotEmpty) {
+      defaultChapter = _userMemberships.first.chapterName;
+    } else if (_currentUserProfile?.localChapter != null &&
+        _currentUserProfile!.localChapter!.isNotEmpty) {
+      defaultChapter = _currentUserProfile!.localChapter;
+    } else if (_currentUserProfile?.chapterId != null &&
+        _currentUserProfile!.chapterId!.isNotEmpty) {
+      defaultChapter = _currentUserProfile!.chapterId;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChapterReportsScreen(
+          initialChapter: defaultChapter,
+          openSubmitOnLaunch: true,
+        ),
+      ),
+    );
   }
 
   @override
@@ -143,6 +184,21 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       appBar: CustomAppBar(
         title: 'Chapters',
         showBackButton: true,
+        actions: [
+          if (_canSubmitReport)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                ),
+                onPressed: _openSubmitReport,
+                icon: const Icon(Icons.add_chart_rounded, size: 16),
+                label: const Text('Submit Report', style: TextStyle(fontSize: 12)),
+              ),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -554,6 +610,70 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
     );
   }
 
+  Widget _buildSubmitReportShortcutBanner() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.assessment_rounded,
+              color: colorScheme.primary,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Coordinator & Mission Reports',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Submit your monthly activity, missionary outreach, or chapter progress report directly.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onPressed: _openSubmitReport,
+            icon: const Icon(Icons.add_rounded, size: 16),
+            label: const Text('Submit Report'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMyChaptersTab() {
     final pendingChapterName = _currentUserProfile?.localChapter;
     final isPendingApproval = _currentUserProfile != null &&
@@ -562,20 +682,33 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
         pendingChapterName.trim().isNotEmpty;
 
     if (_userMemberships.isEmpty) {
-      if (isPendingApproval) {
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildPendingApprovalCard(pendingChapterName),
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (_canSubmitReport) ...[
+            _buildSubmitReportShortcutBanner(),
+            const SizedBox(height: 16),
           ],
-        );
-      }
-      return const Center(child: Text('You are not a member of any chapters'));
+          if (isPendingApproval)
+            _buildPendingApprovalCard(pendingChapterName)
+          else
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Text('You are not a member of any chapters'),
+              ),
+            ),
+        ],
+      );
     }
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (_canSubmitReport) ...[
+          _buildSubmitReportShortcutBanner(),
+          const SizedBox(height: 16),
+        ],
         if (isPendingApproval) ...[
           _buildPendingApprovalCard(pendingChapterName),
           const SizedBox(height: 12),

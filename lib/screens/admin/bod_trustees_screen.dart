@@ -6,7 +6,7 @@ import '../../services/appwrite_profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
 import '../../models/app_models.dart';
-import 'board_reports_screen.dart';
+import 'chapter_reports_screen.dart';
 import 'board_decisions_screen.dart';
 import 'board_documents_screen.dart';
 import '../conference/livekit_meeting_screen.dart';
@@ -521,7 +521,8 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const BoardReportsScreen(),
+        builder: (context) =>
+            const ChapterReportsScreen(initialLevel: ReportingLevel.board),
       ),
     );
   }

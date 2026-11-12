@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:appwrite/appwrite.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../services/appwrite_client.dart';
@@ -176,6 +177,9 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             : (offId == 'bod' || offId == 'board_of_directors'
                 ? LeadershipPosition.bod
                 : LeadershipPosition.director);
+        final sDate = start ?? DateTime(2023, 1, 1);
+        final eDate = end ?? DateTime.now();
+        final years = (eDate.difference(sDate).inDays / 365.25).clamp(0.0, 50.0);
         return LeadershipRecord(
           id: r['\$id'] ?? '',
           userId: r['user_id'] ?? '',
@@ -183,11 +187,13 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           userEmail: r['email'] ?? '',
           position: pos,
           positionTitle: r['office_title'] ?? 'Leader',
-          startDate: start ?? DateTime(2023, 1, 1),
-          endDate: end ?? DateTime.now(),
+          startDate: sDate,
+          endDate: eDate,
+          yearsOfService: years,
           status: ServiceStatus.archived,
-          isCurrent: false,
           achievements: r['description'] ?? '',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
       }).toList();
 

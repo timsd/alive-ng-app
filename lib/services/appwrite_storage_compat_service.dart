@@ -71,13 +71,20 @@ class AppwriteStorageCompatService {
         );
   }
 
-  Future<void> deleteFile(String legacyPath) async {
-    final target = _storageTarget(legacyPath);
+  Future<void> deleteFile(String legacyPath, [String? fileName, {String? fileId}]) async {
+    if (fileId != null && fileId.isNotEmpty) {
+      await deleteFileById(legacyPath, fileId);
+      return;
+    }
+    final fullPath = (fileName != null && fileName.isNotEmpty)
+        ? '$legacyPath/$fileName'
+        : legacyPath;
+    final target = _storageTarget(fullPath);
     try {
-      final fileId = await _resolveFileId(target.bucketId, target.objectName);
+      final resolvedFileId = await _resolveFileId(target.bucketId, target.objectName);
       await _storage.deleteFile(
         bucketId: target.bucketId,
-        fileId: fileId,
+        fileId: resolvedFileId,
       );
     } catch (e) {
       _logger.error('Error deleting Appwrite file', e);
@@ -120,10 +127,17 @@ class AppwriteStorageCompatService {
     }
   }
 
-  Future<String> getDownloadUrl(String legacyPath) async {
+  String getDownloadUrl(String legacyPath, {String? fileId}) {
+    if (fileId != null && fileId.isNotEmpty) {
+      final resolvedBucket = _bucketIdFor(legacyPath);
+      return appwriteFileUrl(resolvedBucket, fileId);
+    }
     final target = _storageTarget(legacyPath);
-    final fileId = await _resolveFileId(target.bucketId, target.objectName);
-    return _downloadUrl(target.bucketId, fileId);
+    return _downloadUrl(target.bucketId, _stableFileId(target.objectName));
+  }
+
+  Future<String> getPublicUrl(String legacyPath) async {
+    return getDownloadUrl(legacyPath);
   }
 
   Future<String?> uploadBoardDocument(
@@ -466,6 +480,7 @@ class AppwriteStorageMetadata {
     this.size,
     this.contentType,
     this.updated,
+    this.fileId,
   });
 
   factory AppwriteStorageMetadata.fromFile(appwrite_models.File file) {
@@ -473,10 +488,12 @@ class AppwriteStorageMetadata {
       size: file.sizeOriginal,
       contentType: file.mimeType,
       updated: DateTime.tryParse(file.$updatedAt),
+      fileId: file.$id,
     );
   }
 
   final int? size;
   final String? contentType;
   final DateTime? updated;
+  final String? fileId;
 }

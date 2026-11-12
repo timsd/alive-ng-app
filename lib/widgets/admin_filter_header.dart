@@ -164,9 +164,9 @@ class AdminFilterHeader<T> extends StatelessWidget {
               Expanded(
                 child: TextField(
                   controller: searchController,
-                  isDense: true,
                   style: theme.textTheme.bodyMedium,
                   decoration: InputDecoration(
+                    isDense: true,
                     hintText: searchHint,
                     hintStyle: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
