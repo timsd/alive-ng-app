@@ -1236,11 +1236,24 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.chat_outlined, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('Chat Backup Exported'),
+              const Icon(Icons.chat_outlined, color: Colors.blue),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Chat Backup Exported',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                tooltip: 'Close',
+                onPressed: () => Navigator.pop(ctx),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
             ],
           ),
           content: Column(
@@ -1257,33 +1270,15 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
               ),
             ],
           ),
+          actionsAlignment: MainAxisAlignment.end,
+          actionsOverflowButtonSpacing: 8,
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close'),
-            ),
-            if (content.isNotEmpty)
-              OutlinedButton.icon(
-                icon: const Icon(Icons.share_rounded, size: 16),
-                label: const Text('Share / Save Backup'),
-                onPressed: () async {
-                  await SharePlus.instance.share(
-                    ShareParams(
-                      files: [
-                        XFile.fromData(
-                          Uint8List.fromList(utf8.encode(content)),
-                          name: 'alive_chat_channels_backup.json',
-                          mimeType: 'application/json',
-                        ),
-                      ],
-                      subject: 'ALIVE Nigeria Chat Backup',
-                    ),
-                  );
-                },
-              ),
-            FilledButton.icon(
+            OutlinedButton.icon(
               icon: const Icon(Icons.forum_outlined, size: 16),
               label: const Text('Export Messages'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
               onPressed: () async {
                 try {
                   final msgData = await AppwriteAdminExportService.instance
@@ -1301,15 +1296,34 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                 }
               },
             ),
-            if (downloadUrl != null)
-              TextButton(
+            if (content.isNotEmpty || downloadUrl != null)
+              FilledButton.icon(
+                icon: const Icon(Icons.share_rounded, size: 16),
+                label: const Text('Share / Save Backup'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
                 onPressed: () async {
-                  final url = Uri.parse(downloadUrl);
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  if (content.isNotEmpty) {
+                    await SharePlus.instance.share(
+                      ShareParams(
+                        files: [
+                          XFile.fromData(
+                            Uint8List.fromList(utf8.encode(content)),
+                            name: 'alive_chat_channels_backup.json',
+                            mimeType: 'application/json',
+                          ),
+                        ],
+                        subject: 'ALIVE Nigeria Chat Backup',
+                      ),
+                    );
+                  } else if (downloadUrl != null) {
+                    final url = Uri.parse(downloadUrl);
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
                   }
                 },
-                child: const Text('Download Link'),
               ),
           ],
         ),
