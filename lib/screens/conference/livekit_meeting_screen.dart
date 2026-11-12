@@ -1323,85 +1323,101 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                             ),
                           ],
 
-                          // Presentation Stage Screen in List View (shown when screen sharing is active)
-                          if (session.isScreenShareEnabled || session.activeScreenShareName != null) ...[
-                            Container(
-                              height: 220,
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: MeetingScreenShareStage(
-                                session: session,
-                                gateway: gateway,
-                              ),
-                            ),
-                          ],
+                          // Presentation Stage & Participant Layout (Google Meet responsive landscape & portrait)
+                          Expanded(
+                            child: OrientationBuilder(
+                              builder: (context, orientation) {
+                                final isLandscape = orientation == Orientation.landscape;
+                                final isScreenSharing = session.isScreenShareEnabled || session.activeScreenShareName != null;
 
-                          // Stage Header Card: Meeting Room Title & Presence
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? const Color(0xFF1B2432)
-                                  : const Color(0xFFF3EBE0),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFFD49B28).withValues(alpha: 0.35),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 9,
-                                  height: 9,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.green,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    session.isInBreakoutRoom
-                                        ? '${session.activeBreakoutRoomName}'
-                                        : (widget.meetingType?.displayName ?? _roomController.text.trim()),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                if (isScreenSharing && isLandscape) {
+                                  // Google Meet Landscape mode: Screen share takes 72% width on left, participants strip on right
+                                  return Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
-                                      const Icon(Icons.people_alt_rounded, size: 12, color: Colors.green),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${session.participants.isEmpty ? 1 : session.participants.length} connected',
-                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                                      Expanded(
+                                        flex: 72,
+                                        child: MeetingScreenShareStage(
+                                          session: session,
+                                          gateway: gateway,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        flex: 28,
+                                        child: Column(
+                                          children: [
+                                            _buildStageHeaderCard(session, isLeader),
+                                            Expanded(
+                                              child: MeetingParticipantsList(
+                                                session: session,
+                                                gateway: gateway,
+                                                isLeader: isLeader,
+                                                onParticipantTap: (p) =>
+                                                    _showParticipantActions(context, p, gateway, isLeader),
+                                                onDirectChat: (p) =>
+                                                    _showInMeetingChatSheet(context, gateway, initialRecipient: p),
+                                                formatParticipantName: _formatParticipantName,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                                  );
+                                }
 
-                          // Participant list filling all space above the controls
-                          Expanded(
-                            child: MeetingParticipantsList(
-                              session: session,
-                              gateway: gateway,
-                              isLeader: isLeader,
-                              onParticipantTap: (p) =>
-                                  _showParticipantActions(context, p, gateway, isLeader),
-                              onDirectChat: (p) =>
-                                  _showInMeetingChatSheet(context, gateway, initialRecipient: p),
-                              formatParticipantName: _formatParticipantName,
+                                if (isScreenSharing && !isLandscape) {
+                                  // Google Meet Portrait mode: Screen share takes dominant top half (flex 56), participants on bottom
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(
+                                        flex: 56,
+                                        child: MeetingScreenShareStage(
+                                          session: session,
+                                          gateway: gateway,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _buildStageHeaderCard(session, isLeader),
+                                      Expanded(
+                                        flex: 44,
+                                        child: MeetingParticipantsList(
+                                          session: session,
+                                          gateway: gateway,
+                                          isLeader: isLeader,
+                                          onParticipantTap: (p) =>
+                                              _showParticipantActions(context, p, gateway, isLeader),
+                                          onDirectChat: (p) =>
+                                              _showInMeetingChatSheet(context, gateway, initialRecipient: p),
+                                          formatParticipantName: _formatParticipantName,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }
+
+                                // Standard view without screen share:
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    _buildStageHeaderCard(session, isLeader),
+                                    Expanded(
+                                      child: MeetingParticipantsList(
+                                        session: session,
+                                        gateway: gateway,
+                                        isLeader: isLeader,
+                                        onParticipantTap: (p) =>
+                                            _showParticipantActions(context, p, gateway, isLeader),
+                                        onDirectChat: (p) =>
+                                            _showInMeetingChatSheet(context, gateway, initialRecipient: p),
+                                        formatParticipantName: _formatParticipantName,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
 
@@ -1420,6 +1436,63 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       ),
                     ),
                   ),
+      ),
+    );
+  }
+
+  Widget _buildStageHeaderCard(MeetingSession session, bool isLeader) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1B2432)
+            : const Color(0xFFF3EBE0),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFD49B28).withValues(alpha: 0.35),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 9,
+            height: 9,
+            decoration: const BoxDecoration(
+              color: Colors.green,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              session.isInBreakoutRoom
+                  ? '${session.activeBreakoutRoomName}'
+                  : (widget.meetingType?.displayName ?? _roomController.text.trim()),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.people_alt_rounded, size: 12, color: Colors.green),
+                const SizedBox(width: 4),
+                Text(
+                  '${session.participants.isEmpty ? 1 : session.participants.length} connected',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

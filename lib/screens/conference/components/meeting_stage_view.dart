@@ -29,18 +29,11 @@ class MeetingScreenShareStage extends StatelessWidget {
     final screenVideoWidget = gateway.buildScreenShareVideoWidget();
 
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFF14181F),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.teal.shade600, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.teal.withValues(alpha: 0.2),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
-        ],
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12, width: 1),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -50,111 +43,94 @@ class MeetingScreenShareStage extends StatelessWidget {
           if (screenVideoWidget != null)
             InteractiveViewer(
               minScale: 1.0,
-              maxScale: 5.0,
+              maxScale: 6.0,
               panEnabled: true,
               scaleEnabled: true,
               clipBehavior: Clip.none,
-              child: screenVideoWidget,
+              child: Center(
+                child: screenVideoWidget,
+              ),
             )
           else
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
-                    color: Colors.teal.withValues(alpha: 0.15),
+                    color: Colors.white.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.screen_share_rounded,
-                    size: 42,
-                    color: Colors.tealAccent,
+                    size: 38,
+                    color: Colors.white70,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 Text(
-                  '$presenter is Presenting Screen',
+                  '$presenter is presenting',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
                   ),
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'High-Resolution Sanctuary & Stage Presentation Feed Active',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black45,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.hd_rounded, size: 16, color: Colors.tealAccent),
-                      SizedBox(width: 6),
-                      Text(
-                        '1080p Stage Projection • Low Latency WebRTC',
-                        style: TextStyle(color: Colors.white, fontSize: 11),
-                      ),
-                    ],
-                  ),
+                  'Presentation feed active',
+                  style: TextStyle(color: Colors.white60, fontSize: 12),
                 ),
               ],
             ),
+          // Google Meet style presenter pill (bottom-left)
           Positioned(
-            top: 14,
-            left: 14,
+            bottom: 12,
+            left: 12,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.black87,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.teal.shade400, width: 1),
+                color: Colors.black.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white24, width: 0.8),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.cast_connected, size: 14, color: Colors.tealAccent),
+                  const Icon(Icons.screen_share_rounded, size: 14, color: Colors.white),
                   const SizedBox(width: 6),
                   Text(
-                    'STAGE PRESENTATION: $presenter',
+                    '$presenter is presenting',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
             ),
           ),
+          // Google Meet style zoom indicator / controls (bottom-right)
           Positioned(
             bottom: 12,
             right: 12,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.black.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.white24, width: 0.8),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.zoom_in_rounded, size: 14, color: Colors.tealAccent),
+                  Icon(Icons.zoom_in_rounded, size: 14, color: Colors.white70),
                   SizedBox(width: 4),
                   Text(
-                    'Pinch to zoom presentation',
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                    'Pinch to zoom',
+                    style: TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                 ],
               ),
