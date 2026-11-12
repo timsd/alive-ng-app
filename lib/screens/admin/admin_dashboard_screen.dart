@@ -21,7 +21,6 @@ import 'app_settings_screen.dart';
 import '../../models/podcast_models.dart';
 import '../../models/app_models.dart';
 import 'storage_admin_screen.dart';
-import 'ssl_status_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
 import '../../services/monthly_reminder_setting_service.dart';
 import '../../utils/responsive_utils.dart';
@@ -468,10 +467,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                 _buildSidebarTile(Icons.settings_outlined, 'Settings', () => _navigateToAppSettings()),
                 const Divider(height: 32),
                 _buildSidebarTile(Icons.archive_outlined, 'Archived', () => context.push(AppConstants.userArchiveRoute)),
-                _buildSidebarTile(Icons.lock_clock_outlined, 'SSL Check', () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SSLStatusScreen()),
-                )),
               ],
             ),
           ),
@@ -785,7 +780,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _MgmtTile('App Configuration', 'Configure app settings and preferences', Icons.tune_outlined, () => _navigateToAppSettings()),
         _MgmtTile('Backup & Restore', 'Manage system backups and data restoration', Icons.backup_outlined, () => _navigateToBackupSettings()),
         _MgmtTile('System Logs', 'View system logs and error reports', Icons.bug_report_outlined, () => _navigateToSystemLogs()),
-        _MgmtTile('SSL & Network Diagnostics', 'Verify endpoint connectivity and SSL encryption', Icons.lock_clock_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SSLStatusScreen()))),
       ]),
     ];
 
