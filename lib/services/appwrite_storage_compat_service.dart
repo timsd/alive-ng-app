@@ -71,15 +71,8 @@ class AppwriteStorageCompatService {
         );
   }
 
-  Future<void> deleteFile(String legacyPath, [String? fileName, {String? fileId}]) async {
-    if (fileId != null && fileId.isNotEmpty) {
-      await deleteFileById(legacyPath, fileId);
-      return;
-    }
-    final fullPath = (fileName != null && fileName.isNotEmpty)
-        ? '$legacyPath/$fileName'
-        : legacyPath;
-    final target = _storageTarget(fullPath);
+  Future<void> deleteFile(String legacyPath) async {
+    final target = _storageTarget(legacyPath);
     try {
       final resolvedFileId = await _resolveFileId(target.bucketId, target.objectName);
       await _storage.deleteFile(

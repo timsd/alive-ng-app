@@ -180,12 +180,13 @@ class AppwriteAdminExportService {
           try {
             final profile = await profileService.getUserProfileModel(userId);
             if (profile != null) {
+              final userEmail = profile.email ?? '';
               final name = (profile.fullName != null && profile.fullName!.trim().isNotEmpty)
                   ? profile.fullName!.trim()
-                  : (profile.email.contains('@') ? profile.email.split('@').first : 'Donor');
+                  : (userEmail.contains('@') ? userEmail.split('@').first : 'Donor');
               userCache[userId] = {
                 'name': name,
-                'email': profile.email,
+                'email': userEmail,
               };
             }
           } catch (_) {}

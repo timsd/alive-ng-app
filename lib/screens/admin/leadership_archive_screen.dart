@@ -179,7 +179,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                 : LeadershipPosition.director);
         final sDate = start ?? DateTime(2023, 1, 1);
         final eDate = end ?? DateTime.now();
-        final years = (eDate.difference(sDate).inDays / 365.25).clamp(0.0, 50.0);
+        final years = (eDate.difference(sDate).inDays / 365.25).clamp(0.0, 50.0).round();
         return LeadershipRecord(
           id: r['\$id'] ?? '',
           userId: r['user_id'] ?? '',

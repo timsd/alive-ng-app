@@ -199,7 +199,11 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
     if (confirmed != true) return;
 
     try {
-      await _storageService.deleteFile(_bucket, fileName, fileId: fileId);
+      if (fileId != null && fileId.isNotEmpty) {
+        await _storageService.deleteFileById(_bucket, fileId);
+      } else {
+        await _storageService.deleteFile('$_bucket/$fileName');
+      }
       ToastUtils.showSuccess('Log file deleted');
       await _loadLogs();
     } catch (e) {

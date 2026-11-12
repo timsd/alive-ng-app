@@ -69,7 +69,12 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
   void _openSubmitReport() {
     String? defaultChapter;
     if (_userMemberships.isNotEmpty) {
-      defaultChapter = _userMemberships.first.chapterName;
+      final firstCId = _userMemberships.first.chapterId;
+      final matched = _chapters.cast<Chapter?>().firstWhere(
+            (c) => c?.id == firstCId,
+            orElse: () => null,
+          );
+      defaultChapter = matched?.name ?? firstCId;
     } else if (_currentUserProfile?.localChapter != null &&
         _currentUserProfile!.localChapter!.isNotEmpty) {
       defaultChapter = _currentUserProfile!.localChapter;
