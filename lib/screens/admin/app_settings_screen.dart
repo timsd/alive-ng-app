@@ -435,84 +435,121 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     final key = _settingKey(setting);
     final dataType = _settingDataType(setting);
     final isActive = setting['is_active'] as bool? ?? true;
-    
+    final displayName = (setting['display_name'] ?? key).toString();
+    final description = setting['description'] as String?;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         border: Border.all(
-          color: isActive ? colorScheme.outlineVariant : colorScheme.outline,
+          color: isActive
+              ? colorScheme.outlineVariant.withValues(alpha: 0.6)
+              : colorScheme.outline.withValues(alpha: 0.3),
         ),
-        borderRadius: BorderRadius.circular(8),
-        color: isActive ? null : colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        color: isActive
+            ? colorScheme.surface
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 1. Horizontal title row with compact data type badge
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      setting['display_name'] ?? key,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: isActive
-                            ? colorScheme.onSurface
-                            : colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    if (setting['description'] != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        setting['description'],
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  displayName,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: isActive
+                        ? colorScheme.onSurface
+                        : colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Chip(
-                    label: Text(
-                      dataType.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: _getDataTypeTextColor(dataType, theme.brightness == Brightness.dark),
-                      ),
-                    ),
-                    backgroundColor: _getDataTypeColor(dataType, theme.brightness == Brightness.dark),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _getDataTypeColor(dataType, theme.brightness == Brightness.dark),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  dataType.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    color: _getDataTypeTextColor(dataType, theme.brightness == Brightness.dark),
                   ),
-                  const SizedBox(width: 8),
-                  Switch(
-                    value: isActive,
-                    onChanged: (value) => _toggleSettingStatus(setting, value),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 18),
-                    onPressed: () => _showEditSettingDialog(setting),
-                    tooltip: 'Edit Setting',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, size: 18),
-                    onPressed: () => _deleteSetting(setting),
-                    tooltip: 'Delete Setting',
-                  ),
-                ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+
+          // 2. Full-width description spanning horizontally
+          if (description != null && description.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              description.trim(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                height: 1.35,
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 12),
+
+          // 3. Full-width input/value editor
           _buildSettingInput(setting, key, dataType, isActive),
+
+          const SizedBox(height: 10),
+
+          // 4. Clean bottom action toolbar (Active status switch + Edit & Delete actions)
+          Row(
+            children: [
+              Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: isActive,
+                  onChanged: (value) => _toggleSettingStatus(setting, value),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              Text(
+                isActive ? 'Active' : 'Disabled',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isActive ? Colors.green : colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              IconButton.filledTonal(
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                onPressed: () => _showEditSettingDialog(setting),
+                tooltip: 'Edit Setting',
+                visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(
+                  padding: const EdgeInsets.all(8),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                onPressed: () => _deleteSetting(setting),
+                tooltip: 'Delete Setting',
+                visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(
+                  padding: const EdgeInsets.all(8),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

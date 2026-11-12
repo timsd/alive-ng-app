@@ -387,23 +387,68 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     );
   }
 
+  bool _isImageBucket(String bucket) {
+    final b = _resolveBucket(bucket);
+    return b == 'profile-pictures' || b == 'tract-avatars' || b == 'podcast-covers';
+  }
+
+  bool _isImageFile(String name) {
+    final lower = name.toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.bmp');
+  }
+
   Widget _buildFileCard(String bucket, Map<String, dynamic> file) {
     final name = file['name'] as String? ?? '';
-    // Removed unused isImage detection
     final size = file['size'] as int? ?? 0;
     final updated = file['updated'] as DateTime?;
+    final fileId = file['fileId'] as String?;
+    final isImage = _isImageBucket(bucket) || _isImageFile(name);
+    final resolved = _resolveBucket(bucket);
+    final imageUrl = isImage && fileId != null && fileId.isNotEmpty
+        ? AppwriteStorageCompatService.appwriteFileUrl(resolved, fileId)
+        : null;
+
+    Widget leadingWidget;
+    if (imageUrl != null) {
+      leadingWidget = ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: 44,
+          height: 44,
+          color: _getBucketColor(bucket).withValues(alpha: 0.15),
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Center(
+              child: Icon(
+                Icons.image_rounded,
+                size: 22,
+                color: _getBucketColor(bucket),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      leadingWidget = CircleAvatar(
+        backgroundColor: _getBucketColor(bucket),
+        child: Icon(
+          _getBucketIcon(bucket),
+          color: Colors.white,
+        ),
+      );
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       color: Theme.of(context).colorScheme.surface,
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _getBucketColor(bucket),
-          child: Icon(
-            _getBucketIcon(bucket),
-            color: Colors.white,
-          ),
-        ),
+        leading: leadingWidget,
         title: Text(
           name,
           style: TextStyle(
@@ -520,28 +565,28 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
   IconData _getBucketIcon(String bucket) {
     switch (_resolveBucket(bucket)) {
       case 'audio-files':
-        return Icons.audiotrack;
+        return Icons.audiotrack_rounded;
       case 'video-files':
-        return Icons.video_library;
+        return Icons.video_library_rounded;
       case 'pdf-files':
-        return Icons.picture_as_pdf;
+        return Icons.picture_as_pdf_rounded;
       case 'profile-pictures':
-        return Icons.person;
+        return Icons.account_circle_rounded;
       case 'tract-avatars':
-        return Icons.book;
+        return Icons.photo_library_rounded;
       case 'podcast-covers':
-        return Icons.headset;
+        return Icons.image_rounded;
       case 'board-documents':
       case 'board_documents':
         return Icons.business_center_rounded;
       case 'meeting-files':
-        return Icons.folder;
+        return Icons.folder_shared_rounded;
       case 'system-backups':
-        return Icons.backup;
+        return Icons.backup_rounded;
       case 'app-logs':
-        return Icons.history_edu;
+        return Icons.bug_report_rounded;
       default:
-        return Icons.file_present;
+        return Icons.file_present_rounded;
     }
   }
 
