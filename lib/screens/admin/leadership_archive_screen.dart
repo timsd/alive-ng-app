@@ -69,16 +69,22 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 7, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadData();
     _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onSearchChanged() {
@@ -445,6 +451,56 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     return filtered;
   }
 
+  String _getSmartAddLabel() {
+    switch (_tabController.index) {
+      case 0:
+        return 'Add Director';
+      case 1:
+        return 'Add Board Member';
+      case 2:
+        return 'Add Trustee';
+      case 3:
+      case 4:
+      case 5:
+        return 'Add Record';
+      default:
+        return 'Add Member';
+    }
+  }
+
+  void _handleSmartAdd() {
+    switch (_tabController.index) {
+      case 0:
+        _showAddOfficeHolderDialog('director');
+        break;
+      case 1:
+        _showAddOfficeHolderDialog('bod');
+        break;
+      case 2:
+        _showAddOfficeHolderDialog('trustee');
+        break;
+      case 3:
+      case 4:
+      case 5:
+        _showCreateRecordDialog();
+        break;
+      default:
+        _showAddChooserDialog();
+        break;
+    }
+  }
+
+  void _joinLeadershipMeeting() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const LiveKitMeetingScreen(
+          meetingType: MeetingType.leadership,
+          isModerator: true,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -458,11 +514,6 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             onPressed: _loadData,
             tooltip: 'Refresh',
           ),
-          IconButton(
-            icon: const Icon(Icons.person_add_rounded),
-            onPressed: _showAddChooserDialog,
-            tooltip: 'Add Leadership / Board Member',
-          ),
         ],
       ),
       body: _isLoading
@@ -474,42 +525,37 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                 )
               : Column(
                   children: [
-                    // Leadership quick-join banner
+                    // Leadership quick actions: compact Join button + smart contextual Add button
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      child: Card(
-                        color: Theme.of(context).primaryColor.withValues(alpha: 0.08),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Row(
-                            children: [
-                              Icon(Icons.video_call, color: Theme.of(context).primaryColor),
-                              const SizedBox(width: 8),
-                              const Expanded(
-                                child: Text(
-                                  'Leadership Meeting is available',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => const LiveKitMeetingScreen(
-                                        meetingType: MeetingType.leadership,
-                                        isModerator: true,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.play_arrow),
-                                label: const Text('Join'),
-                              ),
-                            ],
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      child: Row(
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: _joinLeadershipMeeting,
+                            icon: const Icon(Icons.video_call_rounded, size: 18),
+                            label: const Text(
+                              'Join',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            ),
                           ),
-                        ),
+                          const Spacer(),
+                          FilledButton.icon(
+                            onPressed: _handleSmartAdd,
+                            icon: const Icon(Icons.person_add_rounded, size: 18),
+                            label: Text(
+                              _getSmartAddLabel(),
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     _buildSearchAndFilters(theme),
@@ -791,78 +837,41 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             ? 'Add Board Member'
             : 'Add Director';
 
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-            border: Border(
-              bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5)),
+    if (holders.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 48,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
             ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                color: theme.colorScheme.primary,
-                size: 20,
+            const SizedBox(height: 12),
+            Text(
+              'No $label found for selected tenure',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '$label (${holders.length})',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-              ),
-              FilledButton.icon(
-                onPressed: () => _showAddOfficeHolderDialog(category),
-                icon: const Icon(Icons.add, size: 16),
-                label: Text(addLabel),
-                style: FilledButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () => _showAddOfficeHolderDialog(category),
+              icon: const Icon(Icons.add),
+              label: Text(addLabel),
+            ),
+          ],
         ),
-        Expanded(
-          child: holders.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        icon,
-                        size: 48,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No $label found for selected tenure',
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        onPressed: () => _showAddOfficeHolderDialog(category),
-                        icon: const Icon(Icons.add),
-                        label: Text(addLabel),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: holders.length,
-                  itemBuilder: (context, index) {
-                    final holder = holders[index];
-                    return _buildOfficeHolderCard(holder, category);
-                  },
-                ),
-        ),
-      ],
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: holders.length,
+      itemBuilder: (context, index) {
+        final holder = holders[index];
+        return _buildOfficeHolderCard(holder, category);
+      },
     );
   }
 
