@@ -21,6 +21,8 @@ import 'app_settings_screen.dart';
 import '../../models/podcast_models.dart';
 import '../../models/app_models.dart';
 import 'storage_admin_screen.dart';
+import 'backup_restore_screen.dart';
+import 'system_logs_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
 import '../../services/monthly_reminder_setting_service.dart';
 import '../../utils/responsive_utils.dart';
@@ -1199,8 +1201,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            const StorageAdminScreen(initialBucket: 'system-backups'),
+        builder: (context) => const BackupRestoreScreen(),
       ),
     );
   }
@@ -1209,8 +1210,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            const StorageAdminScreen(initialBucket: 'app-logs'),
+        builder: (context) => const SystemLogsScreen(),
       ),
     );
   }

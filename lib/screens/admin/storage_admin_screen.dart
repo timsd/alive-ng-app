@@ -53,8 +53,6 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
     'podcast-covers',
     'board-documents',
     'meeting-files',
-    'system-backups',
-    'app-logs',
   ];
 
   // File lists for each bucket
