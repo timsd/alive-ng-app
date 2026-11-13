@@ -849,8 +849,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
           _MgmtTile('Donation Reports', 'Search, filter and export every gift', Icons.receipt_long_outlined, () => context.push(AppConstants.adminDonationsReportRoute)),
         ]),
       _MgmtSection('Discipleship Operations', Icons.groups_2_outlined, [
-        _MgmtTile('Report Officers & Routing', 'Map Coordinators and Directors to receive dispatched reports', Icons.mark_email_read_outlined, () => _showOfficerRoutingDialog()),
-        _MgmtTile('Disciple Deletion Requests', 'Review and approve or reject deletion requests', Icons.person_remove_outlined, () => _showDeletionRequestsDialog()),
+        _MgmtTile('Discipleship Operations Hub', 'Officer routing, report assignments, and disciple deletion approvals', Icons.groups_2_outlined, () => _showOfficerRoutingDialog()),
+      ]),
+      _MgmtSection('System Maintenance & Logs', Icons.dns_outlined, [
+        _MgmtTile('Backup & Restore', 'Manage system backups and data restoration', Icons.backup_outlined, () => _navigateToBackupSettings()),
+        _MgmtTile('System Logs', 'View system logs and error reports', Icons.bug_report_outlined, () => _navigateToSystemLogs()),
+        _MgmtTile('App Configuration', 'Configure app settings and preferences', Icons.tune_outlined, () => _navigateToAppSettings()),
       ]),
       _MgmtSection('Storage & Meeting Documents', Icons.cloud_upload_outlined, [
         _MgmtTile('File Storage', 'Manage buckets, audio, PDFs and profile pictures', Icons.folder_outlined, () => _navigateToStorageAdmin()),
@@ -859,11 +863,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       _MgmtSection('Communication & Data Export', Icons.import_export_rounded, [
         _MgmtTile('Chat & Tag Management', 'Manage role tags, @announcement scopes, and channel bridges', Icons.tag_rounded, () => context.push(AppConstants.adminChatTagManagementRoute)),
         _MgmtTile('Chat & Messages Export', 'Export chat channels, messages, and communication backups', Icons.chat_outlined, () => _showChatExportDialog()),
-      ]),
-      _MgmtSection('System Settings', Icons.settings_outlined, [
-        _MgmtTile('App Configuration', 'Configure app settings and preferences', Icons.tune_outlined, () => _navigateToAppSettings()),
-        _MgmtTile('Backup & Restore', 'Manage system backups and data restoration', Icons.backup_outlined, () => _navigateToBackupSettings()),
-        _MgmtTile('System Logs', 'View system logs and error reports', Icons.bug_report_outlined, () => _navigateToSystemLogs()),
       ]),
     ];
 

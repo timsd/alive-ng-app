@@ -33,6 +33,12 @@ final supportedPrayerWallProvider =
   return PrayerRequestsService.instance.fetchSupportedPrayerRequests(user.uid);
 });
 
+final answeredPrayerWallProvider =
+    FutureProvider.autoDispose<List<PrayerRequest>>((ref) async {
+  final all = await PrayerRequestsService.instance.fetchPrayerRequests();
+  return all.where((r) => r.isAnswered).toList();
+});
+
 class PrayerWallScreen extends ConsumerStatefulWidget {
   const PrayerWallScreen({super.key});
 
@@ -47,7 +53,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -107,6 +113,10 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
               icon: FaIcon(FontAwesomeIcons.personPraying, size: 18),
               text: 'Praying For',
             ),
+            Tab(
+              icon: Icon(Icons.check_circle_outline_rounded, size: 20),
+              text: 'Answered',
+            ),
           ],
         ),
       ),
@@ -132,6 +142,13 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             emptyTitle: 'Not supporting any prayer requests yet',
             emptySubtitle:
                 'Tap "Pray" on any request in the Public Prayers tab to track prayers you are interceding for.',
+            showAddButtonOnEmpty: false,
+          ),
+          _buildPrayerList(
+            answeredPrayerWallProvider,
+            emptyTitle: 'No answered prayers yet',
+            emptySubtitle:
+                'When God answers your prayers, tap "Mark Answered" on your prayer to celebrate breakthroughs and testimonies with the community.',
             showAddButtonOnEmpty: false,
           ),
         ],
@@ -340,6 +357,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       ref.invalidate(publicPrayerWallProvider);
       ref.invalidate(myPrayerWallProvider);
       ref.invalidate(supportedPrayerWallProvider);
+      ref.invalidate(answeredPrayerWallProvider);
       _showSnack('Praise God! Marked "${request.title}" as answered.');
     } catch (e) {
       _showSnack('Failed to mark prayer as answered: $e', isError: true);
@@ -372,6 +390,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       ref.invalidate(publicPrayerWallProvider);
       ref.invalidate(myPrayerWallProvider);
       ref.invalidate(supportedPrayerWallProvider);
+      ref.invalidate(answeredPrayerWallProvider);
       _showSnack('Prayer request deleted');
     } catch (e) {
       _showSnack('Failed to delete prayer: $e', isError: true);

@@ -33,6 +33,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   List<ContactInteraction> _recentInteractions = [];
   List<StudySession> _recentStudySessions = [];
   List<PrayerRequest> _activePrayerRequests = [];
+  List<PrayerRequest> _answeredPrayerRequests = [];
+  int _selectedPrayerSubTab = 0; // 0: Active, 1: Answered
   DiscipleshipStatistics _statistics = DiscipleshipStatistics.empty;
 
   bool _isLoading = true;
@@ -122,6 +124,11 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         status: PrayerRequestStatus.active,
       );
 
+      final answeredPrayerRequests = await _discipleshipService.getPrayerRequests(
+        discipleMakerId: user.uid,
+        status: PrayerRequestStatus.answered,
+      );
+
       final statistics = await _discipleshipService.getDiscipleshipStatistics(user.uid);
       final userReports = await _discipleshipService.getReports(discipleMakerId: user.uid);
       final assignments = await _discipleshipService.getOfficerAssignments();
@@ -144,6 +151,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           _recentInteractions = interactions.take(10).toList();
           _recentStudySessions = studySessions.take(10).toList();
           _activePrayerRequests = prayerRequests;
+          _answeredPrayerRequests = answeredPrayerRequests;
           _statistics = statistics;
           _userReports = userReports;
           _officerAssignments = assignments;
@@ -546,45 +554,180 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   }
 
   Widget _buildPrayerTab() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final currentList = _selectedPrayerSubTab == 0
+        ? _activePrayerRequests
+        : _answeredPrayerRequests;
+
     return Column(
       children: [
         Padding(
           padding: context.responsivePadding,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Active Prayer Requests',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Prayer Tracker',
+                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => showAddPrayerRequestDialog(
+                      context,
+                      contacts: _contacts,
+                      onSuccess: _loadData,
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Prayer'),
+                  ),
+                ],
               ),
-              ElevatedButton.icon(
-                onPressed: () => showAddPrayerRequestDialog(
-                  context,
-                  contacts: _contacts,
-                  onSuccess: _loadData,
+              const SizedBox(height: 12),
+              // Segmented Switch: Active Prayers vs Answered Testimonies
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Prayer'),
+                padding: const EdgeInsets.all(4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedPrayerSubTab = 0),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _selectedPrayerSubTab == 0
+                                ? (isDark ? const Color(0xFF0F172A) : Colors.white)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: _selectedPrayerSubTab == 0
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    )
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.favorite_rounded,
+                                size: 16,
+                                color: _selectedPrayerSubTab == 0 ? Colors.red : theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Active (${_activePrayerRequests.length})',
+                                style: TextStyle(
+                                  fontWeight: _selectedPrayerSubTab == 0 ? FontWeight.bold : FontWeight.w500,
+                                  fontSize: 13,
+                                  color: _selectedPrayerSubTab == 0
+                                      ? (isDark ? Colors.white : Colors.black87)
+                                      : theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedPrayerSubTab = 1),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _selectedPrayerSubTab == 1
+                                ? (isDark ? const Color(0xFF0F172A) : Colors.white)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: _selectedPrayerSubTab == 1
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    )
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.check_circle_rounded,
+                                size: 16,
+                                color: _selectedPrayerSubTab == 1 ? Colors.green : theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Answered (${_answeredPrayerRequests.length})',
+                                style: TextStyle(
+                                  fontWeight: _selectedPrayerSubTab == 1 ? FontWeight.bold : FontWeight.w500,
+                                  fontSize: 13,
+                                  color: _selectedPrayerSubTab == 1
+                                      ? (isDark ? Colors.white : Colors.black87)
+                                      : theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
         Expanded(
-          child: _activePrayerRequests.isEmpty
-              ? const Center(
+          child: currentList.isEmpty
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.favorite_outline, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text('No active prayer requests'),
+                      Icon(
+                        _selectedPrayerSubTab == 0 ? Icons.favorite_outline : Icons.check_circle_outline,
+                        size: 64,
+                        color: _selectedPrayerSubTab == 0 ? Colors.grey : Colors.green.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _selectedPrayerSubTab == 0
+                            ? 'No active prayer requests'
+                            : 'No answered prayers yet',
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          _selectedPrayerSubTab == 0
+                              ? 'Tap + Add Prayer to record a prayer request for your disciples.'
+                              : 'When God answers your prayers, tap "Mark as Answered" to record testimonies and celebrate breakthrough here.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
                     ],
                   ),
                 )
               : ListView.builder(
-                  itemCount: _activePrayerRequests.length,
+                  itemCount: currentList.length,
                   itemBuilder: (context, index) {
-                    final prayer = _activePrayerRequests[index];
+                    final prayer = currentList[index];
                     final contact = _contacts.firstWhere(
                       (c) => c.id == prayer.contactId,
                       orElse: () => DiscipleshipContact(

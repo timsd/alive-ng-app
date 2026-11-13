@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../utils/error_handler.dart';
 import '../../../models/meeting_models.dart';
@@ -52,8 +51,6 @@ class _MeetingGalleryViewState extends State<MeetingGalleryView> {
   final ScrollController _scrollController = ScrollController();
   bool _canScrollLeft = false;
   bool _canScrollRight = true;
-  bool _isLandscape = false;
-
   @override
   void initState() {
     super.initState();
@@ -65,10 +62,6 @@ class _MeetingGalleryViewState extends State<MeetingGalleryView> {
   void dispose() {
     _scrollController.removeListener(_checkScroll);
     _scrollController.dispose();
-    // Safely reset orientation to portrait when exiting stage view
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
     super.dispose();
   }
 
@@ -98,33 +91,11 @@ class _MeetingGalleryViewState extends State<MeetingGalleryView> {
     );
   }
 
-  void _toggleOrientation() {
-    setState(() {
-      _isLandscape = !_isLandscape;
-    });
-    if (_isLandscape) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    } else {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
-    }
-  }
-
   void _exitProjector() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
     widget.onExitProjector();
   }
 
   void _leaveMeeting() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
     widget.onLeaveMeeting();
   }
 
@@ -556,60 +527,6 @@ class _MeetingGalleryViewState extends State<MeetingGalleryView> {
             ],
           ),
 
-          // Floating Rotating Icon Button (Flips to Landscape to view presentations widescreen)
-          Positioned(
-            right: 16,
-            bottom: 82,
-            child: Tooltip(
-              message: _isLandscape ? 'Flip to Portrait' : 'Flip to Landscape',
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _toggleOrientation,
-                  borderRadius: BorderRadius.circular(24),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: Colors.teal.shade400.withValues(alpha: 0.8),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.teal.withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _isLandscape
-                              ? Icons.screen_lock_portrait_rounded
-                              : Icons.screen_rotation_rounded,
-                          color: Colors.tealAccent,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _isLandscape ? 'Portrait' : 'Landscape',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

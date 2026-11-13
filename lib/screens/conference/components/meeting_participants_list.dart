@@ -59,8 +59,7 @@ class MeetingParticipantsList extends StatelessWidget {
               color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
             ),
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          child: InkWell(
             onTap: () {
               if (!participant.isLocal && !isLeader && onDirectChat != null) {
                 onDirectChat!(participant);
@@ -68,146 +67,122 @@ class MeetingParticipantsList extends StatelessWidget {
                 onParticipantTap(participant);
               }
             },
-            leading: CircleAvatar(
-              radius: 20,
-              backgroundColor: participant.isLocal
-                  ? const Color(0xFF2563EB)
-                  : const Color(0xFF0D9488),
-              backgroundImage: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
-                  ? NetworkImage(participant.avatarUrl!)
-                  : null,
-              onBackgroundImageError: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
-                  ? (_, __) {}
-                  : null,
-              child: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
-                  ? null
-                  : Text(
-                      displayName.isNotEmpty ? displayName[0].toUpperCase() : 'M',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-            ),
-            title: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    participant.isLocal ? '$displayName (You)' : displayName,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                    overflow: TextOverflow.ellipsis,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Row(
+                children: [
+                  // Avatar
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: participant.isLocal
+                        ? const Color(0xFF2563EB)
+                        : const Color(0xFF0D9488),
+                    backgroundImage: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
+                        ? NetworkImage(participant.avatarUrl!)
+                        : null,
+                    onBackgroundImageError: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
+                        ? (_, __) {}
+                        : null,
+                    child: (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty)
+                        ? null
+                        : Text(
+                            displayName.isNotEmpty ? displayName[0].toUpperCase() : 'M',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
                   ),
-                ),
-                if (isHost) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD49B28).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: const Color(0xFFD49B28), width: 0.8),
-                    ),
-                    child: const Text(
-                      'HOST',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFD49B28),
-                      ),
-                    ),
-                  ),
-                ] else if (isCoHost) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.teal.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.teal, width: 0.8),
-                    ),
-                    child: const Text(
-                      'CO-HOST',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.teal,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            subtitle: Text(
-              participant.isLocal
-                  ? 'Your audio/video controls'
-                  : (isLeader
-                      ? 'Tap for options or 💬 to direct chat'
-                      : 'Tap to direct chat with $displayName'),
-              style: TextStyle(
-                fontSize: 11,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-              ),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (participant.isHandRaised) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD49B28).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFD49B28), width: 1),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
+                  const SizedBox(width: 10),
+                  // Name + role badge
+                  Expanded(
+                    child: Row(
                       children: [
-                        Icon(Icons.pan_tool_rounded, size: 13, color: Color(0xFFD49B28)),
-                        SizedBox(width: 4),
-                        Text(
-                          'Raised',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFD49B28),
+                        Flexible(
+                          child: Text(
+                            participant.isLocal ? '$displayName (You)' : displayName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
+                        if (isHost) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD49B28).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFFD49B28), width: 0.8),
+                            ),
+                            child: const Text(
+                              'HOST',
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFD49B28),
+                              ),
+                            ),
+                          ),
+                        ] else if (isCoHost) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.teal, width: 0.8),
+                            ),
+                            child: const Text(
+                              'CO-HOST',
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.teal,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                ],
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: (participant.isAudioMuted ? Colors.red : Colors.green).withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
+                  const SizedBox(width: 6),
+                  // Icon controls (no text labels — compact for narrow panels)
+                  if (participant.isHandRaised)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Icon(Icons.pan_tool_rounded, size: 16, color: const Color(0xFFD49B28)),
+                    ),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: (participant.isAudioMuted ? Colors.red : Colors.green).withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      participant.isAudioMuted ? Icons.mic_off : Icons.mic,
+                      size: 15,
+                      color: participant.isAudioMuted ? Colors.red : Colors.green,
+                    ),
                   ),
-                  child: Icon(
-                    participant.isAudioMuted ? Icons.mic_off : Icons.mic,
-                    size: 16,
-                    color: participant.isAudioMuted ? Colors.red : Colors.green,
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: (participant.isVideoMuted ? Colors.red : Colors.green).withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      participant.isVideoMuted ? Icons.videocam_off : Icons.videocam,
+                      size: 15,
+                      color: participant.isVideoMuted ? Colors.red : Colors.green,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: (participant.isVideoMuted ? Colors.red : Colors.green).withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    participant.isVideoMuted ? Icons.videocam_off : Icons.videocam,
-                    size: 16,
-                    color: participant.isVideoMuted ? Colors.red : Colors.green,
-                  ),
-                ),
-                if (!participant.isLocal) ...[
-                  const SizedBox(width: 8),
-                  Tooltip(
-                    message: 'Direct chat with $displayName',
-                    child: Material(
+                  if (!participant.isLocal) ...[
+                    const SizedBox(width: 4),
+                    Material(
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
@@ -217,28 +192,24 @@ class MeetingParticipantsList extends StatelessWidget {
                             onParticipantTap(participant);
                           }
                         },
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
                             color: const Color(0xFF2563EB).withValues(alpha: 0.15),
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF2563EB).withValues(alpha: 0.35),
-                              width: 1,
-                            ),
                           ),
                           child: const Icon(
                             Icons.chat_bubble_outline_rounded,
-                            size: 16,
+                            size: 15,
                             color: Color(0xFF2563EB),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         );

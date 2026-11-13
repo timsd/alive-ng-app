@@ -1383,7 +1383,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                             ),
                           ],
 
-                          // Presentation Stage & Participant Layout (Google Meet responsive landscape & portrait)
+                          // Presentation Stage & Participant Layout (Responsive landscape & portrait)
                           Expanded(
                             child: OrientationBuilder(
                               builder: (context, orientation) {
@@ -1391,12 +1391,12 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                 final isScreenSharing = session.isScreenShareEnabled || session.activeScreenShareName != null;
 
                                 if (isScreenSharing && isLandscape) {
-                                  // Google Meet Landscape mode: Screen share takes 72% width on left, participants strip on right
+                                  // Landscape mode: Screen share takes main area, participants strip on right
                                   return Row(
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       Expanded(
-                                        flex: 80,
+                                        flex: 72,
                                         child: MeetingScreenShareStage(
                                           session: session,
                                           gateway: gateway,
@@ -1404,7 +1404,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        flex: 20,
+                                        flex: 28,
                                         child: Column(
                                           children: [
                                             _buildStageHeaderCard(session, isLeader),
@@ -1428,7 +1428,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                                 }
 
                                 if (isScreenSharing && !isLandscape) {
-                                  // Google Meet Portrait mode: Screen share takes dominant top half (flex 56), participants on bottom
+                                  // Portrait mode: Screen share takes dominant top half (flex 56), participants on bottom
                                   return Column(
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
@@ -1915,7 +1915,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       return true;
     }
 
-    // Host / Leader: Show Zoom / Google Meet standard choice dialog
+    // Host / Leader: Show Zoom standard choice dialog
     final action = await showDialog<String>(
       context: context,
       barrierDismissible: true,

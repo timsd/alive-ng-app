@@ -294,7 +294,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                     'Meeting Files',
                     Icons.share_rounded,
                     'Share meeting files',
-                    () => context.go('/meeting-file-sharing'),
+                    () => context.push(AppConstants.meetingFileSharingRoute),
                   ),
                 ),
                 const SizedBox(width: 12),

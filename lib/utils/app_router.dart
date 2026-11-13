@@ -473,6 +473,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               return null;
             },
           ),
+          GoRoute(
+            path: '/content',
+            redirect: (context, state) => AppConstants.contentManagementRoute,
+          ),
 
           // Tract & Podcast Admin Route
           GoRoute(
@@ -485,6 +489,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               }
               return null;
             },
+          ),
+          GoRoute(
+            path: '/tract-management',
+            redirect: (context, state) => AppConstants.tractPodcastAdminRoute,
+          ),
+          GoRoute(
+            path: '/podcast-management',
+            redirect: (context, state) => AppConstants.tractPodcastAdminRoute,
           ),
 
           // Meeting File Sharing Route
@@ -499,6 +511,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               return null;
             },
           ),
+          GoRoute(
+            path: '/meeting-files',
+            redirect: (context, state) => AppConstants.meetingFileSharingRoute,
+          ),
 
           // Board of Directors Route
           GoRoute(
@@ -511,6 +527,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               }
               return null;
             },
+          ),
+          GoRoute(
+            path: '/board',
+            redirect: (context, state) => AppConstants.bodRoute,
+          ),
+          GoRoute(
+            path: '/admin/board-decisions',
+            redirect: (context, state) => AppConstants.bodRoute,
           ),
 
           // User Archive Route
@@ -672,6 +696,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.prayerWallRoute,
             builder: (context, state) => const PrayerWallScreen(),
+          ),
+          GoRoute(
+            path: '/prayer-requests',
+            redirect: (context, state) => AppConstants.prayerWallRoute,
+          ),
+          GoRoute(
+            path: '/prayer-requests/:id',
+            redirect: (context, state) => AppConstants.prayerWallRoute,
           ),
 
           // Private Prayer Room Route

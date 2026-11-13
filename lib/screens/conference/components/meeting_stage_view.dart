@@ -112,30 +112,7 @@ class MeetingScreenShareStage extends StatelessWidget {
               ),
             ),
           ),
-          // Google Meet style zoom indicator / controls (bottom-right)
-          Positioned(
-            bottom: 12,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.75),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white24, width: 0.8),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.zoom_in_rounded, size: 14, color: Colors.white70),
-                  SizedBox(width: 4),
-                  Text(
-                    'Pinch to zoom',
-                    style: TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-          ),
+
         ],
       ),
     );

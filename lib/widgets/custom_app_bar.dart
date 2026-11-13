@@ -156,19 +156,32 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
               if (context.mounted) {
                 try {
                   final uri = GoRouterState.of(context).uri.toString();
-                  if (uri.startsWith('/admin') && uri != AppConstants.adminRoute) {
+                  // Admin & leadership sub-screens fall back to admin dashboard
+                  if (uri == AppConstants.meetingFileSharingRoute ||
+                      uri == AppConstants.contentManagementRoute ||
+                      uri == AppConstants.tractPodcastAdminRoute ||
+                      uri == AppConstants.leadershipDirectoryRoute ||
+                      uri == AppConstants.bodRoute ||
+                      uri == AppConstants.userArchiveRoute ||
+                      uri == AppConstants.roleManagementRoute ||
+                      (uri.startsWith('/admin') && uri != AppConstants.adminRoute) ||
+                      uri.startsWith('/board')) {
                     context.go(AppConstants.adminRoute);
                     return;
                   }
-                  if (uri.startsWith('/board') && uri != '/board') {
-                    context.go('/board');
+                  if (uri.startsWith('/prayer-wall') ||
+                      uri.startsWith('/private-prayer')) {
+                    context.go(AppConstants.prayerRoute);
                     return;
                   }
                   if (uri.startsWith('/study') && uri != '/study') {
                     context.go('/study');
                     return;
                   }
-                  if (uri.startsWith('/tract') || uri.startsWith('/podcast')) {
+                  if (uri.startsWith('/tract') ||
+                      uri.startsWith('/podcast') ||
+                      uri.startsWith('/interactive-lessons') ||
+                      uri.startsWith('/bible')) {
                     context.go('/study');
                     return;
                   }

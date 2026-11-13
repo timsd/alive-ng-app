@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../constants/app_constants.dart';
 import '../../services/file_picker_facade.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -101,7 +103,13 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
       appBar: CustomAppBar(
         title: 'Meeting File Sharing',
         showBackButton: true,
-        onBackPressed: () => Navigator.of(context).pop(),
+        onBackPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go(AppConstants.adminRoute);
+          }
+        },
         actions: [
           IconButton(
             icon: const Icon(Icons.mic_none_outlined),
