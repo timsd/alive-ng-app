@@ -10,6 +10,7 @@ import '../models/discipleship_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'prayer_requests_service.dart';
 
 class DiscipleshipService {
   static final DiscipleshipService _instance = DiscipleshipService._internal();

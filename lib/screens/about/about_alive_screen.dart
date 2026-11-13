@@ -170,7 +170,7 @@ class AboutAliveScreen extends ConsumerWidget {
                           'Helping people mature in Scripture, character, and practical obedience to Christ.',
                     ),
                     _PillarCard(
-                      icon: FontAwesomeIcons.personPraying,
+                      icon: Icons.volunteer_activism_rounded,
                       title: 'Prayer and care',
                       description:
                           'Supporting members spiritually while building a culture of intercession and encouragement.',

@@ -131,13 +131,13 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
       ]);
 
       final contacts = results[0] as List<DiscipleshipContact>;
-      final interactions = results[1] as List<DiscipleshipInteraction>;
-      final studySessions = results[2] as List<DiscipleshipStudySession>;
-      final prayerRequests = results[3] as List<DiscipleshipPrayerRequest>;
-      final answeredPrayerRequests = results[4] as List<DiscipleshipPrayerRequest>;
+      final interactions = results[1] as List<ContactInteraction>;
+      final studySessions = results[2] as List<StudySession>;
+      final prayerRequests = results[3] as List<PrayerRequest>;
+      final answeredPrayerRequests = results[4] as List<PrayerRequest>;
       final statistics = results[5] as DiscipleshipStatistics;
       final userReports = results[6] as List<DiscipleshipReport>;
-      final assignments = results[7] as List<DiscipleshipOfficerAssignment>;
+      final assignments = results[7] as List<OfficerOfficeAssignment>;
 
       final userId = user.uid;
       final myOffice = assignments.where((a) => a.officerId == userId).firstOrNull;

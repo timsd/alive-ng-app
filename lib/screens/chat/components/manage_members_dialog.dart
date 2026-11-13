@@ -5,7 +5,7 @@ import '../../../services/appwrite_chat_service.dart';
 
 class ManageMembersDialog extends StatefulWidget {
   final ChatChannel channel;
-  final ChatService chatService;
+  final AppwriteChatService chatService;
   final String? currentUserId;
   final Function(List<String> updatedMembers) onMembersUpdated;
 
