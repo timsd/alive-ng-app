@@ -278,7 +278,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                   prayerCount: request.prayerCount,
                   isAnswered: request.isAnswered,
                   isOwner: isOwner,
-                  isPublic: request.isPublic,
+                  isPublic: !request.isPrivate,
                   collectionSource: 'prayer_requests',
                 ),
                 onPray: () => _recordPrayer(request),
