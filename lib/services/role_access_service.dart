@@ -430,9 +430,19 @@ class RoleAccessService {
   /// Check if user can access role-gated features
   bool canAccessRoleGatedFeatures() {
     final currentRole = getCurrentUserRole();
-    // Admins and staff are always considered approved — they manage approvals
-    // for everyone else, so they must never be blocked by their own gate.
-    if (currentRole == 'admin' || currentRole == 'staff') return true;
+    // Administrators, super admins, directors, BOD, coordinators, and staff
+    // are always considered approved — they manage approvals for everyone else,
+    // so they must never be blocked by their own gate.
+    if (currentRole == 'admin' ||
+        currentRole == 'super_admin' ||
+        currentRole == 'staff' ||
+        currentRole == 'director' ||
+        currentRole == 'bod' ||
+        currentRole == 'coordinator' ||
+        canAccessAdmin() ||
+        isSuperAdmin()) {
+      return true;
+    }
     // For all other roles the Appwrite profile approval flag governs access.
     final profile = _getCachedUserProfile();
     return (profile?.isApproved ?? false) && !isUserArchived();

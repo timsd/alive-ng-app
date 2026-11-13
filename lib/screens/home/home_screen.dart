@@ -195,7 +195,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
         final profile = snapshot.data!;
         if (profile.role == 'admin' ||
+            profile.role == 'super_admin' ||
             profile.role == 'staff' ||
+            profile.role == 'director' ||
+            profile.role == 'bod' ||
+            profile.role == 'coordinator' ||
+            roleService.canAccessAdmin() ||
+            roleService.isSuperAdmin() ||
             AppwriteBackendConfig.isSuperAdminEmail(profile.email) ||
             profile.approvalStatus != 'pending') {
           return const SizedBox.shrink();
