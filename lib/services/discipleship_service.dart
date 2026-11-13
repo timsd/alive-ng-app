@@ -1282,9 +1282,12 @@ class DiscipleshipService {
   }
 
   Future<void> rejectDeletionRequest(String requestId,
-      {required String reason}) async {
+      {String reason = 'Request declined by administrator'}) async {
     final requests = await getDeletionRequests();
     final req = requests.firstWhere((r) => r.id == requestId);
+    final effectiveReason = reason.trim().isNotEmpty
+        ? reason.trim()
+        : 'Request declined by administrator';
     final updated = DiscipleDeletionRequest(
       id: req.id,
       contactId: req.contactId,
@@ -1294,11 +1297,35 @@ class DiscipleshipService {
       requesterRole: req.requesterRole,
       reason: req.reason,
       status: DeletionRequestStatus.rejected,
-      adminReviewNotes: reason,
+      adminReviewNotes: effectiveReason,
       createdAt: req.createdAt,
       reviewedAt: DateTime.now().toUtc(),
     );
     await _saveDeletionRequest(updated);
+  }
+
+  /// Unified review method supporting callers expecting reviewDeletionRequest
+  Future<void> reviewDeletionRequest(
+    String requestId, {
+    required bool approved,
+    String? adminNotes,
+    String? reason,
+    String? notes,
+  }) async {
+    final effectiveNotes = (adminNotes?.trim().isNotEmpty == true)
+        ? adminNotes!.trim()
+        : ((reason?.trim().isNotEmpty == true)
+            ? reason!.trim()
+            : (notes?.trim().isNotEmpty == true ? notes!.trim() : null));
+
+    if (approved) {
+      await approveDeletionRequest(requestId, adminNotes: effectiveNotes);
+    } else {
+      await rejectDeletionRequest(
+        requestId,
+        reason: effectiveNotes ?? 'Request declined by administrator',
+      );
+    }
   }
 
   Future<DiscipleshipStatistics> getDiscipleshipStatistics(
