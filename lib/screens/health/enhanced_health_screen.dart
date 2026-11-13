@@ -22,12 +22,13 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
   late TabController _tabController;
   final HealthContentService _contentService = HealthContentService();
 
-  bool _isLoading = true;
+  late bool _isLoading;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _isLoading = !_contentService.isInitialized && _contentService.recipes.isEmpty;
     // 3 tabs: Recipes, Remedies, Community Q&A
     _tabController = TabController(length: 3, vsync: this);
     _loadHealthData();
@@ -41,21 +42,27 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
 
   Future<void> _loadHealthData() async {
     try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
+      if (_contentService.recipes.isEmpty) {
+        setState(() {
+          _isLoading = true;
+          _error = null;
+        });
+      }
 
       await _contentService.ensureInitialized();
 
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = ErrorHandler.getUserFriendlyMessage(e);
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = ErrorHandler.getUserFriendlyMessage(e);
+          _isLoading = false;
+        });
+      }
     }
   }
 

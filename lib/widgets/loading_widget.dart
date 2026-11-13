@@ -14,6 +14,14 @@ class LoadingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final effectiveColor = color ??
+        (isDark ? const Color(0xFFF0C969) : theme.colorScheme.primary);
+    final trackColor = isDark
+        ? const Color(0xFF23354C)
+        : const Color(0xFFE2E8F0);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -22,22 +30,19 @@ class LoadingWidget extends StatelessWidget {
             width: size ?? 40,
             height: size ?? 40,
             child: CircularProgressIndicator(
-              strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                color ?? Theme.of(context).primaryColor,
-              ),
+              strokeWidth: 3.5,
+              backgroundColor: trackColor,
+              valueColor: AlwaysStoppedAnimation<Color>(effectiveColor),
             ),
           ),
-          if (message != null) ...[
+          if (message != null && message!.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text(
               message!,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.7),
-                  ),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: isDark ? const Color(0xFFEAE5D9) : theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
               textAlign: TextAlign.center,
             ),
           ],

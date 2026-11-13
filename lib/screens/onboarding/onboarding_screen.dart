@@ -26,7 +26,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       'color': const Color(0xFFD49B28),
     },
     {
-      'title': 'Evangelism & Gospel Tracts',
+      'title': 'Evangelism Tracts',
       'body':
           'In need of evangelism tracts? Access an uplifting library of gospel tracts ready for outreach. Easy to download and print for field evangelism, or share instantly in softcopy with friends and seekers.',
       'icon': Icons.library_books_rounded,

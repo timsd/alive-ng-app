@@ -241,6 +241,7 @@ class HealthContentService extends ChangeNotifier {
   List<HealthRemedyItem> _remedies = [];
   List<HealthCommentItem> _comments = [];
   bool _initialized = false;
+  bool get isInitialized => _initialized;
 
   List<HealthRecipeItem> get recipes => List.unmodifiable(_recipes);
   List<HealthRemedyItem> get remedies => List.unmodifiable(_remedies);

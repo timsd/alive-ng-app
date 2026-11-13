@@ -103,35 +103,41 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         return;
       }
 
-      final contacts = await _discipleshipService.getContacts(
-        discipleMakerId: user.uid,
-        searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
-        level: _selectedLevel,
-      );
+      final results = await Future.wait([
+        _discipleshipService.getContacts(
+          discipleMakerId: user.uid,
+          searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+          level: _selectedLevel,
+        ),
+        _discipleshipService.getInteractions(
+          discipleMakerId: user.uid,
+          startDate: DateTime.now().subtract(const Duration(days: 30)),
+        ),
+        _discipleshipService.getStudySessions(
+          discipleMakerId: user.uid,
+          startDate: DateTime.now().subtract(const Duration(days: 30)),
+        ),
+        _discipleshipService.getPrayerRequests(
+          discipleMakerId: user.uid,
+          status: PrayerRequestStatus.active,
+        ),
+        _discipleshipService.getPrayerRequests(
+          discipleMakerId: user.uid,
+          status: PrayerRequestStatus.answered,
+        ),
+        _discipleshipService.getDiscipleshipStatistics(user.uid),
+        _discipleshipService.getReports(discipleMakerId: user.uid),
+        _discipleshipService.getOfficerAssignments(),
+      ]);
 
-      final interactions = await _discipleshipService.getInteractions(
-        discipleMakerId: user.uid,
-        startDate: DateTime.now().subtract(const Duration(days: 30)),
-      );
-
-      final studySessions = await _discipleshipService.getStudySessions(
-        discipleMakerId: user.uid,
-        startDate: DateTime.now().subtract(const Duration(days: 30)),
-      );
-
-      final prayerRequests = await _discipleshipService.getPrayerRequests(
-        discipleMakerId: user.uid,
-        status: PrayerRequestStatus.active,
-      );
-
-      final answeredPrayerRequests = await _discipleshipService.getPrayerRequests(
-        discipleMakerId: user.uid,
-        status: PrayerRequestStatus.answered,
-      );
-
-      final statistics = await _discipleshipService.getDiscipleshipStatistics(user.uid);
-      final userReports = await _discipleshipService.getReports(discipleMakerId: user.uid);
-      final assignments = await _discipleshipService.getOfficerAssignments();
+      final contacts = results[0] as List<DiscipleshipContact>;
+      final interactions = results[1] as List<DiscipleshipInteraction>;
+      final studySessions = results[2] as List<DiscipleshipStudySession>;
+      final prayerRequests = results[3] as List<DiscipleshipPrayerRequest>;
+      final answeredPrayerRequests = results[4] as List<DiscipleshipPrayerRequest>;
+      final statistics = results[5] as DiscipleshipStatistics;
+      final userReports = results[6] as List<DiscipleshipReport>;
+      final assignments = results[7] as List<DiscipleshipOfficerAssignment>;
 
       final userId = user.uid;
       final myOffice = assignments.where((a) => a.officerId == userId).firstOrNull;

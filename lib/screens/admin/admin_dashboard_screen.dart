@@ -102,6 +102,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   int _dailyUsers = 0;
   int _totalPrayerRequests = 0;
   int _answeredPrayers = 0;
+  int _totalDisciples = 0;
+  bool _isStatsLoading = false;
 
   // ─── Premium animation & search ───
   late final AnimationController _staggerController;
@@ -158,6 +160,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         } catch (_) {}
       }
       await _resolveFinanceAccess();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        _staggerController.forward();
+      }
       await _loadDashboardStats();
     } catch (e) {
       if (mounted) {
@@ -172,14 +180,20 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _isStatsLoading = false;
         });
-        _staggerController.forward();
+        if (!_staggerController.isAnimating && !_staggerController.isCompleted) {
+          _staggerController.forward();
+        }
       }
     }
   }
 
   Future<void> _loadDashboardStats() async {
     try {
+      if (mounted) {
+        setState(() => _isStatsLoading = true);
+      }
       final now = DateTime.now();
       final todayStart =
           DateTime(now.year, now.month, now.day).toIso8601String();
@@ -221,6 +235,10 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _safeCountDocuments(
           AppwriteBackendConfig.discipleshipPrayerRequestsCollectionId,
         ),
+        // Discipleship total contacts (disciples in tracker)
+        _safeCountDocuments(
+          AppwriteBackendConfig.discipleshipContactsCollectionId,
+        ),
       ]);
 
       final totalUsers = results[0] as int;
@@ -236,6 +254,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       final dbChapters = results[8] as int;
       final discipleAnswered = results[9] as int;
       final discipleTotal = results[10] as int;
+      final totalDisciples = results[11] as int;
 
       if (answeredPrayers == 0) {
         // Fallback: check status == 'answered' in general prayer requests
@@ -268,8 +287,11 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _dailyUsers = dailyUsers;
         _totalPrayerRequests = totalPrayers;
         _answeredPrayers = answeredPrayers;
+        _totalDisciples = totalDisciples;
+        _isStatsLoading = false;
       });
     } catch (e) {
+      if (mounted) setState(() => _isStatsLoading = false);
       rethrow;
     }
   }
@@ -694,8 +716,8 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 1100;
     final isTablet = width >= 640 && width < 1100;
-    final crossCount = isDesktop ? 4 : (isTablet ? 4 : 2);
-    final childAspectRatio = isDesktop ? 2.5 : (isTablet ? 2.2 : 2.3);
+    final crossCount = isDesktop ? 8 : 4;
+    final childAspectRatio = isDesktop ? 1.25 : (isTablet ? 1.35 : 1.05);
 
     final stats = [
       _StatItem('Members', _totalUsers.toString(), Icons.groups_rounded, theme.colorScheme.primary),
@@ -703,9 +725,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       _StatItem('Prayers', _totalPrayerRequests.toString(), Icons.favorite_rounded, const Color(0xFFE5513E)),
       _StatItem('Answered', _answeredPrayers.toString(), Icons.verified_rounded, const Color(0xFF2FAD72)),
       _StatItem('Chapters', _totalChapters.toString(), Icons.location_city_rounded, theme.colorScheme.secondary),
+      _StatItem('Disciples', _totalDisciples.toString(), Icons.person_add_alt_1_rounded, const Color(0xFF0D9488)),
       _StatItem('Podcasts', _totalPodcasts.toString(), Icons.podcasts_rounded, const Color(0xFF8B5CF6)),
       _StatItem('Reports', _activeReports.toString(), Icons.assessment_rounded, const Color(0xFF0EA5E9)),
-      _StatItem('Archived', _archivedUsers.toString(), Icons.archive_rounded, theme.colorScheme.error),
     ];
 
     return Column(
@@ -739,14 +761,24 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.sync_rounded,
-                      size: 15,
-                      color: theme.colorScheme.primary,
-                    ),
+                    if (_isStatsLoading)
+                      SizedBox(
+                        width: 13,
+                        height: 13,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: theme.colorScheme.primary,
+                        ),
+                      )
+                    else
+                      Icon(
+                        Icons.sync_rounded,
+                        size: 15,
+                        color: theme.colorScheme.primary,
+                      ),
                     const SizedBox(width: 4),
                     Text(
-                      'Live Sync',
+                      _isStatsLoading ? 'Syncing...' : 'Live Sync',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -924,10 +956,10 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
           width: 1,
@@ -935,62 +967,56 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.05),
-            blurRadius: 6,
+            blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 26,
+            height: 26,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
             ),
             child: Center(
               child: Icon(
                 icon,
-                size: 19,
+                size: 14,
                 color: color,
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: isDark ? Colors.white : Colors.black87,
-                      letterSpacing: -0.5,
-                      height: 1.1,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  title.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
-                    color: isDark ? Colors.white60 : Colors.black54,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : Colors.black87,
+                letterSpacing: -0.5,
+                height: 1.1,
+              ),
             ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+              color: isDark ? Colors.white60 : Colors.black54,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
         ],
       ),

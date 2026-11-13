@@ -441,6 +441,11 @@ class AppTheme {
           ),
         ),
       ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: lightPrimary,
+        circularTrackColor: Color(0xFFE2E8F0),
+        linearTrackColor: Color(0xFFE2E8F0),
+      ),
       popupMenuTheme: PopupMenuThemeData(
         color: lightCard,
         surfaceTintColor: Colors.transparent,
@@ -845,6 +850,11 @@ class AppTheme {
             ),
           ),
         ),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: darkGold,
+        circularTrackColor: Color(0xFF23354C),
+        linearTrackColor: Color(0xFF23354C),
       ),
 
       fontFamily: 'Inter',
