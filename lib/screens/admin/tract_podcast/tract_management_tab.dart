@@ -37,34 +37,19 @@ class _TractManagementTabState extends State<TractManagementTab> {
         // Add new tract and interactive study buttons
         Container(
           padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _showAddTractDialog(),
-                  icon: const Icon(Icons.picture_as_pdf),
-                  label: const Text('Add Tract (PDF)'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showAddTractDialog(),
+              icon: const Icon(Icons.picture_as_pdf),
+              label: const Text('Add Tract (PDF)'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showAddStandaloneLessonDialog(),
-                  icon: const Icon(Icons.school),
-                  label: const Text('Add Interactive Study'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    foregroundColor: Colors.green,
-                    side: const BorderSide(color: Colors.green, width: 1.5),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
 

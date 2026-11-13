@@ -71,6 +71,20 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant MeetingControlBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isGalleryView != widget.isGalleryView) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+  }
+
   void _checkScroll() {
     if (!_scrollController.hasClients) return;
     final max = _scrollController.position.maxScrollExtent;
@@ -126,7 +140,7 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                 height: 48,
                 decoration: BoxDecoration(
                   color: isDestructive
-                      ? Colors.red.shade900
+                      ? Colors.red.shade700
                       : (activeColor ??
                           (isDark
                               ? const Color(0xFF1E293B)
@@ -150,7 +164,7 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: isDestructive
-                      ? Colors.red.shade400
+                      ? (isDark ? Colors.white : Colors.black87)
                       : (isDark ? Colors.white70 : Colors.black87),
                 ),
                 maxLines: 1,
@@ -203,7 +217,64 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // 1. Mic (Primary Visible)
+                      // 1. Leave / End (Primary Visible - Matching Image 2)
+                      _buildButton(
+                        context: context,
+                        icon: const Icon(
+                          Icons.call_end_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                        label: widget.isLeader ? 'Leave / End' : 'Leave',
+                        isDestructive: true,
+                        onTap: widget.onLeaveOrEnd,
+                      ),
+
+                      // 2. Camera (Primary Visible - Matching Image 2)
+                      _buildButton(
+                        context: context,
+                        icon: Icon(
+                          widget.isVideoMuted ? Icons.videocam_off_rounded : Icons.videocam_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                        label: widget.isVideoMuted ? 'Camera Off' : 'Camera On',
+                        activeColor: widget.isVideoMuted
+                            ? Colors.red.shade700
+                            : const Color(0xFF2563EB),
+                        onTap: widget.onToggleVideo,
+                      ),
+
+                      // 3. View Mode Toggle (List View vs Gallery) (Primary Visible - Matching Image 2)
+                      if (widget.onToggleViewMode != null)
+                        _buildButton(
+                          context: context,
+                          icon: Icon(
+                            widget.isGalleryView
+                                ? Icons.view_list_rounded
+                                : Icons.grid_view_rounded,
+                            color: isDark ? Colors.white : Colors.black87,
+                            size: 22,
+                          ),
+                          label: widget.isGalleryView ? 'List View' : 'Gallery',
+                          onTap: widget.onToggleViewMode!,
+                        ),
+
+                      // 4. Breakout Rooms (Primary Visible - Matching Image 2)
+                      if (widget.isLeader || widget.session.isBreakoutActive)
+                        _buildButton(
+                          context: context,
+                          icon: const Icon(
+                            Icons.workspaces_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          label: 'Breakout',
+                          activeColor: widget.session.isBreakoutActive ? Colors.teal.shade700 : null,
+                          onTap: widget.onOpenBreakoutRooms ?? () {},
+                        ),
+
+                      // 5. Mic (Slideable / Next)
                       _buildButton(
                         context: context,
                         icon: Icon(
@@ -220,92 +291,7 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                         onTap: widget.onToggleAudio,
                       ),
 
-                      // 2. Screen Share (Primary Visible)
-                      if (widget.canShareScreen)
-                        _buildButton(
-                          context: context,
-                          icon: Icon(
-                            widget.session.isScreenShareEnabled
-                                ? Icons.stop_screen_share_rounded
-                                : Icons.screen_share_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                          label: widget.session.isScreenShareEnabled ? 'Stop Share' : 'Share',
-                          activeColor: widget.session.isScreenShareEnabled ? Colors.teal.shade700 : null,
-                          onTap: widget.onToggleScreenShare,
-                        ),
-
-                      // 3. More (•••) (Primary Visible)
-                      _buildButton(
-                        context: context,
-                        icon: Icon(
-                          Icons.more_horiz_rounded,
-                          color: isDark ? Colors.white : Colors.black87,
-                          size: 24,
-                        ),
-                        label: 'More',
-                        onTap: widget.onOpenMore,
-                      ),
-
-                      // 4. Leave / End (Primary Visible)
-                      _buildButton(
-                        context: context,
-                        icon: const Icon(
-                          Icons.call_end_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                        label: widget.isLeader ? 'Leave / End' : 'Leave',
-                        isDestructive: true,
-                        onTap: widget.onLeaveOrEnd,
-                      ),
-
-                      // 5. Camera (Slideable)
-                      _buildButton(
-                        context: context,
-                        icon: Icon(
-                          widget.isVideoMuted ? Icons.videocam_off_rounded : Icons.videocam_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                        label: widget.isVideoMuted ? 'Camera Off' : 'Camera On',
-                        activeColor: widget.isVideoMuted
-                            ? Colors.red.shade700
-                            : const Color(0xFF2563EB),
-                        onTap: widget.onToggleVideo,
-                      ),
-
-                      // 6. View Mode Toggle (Gallery vs List View) (Slideable)
-                      if (widget.onToggleViewMode != null)
-                        _buildButton(
-                          context: context,
-                          icon: Icon(
-                            widget.isGalleryView
-                                ? Icons.view_list_rounded
-                                : Icons.grid_view_rounded,
-                            color: isDark ? Colors.white : Colors.black87,
-                            size: 22,
-                          ),
-                          label: widget.isGalleryView ? 'List View' : 'Gallery',
-                          onTap: widget.onToggleViewMode!,
-                        ),
-
-                      // 7. Breakout Rooms (Slideable)
-                      if (widget.isLeader || widget.session.isBreakoutActive)
-                        _buildButton(
-                          context: context,
-                          icon: const Icon(
-                            Icons.workspaces_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                          label: 'Breakout',
-                          activeColor: widget.session.isBreakoutActive ? Colors.teal.shade700 : null,
-                          onTap: widget.onOpenBreakoutRooms ?? () {},
-                        ),
-
-                      // 8. Chat (Slideable)
+                      // 6. Chat (Slideable)
                       _buildButton(
                         context: context,
                         icon: Badge(
@@ -321,7 +307,7 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                         onTap: widget.onOpenChat,
                       ),
 
-                      // 9. Hand (Slideable)
+                      // 7. Hand (Slideable)
                       _buildButton(
                         context: context,
                         icon: Icon(
@@ -334,7 +320,7 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                         onTap: widget.onToggleHand,
                       ),
 
-                      // 10. ALIVE Scribe Record / Notes Button (Slideable)
+                      // 8. ALIVE Scribe Record / Notes Button (Slideable)
                       _buildButton(
                         context: context,
                         icon: Icon(
@@ -350,6 +336,37 @@ class _MeetingControlBarState extends State<MeetingControlBar> {
                         activeColor: widget.isScribeRecording ? Colors.red.shade700 : null,
                         onTap: widget.onToggleScribe ?? () {},
                       ),
+
+                      // 9. Screen Share (Slideable)
+                      if (widget.canShareScreen)
+                        _buildButton(
+                          context: context,
+                          icon: Icon(
+                            widget.session.isScreenShareEnabled
+                                ? Icons.stop_screen_share_rounded
+                                : Icons.screen_share_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          label: widget.session.isScreenShareEnabled ? 'Stop Share' : 'Share',
+                          activeColor: widget.session.isScreenShareEnabled ? Colors.teal.shade700 : null,
+                          onTap: widget.onToggleScreenShare,
+                        ),
+
+                      // 10. More (•••) (Slideable)
+                      _buildButton(
+                        context: context,
+                        icon: Icon(
+                          Icons.more_horiz_rounded,
+                          color: isDark ? Colors.white : Colors.black87,
+                          size: 24,
+                        ),
+                        label: 'More',
+                        onTap: widget.onOpenMore,
+                      ),
+                    ],
+                  ),
+                ),
                     ],
                   ),
                 ),

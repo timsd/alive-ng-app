@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/language_provider.dart';
@@ -163,13 +164,13 @@ class AboutAliveScreen extends ConsumerWidget {
                           'Taking the Gospel seriously and making outreach part of everyday ministry life.',
                     ),
                     _PillarCard(
-                      icon: Icons.school_rounded,
+                      icon: Icons.groups_2_rounded,
                       title: 'Discipleship',
                       description:
                           'Helping people mature in Scripture, character, and practical obedience to Christ.',
                     ),
                     _PillarCard(
-                      icon: Icons.volunteer_activism_rounded,
+                      icon: FontAwesomeIcons.personPraying,
                       title: 'Prayer and care',
                       description:
                           'Supporting members spiritually while building a culture of intercession and encouragement.',

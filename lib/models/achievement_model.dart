@@ -13,7 +13,7 @@ enum AchievementCategory {
   outreach('Outreach', Icons.people_outline),
   game('Game', Icons.sports_esports),
   streak('Streak', Icons.local_fire_department),
-  discipleship('Discipleship', Icons.school),
+  discipleship('Discipleship', Icons.groups_2),
   testimonies('Testimonies', Icons.record_voice_over),
   tracts('Tracts & Books', Icons.menu_book),
   media('Media/Audio', Icons.headphones);

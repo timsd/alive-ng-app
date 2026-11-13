@@ -302,8 +302,8 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                     ),
-                                    icon: const Icon(
-                                      Icons.volunteer_activism_rounded,
+                                    icon: const FaIcon(
+                                      FontAwesomeIcons.personPraying,
                                       size: 16,
                                     ),
                                     label: Text(
@@ -422,8 +422,8 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                     ),
-                                    icon: const Icon(
-                                      Icons.volunteer_activism_rounded,
+                                    icon: const FaIcon(
+                                      FontAwesomeIcons.personPraying,
                                       size: 16,
                                     ),
                                     label: Text(

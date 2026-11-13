@@ -86,6 +86,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   AliveScribeService? _scribeService;
   bool _isScribeRecording = false;
   bool _hasAutoStartedScribe = false;
+  bool _hasSavedMinutesForSession = false;
+  bool _isSavingMinutes = false;
+  String? _savedMinutesFileName;
 
   @override
   void initState() {
@@ -373,6 +376,29 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     final scribe = _scribeService;
     if (scribe == null || scribe.transcript.isEmpty) return;
 
+    if (_isSavingMinutes) return;
+
+    final roomTitle = widget.meetingType?.displayName ?? _roomController.text.trim();
+
+    // Deduplication check: if minutes have already been saved for this session, notify and prompt viewing
+    if (_hasSavedMinutesForSession && _savedMinutesFileName != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Meeting notes already saved for this session ($_savedMinutesFileName)'),
+          action: SnackBarAction(
+            label: 'View Notes',
+            textColor: const Color(0xFF38BDF8),
+            onPressed: _openScribeScreen,
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    _isSavingMinutes = true;
+
     try {
       if (scribe.isListening) {
         await scribe.stopListening();
@@ -380,7 +406,6 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       }
     } catch (_) {}
 
-    final roomTitle = widget.meetingType?.displayName ?? _roomController.text.trim();
     final meetingTypeStr = widget.meetingType?.displayName ?? 'Meeting';
 
     final markdown = scribe.generateMarkdownMinutes(
@@ -388,7 +413,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       meetingType: meetingTypeStr,
     );
 
-    if (markdown.trim().isEmpty) return;
+    if (markdown.trim().isEmpty) {
+      _isSavingMinutes = false;
+      return;
+    }
 
     final bytes = Uint8List.fromList(utf8.encode(markdown));
     final dateClean = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
@@ -407,9 +435,13 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         uploaderId: uploaderId,
         uploadedBy: uploaderName,
       );
+      _hasSavedMinutesForSession = true;
+      _savedMinutesFileName = fileName;
       debugPrint('[ALIVE Scribe] Meeting minutes auto-saved to files: $fileName');
     } catch (e) {
       debugPrint('[ALIVE Scribe] Note saving minutes to files: $e');
+    } finally {
+      _isSavingMinutes = false;
     }
 
     if (!mounted) return;
@@ -495,6 +527,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
   Future<void> _joinMeeting(MeetingGateway gateway) async {
     if (_isJoining) return;
+    _hasSavedMinutesForSession = false;
+    _savedMinutesFileName = null;
 
     final roomName = _roomController.text.trim();
     if (roomName.isEmpty) {

@@ -14,6 +14,7 @@ import '../../utils/project_sync_bridge.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/interactive_lessons_service.dart';
 import '../../services/exchange_rate_service.dart';
+import '../../config/default_content_data.dart';
 
 class ContentManagementScreen extends StatefulWidget {
   final String? contentType;
@@ -37,165 +38,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   List<Map<String, dynamic>> _contentPages = List.from(_defaultContentPages);
   List<Map<String, dynamic>> _projects = List.from(_defaultProjects);
 
-  static final List<Map<String, dynamic>> _defaultContentPages = [
-    {
-      'id': 'page_about_alive',
-      'title': 'About ALIVE Nigeria',
-      'slug': 'about-alive',
-      'language': 'en',
-      'is_published': true,
-      'publish_date': DateTime.now().toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'content':
-          'A.L.I.V.E is an acronym for Africans Living In View of Eternity. ALIVE-Nigeria is the Nigerian chapter of this movement, committed to a Bible-based, youth-led revival across Africa.\n\nWe are men, women, graduates, working professionals, and student volunteers whose hearts are burdened for spreading God\'s Word and works. ALIVE Nigeria exists to challenge and equip believers with tools for individual missionary work, spiritual growth, mentorship, and service.\n\n"The Lord has appointed the youth to be His helping hand." — {ChS 30.1}\n\n"With such an army of workers as our youth, rightly trained, how soon the message of a crucified, risen, and soon-coming Saviour might be carried to the whole world." — Education, p. 271. {ChS 30.2}\n\nJoin us today and let us take the good news of the Gospel to places where no one wants to go.',
-    },
-    {
-      'id': 'page_mission_vision',
-      'title': 'Mission & Vision Statement',
-      'slug': 'mission-vision',
-      'language': 'en',
-      'is_published': true,
-      'publish_date': DateTime.now().toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'content':
-          'MISSION STATEMENT:\nOur mission is to prepare Africa for the imminent return of Jesus Christ. Through biblical spiritual training and evangelistic efforts, we challenge African Seventh-day Adventist young adults to live with authentic biblical excellence, develop a missionary volunteer spirit, support missionary movements across Africa, and make meaningful impact in neglected areas.\n\nVISION STATEMENT:\nAt ALIVE, our vision is to ignite and sustain a Bible-based, youth-led revival movement across the continent of Africa, empowering every Seventh-day Adventist young professional to become a dedicated missionary with a deep personal relationship with Jesus Christ and commitment to His Great Commission.',
-    },
-    {
-      'id': 'page_what_alive_emphasizes',
-      'title': 'What ALIVE Emphasizes',
-      'slug': 'what-alive-emphasizes',
-      'language': 'en',
-      'is_published': true,
-      'publish_date': DateTime.now().toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'content':
-          'ALIVE Nigeria emphasizes four core pillars of ministry:\n\n1. Evangelism: Taking the Gospel seriously and making outreach part of everyday ministry life.\n2. Discipleship: Helping people mature in Scripture, character, and practical obedience to Christ.\n3. Prayer and Care: Supporting members spiritually while building a culture of intercession and encouragement.\n4. Wholesome Living: Promoting healthy, balanced living that reflects stewardship of body, mind, and mission (health evangelism and plant-based nutrition).',
-    },
-    {
-      'id': 'page_onboarding',
-      'title': 'Welcome to ALIVE Nigeria',
-      'slug': 'onboarding',
-      'language': 'en',
-      'is_published': true,
-      'publish_date': DateTime.now().toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'content':
-          'Welcome to ALIVE Nigeria — Africans Living In View of Eternity. Bible study, prayer, and service in one community.\n\nJoin our vibrant community united by Prayer, Study, Missions, and Health:\n\n• Evangelism & Gospel Tracts: In need of evangelism tracts? Access an uplifting library of gospel tracts ready for outreach. Easy to download and print for field evangelism, or share instantly in softcopy with friends and seekers.\n• Roles & Organization: We are organized to serve! From dedicated Members and Chapter Leaders to Coordinators, Directors, and Board of Trustees (BOD), every role is vital.\n• Tagging, Praying & Chatting: Stay deeply connected. Tag members, join chapter chats, pray together instantly, and share your powerful testimonies with the community.\n• Kids & Discipleship: Grow in Christ through interactive discipleship lessons, audio podcasts, and children’s mission adventures with illustrated Bible stories and memory verses.',
-    },
-    {
-      'id': 'page_privacy_policy',
-      'title': 'Community Guidelines & Privacy Policy',
-      'slug': 'privacy-policy',
-      'language': 'en',
-      'is_published': true,
-      'publish_date': DateTime.now().toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'content':
-          'ALIVE Nigeria values user trust, spiritual confidentiality, and Christian brotherhood.\n\nPrivate prayer rooms, intercession requests, and personal reflections are protected with role-based and cryptographic boundaries. Chat communication across local chapters, committees, and leadership bodies must reflect Christ-like decorum, mutual respect, and spiritual upliftment.',
-    },
-    {
-      'id': 'page_annual_retreat',
-      'title': 'ALIVE Nigeria National Retreat 2026',
-      'slug': 'annual-retreat',
-      'language': 'en',
-      'is_published': true,
-      'publish_date': DateTime.now().toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'content':
-          'Annual gathering of Adventist lay missionaries, working professionals, and students across Nigeria for spiritual revival, mission consecration, and evangelism training.',
-    },
-    {
-      'id': 'page_mission_outreaches',
-      'title': 'Campus & Rural Mission Outreaches (STMs & LTMs)',
-      'slug': 'mission-outreaches',
-      'language': 'en',
-      'is_published': true,
-      'publish_date': DateTime.now().toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'content':
-          'Deploying Short-Term Missionaries (STMs) and Long-Term Missionaries (LTMs) to unreached campus territories and rural outposts across Nigeria.',
-    },
-    {
-      'id': 'page_health_plus',
-      'title': 'Health+ Plant-Based Living & Remedies',
-      'slug': 'health-plus',
-      'language': 'en',
-      'is_published': true,
-      'publish_date': DateTime.now().toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'content':
-          'Authentic Nigerian plant-based recipes, natural therapeutic remedies, and wholesome living resources reflecting stewardship of body, mind, and mission.',
-    },
-    {
-      'id': 'page_discipleship_daily',
-      'title': 'Daily Word & Discipleship Growth',
-      'slug': 'discipleship-growth',
-      'language': 'en',
-      'is_published': true,
-      'publish_date': DateTime.now().toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'content':
-          'Structured Bible study lessons, Daily Tasks, Instant Word memorization games, and spiritual progress tracking for personal and chapter development.',
-    },
-  ];
-
-  static final List<Map<String, dynamic>> _defaultProjects = [
-    {
-      'id': 'impact_hub_center',
-      'title': 'Impact Hub Center',
-      'summary': 'Community discipleship and outreach facility',
-      'description':
-          'A central hub for training, discipleship, and community engagement. Seed funding has helped prepare the project scope, early planning, and ministry coordination for the hub.',
-      'goal': 35000000.0,
-      'raised': 8384400.0,
-      'currency': 'NGN',
-      'status': 'active',
-      'priority': 1,
-      'cta_label': 'Donate for this item',
-      'image_url': 'assets/images/impact_hub_3d_view.png',
-      'viewer_url': 'alive_ng_3d_viewer.html',
-      'fund_update_title': 'Progress so far',
-      'fund_update_text':
-          'Seed funding has helped prepare the project scope, early planning, and ministry coordination for the hub.',
-      'fund_update_images': <String>[],
-    },
-    {
-      'id': 'vehicle_purchase',
-      'title': 'Vehicle Purchase',
-      'summary': 'Mission vehicle for outreach logistics',
-      'description':
-          'Reliable transportation for mission trips and logistics across Nigeria.',
-      'goal': 18000000.0,
-      'raised': 0.0,
-      'currency': 'NGN',
-      'status': 'active',
-      'priority': 2,
-      'cta_label': 'Donate for this item',
-      'image_url':
-          'https://images.unsplash.com/photo-1597685204565-110abf469a1e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      'fund_update_title': '',
-      'fund_update_text': '',
-      'fund_update_images': <String>[],
-    },
-    {
-      'id': 'media_studio_setup',
-      'title': 'Media Studio Setup',
-      'summary': 'Podcast and content production equipment',
-      'description':
-          'Equipping the ministry with high-quality media production capabilities for tracts, audio podcasts, video meetings, and digital evangelism.',
-      'goal': 9000000.0,
-      'raised': 0.0,
-      'currency': 'NGN',
-      'status': 'planning',
-      'priority': 3,
-      'cta_label': 'Donate for this item',
-      'image_url':
-          'https://images.unsplash.com/photo-1769699167906-a44d5ae50abb?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      'fund_update_title': '',
-      'fund_update_text': '',
-      'fund_update_images': <String>[],
-    },
-  ];
+  static List<Map<String, dynamic>> get _defaultContentPages =>
+      DefaultContentData.defaultContentPages;
+  static List<Map<String, dynamic>> get _defaultProjects =>
+      DefaultContentData.defaultProjects;
 
   Widget _buildSectionHeader(
       BuildContext context, String title, Widget action) {
@@ -457,56 +303,80 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   Widget _buildContentPagesTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildSectionHeader(
-          context,
-          'Content Pages (${_contentPages.length})',
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => _showContentPageDialog(),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('New Page', style: TextStyle(fontSize: 13)),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: _editOnboardingPage,
-                icon: const Icon(Icons.flag, size: 16),
-                label: const Text('Edit Onboarding', style: TextStyle(fontSize: 13)),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            ],
-          ),
+    final theme = Theme.of(context);
+
+    if (_contentPages.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.article_outlined, size: 54, color: Colors.grey),
+            const SizedBox(height: 12),
+            const Text(
+              'No content pages found.\nCreate your first page!',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => _showContentPageDialog(),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('New Page'),
+            ),
+          ],
         ),
-        Expanded(
-          child: _contentPages.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No content pages found.\nCreate your first page!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      itemCount: _contentPages.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Text(
+                  'Content Pages (${_contentPages.length})',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  itemCount: _contentPages.length,
-                  itemBuilder: (context, index) {
-                    final page = _contentPages[index];
-                    return _buildContentPageCard(page);
-                  },
                 ),
-        ),
-      ],
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => _showContentPageDialog(),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('New Page'),
+                      style: ElevatedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _editOnboardingPage,
+                      icon: const Icon(Icons.flag, size: 16),
+                      label: const Text('Edit Onboarding'),
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        final page = _contentPages[index - 1];
+        return _buildContentPageCard(page);
+      },
     );
   }
 
@@ -527,56 +397,84 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   Widget _buildContentPageCard(Map<String, dynamic> page) {
-    final isPublished = page['is_published'] ?? false;
-    final publishDate = page['publish_date'] != null
-        ? DateTime.parse(page['publish_date'])
-        : null;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isPublished = page['is_published'] == true ||
+        page['is_published'] == 'true' ||
+        page['is_published'] == 1;
+
+    DateTime? publishDate;
+    if (page['publish_date'] != null) {
+      if (page['publish_date'] is DateTime) {
+        publishDate = page['publish_date'] as DateTime;
+      } else {
+        publishDate = DateTime.tryParse(page['publish_date'].toString());
+      }
+    }
+
+    final title = (page['title'] ?? 'Untitled').toString();
+    final slug = (page['slug'] ?? '').toString();
 
     return Card(
-      elevation: 0,
+      elevation: 2,
       margin: const EdgeInsets.only(bottom: 12.0),
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        ),
       ),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
           backgroundColor: isPublished
-              ? Theme.of(context).colorScheme.tertiary
-              : Theme.of(context).colorScheme.secondary,
+              ? Colors.green.withValues(alpha: 0.15)
+              : Colors.orange.withValues(alpha: 0.15),
           child: Icon(
             isPublished ? Icons.public : Icons.drafts,
-            color: Theme.of(context).colorScheme.onPrimary,
+            color: isPublished ? Colors.green : Colors.orange,
           ),
         ),
         title: Text(
-          page['title'] ?? 'Untitled',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
-        subtitle: LayoutFixUtils.safeColumn(
+        subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            LayoutFixUtils.safeText(page['slug'] ?? ''),
             const SizedBox(height: 4),
-            LayoutFixUtils.safeText(
+            Text(
+              '/$slug',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
               isPublished
-                  ? 'Published${publishDate != null ? ' on ${publishDate.day}/${publishDate.month}/${publishDate.year}' : ''}'
+                  ? 'Published${publishDate != null ? ' on ${DateFormat('MMM dd, yyyy').format(publishDate)}' : ''}'
                   : 'Draft',
               style: TextStyle(
-                color: isPublished
-                    ? Theme.of(context).colorScheme.tertiary
-                    : Theme.of(context).colorScheme.secondary,
+                color: isPublished ? Colors.green : Colors.orange,
                 fontWeight: FontWeight.w500,
+                fontSize: 12,
               ),
             ),
           ],
         ),
-        trailing: PopupMenuButton(
+        trailing: PopupMenuButton<String>(
           itemBuilder: (context) => [
             const PopupMenuItem(
               value: 'edit',
               child: ListTile(
-                leading: Icon(Icons.edit),
+                leading: Icon(Icons.edit, size: 20),
                 title: Text('Edit'),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -584,19 +482,19 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
             PopupMenuItem(
               value: isPublished ? 'unpublish' : 'publish',
               child: ListTile(
-                leading:
-                    Icon(isPublished ? Icons.visibility_off : Icons.visibility),
+                leading: Icon(
+                  isPublished ? Icons.visibility_off : Icons.visibility,
+                  size: 20,
+                ),
                 title: Text(isPublished ? 'Unpublish' : 'Publish'),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
-            PopupMenuItem(
+            const PopupMenuItem(
               value: 'delete',
               child: ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete',
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.error)),
+                leading: Icon(Icons.delete, color: Colors.red, size: 20),
+                title: Text('Delete', style: TextStyle(color: Colors.red)),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -874,85 +772,113 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   }
 
   Widget _buildProjectsTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              LayoutFixUtils.safeText(
-                'Projects (${_projects.length})',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
+    final theme = Theme.of(context);
+
+    if (_projects.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.account_tree_outlined, size: 54, color: Colors.grey),
+            const SizedBox(height: 12),
+            const Text(
+              'No projects found.\nCreate your first project!',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => _showProjectDialog(),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('New Project'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
               ),
-              ElevatedButton.icon(
-                onPressed: () => _showProjectDialog(),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('New Project'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-        Expanded(
-          child: _projects.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No projects found.\nCreate your first project!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      itemCount: _projects.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Projects (${_projects.length})',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  itemCount: _projects.length,
-                  itemBuilder: (context, index) {
-                    final project = _projects[index];
-                    return _buildProjectCard(project);
-                  },
                 ),
-        ),
-      ],
+                ElevatedButton.icon(
+                  onPressed: () => _showProjectDialog(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('New Project'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final project = _projects[index - 1];
+        return _buildProjectCard(project);
+      },
     );
   }
 
   Widget _buildProjectCard(Map<String, dynamic> project) {
-    final goal = (project['goal'] ?? 0).toDouble();
-    final raised = (project['raised'] ?? 0).toDouble();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final goal = double.tryParse(project['goal']?.toString() ?? '') ?? 0.0;
+    final raised = double.tryParse(project['raised']?.toString() ?? '') ?? 0.0;
     final percent = goal > 0 ? (raised / goal).clamp(0.0, 1.0) : 0.0;
-    final status = project['status'] ?? 'active';
+    final status = (project['status'] ?? 'active').toString();
     final rate = ExchangeRateService.instance.lastKnownRate;
     final usdRaised = rate > 0 ? (raised / rate) : 0.0;
     final usdGoal = rate > 0 ? (goal / rate) : 0.0;
+    final title = (project['title'] ?? 'Untitled Project').toString();
+    final summary = (project['summary'] ?? '').toString();
 
     return Card(
+      elevation: 2,
       margin: const EdgeInsets.only(bottom: 12.0),
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        ),
+      ),
       child: ExpansionTile(
         leading: CircleAvatar(
           backgroundColor: status == 'active' ? Colors.green : Colors.orange,
           child: const Icon(Icons.account_tree, color: Colors.white),
         ),
         title: Text(
-          project['title'] ?? 'Untitled Project',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(project['summary'] ?? '',
-                maxLines: 1, overflow: TextOverflow.ellipsis),
+            if (summary.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ],
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
@@ -1427,114 +1353,164 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
   // -------------------------------------------------------------
 
   Widget _buildInteractiveLessonsTab() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final lessonsService = InteractiveLessonsService.instance;
+
     return AnimatedBuilder(
       animation: lessonsService,
       builder: (context, _) {
         final lessons = lessonsService.lessons;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildSectionHeader(
-              context,
-              'Interactive Lessons (${lessons.length})',
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Lesson'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+
+        if (lessons.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.school_outlined, size: 54, color: Colors.grey),
+                const SizedBox(height: 12),
+                const Text(
+                  'No interactive lessons yet.\nTap below to create one.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => _showLessonEditorDialog(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add Interactive Study'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
                   ),
                 ),
-                onPressed: () => _showLessonEditorDialog(),
-              ),
+              ],
             ),
-            if (lessons.isEmpty)
-              const Expanded(
-                child: Center(
-                  child: Text('No interactive lessons yet. Tap + to create one.'),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          itemCount: lessons.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Interactive Lessons (${lessons.length})',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add Interactive Study'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () => _showLessonEditorDialog(),
+                    ),
+                  ],
                 ),
-              )
-            else
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  itemCount: lessons.length,
-                  itemBuilder: (context, index) {
-                    final lesson = lessons[index];
-                    return Card(
-                      elevation: 0,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outline
-                              .withValues(alpha: 0.15),
-                        ),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.12),
-                          child: Icon(
-                            Icons.school_outlined,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        title: Text(
-                          lesson.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          '${lesson.category} • ${lesson.level} • ${lesson.duration}\n${lesson.description}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                lesson.isActive
-                                    ? Icons.visibility_rounded
-                                    : Icons.visibility_off_rounded,
-                                color: lesson.isActive ? Colors.green : Colors.grey,
-                                size: 20,
-                              ),
-                              tooltip: lesson.isActive ? 'Hide' : 'Publish',
-                              onPressed: () {
-                                lessonsService.saveLesson(
-                                  lesson.copyWith(isActive: !lesson.isActive),
-                                );
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
-                              tooltip: 'Edit Lesson',
-                              onPressed: () =>
-                                  _showLessonEditorDialog(lesson: lesson),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded,
-                                  color: Colors.redAccent, size: 20),
-                              tooltip: 'Delete Lesson',
-                              onPressed: () =>
-                                  _showDeleteLessonDialog(lesson),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+              );
+            }
+
+            final lesson = lessons[index - 1];
+            return Card(
+              elevation: 2,
+              margin: const EdgeInsets.only(bottom: 12),
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                 ),
               ),
-          ],
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: CircleAvatar(
+                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                  child: Icon(
+                    Icons.school_outlined,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                title: Text(
+                  lesson.title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text(
+                      '${lesson.category} • ${lesson.level} • ${lesson.duration}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (lesson.description.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        lesson.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        lesson.isActive
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
+                        color: lesson.isActive ? Colors.green : Colors.grey,
+                        size: 20,
+                      ),
+                      tooltip: lesson.isActive ? 'Hide' : 'Publish',
+                      onPressed: () {
+                        lessonsService.saveLesson(
+                          lesson.copyWith(isActive: !lesson.isActive),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      tooltip: 'Edit Lesson',
+                      onPressed: () =>
+                          _showLessonEditorDialog(lesson: lesson),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          color: Colors.redAccent, size: 20),
+                      tooltip: 'Delete Lesson',
+                      onPressed: () =>
+                          _showDeleteLessonDialog(lesson),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

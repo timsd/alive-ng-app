@@ -24,6 +24,7 @@ import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/admin/content_management_screen.dart';
 import '../screens/admin/admin_kids_stories_screen.dart';
 import '../screens/admin/admin_kids_missions_screen.dart';
+import '../screens/admin/chat_tag_management_screen.dart';
 import '../screens/admin/admin_study_guides_screen.dart';
 import '../screens/admin/tract_podcast_admin_screen.dart';
 import '../screens/admin/meeting_file_sharing_screen.dart';
@@ -878,6 +879,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppConstants.adminStudyGuidesRoute,
         builder: (context, state) => const AdminStudyGuidesScreen(),
+        redirect: (context, state) {
+          final roleService = RoleAccessService.instance;
+          if (!roleService.canAccessAdmin()) {
+            return '/home';
+          }
+          return null;
+        },
+      ),
+      GoRoute(
+        path: AppConstants.adminChatTagManagementRoute,
+        builder: (context, state) => const ChatTagManagementScreen(),
         redirect: (context, state) {
           final roleService = RoleAccessService.instance;
           if (!roleService.canAccessAdmin()) {

@@ -23,7 +23,7 @@ class QuickActionsGrid extends ConsumerWidget {
         route: AppConstants.kidsMissionRoute,
       ),
       QuickAction(
-        icon: Icons.trending_up_rounded,
+        icon: Icons.groups_2_rounded,
         title: translate('discipleship'),
         color: const Color(0xFF10B981), // Emerald 500
         route: '/discipleship-tracker',

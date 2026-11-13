@@ -50,6 +50,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   bool _isHostOrModerator = false;
   bool _isWaitingRoomEnabled = false;
   bool _isAdmitted = true;
+  bool _hasBeenExplicitlyAdmitted = false;
   final List<Map<String, String>> _waitingKnocks = [];
   final Map<String, bool> _handsRaised = {};
 
@@ -450,6 +451,13 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
             final statePayload = utf8.encode(jsonEncode(_buildRoomStatePayload()));
             _room?.localParticipant?.publishData(statePayload, reliable: true);
           } catch (_) {}
+          // Dispatch a second update after 300ms to guarantee delivery after peer data channel is fully established
+          Future.delayed(const Duration(milliseconds: 300), () {
+            try {
+              final statePayload = utf8.encode(jsonEncode(_buildRoomStatePayload()));
+              _room?.localParticipant?.publishData(statePayload, reliable: true);
+            } catch (_) {}
+          });
         }
         _syncStateFromRoom();
       })
@@ -651,7 +659,15 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     } else if (action == 'admit') {
       final target = targetIdentity ?? msg['userId']?.toString();
       if (target == myIdentity) {
+        _hasBeenExplicitlyAdmitted = true;
         _isAdmitted = true;
+        if (_room != null) {
+          for (final p in _room!.remoteParticipants.values) {
+            for (final pub in p.audioTrackPublications) {
+              pub.track?.enable();
+            }
+          }
+        }
         _syncStateFromRoom();
         _moderationPromptsController.add('admitted_by_host');
       } else if (_isHostOrModerator) {
@@ -673,6 +689,16 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         try {
           _room?.localParticipant?.publishData(resp, reliable: true);
         } catch (_) {}
+        // If waiting room is active and querying attendee is not admitted yet, register in knocks
+        if (_isWaitingRoomEnabled) {
+          final uId = msg['userId']?.toString() ?? sender ?? '';
+          final uName = msg['userName']?.toString() ?? uId;
+          if (uId.isNotEmpty) {
+            _waitingKnocks.removeWhere((k) => k['id'] == uId);
+            _waitingKnocks.add({'id': uId, 'name': uName});
+            _syncStateFromRoom();
+          }
+        }
       }
     } else if (action == 'room_state' || action == 'toggle_waiting_room') {
       final waitingEnabled = action == 'toggle_waiting_room'
@@ -702,19 +728,38 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           _scheduleBreakoutTimer();
         }
       }
-      if (!_isHostOrModerator && waitingEnabled && !_isAdmitted) {
-        _room?.localParticipant?.setMicrophoneEnabled(false);
-        _room?.localParticipant?.setCameraEnabled(false);
-        _isAudioMuted = true;
-        _isVideoMuted = true;
-        final knockPayload = utf8.encode(jsonEncode({
-          'action': 'knock',
-          'userId': myIdentity,
-          'userName': _room?.localParticipant?.name ?? myIdentity,
-        }));
-        try {
-          _room?.localParticipant?.publishData(knockPayload, reliable: true);
-        } catch (_) {}
+      if (!_isHostOrModerator && !(_room?.name?.contains('--br-') ?? false)) {
+        if (waitingEnabled && !_hasBeenExplicitlyAdmitted) {
+          _isAdmitted = false;
+          _room?.localParticipant?.setMicrophoneEnabled(false);
+          _room?.localParticipant?.setCameraEnabled(false);
+          _isAudioMuted = true;
+          _isVideoMuted = true;
+          if (_room != null) {
+            for (final p in _room!.remoteParticipants.values) {
+              for (final pub in p.audioTrackPublications) {
+                pub.track?.disable();
+              }
+            }
+          }
+          final knockPayload = utf8.encode(jsonEncode({
+            'action': 'knock',
+            'userId': myIdentity,
+            'userName': _room?.localParticipant?.name ?? myIdentity,
+          }));
+          try {
+            _room?.localParticipant?.publishData(knockPayload, reliable: true);
+          } catch (_) {}
+        } else if (!waitingEnabled) {
+          _isAdmitted = true;
+          if (_room != null) {
+            for (final p in _room!.remoteParticipants.values) {
+              for (final pub in p.audioTrackPublications) {
+                pub.track?.enable();
+              }
+            }
+          }
+        }
       }
       _syncStateFromRoom();
     } else if (action == 'breakout_start') {
@@ -894,6 +939,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _isWaitingRoomEnabled = isWaitingRoomEnabled;
       // Host / Leader is always admitted immediately; standard attendee in a waiting room starts unadmitted
       _isAdmitted = _isHostOrModerator || !isWaitingRoomEnabled || roomName.contains('--br-');
+      _hasBeenExplicitlyAdmitted = _isHostOrModerator || roomName.contains('--br-');
       _waitingKnocks.clear();
 
       _currentSession = _currentSession.copyWith(
@@ -937,11 +983,14 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         isWaitingRoomEnabled: isWaitingRoomEnabled,
       );
 
-      if (avatarUrl != null && avatarUrl.isNotEmpty) {
-        try {
-          await _room?.localParticipant?.setMetadata(jsonEncode({'avatarUrl': avatarUrl})).catchError((_) {});
-        } catch (_) {}
-      }
+      try {
+        final metaMap = {
+          if (avatarUrl != null && avatarUrl.isNotEmpty) 'avatarUrl': avatarUrl,
+          'isLeader': _isHostOrModerator,
+          'isWaitingRoomEnabled': _isWaitingRoomEnabled,
+        };
+        await _room?.localParticipant?.setMetadata(jsonEncode(metaMap)).catchError((_) {});
+      } catch (_) {}
 
       // If this attendee is in waiting room and not yet admitted, knock on the door
       if (!_isAdmitted) {
@@ -1106,6 +1155,37 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _mainRoomName = finalRoomName;
       }
 
+      // Check if any existing participant in the room is a host with waiting room enabled
+      if (!_isHostOrModerator && !finalRoomName.contains('--br-')) {
+        for (final p in room.remoteParticipants.values) {
+          final metaStr = p.metadata;
+          if (metaStr != null && metaStr.isNotEmpty) {
+            try {
+              final meta = jsonDecode(metaStr);
+              if (meta is Map) {
+                final isL = meta['isLeader'] == true || meta['role'] == 'host' || meta['role'] == 'leader';
+                final wr = meta['isWaitingRoomEnabled'] == true;
+                if (isL && wr) {
+                  _isWaitingRoomEnabled = true;
+                  break;
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      }
+
+      // If waiting room is active and attendee is not a leader/moderator, start unadmitted
+      if (!_isHostOrModerator && _isWaitingRoomEnabled && !finalRoomName.contains('--br-') && !_hasBeenExplicitlyAdmitted) {
+        _isAdmitted = false;
+        // Silence remote audio tracks while in waiting room
+        for (final p in room.remoteParticipants.values) {
+          for (final pub in p.audioTrackPublications) {
+            pub.track?.disable();
+          }
+        }
+      }
+
       _currentSession = MeetingSession(
         roomName: finalRoomName,
         status: RoomStatus.connected,
@@ -1141,9 +1221,22 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         try {
           final queryPayload = utf8.encode(jsonEncode({
             'action': 'query_room_state',
+            'userId': _lastUserId ?? _room?.localParticipant?.identity ?? '',
+            'userName': _lastUserName ?? _room?.localParticipant?.name ?? '',
           }));
           await _room?.localParticipant?.publishData(queryPayload, reliable: true);
         } catch (_) {}
+        // If unadmitted, send initial knock
+        if (!_isAdmitted) {
+          try {
+            final knockPayload = utf8.encode(jsonEncode({
+              'action': 'knock',
+              'userId': _lastUserId ?? _room?.localParticipant?.identity ?? '',
+              'userName': _lastUserName ?? _room?.localParticipant?.name ?? '',
+            }));
+            await _room?.localParticipant?.publishData(knockPayload, reliable: true);
+          } catch (_) {}
+        }
       }
 
       debugPrint('Successfully connected to LiveKit room: $finalRoomName');
@@ -1614,6 +1707,20 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] setWaitingRoom error: $e');
     }
+    // Update participant metadata so all clients immediately see waiting room status
+    try {
+      final currentMeta = _room?.localParticipant?.metadata;
+      Map<String, dynamic> metaMap = {};
+      if (currentMeta != null && currentMeta.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(currentMeta);
+          if (decoded is Map<String, dynamic>) metaMap = decoded;
+        } catch (_) {}
+      }
+      metaMap['isLeader'] = true;
+      metaMap['isWaitingRoomEnabled'] = enabled;
+      await _room?.localParticipant?.setMetadata(jsonEncode(metaMap));
+    } catch (_) {}
   }
 
   // ──────────────────────────────────────────────────────────
@@ -1925,6 +2032,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _isRoomAudioLocked = false;
       _isWaitingRoomEnabled = false;
       _isAdmitted = true;
+      _hasBeenExplicitlyAdmitted = false;
       _waitingKnocks.clear();
       _handsRaised.clear();
       _isBreakoutActive = false;

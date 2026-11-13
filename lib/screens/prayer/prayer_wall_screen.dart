@@ -104,7 +104,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
               text: 'My Prayers',
             ),
             Tab(
-              icon: Icon(Icons.volunteer_activism_rounded, size: 20),
+              icon: FaIcon(FontAwesomeIcons.personPraying, size: 18),
               text: 'Praying For',
             ),
           ],

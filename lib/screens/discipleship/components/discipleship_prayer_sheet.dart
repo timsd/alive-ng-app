@@ -188,115 +188,317 @@ class DiscipleshipPrayerCard extends StatelessWidget {
   }
 }
 
-/// Dialog to record an answered prayer request with personal testimony.
+/// Modernized Modal to record an answered prayer request with personal testimony.
 void showMarkAnsweredDialog(
   BuildContext context,
   PrayerRequest prayer,
   VoidCallback onSuccess,
 ) {
-  final testimonyController = TextEditingController();
-  String? inDialogError;
-  bool isSaving = false;
+  final isNarrow = MediaQuery.of(context).size.width < 600;
 
-  showDialog(
-    context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (dialogContext, setDialogState) => AlertDialog(
-        icon: const Icon(Icons.celebration_rounded, color: Colors.amber, size: 44),
-        title: const Text('Mark Prayer Answered'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget buildContent(BuildContext dialogContext, StateSetter setDialogState, TextEditingController testimonyController, {String? inDialogError, bool isSaving = false, required VoidCallback onSave}) {
+    final theme = Theme.of(dialogContext);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: isNarrow ? 12 : 20,
+        bottom: MediaQuery.of(dialogContext).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Drag handle for bottom sheet on mobile
+          if (isNarrow) ...[
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ],
+
+          // Header with celebratory icon pill and close button
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (inDialogError != null) ...[
-                Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(dialogContext).colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD49B28).withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.celebration_rounded,
+                  color: Color(0xFFD49B28),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Mark Prayer Answered',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Praise God for His faithfulness!',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 20),
+                tooltip: 'Close',
+                onPressed: () => Navigator.of(dialogContext).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // In-dialog error banner
+          if (inDialogError != null) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.error.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline_rounded, color: colorScheme.error, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      inDialogError,
+                      style: TextStyle(
+                        color: colorScheme.onErrorContainer,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
+                ],
+              ),
+            ),
+          ],
+
+          // Prayer quote callout card
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.format_quote_rounded,
+                  color: colorScheme.primary.withValues(alpha: 0.7),
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
                   child: Text(
-                    inDialogError!,
-                    style: TextStyle(
-                      color: Theme.of(dialogContext).colorScheme.onErrorContainer,
-                      fontSize: 12,
+                    prayer.request.isNotEmpty ? prayer.request : 'Unspecified prayer request',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
                 ),
               ],
-              Text(
-                'Prayer: "${prayer.request}"',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Testimony input field
+          TextField(
+            controller: testimonyController,
+            maxLines: 4,
+            style: theme.textTheme.bodyMedium,
+            decoration: InputDecoration(
+              labelText: 'Testimony / Notes on Answer (Optional)',
+              labelStyle: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 13,
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: testimonyController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Testimony / Notes on Answer (Optional)',
-                  hintText: 'Share how God answered this prayer...',
-                  border: OutlineInputBorder(),
+              hintText: 'Share how God answered this prayer...',
+              hintStyle: TextStyle(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                fontSize: 13,
+              ),
+              filled: true,
+              fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.all(14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: colorScheme.primary,
+                  width: 1.5,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Actions Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981), // Emerald 500
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: isSaving ? null : onSave,
+                icon: isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.check_circle_rounded, size: 18),
+                label: Text(
+                  isSaving ? 'Saving...' : 'Confirm Answered',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: isSaving
-                ? null
-                : () async {
-                    setDialogState(() {
-                      isSaving = true;
-                      inDialogError = null;
-                    });
-                    final user = AuthService.instance.currentUser;
-                    final navigator = Navigator.of(dialogContext);
-                    final messenger = ScaffoldMessenger.of(context);
-                    try {
-                      await DiscipleshipService().markPrayerAnswered(
-                        requestId: prayer.id,
-                        testimony: testimonyController.text.trim(),
-                        actorName: user?.displayName ?? 'Disciple Maker',
-                      );
-                      if (dialogContext.mounted) {
-                        navigator.pop();
-                      }
-                      messenger.showSnackBar(
-                        const SnackBar(content: Text('Prayer marked as answered. Praise the Lord!')),
-                      );
-                      onSuccess();
-                    } catch (e) {
-                      if (dialogContext.mounted) {
-                        setDialogState(() {
-                          isSaving = false;
-                          inDialogError = 'Failed: ${ErrorHandler.getUserFriendlyMessage(e)}';
-                        });
-                      }
-                    }
-                  },
-            child: isSaving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Text('Confirm Answered'),
-          ),
         ],
       ),
-    ),
-  );
+    );
+  }
+
+  final testimonyController = TextEditingController();
+  String? inDialogError;
+  bool isSaving = false;
+
+  void handleSave(BuildContext dialogContext, StateSetter setDialogState) async {
+    setDialogState(() {
+      isSaving = true;
+      inDialogError = null;
+    });
+    final user = AuthService.instance.currentUser;
+    final navigator = Navigator.of(dialogContext);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await DiscipleshipService().markPrayerAnswered(
+        requestId: prayer.id,
+        testimony: testimonyController.text.trim(),
+        actorName: user?.displayName ?? 'Disciple Maker',
+      );
+
+      if (dialogContext.mounted) {
+        navigator.pop();
+      }
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Prayer marked as answered. Praise the Lord!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      onSuccess();
+    } catch (e) {
+      if (dialogContext.mounted) {
+        setDialogState(() {
+          isSaving = false;
+          inDialogError = 'Failed: ${ErrorHandler.getUserFriendlyMessage(e)}';
+        });
+      }
+    }
+  }
+
+  if (isNarrow) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (bottomSheetContext) => StatefulBuilder(
+        builder: (bottomSheetContext, setDialogState) => buildContent(
+          bottomSheetContext,
+          setDialogState,
+          testimonyController,
+          inDialogError: inDialogError,
+          isSaving: isSaving,
+          onSave: () => handleSave(bottomSheetContext, setDialogState),
+        ),
+      ),
+    );
+  } else {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: buildContent(
+              dialogContext,
+              setDialogState,
+              testimonyController,
+              inDialogError: inDialogError,
+              isSaving: isSaving,
+              onSave: () => handleSave(dialogContext, setDialogState),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Dialog to update prayer request status or append follow-up notes.

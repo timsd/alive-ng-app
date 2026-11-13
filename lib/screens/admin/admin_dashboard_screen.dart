@@ -203,15 +203,24 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         ),
         // Daily active users
         _calculateDailyUsers(todayStart),
-        // Prayer requests
+        // Prayer requests (general)
         _safeCountDocuments(AppwriteBackendConfig.prayerRequestsCollectionId),
-        // Answered prayers
+        // Answered prayers (general - is_answered: true)
         _safeCountDocuments(
           AppwriteBackendConfig.prayerRequestsCollectionId,
           queries: [Query.equal('is_answered', true)],
         ),
         // Real chapters in DB
         _safeCountDocuments(AppwriteBackendConfig.chaptersCollectionId),
+        // Discipleship answered prayers
+        _safeCountDocuments(
+          AppwriteBackendConfig.discipleshipPrayerRequestsCollectionId,
+          queries: [Query.equal('status', 'answered')],
+        ),
+        // Discipleship total prayers
+        _safeCountDocuments(
+          AppwriteBackendConfig.discipleshipPrayerRequestsCollectionId,
+        ),
       ]);
 
       final totalUsers = results[0] as int;
@@ -222,9 +231,23 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       final totalReports = chapterReports + boardReports;
       final podcasts = results[4] as List<Podcast>;
       final dailyUsers = results[5] as int;
-      final totalPrayers = results[6] as int;
-      final answeredPrayers = results[7] as int;
+      int totalPrayers = results[6] as int;
+      int answeredPrayers = results[7] as int;
       final dbChapters = results[8] as int;
+      final discipleAnswered = results[9] as int;
+      final discipleTotal = results[10] as int;
+
+      if (answeredPrayers == 0) {
+        // Fallback: check status == 'answered' in general prayer requests
+        final statusAnswered = await _safeCountDocuments(
+          AppwriteBackendConfig.prayerRequestsCollectionId,
+          queries: [Query.equal('status', 'answered')],
+        );
+        answeredPrayers += statusAnswered;
+      }
+      answeredPrayers += discipleAnswered;
+      totalPrayers += discipleTotal;
+
       final totalChapters = dbChapters > 0
           ? dbChapters
           : ChapterConstants.availableChapters.length;
@@ -465,7 +488,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                 _buildSidebarTile(Icons.location_city_outlined, 'Chapters', () => _navigateToChapterManagement()),
                 if (_canAccessFinance)
                   _buildSidebarTile(Icons.savings_outlined, 'Finance', () => context.push(AppConstants.adminDonationsReportRoute)),
-                _buildSidebarTile(Icons.people_outline, 'Discipleship', () => _showOfficerRoutingDialog()),
+                _buildSidebarTile(Icons.groups_2_outlined, 'Discipleship', () => _showOfficerRoutingDialog()),
                 _buildSidebarTile(Icons.cloud_upload_outlined, 'Storage', () => _navigateToStorageAdmin()),
                 _buildSidebarTile(Icons.settings_outlined, 'Settings', () => _navigateToAppSettings()),
                 const Divider(height: 32),
@@ -668,8 +691,11 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
 
   Widget _buildStatsGrid(BuildContext context) {
     final theme = Theme.of(context);
-    final isWide = MediaQuery.of(context).size.width >= 920;
-    final crossCount = isWide ? 4 : 2;
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 1100;
+    final isTablet = width >= 640 && width < 1100;
+    final crossCount = isDesktop ? 4 : (isTablet ? 4 : 2);
+    final childAspectRatio = isDesktop ? 2.5 : (isTablet ? 2.2 : 2.3);
 
     final stats = [
       _StatItem('Members', _totalUsers.toString(), Icons.groups_rounded, theme.colorScheme.primary),
@@ -682,22 +708,77 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       _StatItem('Archived', _archivedUsers.toString(), Icons.archive_rounded, theme.colorScheme.error),
     ];
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossCount,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: isWide ? 1.55 : 1.10,
-      ),
-      itemCount: stats.length,
-      itemBuilder: (context, index) => _buildPremiumStatCard(stats[index]),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'System Overview',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.2,
+              ),
+            ),
+            InkWell(
+              onTap: () async {
+                await _loadDashboardStats();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Dashboard metrics synced with database'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.sync_rounded,
+                      size: 15,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Live Sync',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossCount,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: childAspectRatio,
+          ),
+          itemCount: stats.length,
+          itemBuilder: (context, index) => _buildStatCard(
+            stats[index].title,
+            stats[index].value,
+            stats[index].icon,
+            stats[index].color,
+          ),
+        ),
+      ],
     );
-  }
-
-  Widget _buildPremiumStatCard(_StatItem item) {
-    return _buildStatCard(item.title, item.value, item.icon, item.color);
   }
 
 
@@ -767,16 +848,16 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _MgmtSection('Donations & Finance', Icons.savings_outlined, [
           _MgmtTile('Donation Reports', 'Search, filter and export every gift', Icons.receipt_long_outlined, () => context.push(AppConstants.adminDonationsReportRoute)),
         ]),
-      _MgmtSection('Discipleship Operations', Icons.people_outline, [
+      _MgmtSection('Discipleship Operations', Icons.groups_2_outlined, [
         _MgmtTile('Report Officers & Routing', 'Map Coordinators and Directors to receive dispatched reports', Icons.mark_email_read_outlined, () => _showOfficerRoutingDialog()),
         _MgmtTile('Disciple Deletion Requests', 'Review and approve or reject deletion requests', Icons.person_remove_outlined, () => _showDeletionRequestsDialog()),
       ]),
       _MgmtSection('Storage & Meeting Documents', Icons.cloud_upload_outlined, [
         _MgmtTile('File Storage', 'Manage buckets, audio, PDFs and profile pictures', Icons.folder_outlined, () => _navigateToStorageAdmin()),
         _MgmtTile('Meeting File Sharing', 'Manage and share leadership files and meeting documents', Icons.folder_shared_outlined, () => context.push(AppConstants.meetingFileSharingRoute)),
-        _MgmtTile('ALIVE Scribe (Meeting Minutes)', 'View on-device transcripts, resolutions, and action items', Icons.draw_rounded, () => context.push(AppConstants.scribeRoute)),
       ]),
       _MgmtSection('Communication & Data Export', Icons.import_export_rounded, [
+        _MgmtTile('Chat & Tag Management', 'Manage role tags, @announcement scopes, and channel bridges', Icons.tag_rounded, () => context.push(AppConstants.adminChatTagManagementRoute)),
         _MgmtTile('Chat & Messages Export', 'Export chat channels, messages, and communication backups', Icons.chat_outlined, () => _showChatExportDialog()),
       ]),
       _MgmtSection('System Settings', Icons.settings_outlined, [
@@ -841,76 +922,78 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
     final theme = Theme.of(context);
-    final isWide = MediaQuery.of(context).size.width >= 920;
-    return Card(
-      elevation: 0,
-      shadowColor: color.withValues(alpha: 0.2),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.surface,
-              color.withValues(alpha: 0.05),
-            ],
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
-        ),
-        padding: EdgeInsets.symmetric(
-          horizontal: isWide ? 16.0 : 10.0,
-          vertical: isWide ? 16.0 : 10.0,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.all(isWide ? 8 : 6),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
               child: Icon(
                 icon,
-                size: isWide ? 26 : 22,
+                size: 19,
                 color: color,
               ),
             ),
-            SizedBox(height: isWide ? 10 : 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                value,
-                style: (isWide
-                        ? theme.textTheme.headlineMedium
-                        : theme.textTheme.titleLarge)
-                    ?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: color,
-                  letterSpacing: -0.5,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : Colors.black87,
+                      letterSpacing: -0.5,
+                      height: 1.1,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 2),
+                Text(
+                  title.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: isDark ? Colors.white60 : Colors.black54,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
-            Text(
-              title.toUpperCase(),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-                fontSize: isWide ? 11 : 9.5,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

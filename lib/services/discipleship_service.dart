@@ -442,7 +442,22 @@ class DiscipleshipService {
     String? actorName,
   }) async {
     try {
-      final current = await getPrayerRequestById(requestId);
+      PrayerRequest current;
+      try {
+        current = await getPrayerRequestById(requestId);
+      } catch (_) {
+        // Fallback minimal request model if direct get fails
+        current = PrayerRequest(
+          id: requestId,
+          contactId: '',
+          discipleMakerId: '',
+          request: '',
+          category: 'other',
+          status: PrayerRequestStatus.answered,
+          dateRequested: DateTime.now().toUtc(),
+        );
+      }
+
       final now = DateTime.now().toUtc();
       final newHistory = List<PrayerHistoryEntry>.from(current.history)
         ..add(PrayerHistoryEntry(
@@ -502,22 +517,69 @@ class DiscipleshipService {
   }
 
   Future<PrayerRequest> updatePrayerRequest(PrayerRequest request) async {
-    try {
-      final updatedRequest = request.copyWith(
-        updatedAt: DateTime.now().toUtc(),
-      );
+    final updatedRequest = request.copyWith(
+      updatedAt: DateTime.now().toUtc(),
+    );
+    final rowId = AppwriteIdUtils.toValidUid(updatedRequest.id);
+    final data = _prayerRequestData(updatedRequest);
 
+    // 1. Attempt full update with all fields
+    try {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _prayerRequestsCollection,
-        rowId: AppwriteIdUtils.toValidUid(updatedRequest.id),
-        data: _prayerRequestData(updatedRequest),
+        rowId: rowId,
+        data: data,
       );
       return _prayerRequestFromDocument(document);
     } catch (e) {
-      _logger.error('Failed to update prayer request', e);
-      throw DatabaseException('Failed to update prayer request',
-          originalError: e);
+      _logger.warning('Full prayer update failed, retrying without optional schema fields: $e');
+
+      // 2. Fallback 1: remove fields that may be missing in older schemas (e.g. is_public_on_prayer_wall)
+      final fallbackData = Map<String, dynamic>.from(data)
+        ..remove('is_public_on_prayer_wall');
+      try {
+        final document = await _tables.updateRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: _prayerRequestsCollection,
+          rowId: rowId,
+          data: fallbackData,
+        );
+        return _prayerRequestFromDocument(document);
+      } catch (e2) {
+        _logger.warning('Fallback 1 failed, retrying with core update attributes only: $e2');
+
+        // 3. Fallback 2: essential attributes only (status, answer, date_answered, updated_at)
+        final coreData = <String, dynamic>{
+          'status': updatedRequest.status.name,
+          'updated_at': _iso(updatedRequest.updatedAt),
+        };
+        if (updatedRequest.dateAnswered != null) {
+          coreData['date_answered'] = _iso(updatedRequest.dateAnswered!);
+        }
+        if (updatedRequest.answer != null && updatedRequest.answer!.isNotEmpty) {
+          coreData['answer'] = updatedRequest.answer;
+        }
+        if (updatedRequest.notes != null && updatedRequest.notes!.isNotEmpty) {
+          coreData['notes'] = updatedRequest.notes;
+        }
+
+        try {
+          final document = await _tables.updateRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: _prayerRequestsCollection,
+            rowId: rowId,
+            data: coreData,
+          );
+          return _prayerRequestFromDocument(document);
+        } catch (e3) {
+          _logger.error('All attempts to update prayer request failed', e3);
+          throw DatabaseException(
+            'Failed to update prayer request in database: ${ErrorHandler.getUserFriendlyMessage(e3)}',
+            originalError: e3,
+          );
+        }
+      }
     }
   }
 

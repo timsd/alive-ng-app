@@ -424,13 +424,18 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                isAnsweredTab
-                    ? Icons.emoji_events_outlined
-                    : Icons.volunteer_activism_outlined,
-                size: 48,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-              ),
+              if (isAnsweredTab)
+                const Icon(
+                  Icons.emoji_events_outlined,
+                  size: 48,
+                  color: Colors.amber,
+                )
+              else
+                FaIcon(
+                  FontAwesomeIcons.personPraying,
+                  size: 44,
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                ),
               const SizedBox(height: 12),
               Text(
                 isAnsweredTab
@@ -1205,7 +1210,7 @@ class _PrivatePrayerCard extends StatelessWidget {
             Row(
               children: [
                 FaIcon(
-                  FontAwesomeIcons.handsPraying,
+                  FontAwesomeIcons.personPraying,
                   size: 15,
                   color: theme.colorScheme.primary,
                 ),
@@ -1220,7 +1225,7 @@ class _PrivatePrayerCard extends StatelessWidget {
                 if (!isOwner)
                   OutlinedButton.icon(
                     onPressed: onPray,
-                    icon: const FaIcon(FontAwesomeIcons.handsPraying, size: 14),
+                    icon: const FaIcon(FontAwesomeIcons.personPraying, size: 14),
                     label: const Text('I Prayed'),
                     style: OutlinedButton.styleFrom(
                       visualDensity: VisualDensity.compact,
