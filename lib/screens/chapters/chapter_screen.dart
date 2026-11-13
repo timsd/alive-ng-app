@@ -189,21 +189,6 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       appBar: CustomAppBar(
         title: 'Chapters',
         showBackButton: true,
-        actions: [
-          if (_canSubmitReport)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilledButton.tonalIcon(
-                style: FilledButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                ),
-                onPressed: _openSubmitReport,
-                icon: const Icon(Icons.add_chart_rounded, size: 16),
-                label: const Text('Submit Report', style: TextStyle(fontSize: 12)),
-              ),
-            ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -302,12 +287,22 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
   }
 
   Widget _buildOverviewTab() {
+    final pendingChapterName = _currentUserProfile?.localChapter;
+    final isPendingApproval = _currentUserProfile != null &&
+        !_currentUserProfile!.isChapterApproved &&
+        pendingChapterName != null &&
+        pendingChapterName.trim().isNotEmpty;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildGeneralMeetingBanner(),
+          if (isPendingApproval) ...[
+            _buildPendingApprovalCard(pendingChapterName),
+            const SizedBox(height: 16),
+          ],
           _buildStatisticsCards(),
           const SizedBox(height: 24),
           _buildRecentActivities(),
@@ -347,27 +342,45 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
 
     if (!canStartGeneral) return const SizedBox.shrink();
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Card(
-        color: Theme.of(context).colorScheme.primaryContainer,
+        color: theme.colorScheme.primaryContainer,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
+            color: theme.colorScheme.outlineVariant,
           ),
         ),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Row(
             children: [
-              Icon(Icons.video_call, color: Theme.of(context).primaryColor),
-              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFFF0C969).withValues(alpha: 0.2)
+                      : theme.colorScheme.primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.video_call_rounded,
+                  color: isDark
+                      ? const Color(0xFFF0C969)
+                      : theme.colorScheme.primary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'General Meeting is available',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                 ),
@@ -628,51 +641,54 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
           color: colorScheme.primary.withValues(alpha: 0.3),
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.assessment_rounded,
-              color: colorScheme.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.assessment_rounded,
+                  color: colorScheme.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
                   'Coordinator & Mission Reports',
-                  style: theme.textTheme.titleSmall?.copyWith(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Submit your monthly activity, missionary outreach, or chapter progress report directly.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Submit your monthly activity, missionary outreach, or chapter progress report directly.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(width: 10),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              onPressed: _openSubmitReport,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Submit Report'),
             ),
-            onPressed: _openSubmitReport,
-            icon: const Icon(Icons.add_rounded, size: 16),
-            label: const Text('Submit Report'),
           ),
         ],
       ),

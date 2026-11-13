@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/prayer_requests_service.dart';
 import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/reusable_prayer_card.dart';
 import '../../utils/error_handler.dart';
 
 class PrivatePrayerRoomScreen extends ConsumerStatefulWidget {
@@ -468,11 +469,32 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
           final req = requests[index];
           final isOwner = req.userId == currentUserId;
           final testimony = _testimoniesCache[req.id];
+          final author = req.isAnonymous ? 'Anonymous' : 'Room Member';
+          final testimonyText = testimony != null
+              ? (testimony.title.trim().isNotEmpty
+                  ? '${testimony.title.trim()}\n${testimony.body.trim()}'
+                  : testimony.body.trim())
+              : null;
 
-          return _PrivatePrayerCard(
-            request: req,
+          final model = PrayerCardViewModel(
+            id: req.id,
+            title: req.title,
+            description: req.description,
+            authorName: author,
+            createdAt: req.createdAt,
+            category: req.category.trim().isNotEmpty ? req.category.trim() : null,
+            prayerCount: req.prayerCount,
+            isAnswered: req.isAnswered,
+            testimony: testimonyText,
+            answeredAt: testimony?.createdAt,
+            roomName: _selectedRoom?.name,
             isOwner: isOwner,
-            testimony: testimony,
+            isPublic: false,
+            collectionSource: 'prayer_requests',
+          );
+
+          return ReusablePrayerCard(
+            model: model,
             onPray: () => _prayForRequest(req),
             onMarkAnswered: isOwner && !req.isAnswered
                 ? () => _showAnsweredPrayerDialog(req)
@@ -1033,230 +1055,5 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
             : Theme.of(context).colorScheme.tertiary,
       ),
     );
-  }
-}
-
-class _PrivatePrayerCard extends StatelessWidget {
-  final PrayerRequest request;
-  final bool isOwner;
-  final PrayerTestimony? testimony;
-  final VoidCallback onPray;
-  final VoidCallback? onMarkAnswered;
-  final VoidCallback? onDelete;
-
-  const _PrivatePrayerCard({
-    required this.request,
-    required this.isOwner,
-    this.testimony,
-    required this.onPray,
-    this.onMarkAnswered,
-    this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final author = request.isAnonymous ? 'Anonymous' : 'Room Member';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: request.isAnswered
-              ? Colors.green.withValues(alpha: 0.5)
-              : theme.colorScheme.outlineVariant,
-          width: request.isAnswered ? 1.5 : 1.0,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: request.isAnswered
-                      ? Colors.green.shade100
-                      : theme.colorScheme.primaryContainer,
-                  child: Icon(
-                    request.isAnswered ? Icons.check_circle : Icons.person,
-                    color: request.isAnswered
-                        ? Colors.green.shade800
-                        : theme.colorScheme.onPrimaryContainer,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        author,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        _formatTimestamp(request.createdAt),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (request.isAnswered)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      border: Border.all(color: Colors.green.shade400),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.verified_rounded,
-                            size: 14, color: Colors.green.shade700),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Answered',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (onDelete != null)
-                  IconButton(
-                    tooltip: 'Delete',
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    onPressed: onDelete,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              request.title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              request.description,
-              style: theme.textTheme.bodyMedium,
-            ),
-            if (testimony != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.amber.shade300),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.star_rounded,
-                            color: Colors.amber, size: 18),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Attached Testimony',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.amber.shade900,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      testimony!.title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.amber.shade900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      testimony!.body,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade800,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                FaIcon(
-                  FontAwesomeIcons.personPraying,
-                  size: 15,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '${request.prayerCount} prayers offered',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const Spacer(),
-                if (!isOwner)
-                  OutlinedButton.icon(
-                    onPressed: onPray,
-                    icon: const FaIcon(FontAwesomeIcons.personPraying, size: 14),
-                    label: const Text('I Prayed'),
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                if (onMarkAnswered != null) ...[
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: onMarkAnswered,
-                    icon: const Icon(Icons.celebration_rounded, size: 16),
-                    label: const Text('Testify Answer'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatTimestamp(DateTime timestamp) {
-    final difference = DateTime.now().difference(timestamp);
-    if (difference.inMinutes < 1) return 'Just now';
-    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
-    if (difference.inDays < 1) return '${difference.inHours}h ago';
-    if (difference.inDays < 7) return '${difference.inDays}d ago';
-    return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
   }
 }

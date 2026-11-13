@@ -619,146 +619,93 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
     }
 
     final buffer = StringBuffer();
-    buffer.writeln('''<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-<head>
-<meta charset="utf-8">
-<title>ALIVE Nigeria Discipleship Office Reports - $officeTitle</title>
-<!--[if gte mso 9]>
-<xml>
-<w:WordDocument>
-<w:View>Print</w:View>
-<w:Zoom>100</w:Zoom>
-<w:DoNotOptimizeForBrowser/>
-</w:WordDocument>
-</xml>
-<![endif]-->
-<style>
-  body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1e293b; line-height: 1.6; margin: 30pt; }
-  h1 { color: #1B365D; font-size: 20pt; border-bottom: 2pt solid #1B365D; padding-bottom: 6pt; margin-bottom: 4pt; }
-  .subtitle { color: #64748b; font-size: 11pt; margin-bottom: 18pt; }
-  h2 { color: #0D9488; font-size: 14pt; margin-top: 20pt; margin-bottom: 8pt; border-bottom: 1pt solid #cbd5e1; padding-bottom: 4pt; }
-  h3 { color: #1e293b; font-size: 12pt; margin-top: 14pt; margin-bottom: 6pt; }
-  table { border-collapse: collapse; width: 100%; margin: 10pt 0 16pt 0; }
-  th, td { border: 1pt solid #cbd5e1; padding: 7pt 10pt; text-align: left; font-size: 10pt; }
-  th { background-color: #f1f5f9; color: #1B365D; font-weight: bold; }
-  .summary-card { background-color: #f8fafc; border: 1pt solid #e2e8f0; border-radius: 6pt; padding: 12pt; margin-bottom: 18pt; }
-  .report-card { border: 1pt solid #cbd5e1; border-radius: 6pt; padding: 14pt; margin-bottom: 18pt; }
-  .badge { display: inline-block; padding: 3pt 8pt; border-radius: 4pt; font-size: 9pt; font-weight: bold; text-transform: uppercase; }
-  .badge-reviewed { background-color: #dcfce7; color: #166534; }
-  .badge-submitted { background-color: #ffedd5; color: #9a3412; }
-  .thread-msg { border-left: 3pt solid #0D9488; background-color: #f0fdf4; padding: 8pt 12pt; margin: 6pt 0; border-radius: 0 4pt 4pt 0; }
-  .thread-msg-officer { border-left-color: #f59e0b; background-color: #fffbeb; }
-  .thread-meta { font-size: 9pt; font-weight: bold; margin-bottom: 3pt; color: #0f766e; }
-  .thread-meta-officer { color: #b45309; }
-  .footer { margin-top: 30pt; border-top: 1pt solid #cbd5e1; padding-top: 8pt; font-size: 9pt; color: #94a3b8; text-align: center; }
-</style>
-</head>
-<body>
-<h1>ALIVE Nigeria Discipleship Office Reports</h1>
-<div class="subtitle">Holding Office: <b>$officeTitle</b> • Officer: <b>$officerName</b> • Generated: <b>$generatedDate</b></div>
-
-<div class="summary-card">
-  <h3>Executive Summary of Received Reports (${reports.length} Total)</h3>
-  <table>
-    <tr>
-      <th>Total Disciples</th>
-      <th>Active Disciples</th>
-      <th>New Disciples</th>
-      <th>Baptisms</th>
-      <th>Bible Studies</th>
-      <th>Interactions</th>
-    </tr>
-    <tr style="font-weight: bold; font-size: 11pt; background-color: #ffffff;">
-      <td>$totalContacts</td>
-      <td>$totalActive</td>
-      <td>$totalNew</td>
-      <td>$totalBaptisms</td>
-      <td>$totalStudies</td>
-      <td>$totalInteractions</td>
-    </tr>
-  </table>
-</div>
-''');
+    buffer.writeln('======================================================================');
+    buffer.writeln('ALIVE NIGERIA DISCIPLESHIP MINISTRY');
+    buffer.writeln('OFFICE REPORTS SUMMARY');
+    buffer.writeln('======================================================================');
+    buffer.writeln('Holding Office    : $officeTitle');
+    buffer.writeln('Officer In Charge : $officerName');
+    buffer.writeln('Generated Date    : $generatedDate');
+    buffer.writeln('Total Reports     : ${reports.length}');
+    buffer.writeln('');
+    buffer.writeln('----------------------------------------------------------------------');
+    buffer.writeln('EXECUTIVE SUMMARY');
+    buffer.writeln('----------------------------------------------------------------------');
+    buffer.writeln('• Total Disciples      : $totalContacts');
+    buffer.writeln('• Active Disciples     : $totalActive');
+    buffer.writeln('• New Disciples        : $totalNew');
+    buffer.writeln('• Baptisms             : $totalBaptisms');
+    buffer.writeln('• Bible Study Sessions : $totalStudies');
+    buffer.writeln('• Total Interactions   : $totalInteractions');
+    buffer.writeln('');
+    buffer.writeln('======================================================================');
+    buffer.writeln('DETAILED REPORTS BREAKDOWN');
+    buffer.writeln('======================================================================');
 
     for (int i = 0; i < reports.length; i++) {
       final r = reports[i];
       final periodStart = DateFormat.yMMMd().format(r.reportPeriodStart);
       final periodEnd = DateFormat.yMMMd().format(r.reportPeriodEnd);
-      final isReviewed = r.status.toLowerCase() == 'reviewed';
 
-      buffer.writeln('''
-<div class="report-card">
-  <h2>Report #${i + 1}: $periodStart – $periodEnd
-    <span class="badge ${isReviewed ? 'badge-reviewed' : 'badge-submitted'}">${r.status.toUpperCase()}</span>
-  </h2>
-  <table>
-    <tr>
-      <th>Total Disciples</th>
-      <th>Active</th>
-      <th>New</th>
-      <th>Baptisms</th>
-      <th>Study Sessions</th>
-      <th>Interactions</th>
-    </tr>
-    <tr>
-      <td>${r.totalContacts}</td>
-      <td>${r.activeContacts}</td>
-      <td>${r.newContacts}</td>
-      <td>${r.baptisms}</td>
-      <td>${r.studySessions}</td>
-      <td>${r.interactions}</td>
-    </tr>
-  </table>
-''');
+      buffer.writeln('');
+      buffer.writeln('----------------------------------------------------------------------');
+      buffer.writeln('REPORT #${i + 1}: $periodStart – $periodEnd [${r.status.toUpperCase()}]');
+      buffer.writeln('----------------------------------------------------------------------');
+      buffer.writeln('Metrics:');
+      buffer.writeln('  - Total Disciples      : ${r.totalContacts}');
+      buffer.writeln('  - Active Disciples     : ${r.activeContacts}');
+      buffer.writeln('  - New Disciples        : ${r.newContacts}');
+      buffer.writeln('  - Baptisms             : ${r.baptisms}');
+      buffer.writeln('  - Study Sessions       : ${r.studySessions}');
+      buffer.writeln('  - Interactions         : ${r.interactions}');
 
-      if (r.highlights != null && r.highlights!.isNotEmpty) {
-        buffer.writeln('<p><b>Ministry Highlights:</b> ${r.highlights}</p>');
+      if (r.highlights != null && r.highlights!.trim().isNotEmpty) {
+        buffer.writeln('');
+        buffer.writeln('Ministry Highlights:');
+        buffer.writeln('  ${r.highlights!.trim()}');
       }
-      if (r.challenges != null && r.challenges!.isNotEmpty) {
-        buffer.writeln('<p><b>Challenges & Needs:</b> ${r.challenges}</p>');
+      if (r.challenges != null && r.challenges!.trim().isNotEmpty) {
+        buffer.writeln('');
+        buffer.writeln('Challenges & Needs:');
+        buffer.writeln('  ${r.challenges!.trim()}');
       }
-      if (r.goals != null && r.goals!.isNotEmpty) {
-        buffer.writeln('<p><b>Next Goals:</b> ${r.goals}</p>');
+      if (r.goals != null && r.goals!.trim().isNotEmpty) {
+        buffer.writeln('');
+        buffer.writeln('Next Goals:');
+        buffer.writeln('  ${r.goals!.trim()}');
       }
 
       final thread = parseDiscipleshipFeedbackThread(r.feedback ?? '', officerName);
       if (thread.isNotEmpty) {
-        buffer.writeln('<h3>Officer Feedback & Discussion (${thread.length} entries)</h3>');
+        buffer.writeln('');
+        buffer.writeln('Officer Feedback & Discussion (${thread.length} entries):');
         for (final msg in thread) {
-          final isOfficer = msg.isOfficer;
-          buffer.writeln('''
-<div class="thread-msg ${isOfficer ? 'thread-msg-officer' : ''}">
-  <div class="thread-meta ${isOfficer ? 'thread-meta-officer' : ''}">
-    ${isOfficer ? 'Officer Feedback' : 'Disciple Maker Response'} by ${msg.author}${msg.date != null ? ' (${msg.date})' : ''}:
-  </div>
-  <div>${msg.content}</div>
-</div>
-''');
+          final roleLabel = msg.isOfficer ? 'Officer Feedback' : 'Disciple Maker Response';
+          buffer.writeln('  • [$roleLabel: ${msg.author}${msg.date != null ? " (${msg.date})" : ""}]');
+          buffer.writeln('    ${msg.content.trim()}');
         }
       }
-
-      buffer.writeln('</div>');
     }
 
-    buffer.writeln('''
-<div class="footer">
-  ALIVE Nigeria Discipleship Ministry Management System • Confidential Office Record
-</div>
-</body>
-</html>
-''');
+    buffer.writeln('');
+    buffer.writeln('======================================================================');
+    buffer.writeln('ALIVE Nigeria Discipleship Ministry Management System');
+    buffer.writeln('Confidential Office Record • Generated on $generatedDate');
+    buffer.writeln('======================================================================');
 
     final cleanTitle = officeTitle.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-    final fileName = 'discipleship_reports_${cleanTitle}_${DateFormat('yyyyMMdd').format(DateTime.now())}.doc';
+    final fileName = 'discipleship_reports_${cleanTitle}_${DateFormat('yyyyMMdd').format(DateTime.now())}.txt';
+    final reportContent = buffer.toString();
 
     try {
       await SharePlus.instance.share(
         ShareParams(
+          text: reportContent,
           files: [
             XFile.fromData(
-              Uint8List.fromList(utf8.encode(buffer.toString())),
+              Uint8List.fromList(utf8.encode(reportContent)),
               name: fileName,
-              mimeType: 'application/msword',
+              mimeType: 'text/plain',
             ),
           ],
           subject: 'ALIVE Nigeria Discipleship Reports - $officeTitle',
