@@ -108,34 +108,169 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
 
   Widget _buildFAQTab(BuildContext context, String Function(String) translate) {
     final faqs = [
+      // 1. General & Chapters
       FAQItem(
-        question: translate('how_to_join_chapter'),
-        answer: translate('join_chapter_answer'),
+        question: 'How do I join or transfer to a local ALIVE chapter?',
+        answer:
+            'Navigate to the "Chapters" section on the Home screen or More menu. Browse the directory of university and state chapters across Nigeria, and tap "Join Chapter". If you relocate or transfer chapters, you can update your primary chapter anytime from your Profile screen.',
         category: 'General',
       ),
       FAQItem(
-        question: translate('how_to_submit_prayer_request'),
-        answer: translate('prayer_request_answer'),
+        question: 'Does ALIVE Nigeria work offline without internet?',
+        answer:
+            'Yes! The Bible reader, downloaded gospel tracts, cached audio podcasts, study guides, and saved Health+ recipes work seamlessly offline. When an internet connection is re-established, your study achievements, quiz scores, and prayer logs synchronize automatically with the cloud.',
+        category: 'General',
+      ),
+      FAQItem(
+        question: 'What do the different user roles mean in the app?',
+        answer:
+            'User roles reflect ministry assignments: Member (fellowship and general participation), Chapter Leader / Worker (coordinating local chapter activities), Coordinator (regional/functional discipleship lead), Director (national and departmental leadership), and Board of Trustees (governance & board administration).',
+        category: 'General',
+      ),
+
+      // 2. Conferencing (ALIVE Meet)
+      FAQItem(
+        question: 'How do I join or start a meeting on ALIVE Meet?',
+        answer:
+            'Tap "ALIVE Meet" from the Home quick actions, drawer, or open a shared meeting link. Enter the room code or title, test your camera and microphone in the pre-join lobby, and tap "Join Meeting". Hosts can initiate secure plenary meetings with one tap.',
+        category: 'Conferencing',
+      ),
+      FAQItem(
+        question: 'How does the Waiting Room work in ALIVE Meet?',
+        answer:
+            'When a meeting host enables the Waiting Room in meeting settings, new attendees wait in a secure lobby until admitted by the meeting host or co-host. This provides security and order for committee and leadership discussions.',
+        category: 'Conferencing',
+      ),
+      FAQItem(
+        question: 'How do I switch between Gallery View and List View on ALIVE Meet?',
+        answer:
+            'Tap the "Gallery" or "List View" icon on the bottom control bar to toggle views. Gallery View arranges active video streams in an interactive video tile grid, while List View displays presentations, screen shares, and detailed participant status.',
+        category: 'Conferencing',
+      ),
+      FAQItem(
+        question: 'Can I share my screen and record meeting minutes?',
+        answer:
+            'Yes! Hosts and permitted attendees can tap "Share" to broadcast presentations. During leadership and Board meetings, ALIVE Scribe automatically captures notes and minutes, auto-saving documents directly to Meeting File Sharing.',
+        category: 'Conferencing',
+      ),
+
+      // 3. Prayer & Testimonies
+      FAQItem(
+        question: 'Where do my prayer requests go, and who can see them?',
+        answer:
+            'Public prayer requests appear on the community Prayer Wall where members nationwide can intercede for you. You can also submit requests anonymously. Requests created within Private Prayer Rooms are strictly restricted to authorized room members.',
         category: 'Prayer',
       ),
       FAQItem(
-        question: translate('how_to_access_study_materials'),
-        answer: translate('study_materials_answer'),
+        question: 'When a prayer is answered, where does it go?',
+        answer:
+            'When you tap "Mark as Answered", you can write a praise testimony celebrating God\'s faithfulness. Answered prayers move into the dedicated "Answered" tab on the Prayer Wall and the Discipleship Tracker with a green praise badge so all brethren can rejoice with you.',
+        category: 'Prayer',
+      ),
+      FAQItem(
+        question: 'What are Private Prayer Rooms and how do I access them?',
+        answer:
+            'Private Prayer Rooms are confidential intercession chambers designed for specialized pastoral care, leadership teams, and chapter prayer bands. They are protected with role-based permissions or secret room access tokens.',
+        category: 'Prayer',
+      ),
+      FAQItem(
+        question: 'How does the intercession counter ("I Prayed for This") work?',
+        answer:
+            'When you tap "Pray" on any prayer card, the intercession counter increments and the requester receives an encouraging notification that a brother or sister has prayed for their request.',
+        category: 'Prayer',
+      ),
+
+      // 4. Discipleship Tracker
+      FAQItem(
+        question: 'What is the Discipleship Tracker and who is it for?',
+        answer:
+            'The Discipleship Tracker equips every Adventist young adult to mentor seekers and new believers. You can register contacts, track spiritual stages (Prospect, Contact, Discipleship, Baptized, Discipler), schedule Bible studies, log prayer points, and submit monthly discipleship reports.',
+        category: 'Discipleship',
+      ),
+      FAQItem(
+        question: 'How do I request deletion of a disciple contact?',
+        answer:
+            'To ensure data integrity, disciple-makers can submit a deletion request with an explanatory note (e.g., contact relocated, duplicate entry). Coordinators and Directors review and approve or reject these requests in the Discipleship Operations Hub.',
+        category: 'Discipleship',
+      ),
+
+      // 5. Study, Bible & Tracts
+      FAQItem(
+        question: 'What Bible versions and indigenous translations are available?',
+        answer:
+            'The Bible Reader includes King James Version (KJV), New King James (NKJV), New International Version (NIV), American Standard Version (ASV), and complete Nigerian indigenous translations: Yoruba (Bibeli Mimo), Igbo (Bible Nso), and Hausa (Littafi Mai Tsarki).',
         category: 'Study',
       ),
       FAQItem(
-        question: translate('how_to_track_health'),
-        answer: translate('health_tracking_answer'),
+        question: 'How do I play the Instant Word Memory Game?',
+        answer:
+            'Select either Fill-in-the-Gaps (typing missing scripture words) or Voice Recitation (reciting the verse aloud from memory using speech recognition). You earn points, daily streaks, and achievement badges as you master verses.',
+        category: 'Study',
+      ),
+      FAQItem(
+        question: 'Can I download gospel tracts and share them?',
+        answer:
+            'Yes! Gospel tracts can be read interactively with reflection questions, downloaded as full-color high-resolution PDFs for print outreach, or shared as digital links with friends on WhatsApp and social media.',
+        category: 'Study',
+      ),
+      FAQItem(
+        question: 'How do Interactive Lessons work?',
+        answer:
+            'Interactive Lessons guide you through structured, topic-by-topic doctrinal and devotional studies. You answer reflection questions at the end of each section, track chapter completion, and earn study milestone badges.',
+        category: 'Study',
+      ),
+
+      // 6. Health+
+      FAQItem(
+        question: 'What is Health+ and are all recipes plant-based?',
+        answer:
+            'Health+ promotes total wellness through wholesome 100% plant-based recipes crafted from authentic Nigerian produce (beans, grains, tubers, indigenous vegetables), alongside natural therapeutic remedies for common conditions.',
         category: 'Health',
       ),
       FAQItem(
-        question: translate('how_to_reset_password'),
-        answer: translate('reset_password_answer'),
+        question: 'Can I submit my own healthy recipes?',
+        answer:
+            'Yes! Tap "Submit Recipe" in the Health+ area to contribute your favorite plant-based dish. Once reviewed by the Health Ministries team, your recipe will be published to the entire community.',
+        category: 'Health',
+      ),
+
+      // 7. Giving & Financial Support
+      FAQItem(
+        question: 'Is giving on the ALIVE Nigeria app secure?',
+        answer:
+            'All donations are processed securely through certified, bank-grade Paystack gateways supporting debit cards, bank transfers, and USSD. Your payment information is never stored on the device or application servers.',
+        category: 'Giving',
+      ),
+      FAQItem(
+        question: 'Can I split my donation across multiple ministry projects?',
+        answer:
+            'Yes! You can designate your gift to General Ministry, Tracts & Literature, Missions, or Campus Outreaches, or specify custom percentage splits across projects on the Donation screen.',
+        category: 'Giving',
+      ),
+      FAQItem(
+        question: 'How do I donate non-monetary items (vehicles, equipment, books)?',
+        answer:
+            'Tap "Non-Monetary Gifts" on the Donation screen to submit details of physical equipment, vehicles, books, or property you wish to consecrate for missionary service. The administrative team will contact you to coordinate delivery.',
+        category: 'Giving',
+      ),
+
+      // 8. Account & Settings
+      FAQItem(
+        question: 'How do I reset my password?',
+        answer:
+            'On the sign-in screen, tap "Forgot Password" and enter your registered email address. You will receive a secure password reset link to create a new password.',
         category: 'Account',
       ),
       FAQItem(
-        question: translate('how_to_change_language'),
-        answer: translate('change_language_answer'),
+        question: 'How do I change the app language?',
+        answer:
+            'Tap the language translation icon in the top app bar or visit Settings to toggle between English, Yoruba, Igbo, and Hausa.',
+        category: 'Settings',
+      ),
+      FAQItem(
+        question: 'How do I customize my notification preferences?',
+        answer:
+            'Go to Profile > Notification Settings to toggle push alerts for daily verses, chapter broadcasts, prayer wall updates, meeting reminders, and monthly support reminders.',
         category: 'Settings',
       ),
     ];
@@ -270,86 +405,150 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
 
   Widget _buildGuidesTab(
       BuildContext context, String Function(String) translate) {
+    final theme = Theme.of(context);
     final guides = [
       GuideItem(
-        title: 'Bible Reader & Offline Translations',
+        title: 'ALIVE Meet: Video Conferencing & Breakout Rooms',
         description:
-            'Read the Bible offline with KJV, NIV, ASV, Yoruba, Igbo, and Hausa translations.',
-        icon: Icons.menu_book_rounded,
-        color: Theme.of(context).colorScheme.primary,
+            'Join, host, and collaborate in secure plenary meetings and breakout sessions.',
+        icon: Icons.video_camera_front_rounded,
+        color: const Color(0xFF2563EB),
         steps: [
-          'Open the Bible Reader from the Home quick actions or the navigation bar.',
-          'Tap the language or translation selector at the top to switch between English (KJV, NIV, ASV, NASB, NKJV), Yoruba (BM), Igbo (IGBOB), or Hausa (HAU).',
-          'Swipe left or right or use the navigation buttons at the bottom to flip between chapters.',
-          'Tap any verse to open options: highlight in custom colors, bookmark, copy, or share.',
-          'Tap the Speaker icon on any chapter or verse to listen with Text-To-Speech.',
+          'Open ALIVE Meet from the Home quick actions, drawer, or tap a shared meeting link.',
+          'Enter the meeting title or room code, and configure your camera and microphone in the pre-join lobby.',
+          'If the host enabled the Waiting Room, relax while the host or co-host admits you into the session.',
+          'Use the docked control bar to toggle audio/video, share your screen, raise your hand, or open in-meeting chat.',
+          'Tap "Gallery" to see an interactive video tile grid of all participants, or "List View" for screen presentations.',
+          'Participate in assigned Breakout Rooms for focused committee discussions or prayer bands.',
+          'Meeting hosts can trigger ALIVE Scribe to automatically transcribe notes, record minutes, and sync files to cloud storage.',
         ],
       ),
       GuideItem(
-        title: 'Instant Word Memory Game',
+        title: 'Discipleship Tracker: Mentoring & Milestones',
         description:
-            'Memorize scripture verses through Voice Recitation and Fill-in-the-Gaps modes.',
+            'Track seeker contacts, Bible study progress, interactions, and monthly officer reports.',
+        icon: Icons.trending_up_rounded,
+        color: const Color(0xFF0D9488),
+        steps: [
+          'Access the Discipleship Tracker from the Home screen or navigation menu.',
+          'Tap "+" to register a new seeker or contact with initial spiritual details and level.',
+          'Guide contacts through progressive stages: Prospect -> Contact -> Discipleship -> Baptized -> Discipler.',
+          'Tap a contact card to log personal interactions (phone calls, in-person visits, prayer sessions) with notes and duration.',
+          'Record Bible study sessions with ratings, lesson topics, and completion status.',
+          'Maintain personal prayer requests for each contact, and celebrate God\'s answers in the "Answered" tab.',
+          'Officers and coordinators can generate and dispatch monthly discipleship reports directly to regional leadership.',
+        ],
+      ),
+      GuideItem(
+        title: 'Prayer Wall, Private Rooms & Testimonies',
+        description:
+            'Share public or anonymous prayer requests, intercede for others, and celebrate praise reports.',
+        icon: Icons.volunteer_activism_rounded,
+        color: const Color(0xFFE11D48),
+        steps: [
+          'Open Prayer from the navigation bar or home screen to access the Prayer Wall.',
+          'Tap "New Prayer" to submit a request. Choose between public posting or anonymous submission.',
+          'Intercede for brethren by tapping "Pray" on any prayer card to increment the community prayer count.',
+          'Access confidential Private Prayer Rooms with your credentials or room token for dedicated pastoral intercession.',
+          'When God answers your prayer, tap "Mark Answered" on your card to share your testimony and date of breakthrough.',
+          'Switch to the "Answered" tab on the Prayer Wall to rejoice with brethren over all recorded testimonies.',
+        ],
+      ),
+      GuideItem(
+        title: 'Health+: Plant-Based Recipes & Natural Remedies',
+        description:
+            'Explore authentic Nigerian plant-based nutrition, cooking guides, and therapeutic lifestyle remedies.',
+        icon: Icons.health_and_safety_rounded,
+        color: const Color(0xFF16A34A),
+        steps: [
+          'Open Health+ from the bottom navigation bar or More menu.',
+          'Browse 100% plant-based recipes crafted from accessible Nigerian ingredients with prep times and nutritional highlights.',
+          'Tap on any recipe card to view step-by-step cooking instructions, ingredient lists, and bookmark for offline kitchen use.',
+          'Explore the Natural Remedies tab for evidence-based lifestyle treatments and herbal therapies for common ailments.',
+          'Tap "Submit Recipe" to share your favorite wholesome plant-based creation with the nationwide community.',
+        ],
+      ),
+      GuideItem(
+        title: 'Bible Reader & Indigenous Translations',
+        description:
+            'Read the Scriptures offline with KJV, NIV, ASV, and full Yoruba, Igbo, and Hausa translations.',
+        icon: Icons.menu_book_rounded,
+        color: const Color(0xFF8B5CF6),
+        steps: [
+          'Open the Bible Reader from the Study tab or Home quick actions.',
+          'Tap the translation selector at the top to toggle between English (KJV, NIV, ASV, NASB, NKJV), Yoruba (Bibeli Mimo), Igbo (Bible Nso), or Hausa (Littafi Mai Tsarki).',
+          'Swipe left or right or use the navigation buttons at the bottom to flip between chapters smoothly.',
+          'Tap any verse to open options: highlight in custom colors, bookmark, copy, or share.',
+          'Tap the Speaker icon on any chapter or verse to listen with built-in Text-To-Speech while on the move.',
+        ],
+      ),
+      GuideItem(
+        title: 'Instant Word Memory Game: Voice & Gaps',
+        description:
+            'Memorize scripture through interactive voice recitation and fill-in-the-gaps challenges.',
         icon: Icons.sports_esports_rounded,
-        color: Theme.of(context).colorScheme.tertiary,
+        color: const Color(0xFFD97706),
         steps: [
           'Access the Bible Game under Study Guides or the Home quick action.',
-          'Choose Fill Gaps or Voice Recitation mode.',
-          'In Fill Gaps mode, type the missing words into the input boxes and tap Submit. You have up to 3 retries.',
-          'In Voice mode, recite the verse aloud from memory using the Record button. Tap the card to flip and view the verse (-2 points deduction warning).',
-          'If you need assistance after 3 attempts, unlock the Hint button to receive guidance.',
+          'Choose between Fill-in-the-Gaps or Voice Recitation mode.',
+          'In Fill Gaps mode, type the missing scripture words into the blanks and tap Submit (up to 3 retries).',
+          'In Voice mode, recite the verse aloud from memory using your device microphone; speech recognition validates your accuracy.',
+          'Earn points, build daily streaks, and unlock achievement badges as you master scriptures.',
         ],
       ),
       GuideItem(
-        title: 'Prayer Wall & Community Support',
+        title: 'Interactive Lessons & Audio Podcasts',
         description:
-            'Submit prayer requests, pray for others, and share praise testimonies.',
-        icon: Icons.volunteer_activism_rounded,
-        color: Theme.of(context).colorScheme.secondary,
+            'Topic-by-topic doctrinal Bible studies with reflection quizzes and streaming sermon podcasts.',
+        icon: Icons.school_rounded,
+        color: const Color(0xFF0284C7),
         steps: [
-          'Navigate to Prayer Requests from the More menu or Home actions.',
-          'Tap the + button to create a new prayer request. You can choose to post publicly or anonymously.',
-          'Browse community requests and tap "I Prayed for This" to encourage your brothers and sisters.',
-          'When God answers your prayer, update the request with a Praise Report to testify to His goodness.',
+          'Open Interactive Lessons under the Study tab.',
+          'Select a study track (Sanctuary, Prophecy, Stewardship, or Personal Evangelism).',
+          'Read through each lesson module, answer interactive reflection questions, and review scriptural references.',
+          'Track your track completion percentage and earn study completion badges.',
+          'Switch to Podcasts to stream or download audio sermons, health lectures, and mission updates with background audio.',
         ],
       ),
       GuideItem(
-        title: 'Tracts Interactive Reader',
+        title: 'Gospel Tracts: Interactive Reader & Mission Print',
         description:
-            'Read Christian literature, answer reflection questions, and download PDFs.',
+            'Read evangelistic literature interactively, answer reflection points, and download PDFs for print.',
         icon: Icons.library_books_rounded,
-        color: Colors.deepOrange,
+        color: const Color(0xFFEA580C),
         steps: [
-          'Open Tracts from the More tray or study area.',
-          'Tap on any tract to launch the interactive reader.',
+          'Open Tracts from the Study menu or More drawer.',
+          'Tap on any gospel tract to launch the interactive reader with reflection questions.',
           'Read page by page and type in answers to personal reflection questions.',
-          'Tap the PDF icon at the top to view the original publication.',
-          'Tap Download to save the tract offline or donate towards physical tract printing and distribution.',
+          'Tap the PDF icon at the top to view and download the full-color publication layout.',
+          'Share softcopy links directly with seekers, or donate towards physical tract printing for campus and rural outreach.',
         ],
       ),
       GuideItem(
-        title: 'Kids Mission & Interactive Stories',
+        title: 'Giving, Fund Split & Non-Monetary Gifts',
         description:
-            'Exciting Bible adventures, quizzes, and mission challenges for children.',
-        icon: Icons.child_care_rounded,
-        color: Colors.teal,
-        steps: [
-          'Open Kids Mission from the More drawer.',
-          'Choose a mission category (Bible Stories, Memory Verses, Hero Quizzes, or Daily Action).',
-          'Read the colorful illustrated stories and complete the fun quiz at the end.',
-          'Earn stars and unlock achievement badges as your child completes each adventure.',
-        ],
-      ),
-      GuideItem(
-        title: 'Giving & Non-Monetary Gifts',
-        description:
-            'Support specific projects or donate non-monetary items like equipment or books.',
+            'Support specific ministry funds via Paystack or donate physical items like books and vehicles.',
         icon: Icons.favorite_rounded,
-        color: Colors.green,
+        color: const Color(0xFF059669),
         steps: [
           'Open the Donate screen from the Home screen or navigation bar.',
-          'Select your preferred fund designation (General Ministry, Tract Production, Missions, etc.) or enter custom split ratios.',
-          'If you are donating physical items (vehicles, books, computers, medical supplies), select "Non-Monetary Gifts" to submit the donation form.',
-          'Complete your payment securely via Paystack using card, bank transfer, or USSD.',
+          'Select your preferred fund designation (General Ministry, Tract Production, Missions, etc.) or specify custom split ratios.',
+          'If donating physical assets (vehicles, laptops, books, medical tools), tap "Non-Monetary Gifts" to submit the donation form.',
+          'Complete monetary donations securely via Paystack using debit card, bank transfer, or USSD.',
+          'Review your personal giving history and track fund impact updates directly on the screen.',
+        ],
+      ),
+      GuideItem(
+        title: 'Chapter Community, Roles & Organization',
+        description:
+            'Connect with local chapter members, participate in group chats, and tag leadership.',
+        icon: Icons.groups_2_rounded,
+        color: const Color(0xFF4F46E5),
+        steps: [
+          'Navigate to Chapters to locate and join your nearest campus or city chapter.',
+          'Participate in chapter group chats, receive official announcements, and pray together.',
+          'Use role tags in discussions (@coordinator, @leadership) to direct urgent questions to officers.',
+          'Chapter leaders and administrators can access Chapter Reports and leadership archives to manage organizational duties.',
         ],
       ),
     ];
