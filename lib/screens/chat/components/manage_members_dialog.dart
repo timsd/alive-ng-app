@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/chat_models.dart';
-import '../../../services/appwrite_chat_service.dart';
+import '../../../services/chat_service.dart';
 
 class ManageMembersDialog extends StatefulWidget {
   final ChatChannel channel;
-  final AppwriteChatService chatService;
+  final ChatService chatService;
   final String? currentUserId;
   final Function(List<String> updatedMembers) onMembersUpdated;
 
