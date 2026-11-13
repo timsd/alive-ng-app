@@ -427,6 +427,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        onTap: () => _showContentPageDialog(page: page),
         leading: CircleAvatar(
           backgroundColor: isPublished
               ? Colors.green.withValues(alpha: 0.15)
@@ -1437,6 +1438,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               ),
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                onTap: () => _showLessonEditorDialog(lesson: lesson),
                 leading: CircleAvatar(
                   backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
                   child: Icon(

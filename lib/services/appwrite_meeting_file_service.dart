@@ -82,6 +82,40 @@ class AppwriteMeetingFileService {
     return results;
   }
 
+  /// Checks if minutes for the specified meeting room have already been saved
+  /// within the given time window (default 4 hours) to prevent duplicate uploads.
+  Future<Map<String, dynamic>?> findExistingMeetingMinutes({
+    required String roomTitle,
+    Duration window = const Duration(hours: 4),
+  }) async {
+    try {
+      final files = await getMeetingFiles();
+      final sanitizedTitle =
+          roomTitle.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_').toLowerCase();
+      final now = DateTime.now();
+
+      for (final f in files) {
+        final name = (f['file_name'] ?? '').toString().toLowerCase();
+        final desc = (f['description'] ?? '').toString().toLowerCase();
+        if ((name.contains('minutes') && name.contains(sanitizedTitle)) ||
+            (desc.contains('minutes') && desc.contains(roomTitle.toLowerCase()))) {
+          final createdAtStr = f['created_at']?.toString();
+          if (createdAtStr != null) {
+            final created = DateTime.tryParse(createdAtStr);
+            if (created != null && now.difference(created).abs() <= window) {
+              return f;
+            }
+          } else {
+            return f;
+          }
+        }
+      }
+    } catch (e) {
+      _logger.warning('Error checking existing minutes: $e');
+    }
+    return null;
+  }
+
   Future<List<Map<String, dynamic>>> _getLocalMeetingFiles() async {
     try {
       final prefs = await SharedPreferences.getInstance();

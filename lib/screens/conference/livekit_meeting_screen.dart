@@ -380,7 +380,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
     final roomTitle = widget.meetingType?.displayName ?? _roomController.text.trim();
 
-    // Deduplication check: if minutes have already been saved for this session, notify and prompt viewing
+    // 1. In-memory session deduplication check
     if (_hasSavedMinutesForSession && _savedMinutesFileName != null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -398,6 +398,32 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     }
 
     _isSavingMinutes = true;
+
+    // 2. Cloud storage deduplication check: check if any participant already saved minutes
+    try {
+      final existing = await AppwriteMeetingFileService.instance
+          .findExistingMeetingMinutes(roomTitle: roomTitle);
+      if (existing != null) {
+        _hasSavedMinutesForSession = true;
+        _savedMinutesFileName = existing['file_name']?.toString() ?? 'Meeting Notes';
+        _isSavingMinutes = false;
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Meeting notes already saved for this session ($_savedMinutesFileName)'),
+            action: SnackBarAction(
+              label: 'View Notes',
+              textColor: const Color(0xFF38BDF8),
+              onPressed: _openScribeScreen,
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+    } catch (e) {
+      debugPrint('[ALIVE Scribe] Check for existing meeting minutes: $e');
+    }
 
     try {
       if (scribe.isListening) {

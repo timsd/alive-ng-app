@@ -14,6 +14,7 @@ import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../../config/meeting_links_config.dart';
 import '../conference/livekit_meeting_screen.dart';
+import 'components/office_holder_form_dialog.dart';
 
 class LeadershipArchiveScreen extends StatefulWidget {
   const LeadershipArchiveScreen({super.key});
@@ -1245,238 +1246,38 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     required String title,
     Map<String, dynamic>? holder,
   }) {
-    final isTrustee = category == 'trustee';
-    final isBod = category == 'bod';
-    final nameCtrl = TextEditingController(text: holder?['full_name'] ?? '');
-    final defaultTitle = isTrustee
-        ? 'Trustee'
-        : (isBod ? 'Director (Board Member)' : 'Director');
-    final titleCtrl = TextEditingController(
-      text: holder?['office_title'] ?? defaultTitle,
-    );
-    final descriptionCtrl = TextEditingController(
-      text: (holder?['description'] ?? holder?['bio'] ?? '').toString(),
-    );
-    final initialTenureRaw = (holder?['tenure_year'] ?? '2026').toString();
-    final parts = initialTenureRaw.split(RegExp(r'[-–]'));
-    final startYearStr = parts.isNotEmpty ? parts.first.trim() : '2026';
-    final endYearStr = parts.length > 1
-        ? parts.last.trim()
-        : (holder?['tenure_end_year']?.toString() ?? '2029');
-    final tenureStartCtrl =
-        TextEditingController(text: startYearStr.isEmpty ? '2026' : startYearStr);
-    final tenureEndCtrl =
-        TextEditingController(text: endYearStr.isEmpty ? '2029' : endYearStr);
-    bool isCurrentTenure = holder?['is_current'] != false &&
-        (holder?['status'] ?? '').toString().toLowerCase() != 'archived';
-    final emailCtrl = TextEditingController(text: holder?['email'] ?? '');
-    String selectedUserId = holder?['user_id'] ?? '';
-    final defaultOfficeId = isTrustee ? 'trustee' : (isBod ? 'bod' : 'director');
-    final officeId = holder?['office_id'] ?? defaultOfficeId;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          final theme = Theme.of(ctx);
-          return AlertDialog(
-            title: Text(title),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Link Registered User Account',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedUserId.isNotEmpty ? selectedUserId : null,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      hintText: 'Select registered app member...',
-                    ),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: '',
-                        child: Text('-- Unlinked / Not yet registered --'),
-                      ),
-                      ..._registeredUsers.map((u) {
-                        final label = '${u.fullName} (${u.email})';
-                        return DropdownMenuItem<String>(
-                          value: u.id,
-                          child: Text(label, overflow: TextOverflow.ellipsis),
-                        );
-                      }),
-                    ],
-                    onChanged: (val) {
-                      setDialogState(() {
-                        selectedUserId = val ?? '';
-                        if (selectedUserId.isNotEmpty) {
-                          final match =
-                              _registeredUsers.where((u) => u.id == selectedUserId).firstOrNull;
-                          if (match != null) {
-                            nameCtrl.text = match.fullName ?? '';
-                            emailCtrl.text = match.email ?? '';
-                          }
-                        }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Full Name *',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: titleCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Office / Role Title *',
-                      border: const OutlineInputBorder(),
-                      helperText: isTrustee
-                          ? 'e.g. Chairman of Trustees or Trustee'
-                          : isBod
-                              ? 'e.g. Director (Board Member), Affairs Liaison'
-                              : 'e.g. Executive President, Secretary, Treasurer',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: emailCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Email Address',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Tenure Period',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: tenureStartCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Start Year *',
-                            hintText: 'e.g. 2026',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.calendar_today_outlined, size: 18),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: tenureEndCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'End Year',
-                            hintText: 'e.g. 2029',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.event_available_outlined, size: 18),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Currently in Tenure (Active)'),
-                    subtitle: Text(
-                      isCurrentTenure
-                          ? 'Actively serving in this office / role'
-                          : 'Tenure completed; record will be archived',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
-                    ),
-                    value: isCurrentTenure,
-                    activeThumbColor: Colors.green,
-                    onChanged: (val) => setDialogState(() => isCurrentTenure = val),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: descriptionCtrl,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                      labelText: 'Role Summary / Description',
-                      hintText: 'e.g. Leading strategic direction and operations of ALIVE Nigeria',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  if (selectedUserId.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.check_circle, color: Colors.green, size: 16),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Linked Account ID: $selectedUserId\nRole will be updated to ${isTrustee ? 'trustee' : (isBod ? 'bod' : 'director')} & enrolled in leadership channels.',
-                              style: const TextStyle(fontSize: 11, color: Colors.green),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () async {
-                  if (nameCtrl.text.trim().isEmpty || titleCtrl.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Name and title are required')),
-                    );
-                    return;
-                  }
-                  Navigator.pop(ctx);
-                  await _saveOfficeHolder(
-                    docId: holder?['\$id'],
-                    fullName: nameCtrl.text.trim(),
-                    officeTitle: titleCtrl.text.trim(),
-                    description: descriptionCtrl.text.trim(),
-                    tenureYear: tenureStartCtrl.text.trim(),
-                    tenureEndYear: tenureEndCtrl.text.trim(),
-                    isCurrent: isCurrentTenure,
-                    email: emailCtrl.text.trim(),
-                    userId: selectedUserId,
-                    category: category,
-                    officeId: officeId,
-                  );
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
-      ),
+    OfficeHolderFormDialog.show(
+      context,
+      holder: holder,
+      category: category,
+      registeredUsers: _registeredUsers,
+      onSave: ({
+        String? docId,
+        required String fullName,
+        required String officeTitle,
+        required String description,
+        required String tenureYear,
+        required String tenureEndYear,
+        required bool isCurrent,
+        required String email,
+        required String userId,
+        required String category,
+        required String officeId,
+      }) async {
+        await _saveOfficeHolder(
+          docId: docId,
+          fullName: fullName,
+          officeTitle: officeTitle,
+          description: description,
+          tenureYear: tenureYear,
+          tenureEndYear: tenureEndYear,
+          isCurrent: isCurrent,
+          email: email,
+          userId: userId,
+          category: category,
+          officeId: officeId,
+        );
+      },
     );
   }
 
