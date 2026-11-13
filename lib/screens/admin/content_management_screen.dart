@@ -1655,27 +1655,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 ),
               ),
             );
-                          lesson.copyWith(isActive: !lesson.isActive),
-                        );
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      tooltip: 'Edit Lesson',
-                      onPressed: () =>
-                          _showLessonEditorDialog(lesson: lesson),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          color: Colors.redAccent, size: 20),
-                      tooltip: 'Delete Lesson',
-                      onPressed: () =>
-                          _showDeleteLessonDialog(lesson),
-                    ),
-                  ],
-                ),
-              ),
-            );
           },
         );
       },
