@@ -1918,35 +1918,107 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     // Host / Leader: Show Zoom / Google Meet standard choice dialog
     final action = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.call_end_rounded, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Leave or End Meeting?'),
-          ],
-        ),
-        content: const Text(
-          'As the meeting host, would you like to end the meeting for all attendees, or leave and keep the session active for others?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop('cancel'),
-            child: const Text('Cancel'),
+      barrierDismissible: true,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final isDark = theme.brightness == Brightness.dark;
+
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Header with Icon, Title, and X close button where green dot is
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.call_end_rounded,
+                          color: Colors.red,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Leave or End Meeting?',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 17,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 22),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Cancel',
+                        onPressed: () => Navigator.of(ctx).pop('cancel'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'As the meeting host, would you like to end the meeting for all attendees, or leave and keep the session active for others?',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  // Clean, modern, distinct actions without repetition
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(ctx).pop('end_all'),
+                    icon: const Icon(Icons.stop_circle_outlined, size: 19),
+                    label: const Text(
+                      'End Meeting for All',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(ctx).pop('leave'),
+                    icon: const Icon(Icons.logout_rounded, size: 18),
+                    label: const Text(
+                      'Leave Meeting Only',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      side: BorderSide(
+                        color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                        width: 1.2,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          OutlinedButton(
-            onPressed: () => Navigator.of(ctx).pop('leave'),
-            child: const Text('Leave Meeting'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(ctx).pop('end_all'),
-            icon: const Icon(Icons.stop_circle_outlined, size: 18),
-            label: const Text('End Meeting for All'),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade800),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
     if (action == 'end_all') {
@@ -1972,34 +2044,91 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   void _confirmEndMeetingForAll(MeetingGateway gateway) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.stop_circle_outlined, color: Colors.red),
-            SizedBox(width: 8),
-            Text('End Meeting for All?'),
-          ],
-        ),
-        content: const Text(
-          'This will disconnect all attendees and close the meeting room immediately.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+      barrierDismissible: true,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final isDark = theme.brightness == Brightness.dark;
+
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.stop_circle_outlined,
+                          color: Colors.red,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'End Meeting for All?',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 17,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 22),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Cancel',
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'This will disconnect all attendees and close the meeting room immediately.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      Navigator.of(ctx).pop();
+                      await _autoSaveAndPromptMinutes();
+                      await gateway.endMeetingForAll();
+                      _showMessage('Meeting ended for all participants.');
+                    },
+                    icon: const Icon(Icons.stop_circle_outlined, size: 19),
+                    label: const Text(
+                      'End Meeting for All',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await _autoSaveAndPromptMinutes();
-              await gateway.endMeetingForAll();
-              _showMessage('Meeting ended for all participants.');
-            },
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade800),
-            child: const Text('End Meeting for All'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
