@@ -335,11 +335,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         if (index == 0) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 16.0),
-            child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   'Content Pages (${_contentPages.length})',
@@ -348,26 +346,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                     letterSpacing: -0.5,
                   ),
                 ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () => _showContentPageDialog(),
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('New Page'),
-                      style: ElevatedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _editOnboardingPage,
-                      icon: const Icon(Icons.flag, size: 16),
-                      label: const Text('Edit Onboarding'),
-                      style: OutlinedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                  ],
+                ElevatedButton.icon(
+                  onPressed: () => _showContentPageDialog(),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('New Page'),
+                  style: ElevatedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
               ],
             ),
@@ -891,38 +876,62 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 minHeight: 8,
               ),
             ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Raised: ${NumberFormat.simpleCurrency(name: 'NGN').format(raised)}',
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    if (rate > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        '≈ ${NumberFormat.simpleCurrency(name: 'USD').format(usdRaised)}',
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        'Raised: ${NumberFormat.simpleCurrency(name: 'NGN').format(raised)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
                       ),
-                  ],
+                      if (rate > 0) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          '(≈ \$${NumberFormat.currency(symbol: '', decimalDigits: 0).format(usdRaised)})',
+                          style: TextStyle(fontSize: 10, color: Colors.green.shade600),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Goal: ${NumberFormat.simpleCurrency(name: 'NGN').format(goal)}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    if (rate > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        '≈ ${NumberFormat.simpleCurrency(name: 'USD').format(usdGoal)}',
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        'Goal: ${NumberFormat.simpleCurrency(name: 'NGN').format(goal)}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey),
                       ),
-                  ],
+                      if (rate > 0) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          '(≈ \$${NumberFormat.currency(symbol: '', decimalDigits: 0).format(usdGoal)})',
+                          style: const TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1080,93 +1089,141 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(isEditing ? 'Edit Project' : 'New Project'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration:
-                      const InputDecoration(labelText: 'Project Title *'),
-                ),
-                TextField(
-                  controller: summaryController,
-                  decoration: const InputDecoration(labelText: 'Short Summary'),
-                ),
-                TextField(
-                  controller: descriptionController,
-                  decoration:
-                      const InputDecoration(labelText: 'Full Description'),
-                  maxLines: 3,
-                ),
-                TextField(
-                  controller: goalController,
-                  decoration:
-                      const InputDecoration(labelText: 'Goal Amount (NGN)'),
-                  keyboardType: TextInputType.number,
-                ),
-                TextField(
-                  controller: raisedController,
-                  decoration: const InputDecoration(
-                    labelText: 'Amount Raised (NGN)',
-                    helperText:
-                        'Total raised (Paystack auto checkout + direct bank transfers)',
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Project Title *',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                  keyboardType: TextInputType.number,
-                ),
-                TextField(
-                  controller: imageUrlController,
-                  decoration: const InputDecoration(labelText: 'Image URL'),
-                ),
-                TextField(
-                  controller: fundUpdateTitleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Fund update title',
-                    hintText: 'What has been done so far?',
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: summaryController,
+                    decoration: const InputDecoration(
+                      labelText: 'Short Summary',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                TextField(
-                  controller: fundUpdateTextController,
-                  decoration: const InputDecoration(
-                    labelText: 'Fund update text',
-                    hintText:
-                        'Explain what the received funds have helped accomplish.',
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Description',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
                   ),
-                  maxLines: 4,
-                ),
-                TextField(
-                  controller: fundUpdateImagesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Fund update image URLs',
-                    hintText: 'One image URL per line, maximum 10 images',
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: goalController,
+                          decoration: const InputDecoration(
+                            labelText: 'Goal (NGN)',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: raisedController,
+                          decoration: const InputDecoration(
+                            labelText: 'Raised (NGN)',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ],
                   ),
-                  maxLines: 5,
-                ),
-                TextField(
-                  controller: priorityController,
-                  decoration:
-                      const InputDecoration(labelText: 'Priority (ascending)'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: status,
-                  borderRadius: BorderRadius.circular(12),
-                  dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  icon: const Icon(Icons.arrow_drop_down_rounded),
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: ['active', 'planning', 'completed']
-                      .map((s) => DropdownMenuItem(
-                          value: s, child: Text(TextFormatter.formatText(s))))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setDialogState(() => status = val);
-                    }
-                  },
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: imageUrlController,
+                    decoration: const InputDecoration(
+                      labelText: 'Image URL',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: fundUpdateTitleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Fund update title',
+                      hintText: 'What has been done so far?',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: fundUpdateTextController,
+                    decoration: const InputDecoration(
+                      labelText: 'Fund update text',
+                      hintText:
+                          'Explain what the received funds have helped accomplish.',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: fundUpdateImagesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Fund update image URLs',
+                      hintText: 'One image URL per line',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: priorityController,
+                          decoration: const InputDecoration(
+                            labelText: 'Priority (ascending)',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: status,
+                          borderRadius: BorderRadius.circular(12),
+                          dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          icon: const Icon(Icons.arrow_drop_down_rounded),
+                          decoration: const InputDecoration(
+                            labelText: 'Status',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: ['active', 'planning', 'completed']
+                              .map((s) => DropdownMenuItem(
+                                  value: s, child: Text(TextFormatter.formatText(s))))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setDialogState(() => status = val);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -1400,20 +1457,23 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Interactive Lessons (${lessons.length})',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
+                    Expanded(
+                      child: Text(
+                        'Interactive Lessons (${lessons.length})',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                        ),
                       ),
                     ),
                     ElevatedButton.icon(
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Add Interactive Study'),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Add Lesson'),
                       style: ElevatedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: theme.colorScheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -1427,7 +1487,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
             final lesson = lessons[index - 1];
             return Card(
-              elevation: 2,
+              elevation: 0,
               margin: const EdgeInsets.only(bottom: 12),
               color: isDark ? const Color(0xFF1E293B) : Colors.white,
               shape: RoundedRectangleBorder(
@@ -1436,36 +1496,94 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                   color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                 ),
               ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                onTap: () => _showLessonEditorDialog(lesson: lesson),
-                leading: CircleAvatar(
-                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
-                  child: Icon(
-                    Icons.school_outlined,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                title: Text(
-                  lesson.title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                subtitle: Column(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 4),
-                    Text(
-                      '${lesson.category} • ${lesson.level} • ${lesson.duration}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    // Top row: Avatar + Title with full horizontal room
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                          child: Icon(
+                            Icons.school_outlined,
+                            size: 18,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                lesson.title,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      lesson.category,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      lesson.level,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.orange,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      lesson.duration,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     if (lesson.description.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text(
                         lesson.description,
                         maxLines: 2,
@@ -1475,22 +1593,68 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                         ),
                       ),
                     ],
+                    const SizedBox(height: 8),
+                    // Bottom actions row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (lesson.isActive ? Colors.green : Colors.grey).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            lesson.isActive ? 'PUBLISHED' : 'HIDDEN',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: lesson.isActive ? Colors.green : Colors.grey,
+                            ),
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                lesson.isActive
+                                    ? Icons.visibility_rounded
+                                    : Icons.visibility_off_rounded,
+                                color: lesson.isActive ? Colors.green : Colors.grey,
+                                size: 20,
+                              ),
+                              tooltip: lesson.isActive ? 'Hide' : 'Publish',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                lessonsService.saveLesson(
+                                  lesson.copyWith(isActive: !lesson.isActive),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              tooltip: 'Edit Lesson',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () =>
+                                  _showLessonEditorDialog(lesson: lesson),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  color: Colors.redAccent, size: 20),
+                              tooltip: 'Delete Lesson',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () =>
+                                  _showDeleteLessonDialog(lesson),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        lesson.isActive
-                            ? Icons.visibility_rounded
-                            : Icons.visibility_off_rounded,
-                        color: lesson.isActive ? Colors.green : Colors.grey,
-                        size: 20,
-                      ),
-                      tooltip: lesson.isActive ? 'Hide' : 'Publish',
-                      onPressed: () {
-                        lessonsService.saveLesson(
+              ),
+            );
                           lesson.copyWith(isActive: !lesson.isActive),
                         );
                       },
@@ -1539,6 +1703,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(isEditing ? 'Edit Interactive Lesson' : 'New Interactive Lesson'),
           content: SizedBox(
             width: 500,
@@ -1558,7 +1723,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedCategory,
+                          value: selectedCategory,
                           decoration: const InputDecoration(
                             labelText: 'Category',
                             border: OutlineInputBorder(),
@@ -1576,7 +1741,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                       const SizedBox(width: 8),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: selectedLevel,
+                          value: selectedLevel,
                           decoration: const InputDecoration(
                             labelText: 'Level',
                             border: OutlineInputBorder(),

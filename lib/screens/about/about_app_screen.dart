@@ -335,36 +335,37 @@ class _HeroCard extends StatelessWidget {
                   Color(0xFFF7FAFC),
                 ],
               ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.7),
+          color: colorScheme.outline.withValues(alpha: 0.5),
         ),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withValues(alpha: 0.22)
-                : colorScheme.shadow.withValues(alpha: 0.08),
-            blurRadius: 24,
-            spreadRadius: -10,
-            offset: const Offset(0, 18),
+                ? Colors.black.withValues(alpha: 0.18)
+                : colorScheme.shadow.withValues(alpha: 0.06),
+            blurRadius: 16,
+            spreadRadius: -6,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(24),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final stacked = constraints.maxWidth < 720;
-          final intro = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Logo + Title row — horizontally aligned, compact
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 72,
-                height: 72,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   gradient: AppTheme.getPrimaryGradient(context),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(10),
                 child: SvgPicture.asset(
                   'assets/images/alive_logo.svg',
                   colorFilter: ColorFilter.mode(
@@ -373,45 +374,58 @@ class _HeroCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                subtitle,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (versionBuilder != null) ...[
-                const SizedBox(height: 12),
-                versionBuilder!,
-              ],
-              const SizedBox(height: 12),
-              Text(
-                description,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  height: 1.65,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          );
+          ),
 
-          final chipsWrap = Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          // Version badge
+          if (versionBuilder != null) ...[
+            const SizedBox(height: 10),
+            versionBuilder!,
+          ],
+
+          // Description
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              height: 1.5,
+            ),
+          ),
+
+          // Feature chips — compact horizontal wrap
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: chips
                 .map(
                   (chip) => Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
+                      horizontal: 12,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: colorScheme.primary.withValues(alpha: 0.1),
@@ -422,7 +436,7 @@ class _HeroCard extends StatelessWidget {
                     ),
                     child: Text(
                       chip,
-                      style: theme.textTheme.labelLarge?.copyWith(
+                      style: theme.textTheme.labelMedium?.copyWith(
                         color: colorScheme.primary,
                         fontWeight: FontWeight.w700,
                       ),
@@ -430,31 +444,8 @@ class _HeroCard extends StatelessWidget {
                   ),
                 )
                 .toList(),
-          );
-
-          if (stacked) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                intro,
-                const SizedBox(height: 18),
-                chipsWrap,
-              ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: intro),
-              const SizedBox(width: 24),
-              SizedBox(
-                width: 260,
-                child: chipsWrap,
-              ),
-            ],
-          );
-        },
+          ),
+        ],
       ),
     );
   }

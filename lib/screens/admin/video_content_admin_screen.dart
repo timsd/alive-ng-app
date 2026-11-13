@@ -61,19 +61,47 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
     StandardVideoPlayerModal.show(context, videoData: video);
   }
 
+  bool _isVideoActive(Map<String, dynamic> v) {
+    final val = v['is_active'] ?? v['isActive'];
+    if (val == null) return true; // Default to true if not explicitly set to false
+    if (val is bool) return val;
+    if (val is int) return val == 1;
+    final str = val.toString().trim().toLowerCase();
+    return str == 'true' || str == '1';
+  }
+
   Future<void> _toggleActive(Map<String, dynamic> video) async {
-    final currentActive = video['is_active'] == true;
+    final currentActive = _isVideoActive(video);
     final updated = Map<String, dynamic>.from(video);
     updated['is_active'] = !currentActive;
-    await _videoService.saveVideo(updated);
+
+    // Optimistically update locally
+    setState(() {
+      video['is_active'] = !currentActive;
+    });
+
+    try {
+      await _videoService.saveVideo(updated);
+    } catch (e) {
+      // Revert if save failed
+      setState(() {
+        video['is_active'] = currentActive;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update status: $e')),
+        );
+      }
+      return;
+    }
+
     if (mounted) {
-      setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             !currentActive
-                ? '"${video['title']}" is now visible to users.'
-                : '"${video['title']}" is now hidden from users.',
+                ? '"${video['title']}" is now visible to users in Library.'
+                : '"${video['title']}" is now hidden from users in Library.',
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -146,6 +174,7 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
           return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               children: [
                 Icon(
@@ -172,39 +201,35 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: authorController,
-                            decoration: const InputDecoration(
-                              labelText: 'Author / Presenter',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: _categories.contains(categoryController.text)
-                                ? categoryController.text
-                                : 'Bible Study',
-                            decoration: const InputDecoration(
-                              labelText: 'Category',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: _categories
-                                .where((c) => c != 'All')
-                                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                                .toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setDialogState(() => categoryController.text = val);
-                              }
-                            },
-                          ),
-                        ),
-                      ],
+                    TextField(
+                      controller: authorController,
+                      decoration: const InputDecoration(
+                        labelText: 'Author / Presenter',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _categories.contains(categoryController.text)
+                          ? categoryController.text
+                          : 'Bible Study',
+                      decoration: const InputDecoration(
+                        labelText: 'Category',
+                        border: OutlineInputBorder(),
+                      ),
+                      isExpanded: true,
+                      items: _categories
+                          .where((c) => c != 'All')
+                          .map((c) => DropdownMenuItem(
+                                value: c,
+                                child: Text(c, overflow: TextOverflow.ellipsis),
+                              ))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => categoryController.text = val);
+                        }
+                      },
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -344,27 +369,79 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Vertical 9:16 (Shorts)'),
-                            subtitle: Text(isVertical ? 'Mobile vertical mode' : 'Standard 16:9 landscape'),
-                            value: isVertical,
-                            onChanged: (val) => setDialogState(() => isVertical = val),
-                          ),
+                    // Switches container
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
                         ),
-                        Expanded(
-                          child: SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Published'),
-                            subtitle: Text(isActive ? 'Visible to users' : 'Hidden'),
-                            value: isActive,
-                            onChanged: (val) => setDialogState(() => isActive = val),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Vertical 9:16 (Shorts / Reels)',
+                                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      isVertical ? 'Mobile vertical mode' : 'Standard 16:9 widescreen landscape',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: isVertical,
+                                onChanged: (val) => setDialogState(() => isVertical = val),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isActive ? 'Published (Visible to users)' : 'Hidden (Draft)',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: isActive ? Colors.green : Colors.orange,
+                                      ),
+                                    ),
+                                    Text(
+                                      isActive ? 'Appears in public user video library' : 'Hidden from user library',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: isActive,
+                                onChanged: (val) => setDialogState(() => isActive = val),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
 
                     if (isUploading) ...[
@@ -581,7 +658,7 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
     final category = video['category'] ?? 'General';
     final duration = video['duration'] ?? '00:00';
     final thumbnailUrl = (video['thumbnail_url'] ?? video['thumbnailUrl'])?.toString() ?? '';
-    final isActive = video['is_active'] == true;
+    final isActive = _isVideoActive(video);
 
     return Card(
       elevation: 0,

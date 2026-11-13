@@ -248,6 +248,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   List<Map<String, dynamic>> _getFilteredContent(
       List<Map<String, dynamic>> content) {
     return content.where((item) {
+      // Exclude hidden/inactive content from user view!
+      final rawActive = item['is_active'] ?? item['isActive'];
+      final isItemActive = rawActive == null ? true : (rawActive == true || rawActive == 1 || rawActive.toString().toLowerCase() == 'true');
+      if (!isItemActive) return false;
+
       final matchesSearch = _searchQuery.isEmpty ||
           item['title'].toString().toLowerCase().contains(_searchQuery) ||
           item['author'].toString().toLowerCase().contains(_searchQuery);

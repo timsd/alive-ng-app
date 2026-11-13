@@ -111,6 +111,7 @@ class VideoContentService {
           ...Map<String, dynamic>.from(updated.data),
           'id': updated.$id,
           r'$id': updated.$id,
+          if (dataToSave.containsKey('is_active')) 'is_active': dataToSave['is_active'],
         };
         _replaceInCache(item);
         return item;
@@ -126,6 +127,7 @@ class VideoContentService {
           ...Map<String, dynamic>.from(updatedDoc.data),
           'id': updatedDoc.$id,
           r'$id': updatedDoc.$id,
+          if (dataToSave.containsKey('is_active')) 'is_active': dataToSave['is_active'],
         };
         _replaceInCache(item);
         return item;

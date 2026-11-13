@@ -658,39 +658,90 @@ class _TractFormDialogState extends State<_TractFormDialog> {
 
                       // Cover Image Upload
                       Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(14),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Default Cover Image',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Expanded(
-                                    child: Text(
-                                      _selectedCoverImageName ??
-                                          'No cover image selected',
-                                      style: TextStyle(
-                                        color: _selectedCoverImageName != null
-                                            ? Colors.green
-                                            : Colors.grey[600],
-                                      ),
+                                  const Text(
+                                    'Default Cover Image',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
                                     ),
                                   ),
                                   ElevatedButton.icon(
                                     onPressed:
                                         _isUploading ? null : _selectCoverImage,
-                                    icon: const Icon(Icons.image),
+                                    icon: const Icon(Icons.image, size: 16),
                                     label: const Text('Select Image'),
+                                    style: ElevatedButton.styleFrom(
+                                      visualDensity: VisualDensity.compact,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: (_selectedCoverImageName != null
+                                          ? Colors.green
+                                          : Colors.grey)
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: (_selectedCoverImageName != null
+                                            ? Colors.green
+                                            : Colors.grey)
+                                        .withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _selectedCoverImageName != null
+                                          ? Icons.check_circle_rounded
+                                          : Icons.image_outlined,
+                                      size: 16,
+                                      color: _selectedCoverImageName != null
+                                          ? Colors.green
+                                          : Colors.grey,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _selectedCoverImageName ??
+                                            'No cover image selected',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: _selectedCoverImageName != null
+                                              ? Colors.green
+                                              : Colors.grey[600],
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (_selectedCoverImageName != null)
+                                      IconButton(
+                                        icon: const Icon(Icons.clear, size: 16),
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: () {
+                                          setState(() {
+                                            _selectedCoverImageName = null;
+                                            _selectedCoverImageBytes = null;
+                                          });
+                                        },
+                                      ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -699,41 +750,79 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                       const SizedBox(height: 16),
                       // Additional Lesson Cover Images (Multiple)
                       Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(14),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Lesson Cover Images (Multiple)',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Expanded(
-                                    child: Text(
-                                      _selectedCoverNames.isNotEmpty
-                                          ? '${_selectedCoverNames.length} image(s) selected'
-                                          : 'No lesson images selected',
-                                      style: TextStyle(
-                                        color: _selectedCoverNames.isNotEmpty
-                                            ? Colors.green
-                                            : Colors.grey[600],
-                                      ),
+                                  const Text(
+                                    'Lesson Cover Images (Multiple)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
                                     ),
                                   ),
                                   ElevatedButton.icon(
                                     onPressed: _isUploading
                                         ? null
                                         : _selectAdditionalCoverImages,
-                                    icon: const Icon(Icons.collections),
+                                    icon: const Icon(Icons.collections, size: 16),
                                     label: const Text('Add Images'),
+                                    style: ElevatedButton.styleFrom(
+                                      visualDensity: VisualDensity.compact,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: (_selectedCoverNames.isNotEmpty
+                                          ? Colors.green
+                                          : Colors.grey)
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: (_selectedCoverNames.isNotEmpty
+                                            ? Colors.green
+                                            : Colors.grey)
+                                        .withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _selectedCoverNames.isNotEmpty
+                                          ? Icons.collections_rounded
+                                          : Icons.photo_library_outlined,
+                                      size: 16,
+                                      color: _selectedCoverNames.isNotEmpty
+                                          ? Colors.green
+                                          : Colors.grey,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _selectedCoverNames.isNotEmpty
+                                            ? '${_selectedCoverNames.length} image(s) selected'
+                                            : 'No lesson images selected',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: _selectedCoverNames.isNotEmpty
+                                              ? Colors.green
+                                              : Colors.grey[600],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               if (_selectedCoverNames.isNotEmpty) ...[
                                 const SizedBox(height: 8),
@@ -741,10 +830,13 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: _selectedCoverNames
-                                      .map((name) => Chip(label: Text(name)))
+                                      .map((name) => Chip(
+                                            label: Text(name, style: const TextStyle(fontSize: 11)),
+                                            visualDensity: VisualDensity.compact,
+                                          ))
                                       .toList(),
                                 ),
-                              ]
+                              ],
                             ],
                           ),
                         ),

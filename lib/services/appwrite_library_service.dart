@@ -49,8 +49,17 @@ class AppwriteLibraryService {
     return combined;
   }
 
-  Future<List<Map<String, dynamic>>> listVideos() async {
-    return _listCollection(AppwriteBackendConfig.videosCollectionId);
+  Future<List<Map<String, dynamic>>> listVideos({bool includeHidden = false}) async {
+    final list = await _listCollection(AppwriteBackendConfig.videosCollectionId);
+    if (includeHidden) return list;
+    return list.where((v) {
+      final val = v['is_active'] ?? v['isActive'];
+      if (val == null) return true;
+      if (val is bool) return val;
+      if (val is int) return val == 1;
+      final str = val.toString().trim().toLowerCase();
+      return str == 'true' || str == '1';
+    }).toList();
   }
 
   Future<List<Map<String, dynamic>>> _listCollection(

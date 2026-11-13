@@ -83,6 +83,11 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
     // Centering at height - bottomPadding - 32.0 perfectly frames both the icon and its label.
     final bottomNavY = height - bottomPadding - (bottomPadding > 0 ? 32.0 : 28.0);
 
+    // Center Y coordinate of top app bar action icons:
+    // The AppBar sits directly below the status bar / system top inset.
+    // Action icons are centered vertically within the toolbar (kToolbarHeight = 56).
+    final topBarY = topPadding + kToolbarHeight / 2;
+
     switch (targetArea) {
       case 'home':
         return Offset(width * 0.10, bottomNavY);
@@ -97,26 +102,26 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
         return Offset(width * 0.90, bottomNavY);
       case 'donations':
         // CompactDonationButton is the rightmost action (center at width - 24)
-        return Offset(width - 24, topPadding + 28);
+        return Offset(width - 24, topBarY);
       case 'language':
         // Language toggle is second from right (center at width - 72)
-        return Offset(width - 72, topPadding + 28);
+        return Offset(width - 72, topBarY);
       case 'theme':
         // Theme toggle is third from right (center at width - 120)
-        return Offset(width - 120, topPadding + 28);
+        return Offset(width - 120, topBarY);
       case 'news_feed':
         // News Feed bell/newspaper icon with unread badge (center at width - 168)
-        return Offset(width - 168, topPadding + 28);
+        return Offset(width - 168, topBarY);
       case 'my_study':
         // My Study bookmarks icon on Home header (center at width - 216)
-        return Offset(width - 216, topPadding + 28);
+        return Offset(width - 216, topBarY);
       case 'profile':
-        // Profile pill with curved chevron on the top right of the Greeting Header
-        final responsiveSide =
-            width < 600 ? 56.0 : (width < 1024 ? 66.0 : 74.0);
-        final responsiveTop = width < 600 ? 86.0 : 94.0;
-        return Offset(
-            width - responsiveSide, topPadding + kToolbarHeight + responsiveTop);
+        // Profile pill with curved chevron on the top right of the Greeting Header.
+        // Position: below app bar, inside the scrollable body content.
+        // Y = top inset + app bar + body padding(16) + card padding(18) + date row(20) + spacer(14) + half name row(15)
+        final profileY = topPadding + kToolbarHeight + 83.0;
+        final profileX = width - 66.0;
+        return Offset(profileX, profileY);
       default:
         return Offset(width * 0.10, bottomNavY);
     }
@@ -229,8 +234,8 @@ class _AppTourOverlayState extends ConsumerState<AppTourOverlay>
             right: 16,
             top: isProfileTarget
                 ? (targetCenter.dy + targetRadius + 20)
-                : (isTopTarget ? (viewPadding.top + 64) : null),
-            bottom: !isTopTarget && !isProfileTarget ? (viewPadding.bottom + 68) : null,
+                : (isTopTarget ? (effectiveTopPadding + kToolbarHeight + 12) : null),
+            bottom: !isTopTarget && !isProfileTarget ? (effectiveBottomPadding + 68) : null,
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 480),

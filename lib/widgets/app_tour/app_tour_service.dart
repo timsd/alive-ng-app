@@ -72,16 +72,22 @@ class AppTourService {
     // the app is routed to the Home screen and any active dialogs/sheets are
     // dismissed so the tour spotlight aligns with the actual Home header and tabs.
     if (force) {
+      // Pop any remaining overlays (dialogs, bottom sheets) except the root.
+      // Use try/catch since the navigator state may already be clean.
       try {
-        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+        final navigator = Navigator.of(context, rootNavigator: true);
+        // Only pop if there are routes above the first one
+        navigator.popUntil((route) => route.isFirst);
       } catch (_) {}
 
+      // Navigate to Home if not already there
       try {
         context.go(AppConstants.homeRoute);
       } catch (_) {}
 
-      // Allow Home screen and app bar to render before painting the tour overlay
-      await Future.delayed(const Duration(milliseconds: 320));
+      // Allow Home screen and app bar to fully render before painting the tour overlay.
+      // Use a longer delay to ensure all layout passes are complete.
+      await Future.delayed(const Duration(milliseconds: 500));
       if (!context.mounted) return;
     }
 
