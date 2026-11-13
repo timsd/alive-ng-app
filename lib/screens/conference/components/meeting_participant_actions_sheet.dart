@@ -31,6 +31,8 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
   }) {
     return showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -58,22 +60,39 @@ class MeetingParticipantActionsSheet extends StatelessWidget {
     final isHost = gateway.isParticipantHost(participant.identity);
     final isCoHost = gateway.isParticipantCoHost(participant.identity);
     final subtitleStyle = theme.textTheme.bodySmall?.copyWith(
-      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+      color: theme.colorScheme.onSurfaceVariant,
       fontSize: 12,
-      height: 1.3,
+      height: 1.35,
     );
 
     return ListTileTheme(
       data: ListTileThemeData(subtitleTextStyle: subtitleStyle),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            0,
+            8,
+            0,
+            24 + MediaQuery.of(context).padding.bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              // Top drag indicator
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 8, bottom: 4),
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: Row(
                 children: [
                   CircleAvatar(

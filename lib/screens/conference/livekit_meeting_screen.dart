@@ -673,7 +673,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   void _showMessage(String message) {
     if (!mounted) return;
     if (AppStoreHelper.isMobileOnlyNotice(message)) {
-      ToastUtils.showMobilePrompt(message);
+      ToastUtils.showMobilePrompt(
+        message,
+        meetingRoom: _getRoomSlug(),
+        onOpenApp: () => AppStoreHelper.openAppOrStore(meetingRoom: _getRoomSlug()),
+      );
     } else {
       ToastUtils.showInfo(message);
     }
@@ -1615,10 +1619,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             final errStr = ErrorHandler.getUserFriendlyMessage(e);
             if (AppStoreHelper.isMobileOnlyNotice(errStr) ||
                 AppStoreHelper.isMobileOnlyNotice(e)) {
-              ToastUtils.showInfo(
-                'Screen sharing on mobile requires the ALIVE app. Opening Google Play Store...',
-              );
-              AppStoreHelper.redirectToPlayStore();
+              if (mounted) {
+                _showMobileScreenShareDialog(context, _getRoomSlug());
+              }
             } else {
               ToastUtils.showError(e);
             }
@@ -1635,6 +1638,77 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         onToggleScribe: _toggleScribeRecording,
         onOpenMore: () => _showMeetingMoreSheet(context, session, gateway, isLeader),
         onLeaveOrEnd: () => _handleHostExit(gateway),
+      ),
+    );
+  }
+
+  void _showMobileScreenShareDialog(BuildContext context, String? roomSlug) {
+    final theme = Theme.of(context);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD49B28).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.screen_share_rounded,
+                color: Color(0xFFD49B28),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Mobile Screen Sharing',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Screen sharing on mobile web browsers is restricted by iOS Safari and Android Chrome.\n\n'
+              'If you have the ALIVE mobile app installed, you can open it to share your screen directly, or join from a desktop web browser.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.5,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Stay in Web Meeting'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              AppStoreHelper.openPlayStore();
+            },
+            icon: const Icon(Icons.shop_two_rounded, size: 16),
+            label: const Text('Get App'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              AppStoreHelper.openAppOrStore(meetingRoom: roomSlug);
+            },
+            icon: const Icon(Icons.launch_rounded, size: 16),
+            label: const Text('Open App'),
+          ),
+        ],
       ),
     );
   }

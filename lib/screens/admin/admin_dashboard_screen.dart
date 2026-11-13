@@ -1079,73 +1079,92 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Monthly Support Reminder'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Sent to all members on the 1st of each month, reminding them '
-                'to support the ministry and honour monthly commitments.',
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Let members opt out'),
-                subtitle: Text(
-                  enabled
-                      ? 'Members can turn this reminder off themselves'
-                      : 'Everyone receives it (toggle is greyed out for members)',
-                ),
-                value: enabled,
-                onChanged: (value) => setDialogState(() => enabled = value),
-              ),
-              const SizedBox(height: 8),
-              // Oversight: who has actually declined. Without this an admin
-              // cannot tell a member who opted out from one who simply never
-              // gets the notification.
-              if (enabled)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    icon: const Icon(Icons.people_outline, size: 18),
-                    label: const Text('View members who opted out'),
-                    onPressed: () => _showMonthlyReminderOptOuts(dialogContext),
+      builder: (dialogContext) {
+        final dialogTheme = Theme.of(dialogContext);
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('Monthly Support Reminder'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sent to all members on the 1st of each month, reminding them '
+                  'to support the ministry and honour monthly commitments.',
+                  style: dialogTheme.textTheme.bodyMedium?.copyWith(
+                    color: dialogTheme.colorScheme.onSurfaceVariant,
+                    height: 1.45,
+                    fontSize: 13,
                   ),
                 ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                final saved = await MonthlyReminderSettingService
-                    .setUserToggleEnabled(enabled);
-                if (!dialogContext.mounted) return;
-                Navigator.of(dialogContext).pop();
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      saved
-                          ? (enabled
-                              ? 'Members can now opt out of the monthly reminder'
-                              : 'Monthly reminder is now admin-managed for everyone')
-                          : 'Could not save the monthly reminder setting',
+                const SizedBox(height: 14),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    'Let members opt out',
+                    style: dialogTheme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                );
-              },
-              child: const Text('Save'),
+                  subtitle: Text(
+                    enabled
+                        ? 'Members can turn this reminder off themselves'
+                        : 'Everyone receives it (toggle is greyed out for members)',
+                    style: dialogTheme.textTheme.bodySmall?.copyWith(
+                      color: dialogTheme.colorScheme.onSurfaceVariant,
+                      height: 1.35,
+                      fontSize: 12,
+                    ),
+                  ),
+                  value: enabled,
+                  onChanged: (value) => setDialogState(() => enabled = value),
+                ),
+                const SizedBox(height: 8),
+                // Oversight: who has actually declined. Without this an admin
+                // cannot tell a member who opted out from one who simply never
+                // gets the notification.
+                if (enabled)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.people_outline, size: 18),
+                      label: const Text('View members who opted out'),
+                      onPressed: () => _showMonthlyReminderOptOuts(dialogContext),
+                    ),
+                  ),
+              ],
             ),
-          ],
-        ),
-      ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final saved = await MonthlyReminderSettingService
+                      .setUserToggleEnabled(enabled);
+                  if (!dialogContext.mounted) return;
+                  Navigator.of(dialogContext).pop();
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        saved
+                            ? (enabled
+                                ? 'Members can now opt out of the monthly reminder'
+                                : 'Monthly reminder is now admin-managed for everyone')
+                            : 'Could not save the monthly reminder setting',
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

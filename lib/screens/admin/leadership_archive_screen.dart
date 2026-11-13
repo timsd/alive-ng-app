@@ -715,23 +715,58 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
               Expanded(
                 child: DropdownButtonFormField<LeadershipPosition>(
                   initialValue: _selectedPosition,
-                  decoration: const InputDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  dropdownColor: theme.colorScheme.surfaceContainerHigh,
+                  menuMaxHeight: 380,
+                  icon: const Icon(Icons.arrow_drop_down_rounded),
+                  decoration: InputDecoration(
                     labelText: 'Position',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                    labelStyle: TextStyle(
+                      fontSize: 13,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
                     ),
                   ),
                   items: [
-                    const DropdownMenuItem<LeadershipPosition>(
+                    DropdownMenuItem<LeadershipPosition>(
                       value: null,
-                      child: Text('All Positions'),
+                      child: Text(
+                        'All Positions',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
                     ),
                     ...LeadershipPosition.values.map(
                       (position) => DropdownMenuItem(
                         value: position,
-                        child: Text(position.displayName),
+                        child: Text(
+                          position.displayName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -743,14 +778,20 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                 ),
               ),
               const SizedBox(width: 12),
-              ElevatedButton.icon(
+              OutlinedButton.icon(
                 onPressed: () {
                   setState(() {
                     _searchController.clear();
                     _selectedPosition = null;
                   });
                 },
-                icon: const Icon(Icons.clear),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+                icon: const Icon(Icons.clear, size: 18),
                 label: const Text('Clear'),
               ),
             ],
@@ -2229,6 +2270,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     final notesController = TextEditingController();
     DateTime selectedDate = DateTime.now();
     String selectedStatus = 'Active';
+    final theme = Theme.of(context);
 
     showDialog(
       context: context,
@@ -2284,9 +2326,25 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: selectedStatus,
-                  decoration: const InputDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  dropdownColor: theme.colorScheme.surfaceContainerHigh,
+                  decoration: InputDecoration(
                     labelText: 'Status',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                   ),
                   items: ['Active', 'Inactive', 'Completed'].map((status) => 
                     DropdownMenuItem(value: status, child: Text(status))

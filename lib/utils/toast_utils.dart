@@ -88,16 +88,21 @@ class ToastUtils {
   }
 
   /// Dedicated prompt for features that require the ALIVE mobile app.
-  /// Automatically launches the Google Play Store directly.
-  static void showMobilePrompt(String message) {
-    AppStoreHelper.redirectToPlayStore();
+  /// Displays an informative banner with an action button to open the mobile app or Play Store.
+  static void showMobilePrompt(
+    String message, {
+    String? meetingRoom,
+    VoidCallback? onOpenApp,
+  }) {
     _showOverlayBanner(
       message,
       backgroundColor: const Color(0xFF141A28),
       borderColor: const Color(0xFFD49B28),
-      icon: Icons.shop_two_rounded,
+      icon: Icons.screen_share_rounded,
       iconColor: const Color(0xFFD49B28),
-      duration: const Duration(seconds: 4),
+      actionLabel: 'Open App',
+      onAction: onOpenApp ?? () => AppStoreHelper.openAppOrStore(meetingRoom: meetingRoom),
+      duration: const Duration(seconds: 8),
     );
   }
 

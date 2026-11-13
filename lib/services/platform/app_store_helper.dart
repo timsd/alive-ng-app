@@ -1,6 +1,5 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
-import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper for redirecting users directly to the official ALIVE Nigeria app on Google Play Store
@@ -45,6 +44,33 @@ class AppStoreHelper {
   /// Automatically redirects the user directly to the Google Play Store
   /// for activities that are only compatible with the mobile app.
   static Future<bool> redirectToPlayStore() async {
+    return await openPlayStore();
+  }
+
+  /// Attempts to open the installed ALIVE mobile app.
+  /// If [meetingRoom] is specified, app links / intents will route directly into that meeting room.
+  /// If the app is not installed or launch fails, opens the Google Play Store as fallback.
+  static Future<bool> openAppOrStore({String? meetingRoom}) async {
+    final query = meetingRoom != null && meetingRoom.trim().isNotEmpty
+        ? '?room=${Uri.encodeComponent(meetingRoom.trim())}'
+        : '';
+    final customUri = Uri.parse('aliveng://meet$query');
+    final universalUri = Uri.parse('https://app.alivenigeria.org/meet$query');
+
+    try {
+      if (await canLaunchUrl(customUri)) {
+        final launched = await launchUrl(customUri, mode: LaunchMode.externalApplication);
+        if (launched) return true;
+      }
+    } catch (_) {}
+
+    try {
+      if (await canLaunchUrl(universalUri)) {
+        final launched = await launchUrl(universalUri, mode: LaunchMode.externalApplication);
+        if (launched) return true;
+      }
+    } catch (_) {}
+
     return await openPlayStore();
   }
 
