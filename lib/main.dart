@@ -76,6 +76,7 @@ void main() {
     // Restore the preference before the first frame; ARB messages are compiled.
     try {
       await LocaleNotifier.loadSavedLocale();
+      await ThemeModeNotifier.loadSavedThemeMode();
       await OnboardingService.initialize();
     } catch (e) {
       debugPrint('Startup preferences initialization failed: $e');

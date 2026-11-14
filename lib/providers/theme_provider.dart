@@ -6,36 +6,53 @@ import '../constants/app_constants.dart';
 
 // Theme Mode Provider
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  ThemeModeNotifier() : super(ThemeMode.system) {
+  static ThemeMode _initialThemeMode = ThemeMode.system;
+  bool _hasUserUpdated = false;
+
+  ThemeModeNotifier() : super(_initialThemeMode) {
     _loadThemeMode();
+  }
+
+  static ThemeMode _parseThemeMode(String? themeString) {
+    switch (themeString) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      case 'system':
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  /// Preload saved theme preference before runApp() so the first frame uses
+  /// the user's persisted theme (or system theme if none was selected).
+  static Future<void> loadSavedThemeMode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _initialThemeMode = _parseThemeMode(prefs.getString(AppConstants.themeKey));
+    } catch (_) {
+      _initialThemeMode = ThemeMode.system;
+    }
   }
 
   Future<void> _loadThemeMode() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final themeString = prefs.getString(AppConstants.themeKey);
-
-      if (themeString != null) {
-        switch (themeString) {
-          case 'light':
-            state = ThemeMode.light;
-            break;
-          case 'dark':
-            state = ThemeMode.dark;
-            break;
-          case 'system':
-          default:
-            state = ThemeMode.system;
-            break;
-        }
-      }
+      if (_hasUserUpdated) return;
+      final loaded = _parseThemeMode(prefs.getString(AppConstants.themeKey));
+      _initialThemeMode = loaded;
+      state = loaded;
     } catch (e) {
-      // If there's an error loading the theme, default to system
-      state = ThemeMode.system;
+      if (!_hasUserUpdated) {
+        state = ThemeMode.system;
+      }
     }
   }
 
   Future<void> setThemeMode(ThemeMode themeMode) async {
+    _hasUserUpdated = true;
+    _initialThemeMode = themeMode;
     state = themeMode;
 
     try {

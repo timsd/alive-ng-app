@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/language_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../l10n/supported_language.dart';
 import '../../providers/appwrite_auth_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -56,6 +57,99 @@ class ProfileScreen extends ConsumerWidget {
           child: _buildBody(context, ref, translate, theme),
         ),
       ),
+    );
+  }
+
+  void _showThemeSelector(BuildContext context, WidgetRef ref) {
+    final currentMode = ref.read(themeModeProvider);
+    final options = [
+      (
+        mode: ThemeMode.system,
+        label: 'Auto (Follow Device)',
+        subtitle: 'Matches your phone or browser theme',
+        icon: Icons.brightness_auto_rounded,
+      ),
+      (
+        mode: ThemeMode.light,
+        label: 'Light Mode',
+        subtitle: 'Always use light theme',
+        icon: Icons.light_mode_rounded,
+      ),
+      (
+        mode: ThemeMode.dark,
+        label: 'Dark Mode',
+        subtitle: 'Always use dark theme',
+        icon: Icons.dark_mode_rounded,
+      ),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0, vertical: 8.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.brightness_6_rounded,
+                          color: Color(0xFF0EA5E9)),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Appearance',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                ...options.map((opt) {
+                  final selected = opt.mode == currentMode;
+                  return ListTile(
+                    leading: Icon(
+                      opt.icon,
+                      color: selected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    title: Text(
+                      opt.label,
+                      style: TextStyle(
+                        fontWeight:
+                            selected ? FontWeight.bold : FontWeight.normal,
+                        color: selected ? theme.colorScheme.primary : null,
+                      ),
+                    ),
+                    subtitle: Text(opt.subtitle),
+                    trailing: selected
+                        ? Icon(Icons.check_circle_rounded,
+                            color: theme.colorScheme.primary)
+                        : null,
+                    onTap: () {
+                      ref
+                          .read(themeModeProvider.notifier)
+                          .setThemeMode(opt.mode);
+                      Navigator.pop(sheetContext);
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -279,6 +373,17 @@ class ProfileScreen extends ConsumerWidget {
                     )
                     .name,
                 onTap: () => _showLanguageSelector(context, ref),
+              ),
+              _ActionTile(
+                icon: Icons.brightness_6_rounded,
+                iconColor: const Color(0xFF0EA5E9),
+                title: 'Appearance',
+                subtitle: switch (ref.watch(themeModeProvider)) {
+                  ThemeMode.system => 'Auto (Follow Device)',
+                  ThemeMode.light => 'Light Mode',
+                  ThemeMode.dark => 'Dark Mode',
+                },
+                onTap: () => _showThemeSelector(context, ref),
               ),
               _ActionTile(
                 icon: Icons.notifications_rounded,

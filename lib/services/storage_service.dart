@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'platform/secure_storage_adapter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../constants/app_constants.dart';
 import '../utils/logger.dart';
 import '../utils/app_exception.dart';
 
@@ -133,7 +134,11 @@ class StorageService {
 
   Future<void> clear() async {
     final prefs = await _preferences;
+    final savedTheme = prefs.getString(AppConstants.themeKey);
     await prefs.clear();
+    if (savedTheme != null) {
+      await prefs.setString(AppConstants.themeKey, savedTheme);
+    }
   }
 
   Future<bool> containsKey(String key) async {
