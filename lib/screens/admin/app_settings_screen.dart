@@ -27,6 +27,32 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final Set<String> _visibleSecretKeys = {};
   Map<String, dynamic>? _paystackTestModeSetting;
 
+  // Live Streaming (YouTube & Facebook) auto-synced state
+  static const String _defaultYoutubeIngestUrl =
+      'rtmp://a.rtmp.youtube.com/live2';
+  static const String _defaultFacebookIngestUrl =
+      'rtmps://live-api-s.facebook.com:443/rtmp';
+  static const Set<String> _streamingSettingKeys = {
+    'streaming_platforms',
+    'youtube_stream_url',
+    'youtube_stream_key',
+    'facebook_stream_url',
+    'facebook_stream_key',
+  };
+  final Map<String, Map<String, dynamic>> _streamingSettingDocs = {};
+  String _streamingPlatforms = 'youtube';
+  final TextEditingController _youtubeStreamUrlController =
+      TextEditingController(text: _defaultYoutubeIngestUrl);
+  final TextEditingController _youtubeStreamKeyController =
+      TextEditingController();
+  final TextEditingController _facebookStreamUrlController =
+      TextEditingController(text: _defaultFacebookIngestUrl);
+  final TextEditingController _facebookStreamKeyController =
+      TextEditingController();
+  bool _showYoutubeStreamKey = false;
+  bool _showFacebookStreamKey = false;
+  bool _isSavingStreaming = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +78,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     for (final controller in _controllers.values) {
       controller.dispose();
     }
+    _youtubeStreamUrlController.dispose();
+    _youtubeStreamKeyController.dispose();
+    _facebookStreamUrlController.dispose();
+    _facebookStreamKeyController.dispose();
     super.dispose();
   }
 
@@ -65,6 +95,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       _settingsByCategory.clear();
       _controllers.clear();
       _paystackTestModeSetting = null;
+      _streamingSettingDocs.clear();
+      _streamingPlatforms = 'youtube';
+      _youtubeStreamUrlController.text = _defaultYoutubeIngestUrl;
+      _youtubeStreamKeyController.clear();
+      _facebookStreamUrlController.text = _defaultFacebookIngestUrl;
+      _facebookStreamKeyController.clear();
 
       for (final setting in settings) {
         final key = _settingKey(setting);
@@ -75,6 +111,22 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           // Managed by the dedicated Paystack Mode card at the top of this screen
           _paystackTestModeSetting = setting;
           PaymentConfig.setTestMode(val.toLowerCase() == 'true');
+          continue;
+        }
+        if (_streamingSettingKeys.contains(key)) {
+          _streamingSettingDocs[key] = setting;
+          if (key == 'streaming_platforms' &&
+              const {'youtube', 'facebook', 'both'}.contains(val.toLowerCase())) {
+            _streamingPlatforms = val.toLowerCase();
+          } else if (key == 'youtube_stream_url' && val.isNotEmpty) {
+            _youtubeStreamUrlController.text = val;
+          } else if (key == 'youtube_stream_key') {
+            _youtubeStreamKeyController.text = val;
+          } else if (key == 'facebook_stream_url' && val.isNotEmpty) {
+            _facebookStreamUrlController.text = val;
+          } else if (key == 'facebook_stream_key') {
+            _facebookStreamKeyController.text = val;
+          }
           continue;
         }
         if (key == 'paystack_public_key' || key == 'paystack_secret_key') {
@@ -276,6 +328,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           // Paystack Mode Toggle Card
           _buildPaystackModeCard(),
 
+          // Live Streaming (YouTube & Facebook) Card
+          _buildStreamingSettingsCard(),
+
           // Settings by category
           ..._settingsByCategory.entries.map((entry) {
             return _buildCategorySection(entry.key, entry.value);
@@ -378,6 +433,290 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _upsertStreamingSetting({
+    required String key,
+    required String value,
+    required String description,
+  }) async {
+    final existing = _streamingSettingDocs[key];
+    if (existing != null) {
+      await _updateSetting(existing['id'].toString(), {
+        'setting_value': value,
+        'value': value,
+      });
+    } else {
+      await _createSetting({
+        'key': key,
+        'setting_key': key,
+        'value': value,
+        'setting_value': value,
+        'category': 'streaming',
+        'type': 'string',
+        'data_type': 'string',
+        'description': description,
+        'is_public': false,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      });
+      _streamingSettingDocs[key] = {
+        'id': AppwriteIdUtils.toValidUid(key, prefix: 'st'),
+        'key': key,
+        'setting_key': key,
+        'value': value,
+        'setting_value': value,
+        'category': 'streaming',
+      };
+    }
+  }
+
+  Future<void> _saveStreamingSettings({bool silent = false}) async {
+    if (_isSavingStreaming) return;
+    setState(() => _isSavingStreaming = true);
+    try {
+      final ytUrl = _youtubeStreamUrlController.text.trim().isEmpty
+          ? _defaultYoutubeIngestUrl
+          : _youtubeStreamUrlController.text.trim();
+      final fbUrl = _facebookStreamUrlController.text.trim().isEmpty
+          ? _defaultFacebookIngestUrl
+          : _facebookStreamUrlController.text.trim();
+
+      await Future.wait([
+        _upsertStreamingSetting(
+          key: 'streaming_platforms',
+          value: _streamingPlatforms,
+          description: 'Active ALIVE Meet broadcast targets: youtube, facebook, or both',
+        ),
+        _upsertStreamingSetting(
+          key: 'youtube_stream_url',
+          value: ytUrl,
+          description: 'YouTube Live RTMP ingest URL',
+        ),
+        _upsertStreamingSetting(
+          key: 'youtube_stream_key',
+          value: _youtubeStreamKeyController.text.trim(),
+          description: 'YouTube Live stream key for ALIVE Meet Go Live',
+        ),
+        _upsertStreamingSetting(
+          key: 'facebook_stream_url',
+          value: fbUrl,
+          description: 'Facebook Live RTMPS ingest URL',
+        ),
+        _upsertStreamingSetting(
+          key: 'facebook_stream_key',
+          value: _facebookStreamKeyController.text.trim(),
+          description: 'Facebook Live stream key for ALIVE Meet Go Live',
+        ),
+      ]);
+
+      if (!silent) {
+        ToastUtils.showSuccess('Live streaming settings saved and synced');
+      }
+    } catch (e) {
+      if (!silent) {
+        ToastUtils.showError('Error saving streaming settings: $e');
+      } else {
+        rethrow;
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingStreaming = false);
+      }
+    }
+  }
+
+  Widget _buildStreamingSettingsCard() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final showYouTube =
+        _streamingPlatforms == 'youtube' || _streamingPlatforms == 'both';
+    final showFacebook =
+        _streamingPlatforms == 'facebook' || _streamingPlatforms == 'both';
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: colorScheme.outlineVariant, width: 1),
+      ),
+      color: colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: colorScheme.primary,
+                  radius: 18,
+                  child: Icon(
+                    Icons.live_tv_rounded,
+                    color: colorScheme.onPrimary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Live Streaming (YouTube & Facebook)',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Changes auto-sync to ALIVE Meet Go Live. Stream to YouTube, Facebook, or both simultaneously.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'youtube',
+                    label: Text('YouTube'),
+                    icon: Icon(Icons.smart_display_outlined, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: 'facebook',
+                    label: Text('Facebook'),
+                    icon: Icon(Icons.facebook_rounded, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: 'both',
+                    label: Text('Both'),
+                    icon: Icon(Icons.cast_connected_rounded, size: 16),
+                  ),
+                ],
+                selected: {_streamingPlatforms},
+                onSelectionChanged: (selection) async {
+                  final next = selection.first;
+                  setState(() => _streamingPlatforms = next);
+                  await _upsertStreamingSetting(
+                    key: 'streaming_platforms',
+                    value: next,
+                    description:
+                        'Active ALIVE Meet broadcast targets: youtube, facebook, or both',
+                  );
+                  ToastUtils.showSuccess(
+                    next == 'both'
+                        ? 'Simulcast enabled: YouTube + Facebook'
+                        : 'Broadcast target set to ${next[0].toUpperCase()}${next.substring(1)}',
+                  );
+                },
+              ),
+            ),
+            if (showYouTube) ...[
+              const SizedBox(height: 14),
+              TextField(
+                controller: _youtubeStreamKeyController,
+                obscureText: !_showYoutubeStreamKey,
+                decoration: InputDecoration(
+                  labelText: 'YouTube Stream Key',
+                  hintText: 'Paste YouTube Studio stream key',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _showYoutubeStreamKey
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () => setState(
+                        () => _showYoutubeStreamKey = !_showYoutubeStreamKey),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _youtubeStreamUrlController,
+                decoration: const InputDecoration(
+                  labelText: 'YouTube RTMP Server URL',
+                  hintText: _defaultYoutubeIngestUrl,
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ],
+            if (showFacebook) ...[
+              const SizedBox(height: 14),
+              TextField(
+                controller: _facebookStreamKeyController,
+                obscureText: !_showFacebookStreamKey,
+                decoration: InputDecoration(
+                  labelText: 'Facebook Stream Key',
+                  hintText: 'Paste Facebook Live Producer stream key',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _showFacebookStreamKey
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () => setState(
+                        () => _showFacebookStreamKey = !_showFacebookStreamKey),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _facebookStreamUrlController,
+                decoration: const InputDecoration(
+                  labelText: 'Facebook RTMPS Server URL',
+                  hintText: _defaultFacebookIngestUrl,
+                  helperText:
+                      'In Facebook Live Producer → Streaming Software, enable Persistent Stream Key.',
+                  helperMaxLines: 2,
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Limited to YouTube & Facebook (Instagram Live requires 9:16 vertical RTMP with per-session keys).',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed:
+                      _isSavingStreaming ? null : () => _saveStreamingSettings(),
+                  icon: _isSavingStreaming
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.sync_rounded, size: 16),
+                  label: const Text('Save & Sync'),
+                ),
+              ],
             ),
           ],
         ),
@@ -1386,6 +1725,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       }
       
       await Future.wait(updates);
+      await _saveStreamingSettings(silent: true);
       await PaymentConfig.syncPublicKeyFromAppwrite();
       if (mounted) setState(() {});
       ToastUtils.showSuccess('All settings saved and synced in real time');

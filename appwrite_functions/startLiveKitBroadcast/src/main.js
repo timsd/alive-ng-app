@@ -6,6 +6,7 @@ const rawServiceUrl = (process.env.LIVEKIT_URL || 'https://livekit.alivenigeria.
   .replace(/\/$/, '');
 const SERVICE_URL = rawServiceUrl;
 const YOUTUBE_INGEST = 'rtmp://a.rtmp.youtube.com/live2';
+const FACEBOOK_INGEST = 'rtmps://live-api-s.facebook.com:443/rtmp';
 
 const roomPolicies = {
   general: { room: 'alive-meet-community', roles: null },
@@ -65,6 +66,45 @@ async function getRole(userId, req) {
   return role;
 }
 
+async function getStreamingSettings(req) {
+  const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, '');
+  const projectId = process.env.APPWRITE_PROJECT_ID;
+  const databaseId = process.env.APPWRITE_DATABASE_ID;
+  const apiKey =
+    req?.headers?.['x-appwrite-key'] ||
+    process.env.APPWRITE_FUNCTION_API_KEY;
+  const settingsTableId = process.env.APPWRITE_APP_SETTINGS_TABLE_ID || 'app_settings';
+  if (!endpoint || !projectId || !databaseId || !apiKey) {
+    return {};
+  }
+  const headers = {
+    'X-Appwrite-Project': projectId,
+    'X-Appwrite-Key': apiKey,
+  };
+  let response = await fetch(
+    `${endpoint}/tablesdb/${databaseId}/tables/${settingsTableId}/rows?queries[0]=${encodeURIComponent('{"method":"limit","values":[200]}')}`,
+    { headers },
+  );
+  if (!response.ok) {
+    response = await fetch(
+      `${endpoint}/databases/${databaseId}/collections/${settingsTableId}/documents`,
+      { headers },
+    );
+  }
+  if (!response.ok) {
+    return {};
+  }
+  const payload = await response.json();
+  const rows = payload.rows || payload.documents || [];
+  const map = {};
+  for (const row of rows) {
+    const key = String(row.setting_key || row.key || '').trim();
+    if (!key) continue;
+    map[key] = String(row.setting_value ?? row.value ?? '').trim();
+  }
+  return map;
+}
+
 export default async ({ req, res, error }) => {
   if (req.method !== 'POST') return res.json({ error: 'Method not allowed. Use POST.' }, 405);
 
@@ -97,8 +137,60 @@ export default async ({ req, res, error }) => {
     }
 
     // 'start' (default) path.
-    const streamKey = body.streamKey || process.env.YOUTUBE_STREAM_KEY;
-    if (!streamKey) return res.json({ error: 'YouTube stream key is not configured.' }, 503);
+    const settings = await getStreamingSettings(req);
+    const rawPlatformMode = String(
+      body.platforms || settings.streaming_platforms || 'youtube',
+    )
+      .trim()
+      .toLowerCase();
+    const platformMode = ['youtube', 'facebook', 'both'].includes(rawPlatformMode)
+      ? rawPlatformMode
+      : 'youtube';
+
+    const youtubeKey = String(
+      body.youtubeStreamKey ||
+        body.streamKey ||
+        settings.youtube_stream_key ||
+        process.env.YOUTUBE_STREAM_KEY ||
+        '',
+    ).trim();
+    const youtubeUrl = String(
+      settings.youtube_stream_url ||
+        process.env.YOUTUBE_STREAM_URL ||
+        YOUTUBE_INGEST,
+    )
+      .trim()
+      .replace(/\/$/, '');
+
+    const facebookKey = String(
+      body.facebookStreamKey ||
+        settings.facebook_stream_key ||
+        process.env.FACEBOOK_STREAM_KEY ||
+        '',
+    ).trim();
+    const facebookUrl = String(
+      settings.facebook_stream_url ||
+        process.env.FACEBOOK_STREAM_URL ||
+        FACEBOOK_INGEST,
+    )
+      .trim()
+      .replace(/\/$/, '');
+
+    const wantsYouTube = platformMode === 'youtube' || platformMode === 'both';
+    const wantsFacebook = platformMode === 'facebook' || platformMode === 'both';
+
+    if (platformMode === 'youtube' && !youtubeKey) {
+      return res.json(
+        { error: 'YouTube stream key is not configured in Admin App Settings.' },
+        503,
+      );
+    }
+    if (platformMode === 'facebook' && !facebookKey) {
+      return res.json(
+        { error: 'Facebook stream key is not configured in Admin App Settings.' },
+        503,
+      );
+    }
 
     // Verify user role
     let role = 'member';
@@ -120,12 +212,28 @@ export default async ({ req, res, error }) => {
       return res.json({ error: 'You do not have permission to broadcast from this room.' }, 403);
     }
 
-    const ingestUrl = (process.env.YOUTUBE_STREAM_URL || YOUTUBE_INGEST).replace(/\/$/, '');
-    const urls = [`${ingestUrl}/${streamKey}`];
+    const urls = [];
+    const activePlatforms = [];
 
-    if (process.env.YOUTUBE_BACKUP_STREAM_URL) {
-      const backupUrl = process.env.YOUTUBE_BACKUP_STREAM_URL.replace(/\/$/, '');
-      urls.push(`${backupUrl}/${streamKey}`);
+    if (wantsYouTube && youtubeKey) {
+      urls.push(`${youtubeUrl}/${youtubeKey}`);
+      if (process.env.YOUTUBE_BACKUP_STREAM_URL) {
+        const backupUrl = process.env.YOUTUBE_BACKUP_STREAM_URL.replace(/\/$/, '');
+        urls.push(`${backupUrl}/${youtubeKey}`);
+      }
+      activePlatforms.push('youtube');
+    }
+
+    if (wantsFacebook && facebookKey) {
+      urls.push(`${facebookUrl}/${facebookKey}`);
+      activePlatforms.push('facebook');
+    }
+
+    if (urls.length === 0) {
+      return res.json(
+        { error: 'No streaming keys are configured in Admin App Settings.' },
+        503,
+      );
     }
 
     const egressInfo = await egress.startRoomCompositeEgress(
@@ -141,7 +249,12 @@ export default async ({ req, res, error }) => {
     );
 
     const egressIdOut = egressInfo.egressId || (typeof egressInfo === 'string' ? egressInfo : JSON.stringify(egressInfo));
-    return res.json({ egressId: egressIdOut, status: 'started', roomName: targetRoom });
+    return res.json({
+      egressId: egressIdOut,
+      status: 'started',
+      roomName: targetRoom,
+      platforms: activePlatforms,
+    });
   } catch (err) {
     error(`Broadcast failed: ${err.message}`);
     const errMsg = err.message || 'unknown error';

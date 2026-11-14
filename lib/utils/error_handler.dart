@@ -142,10 +142,16 @@ class ErrorHandler {
     if (lower.contains('timeout') || lower.contains('aborted due to timeout')) {
       return 'Live broadcast connection timed out. Please verify your stream server connection and try again.';
     }
-    if (lower.contains('youtube stream key') ||
-        lower.contains('stream key is not configured') ||
-        lower.contains('stream key is required')) {
-      return 'YouTube live stream key is not configured. Please check the YouTube stream key in settings.';
+    if (lower.contains('facebook stream key')) {
+      return 'Facebook live stream key is not configured. Please check it in Admin App Settings.';
+    }
+    if (lower.contains('youtube stream key')) {
+      return 'YouTube live stream key is not configured. Please check it in Admin App Settings.';
+    }
+    if (lower.contains('stream key is not configured') ||
+        lower.contains('stream key is required') ||
+        lower.contains('no streaming keys are configured')) {
+      return 'Live stream key is not configured. Please check streaming settings in Admin App Settings.';
     }
     if (lower.contains('permission to broadcast') || lower.contains('not authorized to broadcast')) {
       return 'You do not have permission to start a live broadcast from this room.';
