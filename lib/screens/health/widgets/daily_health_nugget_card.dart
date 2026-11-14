@@ -49,11 +49,11 @@ class _DailyHealthNuggetCardState extends State<DailyHealthNuggetCard> {
       case 'Sunlight':
         return const Color(0xFFEF6C00);
       case 'Temperance':
-        return const Color(0xFF6A1B9A);
+        return const Color(0xFFAB47BC);
       case 'Air':
         return const Color(0xFF00695C);
       case 'Rest':
-        return const Color(0xFF283593);
+        return const Color(0xFF5C6BC0);
       case 'Trust in God':
         return const Color(0xFFB71C1C);
       default:
@@ -85,12 +85,12 @@ class _DailyHealthNuggetCardState extends State<DailyHealthNuggetCard> {
   }
 
   void _shareNugget(HealthNugget nugget) {
-    final total = HealthNuggetsData.allNuggets.length;
     final text =
-        'ALIVE Nigeria Daily Health Nugget (Day ${nugget.day}/$total — ${nugget.category})\n\n'
+        'ALIVE Nigeria Daily Health Nugget (${nugget.category})\n\n'
         '"${nugget.title}"\n'
         '${nugget.nugget}\n\n'
-        '— ${nugget.speaker} (${nugget.scripture})';
+        '— ${nugget.speaker} (${nugget.scripture})\n\n'
+        'Read more on ALIVE Nigeria: https://app.alivenigeria.org/health';
     SharePlus.instance.share(
       ShareParams(
         text: text,
@@ -281,8 +281,11 @@ class _DailyHealthNuggetCardState extends State<DailyHealthNuggetCard> {
                   child: OutlinedButton.icon(
                     onPressed: _openBrowseSheet,
                     icon: const Icon(Icons.auto_stories_outlined, size: 18),
-                    label: Text(
-                      'Browse All ${HealthNuggetsData.allNuggets.length} Nuggets',
+                    label: const Text(
+                      'All Nuggets',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
                     ),
                   ),
                 ),

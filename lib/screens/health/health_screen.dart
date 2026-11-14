@@ -73,7 +73,7 @@ final todayHealthActivitiesProvider =
       name: 'Temperance',
       description: 'Practice moderation in all things',
       icon: Icons.balance,
-      color: Color(0xFF9C27B0), // Purple
+      color: Color(0xFFAB47BC), // Temperance Violet
       completed: false,
       target: 1,
       current: 0,
