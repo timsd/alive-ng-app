@@ -1,5 +1,36 @@
-import { AccessToken } from 'livekit-server-sdk';
+import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { Client, Messaging, ID } from 'node-appwrite';
+
+const rawServiceUrl = (process.env.LIVEKIT_URL || 'https://livekit.alivenigeria.org')
+  .replace(/^ws:\/\//, 'http://')
+  .replace(/^wss:\/\//, 'https://')
+  .replace(/\/$/, '');
+
+function formatRoomDisplayName(roomName, metadataStr) {
+  if (metadataStr) {
+    try {
+      const meta = JSON.parse(metadataStr);
+      if (meta && meta.title) return String(meta.title);
+    } catch (_) {}
+  }
+  if (roomName === 'alive-meet-community') return 'General Meeting Room';
+  if (roomName === 'alive-meet-prayer') return 'Prayer Room Meeting';
+  if (roomName === 'alive-meet-leadership') return 'Leadership Meeting';
+  if (roomName === 'alive-meet-board' || roomName.startsWith('board-meeting-')) {
+    return 'Board of Directors Meeting';
+  }
+  return roomName
+    .replace(/^alive-meet-/, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function inferMeetingType(roomName) {
+  if (roomName === 'alive-meet-board' || roomName.startsWith('board-meeting-')) return 'board';
+  if (roomName === 'alive-meet-leadership') return 'leadership';
+  if (roomName === 'alive-meet-prayer') return 'prayer';
+  return 'general';
+}
 
 const roomPolicies = {
   general: { room: 'alive-meet-community', roles: null },
@@ -188,15 +219,14 @@ export default async ({ req, res, log, error }) => {
   try {
     const isInternal = Boolean(req.headers['x-appwrite-key']);
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
-    const authenticatedUserId = req.headers['x-appwrite-user-id'] || (isInternal ? body.identity : null);
-    const { roomName, participantName, identity, meetingType = 'general', notifyMembers = false } = body;
+    const authenticatedUserId = req.headers['x-appwrite-user-id'] || (isInternal ? body.identity : null) || body.identity;
+    const { action, roomName, participantName, identity, meetingType = 'general', notifyMembers = false } = body;
 
     if (!authenticatedUserId) return res.json({ error: 'Authentication is required.' }, 401);
-    if (!roomName || !identity) return res.json({ error: 'Invalid ALIVE Meet request.' }, 400);
-    if (identity !== authenticatedUserId && !isInternal) return res.json({ error: 'Cannot create a token for another user.' }, 403);
 
-    const targetRoom = String(roomName).trim();
-    const policy = roomPolicies[meetingType] || roomPolicies.custom;
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET || process.env.LIVEKIT_SECRET;
+    if (!apiKey || !apiSecret) return res.json({ error: 'ALIVE Meet is not configured.' }, 503);
 
     let role = 'member';
     try {
@@ -204,6 +234,45 @@ export default async ({ req, res, log, error }) => {
     } catch (roleErr) {
       if (log) log(`Role lookup notice: ${roleErr.message}`);
     }
+
+    // List active/ongoing LiveKit rooms so users can see ongoing meetings in ALIVE Meet
+    if (action === 'listRooms') {
+      try {
+        const roomService = new RoomServiceClient(rawServiceUrl, apiKey, apiSecret);
+        const liveRooms = await roomService.listRooms();
+        const visibleRooms = (liveRooms || [])
+          .filter((r) => {
+            const name = String(r.name || '');
+            if (!name || name.includes('--br-')) return false;
+            const count = Number(r.numParticipants || 0);
+            if (count <= 0) return false;
+            if (name === 'alive-meet-board' || name.startsWith('board-meeting-')) {
+              return ['director', 'bod', 'trustee', 'admin'].includes(role);
+            }
+            if (name === 'alive-meet-leadership') {
+              return ['coordinator', 'leader', 'director', 'bod', 'trustee', 'admin'].includes(role);
+            }
+            return true;
+          })
+          .map((r) => ({
+            roomName: r.name,
+            displayName: formatRoomDisplayName(r.name, r.metadata),
+            meetingType: inferMeetingType(r.name),
+            numParticipants: Number(r.numParticipants || 0),
+            createdAt: r.creationTime ? Number(r.creationTime) : null,
+          }));
+        return res.json({ rooms: visibleRooms });
+      } catch (listErr) {
+        if (log) log(`listRooms notice: ${listErr.message}`);
+        return res.json({ rooms: [] });
+      }
+    }
+
+    if (!roomName || !identity) return res.json({ error: 'Invalid ALIVE Meet request.' }, 400);
+    if (identity !== authenticatedUserId && !isInternal) return res.json({ error: 'Cannot create a token for another user.' }, 403);
+
+    const targetRoom = String(roomName).trim();
+    const policy = roomPolicies[meetingType] || roomPolicies.custom;
 
     const isLeader = ['admin', 'bod', 'director', 'trustee', 'leader', 'coordinator'].includes(role);
     const isAdmin = ['admin', 'bod', 'director', 'trustee'].includes(role);
@@ -218,10 +287,6 @@ export default async ({ req, res, log, error }) => {
     if (policy.room && targetRoom !== policy.room && !isLeader) {
       return res.json({ error: 'Only ALIVE leaders and administrators can start new meeting rooms.' }, 403);
     }
-
-    const apiKey = process.env.LIVEKIT_API_KEY;
-    const apiSecret = process.env.LIVEKIT_API_SECRET || process.env.LIVEKIT_SECRET;
-    if (!apiKey || !apiSecret) return res.json({ error: 'ALIVE Meet is not configured.' }, 503);
 
     // Trigger targeted push notification when a leader/admin starts a meeting
     if (notifyMembers && isLeader) {
