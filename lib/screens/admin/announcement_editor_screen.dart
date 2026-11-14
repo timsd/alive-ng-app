@@ -5,6 +5,7 @@ import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
+import '../../utils/smart_link_helper.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -457,8 +458,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                       TextFormField(
                         controller: _actionTextController,
                         decoration: const InputDecoration(
-                          labelText: 'Button Text',
-                          hintText: 'e.g., "Learn More", "Register Now"',
+                          labelText: 'Button Text (Optional)',
+                          hintText:
+                              'e.g., "Learn More" (leave empty for smart auto-name)',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.smart_button),
                         ),
@@ -475,14 +477,6 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.link),
                         ),
-                        validator: (value) {
-                          if (value != null && value.isNotEmpty) {
-                            if (_actionTextController.text.trim().isEmpty) {
-                              return 'Button text is required when URL is provided';
-                            }
-                          }
-                          return null;
-                        },
                       ),
 
                       const SizedBox(height: 32),
@@ -624,43 +618,78 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
         currentUserId = (await Account(appwriteClient).get()).$id;
       } catch (_) {}
 
+      final rawContent = _messageController.text.trim();
+      final rawActionUrl = _actionUrlController.text.trim();
+      final normalizedActionUrl = rawActionUrl.isNotEmpty
+          ? SmartLinkHelper.normalizeUrl(rawActionUrl)
+          : '';
+      final resolvedActionText = normalizedActionUrl.isNotEmpty
+          ? SmartLinkHelper.inferSmartCtaLabel(
+              normalizedActionUrl,
+              customLabel: _actionTextController.text,
+              contextText: rawContent,
+            )
+          : '';
+
       final announcementData = <String, dynamic>{
         'title': _titleController.text.trim(),
-        'content': _messageController.text.trim(),
+        'content': rawContent,
         'audience': _targetAudience,
         'target_audience': _targetAudience,
         'priority': _priority,
         'is_active': _isActive,
         'published_at': _scheduledFor?.toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
+        if (normalizedActionUrl.isNotEmpty) ...{
+          'action_url': normalizedActionUrl,
+          'action_text': resolvedActionText,
+        },
       };
 
-      if (widget.announcement == null) {
-        // Create new announcement
-        announcementData['created_at'] = DateTime.now().toIso8601String();
-        announcementData['author_id'] = currentUserId;
-        announcementData['created_timestamp'] =
-            DateTime.now().millisecondsSinceEpoch;
-
-        await TablesDB(appwriteClient).createRow(
-          databaseId: AppwriteBackendConfig.databaseId,
-          tableId: AppwriteBackendConfig.announcementsCollectionId,
-          rowId: ID.unique(),
-          data: announcementData,
-        );
-
-        ToastUtils.showSuccess('Announcement created successfully');
-      } else {
-        // Update existing announcement
-        await TablesDB(appwriteClient).updateRow(
-          databaseId: AppwriteBackendConfig.databaseId,
-          tableId: AppwriteBackendConfig.announcementsCollectionId,
-          rowId: widget.announcement!['id'],
-          data: announcementData,
-        );
-
-        ToastUtils.showSuccess('Announcement updated successfully');
+      Future<void> writeRow(Map<String, dynamic> payload) async {
+        if (widget.announcement == null) {
+          payload['created_at'] = DateTime.now().toIso8601String();
+          payload['author_id'] = currentUserId;
+          payload['created_timestamp'] = DateTime.now().millisecondsSinceEpoch;
+          await TablesDB(appwriteClient).createRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.announcementsCollectionId,
+            rowId: ID.unique(),
+            data: payload,
+          );
+        } else {
+          await TablesDB(appwriteClient).updateRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.announcementsCollectionId,
+            rowId: widget.announcement!['id'],
+            data: payload,
+          );
+        }
       }
+
+      try {
+        await writeRow(Map<String, dynamic>.from(announcementData));
+      } catch (e) {
+        final err = e.toString().toLowerCase();
+        if (normalizedActionUrl.isNotEmpty &&
+            (err.contains('action_url') || err.contains('action_text'))) {
+          final fallbackData = Map<String, dynamic>.from(announcementData)
+            ..remove('action_url')
+            ..remove('action_text');
+          if (!rawContent.contains(normalizedActionUrl)) {
+            fallbackData['content'] = '$rawContent\n$normalizedActionUrl';
+          }
+          await writeRow(fallbackData);
+        } else {
+          rethrow;
+        }
+      }
+
+      ToastUtils.showSuccess(
+        widget.announcement == null
+            ? 'Announcement created successfully'
+            : 'Announcement updated successfully',
+      );
 
       if (mounted) {
         Navigator.pop(context, true);

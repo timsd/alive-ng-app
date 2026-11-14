@@ -9,6 +9,7 @@ import '../../providers/language_provider.dart';
 import '../../services/appwrite_events_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/smart_link_helper.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/error_widget.dart' as custom_error;
 import '../../widgets/loading_widget.dart';
@@ -307,6 +308,11 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 ],
               ),
             ],
+            ..._buildSmartCtaSection(
+              context,
+              textToScan: event.description,
+              extraTextToScan: event.location,
+            ),
           ],
         ),
       ),
@@ -380,20 +386,89 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 ),
               ),
             ],
-            if (announcement.actionText != null && announcement.actionUrl != null) ...[
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () {
-                  // Handle action URL
-                  ToastUtils.showInfo('Opening: ${announcement.actionUrl}');
-                },
-                child: Text(announcement.actionText!),
-              ),
-            ],
+            ..._buildSmartCtaSection(
+              context,
+              explicitUrl: announcement.actionUrl,
+              explicitLabel: announcement.actionText,
+              textToScan: message,
+            ),
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildSmartCtaSection(
+    BuildContext context, {
+    String? explicitUrl,
+    String? explicitLabel,
+    required String textToScan,
+    String? extraTextToScan,
+  }) {
+    final links = <_SmartCtaLink>[];
+    final seen = <String>{};
+
+    final trimmedExplicit = explicitUrl?.trim() ?? '';
+    if (trimmedExplicit.isNotEmpty) {
+      final normalized = SmartLinkHelper.normalizeUrl(trimmedExplicit);
+      if (seen.add(normalized)) {
+        links.add(
+          _SmartCtaLink(
+            url: normalized,
+            label: SmartLinkHelper.inferSmartCtaLabel(
+              normalized,
+              customLabel: explicitLabel,
+              contextText: textToScan,
+            ),
+          ),
+        );
+      }
+    }
+
+    final combinedText = [
+      textToScan,
+      if (extraTextToScan != null && extraTextToScan.isNotEmpty)
+        extraTextToScan,
+    ].join(' ');
+
+    for (final extracted in SmartLinkHelper.extractUrls(combinedText)) {
+      if (seen.add(extracted)) {
+        links.add(
+          _SmartCtaLink(
+            url: extracted,
+            label: SmartLinkHelper.inferSmartCtaLabel(
+              extracted,
+              contextText: combinedText,
+            ),
+          ),
+        );
+      }
+    }
+
+    if (links.isEmpty) return const [];
+
+    return [
+      const SizedBox(height: 12),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: links
+            .map(
+              (item) => ElevatedButton.icon(
+                onPressed: () => SmartLinkHelper.openSmartLink(context, item.url),
+                icon: Icon(
+                  SmartLinkHelper.inferSmartCtaIcon(
+                    item.url,
+                    contextText: combinedText,
+                  ),
+                  size: 18,
+                ),
+                label: Text(item.label),
+              ),
+            )
+            .toList(),
+      ),
+    ];
   }
 
   void _showCreateContentDialog(BuildContext context, String Function(String) translate) {
@@ -653,4 +728,14 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       ),
     );
   }
+}
+
+class _SmartCtaLink {
+  final String url;
+  final String label;
+
+  const _SmartCtaLink({
+    required this.url,
+    required this.label,
+  });
 }
