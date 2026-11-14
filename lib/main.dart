@@ -5,6 +5,7 @@ import 'package:appwrite/appwrite.dart' hide Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'providers/theme_provider.dart';
+import 'widgets/biometric_lock_overlay.dart';
 import 'utils/app_router.dart';
 import 'utils/app_theme.dart';
 import 'package:go_router/go_router.dart';
@@ -226,6 +227,7 @@ class _AliveAppState extends ConsumerState<AliveApp>
           children: [
             child ?? const SizedBox.shrink(),
             const MeetingFloatingOverlay(),
+            const BiometricLockOverlay(),
           ],
         );
       },

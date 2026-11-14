@@ -133,15 +133,36 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
 
   Future<void> _authenticateWithBiometrics() async {
     try {
-      // Check if biometric is enabled for any user
+      // If biometrics are available on the phone but not yet linked:
+      // if the user already entered email + password, sign in and link it;
+      // otherwise guide them to sign in once with password.
       if (!_isBiometricEnabled) {
+        final email = _emailController.text.trim();
+        final password = _passwordController.text;
+        if (email.isNotEmpty && password.isNotEmpty) {
+          if (mounted) setState(() => _isLoading = true);
+          _isEmailPasswordSignIn = true;
+          final authProvider = ref.read(signInControllerProvider.notifier);
+          await authProvider.signInWithEmailAndPassword(email, password);
+          final enabledOk = await _biometricService.enableBiometricAuth(
+            email: email,
+            password: password,
+          );
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              if (enabledOk) _isBiometricEnabled = true;
+            });
+          }
+          return;
+        }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text(
-                'Biometric authentication is not set up. Please sign in normally first.',
+                'Enter your email and password once to sign in and link Biometric Sign-In, or enable it in Profile → Account & Security.',
               ),
-              backgroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: Theme.of(context).colorScheme.primary,
             ),
           );
         }
@@ -318,8 +339,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                         ),
                       ),
 
-                      // Biometric Authentication (if available and enabled)
-                      if (_isBiometricAvailable && _isBiometricEnabled)
+                      // Biometric Authentication (auto-detected on capable phones)
+                      if (_isBiometricAvailable && !_isSignUp)
                         _buildBiometricButton(context, translate),
 
                       const Spacer(),

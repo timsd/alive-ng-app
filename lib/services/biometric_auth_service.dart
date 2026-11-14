@@ -29,11 +29,28 @@ class BiometricAuthService {
         return false;
       }
 
-      final isAvailable = await _localAuth.canCheckBiometrics;
+      final canCheck = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
-      return isAvailable || isDeviceSupported;
+      if (!canCheck && !isDeviceSupported) {
+        return false;
+      }
+      final available = await _localAuth.getAvailableBiometrics();
+      return available.isNotEmpty || canCheck || isDeviceSupported;
     } catch (e) {
       _logger.warning('Error checking biometric availability: $e');
+      return false;
+    }
+  }
+
+  /// Prompt OS biometric (or device credential fallback) to unlock the app.
+  Future<bool> promptAppUnlock() async {
+    if (kIsWeb) return true;
+    try {
+      return await _promptOSBiometric(
+        'Unlock ALIVE Nigeria with your fingerprint or face',
+      );
+    } catch (e) {
+      _logger.warning('App unlock biometric prompt failed: $e');
       return false;
     }
   }
