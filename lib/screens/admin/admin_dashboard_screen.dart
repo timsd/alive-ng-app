@@ -448,6 +448,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
 
     return Scaffold(
       appBar: CustomAppBar(
+        title: 'Admin Dashboard',
         showBackButton: true,
         showDonationButton: false,
         actions: [
@@ -627,76 +628,55 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
     );
   }
 
-  // ─── Hero banner with gradient ───
+  // ─── Greeting banner (solid, clean surface) ───
 
   Widget _buildHeroBanner(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final cardBg = isDark
+        ? theme.colorScheme.surfaceContainerHigh
+        : theme.colorScheme.primary;
+    final titleColor = isDark
+        ? theme.colorScheme.onSurface
+        : theme.colorScheme.onPrimary;
+
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [
-                  theme.colorScheme.primary.withValues(alpha: 0.25),
-                  theme.colorScheme.secondary.withValues(alpha: 0.12),
-                ]
-              : [
-                  theme.colorScheme.primary,
-                  theme.colorScheme.primary.withValues(alpha: 0.75),
-                ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.2 : 0.25),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: isDark
+            ? Border.all(color: theme.colorScheme.outlineVariant)
+            : null,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         child: Row(
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.2),
-                borderRadius: BorderRadius.circular(14),
+                color: isDark
+                    ? theme.colorScheme.primary.withValues(alpha: 0.14)
+                    : Colors.white.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 Icons.admin_panel_settings,
                 color: isDark ? theme.colorScheme.primary : Colors.white,
-                size: 28,
+                size: 26,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome, $_adminDisplayName',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? theme.colorScheme.onSurface : Colors.white,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'ALIVE Nigeria Admin Dashboard',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isDark
-                          ? theme.colorScheme.onSurfaceVariant
-                          : Colors.white.withValues(alpha: 0.85),
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Welcome, $_adminDisplayName',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: titleColor,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
