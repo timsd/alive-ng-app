@@ -426,8 +426,11 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         }
         _syncStateFromRoom();
       })
-      ..on<lk.RoomDisconnectedEvent>((_) {
+      ..on<lk.RoomDisconnectedEvent>((event) {
         if (!_isSwitchingBreakoutRoom) {
+          if (event.reason == lk.DisconnectReason.roomDeleted) {
+            _moderationPromptsController.add('ended_by_host');
+          }
           _currentSession = MeetingSession.initial();
           _emitSession();
         }
@@ -1608,6 +1611,12 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
   @override
   Future<void> endMeetingForAll() async {
+    final targetRoom = (_mainRoomName != null && _mainRoomName!.isNotEmpty)
+        ? _mainRoomName!
+        : _currentSession.roomName;
+    final myIdentity =
+        _room?.localParticipant?.identity ?? _lastUserId;
+
     // 1. If broadcast / egress is active, automatically stop it
     if (_activeEgressId != null && _activeEgressId!.isNotEmpty) {
       try {
@@ -1627,15 +1636,35 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       ));
     }
 
+    // 3. Broadcast DataChannel disconnect signal and allow a brief flush window
     try {
       final payload = utf8.encode(jsonEncode({
         'action': 'end_meeting_for_all',
       }));
       await _room?.localParticipant?.publishData(payload, reliable: true);
       debugPrint('[LiveKitMeetingGateway] End meeting for all broadcast sent');
+      await Future.delayed(const Duration(milliseconds: 250));
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] endMeetingForAll error: $e');
     }
+
+    // 4. Forcibly delete/close the room on LiveKit server so no participant remains
+    if (targetRoom.isNotEmpty && myIdentity.isNotEmpty) {
+      try {
+        await _executeFunctionSafely(
+          functionId: AppwriteBackendConfig.createLiveKitTokenFunctionId,
+          body: {
+            'action': 'endRoom',
+            'roomName': targetRoom,
+            'identity': myIdentity,
+          },
+        );
+        debugPrint('[LiveKitMeetingGateway] LiveKit room $targetRoom closed via server');
+      } catch (e) {
+        debugPrint('[LiveKitMeetingGateway] Server endRoom note: $e');
+      }
+    }
+
     await leaveMeeting();
   }
 

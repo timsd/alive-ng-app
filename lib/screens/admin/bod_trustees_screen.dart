@@ -500,7 +500,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
   }
 
   void _startQuickMeeting() {
-    final roomName = 'board-meeting-${DateTime.now().millisecondsSinceEpoch}';
+    const roomName = AliveMeetConfig.boardRoom;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

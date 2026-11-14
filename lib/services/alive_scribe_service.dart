@@ -173,6 +173,7 @@ class AliveScribeService {
       StreamController<List<ScribeActionItem>>.broadcast();
 
   StreamSubscription? _dataChannelSub;
+  StreamSubscription? _sessionSub;
   DateTime? _meetingStartTime;
   Timer? _watchdogTimer;
   Timer? _speechPauseCommitTimer;
@@ -186,6 +187,27 @@ class AliveScribeService {
     _meetingStartTime = DateTime.now();
     _attendees.add(localUserName);
     _listenToDataChannel();
+    _listenToSessionMicState();
+  }
+
+  bool get _isLocalMicActive =>
+      _gateway.currentSession.isConnected &&
+      !_gateway.currentSession.isAudioMuted;
+
+  void _listenToSessionMicState() {
+    _sessionSub = _gateway.sessionStream.listen((session) {
+      if (!_isListening) return;
+      if (session.isConnected && !session.isAudioMuted) {
+        if (!_speechToText.isListening && !_isRestarting) {
+          _startSttSession();
+        }
+      } else {
+        if (_speechToText.isListening || _lastRecognizedWords.isNotEmpty) {
+          _commitPendingSpeech();
+          _speechToText.stop().catchError((_) {});
+        }
+      }
+    });
   }
 
   List<ScribeTranscriptPacket> get transcript => List.unmodifiable(_transcript);
@@ -280,20 +302,39 @@ class AliveScribeService {
   }
 
   Future<void> startListening() async {
-    if (!_isSttInitialized) {
-      final ok = await initializeSpeech();
-      if (!ok) return;
-    }
-
     _isListening = true;
     _lastRecognizedWords = '';
-    _startSttSession();
+
+    // Only initialize and run local microphone STT when the user's meeting
+    // microphone is actually enabled. Muted attendees still receive remote
+    // Scribe packets via the LiveKit DataChannel without activating their mic.
+    if (_isLocalMicActive) {
+      if (!_isSttInitialized) {
+        final ok = await initializeSpeech();
+        if (!ok) return;
+      }
+      if (_isListening && _isLocalMicActive) {
+        _startSttSession();
+      }
+    }
 
     // Active Watchdog: continuously monitors STT engine health and revives listening
-    // if the mobile/web speech recognizer silently times out or drops during pauses.
+    // ONLY while the local microphone is active in the meeting.
     _watchdogTimer?.cancel();
-    _watchdogTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (_isListening && !_speechToText.isListening && !_isRestarting) {
+    _watchdogTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      if (!_isListening) return;
+      if (!_isLocalMicActive) {
+        if (_speechToText.isListening) {
+          _commitPendingSpeech();
+          await _speechToText.stop().catchError((_) {});
+        }
+        return;
+      }
+      if (!_isSttInitialized) {
+        final ok = await initializeSpeech();
+        if (!ok || !_isListening || !_isLocalMicActive) return;
+      }
+      if (!_speechToText.isListening && !_isRestarting) {
         debugPrint('[AliveScribeService] Watchdog: reviving idle STT listener...');
         _startSttSession();
       }
@@ -301,12 +342,13 @@ class AliveScribeService {
   }
 
   void _startSttSession() {
-    if (!_isListening) return;
+    if (!_isListening || !_isLocalMicActive || !_isSttInitialized) return;
 
     try {
       _lastRecognizedWords = '';
       _speechToText.listen(
         onResult: (result) {
+          if (!_isListening || !_isLocalMicActive) return;
           final rawText = result.recognizedWords.trim();
           if (rawText.isEmpty) return;
           _lastRecognizedWords = rawText;
@@ -365,11 +407,11 @@ class AliveScribeService {
   }
 
   void _restartListening() {
-    if (!_isListening || _isRestarting) return;
+    if (!_isListening || !_isLocalMicActive || _isRestarting) return;
     _isRestarting = true;
     Future.delayed(const Duration(milliseconds: 60), () {
       _isRestarting = false;
-      if (_isListening) {
+      if (_isListening && _isLocalMicActive) {
         _startSttSession();
       }
     });
@@ -862,6 +904,7 @@ class AliveScribeService {
 
   void dispose() {
     stopListening();
+    _sessionSub?.cancel();
     _dataChannelSub?.cancel();
     _transcriptStreamController.close();
     _decisionsStreamController.close();

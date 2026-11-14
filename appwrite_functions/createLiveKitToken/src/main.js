@@ -268,6 +268,39 @@ export default async ({ req, res, log, error }) => {
       }
     }
 
+    // Forcibly end and close a LiveKit room for all participants (any leader/admin)
+    if (action === 'endRoom') {
+      const target = String(roomName || '').trim();
+      if (!target) {
+        return res.json({ error: 'Room name is required.' }, 400);
+      }
+      const canEnd = ['coordinator', 'leader', 'director', 'bod', 'trustee', 'admin'].includes(role);
+      if (!canEnd && !isInternal) {
+        return res.json({ error: 'Only leaders and administrators can end a meeting for all.' }, 403);
+      }
+      try {
+        const roomService = new RoomServiceClient(rawServiceUrl, apiKey, apiSecret);
+        try {
+          const liveRooms = await roomService.listRooms();
+          const breakoutPrefix = `${target}--br-`;
+          for (const r of liveRooms || []) {
+            if (r.name && String(r.name).startsWith(breakoutPrefix)) {
+              await roomService.deleteRoom(String(r.name)).catch(() => {});
+            }
+          }
+        } catch (_) {}
+        await roomService.deleteRoom(target);
+        return res.json({ ok: true, endedRoom: target });
+      } catch (endErr) {
+        const msg = String(endErr?.message || endErr || '');
+        if (msg.toLowerCase().includes('not found') || endErr?.status === 404) {
+          return res.json({ ok: true, endedRoom: target, alreadyClosed: true });
+        }
+        if (log) log(`endRoom error: ${msg}`);
+        return res.json({ error: 'Failed to close meeting room.' }, 500);
+      }
+    }
+
     if (!roomName || !identity) return res.json({ error: 'Invalid ALIVE Meet request.' }, 400);
     if (identity !== authenticatedUserId && !isInternal) return res.json({ error: 'Cannot create a token for another user.' }, 403);
 

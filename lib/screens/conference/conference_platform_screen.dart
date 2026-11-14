@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
@@ -12,6 +13,7 @@ import '../../constants/app_constants.dart';
 import '../../main.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/meeting_provider.dart';
+import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'livekit_meeting_screen.dart';
 
@@ -37,15 +39,48 @@ class ConferencePlatformScreen extends ConsumerStatefulWidget {
       _ConferencePlatformScreenState();
 }
 
+class _RoomCandidate {
+  final String roomName;
+  final String displayName;
+  final MeetingType meetingType;
+
+  const _RoomCandidate({
+    required this.roomName,
+    required this.displayName,
+    required this.meetingType,
+  });
+}
+
 class _ConferencePlatformScreenState
-    extends ConsumerState<ConferencePlatformScreen> {
+    extends ConsumerState<ConferencePlatformScreen>
+    with WidgetsBindingObserver {
   bool _isLoadingRooms = true;
   List<_OngoingRoomInfo> _ongoingRooms = const [];
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fetchOngoingRooms();
+    _autoRefreshTimer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _fetchOngoingRooms(silent: true),
+    );
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fetchOngoingRooms(silent: true);
+    }
   }
 
   MeetingType _parseMeetingType(String raw, String roomName) {
@@ -90,8 +125,8 @@ class _ConferencePlatformScreenState
         .replaceAll(RegExp(r'[-_]+'), ' ');
   }
 
-  Future<void> _fetchOngoingRooms() async {
-    if (mounted) {
+  Future<void> _fetchOngoingRooms({bool silent = false}) async {
+    if (mounted && !silent) {
       setState(() => _isLoadingRooms = true);
     }
 
@@ -172,8 +207,8 @@ class _ConferencePlatformScreenState
     }
   }
 
-  void _openRoom(String roomName, MeetingType meetingType) {
-    Navigator.of(context).push(
+  Future<void> _openRoom(String roomName, MeetingType meetingType) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => LiveKitMeetingScreen(
           customRoomName: roomName,
@@ -181,11 +216,58 @@ class _ConferencePlatformScreenState
         ),
       ),
     );
+    if (mounted) {
+      await _fetchOngoingRooms(silent: true);
+    }
+  }
+
+  _RoomCandidate? _nextAvailableRoom() {
+    final activeNames = _ongoingRooms.map((r) => r.roomName).toSet();
+    final hasOngoingBoard = activeNames.any(
+      (n) => n == AliveMeetConfig.boardRoom || n.startsWith('board-meeting-'),
+    );
+    final roleAccess = RoleAccessService.instance;
+    final canLeader = roleAccess.canAccessLeadership();
+    final canBoard = roleAccess.canAccessBoardDocuments();
+
+    final candidates = <_RoomCandidate>[
+      const _RoomCandidate(
+        roomName: AliveMeetConfig.communityRoom,
+        displayName: 'General Meeting Room',
+        meetingType: MeetingType.general,
+      ),
+      const _RoomCandidate(
+        roomName: AliveMeetConfig.prayerRoom,
+        displayName: 'Prayer Room Meeting',
+        meetingType: MeetingType.prayer,
+      ),
+      if (canLeader)
+        const _RoomCandidate(
+          roomName: AliveMeetConfig.leadershipRoom,
+          displayName: 'Leadership Meeting Room',
+          meetingType: MeetingType.leadership,
+        ),
+      if (canBoard)
+        const _RoomCandidate(
+          roomName: AliveMeetConfig.boardRoom,
+          displayName: 'Board Meeting Room',
+          meetingType: MeetingType.board,
+        ),
+    ];
+
+    for (final c in candidates) {
+      if (c.meetingType == MeetingType.board) {
+        if (!hasOngoingBoard) return c;
+      } else if (!activeNames.contains(c.roomName)) {
+        return c;
+      }
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    const generalRoomName = AliveMeetConfig.communityRoom;
+    final nextRoom = _nextAvailableRoom();
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
@@ -410,14 +492,18 @@ class _ConferencePlatformScreenState
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'General Meeting Room',
+                                  nextRoom?.displayName ?? 'Meeting Rooms Busy',
                                   style: theme.textTheme.bodyLarge?.copyWith(
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Connect with brethren, chapters, and fellowship rooms.',
+                                  nextRoom != null
+                                      ? (_ongoingRooms.isEmpty
+                                          ? 'Connect with brethren, chapters, and fellowship rooms.'
+                                          : 'Next available room selected automatically to avoid room collision.')
+                                      : 'All available rooms are currently active. Join an ongoing meeting above or wait for a room to end.',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: cs.onSurface.withValues(alpha: 0.5),
                                   ),
@@ -430,9 +516,11 @@ class _ConferencePlatformScreenState
                       const SizedBox(height: 16),
                       FilledButton.icon(
                         icon: const Icon(Icons.video_call_rounded),
-                        label: const Text(
-                          'Continue to General Meeting Room',
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        label: Text(
+                          nextRoom != null
+                              ? 'Continue to ${nextRoom.displayName}'
+                              : 'All Eligible Rooms Busy',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         style: FilledButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 13),
@@ -440,10 +528,12 @@ class _ConferencePlatformScreenState
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () => _openRoom(
-                          generalRoomName,
-                          MeetingType.general,
-                        ),
+                        onPressed: nextRoom != null
+                            ? () => _openRoom(
+                                  nextRoom.roomName,
+                                  nextRoom.meetingType,
+                                )
+                            : null,
                       ),
                       const SizedBox(height: 10),
                       OutlinedButton.icon(

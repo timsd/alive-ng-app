@@ -52,7 +52,23 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
 
     try {
       final users = await _listUsers();
-      final userProfiles = users.map(_profileFromDocument).toList();
+      final rawProfiles = users.map(_profileFromDocument).toList();
+      final byEmail = <String, UserProfile>{};
+      final deduped = <UserProfile>[];
+      for (final profile in rawProfiles) {
+        final emailKey = (profile.email ?? '').trim().toLowerCase();
+        if (emailKey.isEmpty) {
+          deduped.add(profile);
+          continue;
+        }
+        final existing = byEmail[emailKey];
+        if (existing == null) {
+          byEmail[emailKey] = profile;
+        } else if (!existing.isApproved && profile.isApproved) {
+          byEmail[emailKey] = profile;
+        }
+      }
+      final userProfiles = [...byEmail.values, ...deduped];
 
       setState(() {
         _pendingUsers = userProfiles
