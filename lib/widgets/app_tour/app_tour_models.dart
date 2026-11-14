@@ -179,7 +179,7 @@ class AppTourSteps {
       route: '/donation',
       targetArea: 'donations',
       highlights: [
-        'Direct fund designations: General Ministry, Tract Production, Campus Outreaches',
+        'Direct fund designations: General Ministry, Tract Production, Campus Outreaches, etc',
         'Ability to split your donation to other areas of the ministry and projects',
         'Instant receipt generation and personal giving history',
         'Registry for non-monetary equipment and mission supplies',
@@ -210,7 +210,7 @@ class AppTourSteps {
       title: 'Profile & Account Hub',
       subtitle: 'Shortcut to Settings',
       description:
-          'Tap your avatar in the greeting header to view your member profile, track discipleship progress, manage chapter affiliation, and configure account security.',
+          'Tap your avatar in the greeting header to view your member profile, manage donations, settings and configure account security.',
       icon: Icons.account_circle_rounded,
       accentColor: Color(0xFFD49B28), // Warm Gold
       route: '/profile',
