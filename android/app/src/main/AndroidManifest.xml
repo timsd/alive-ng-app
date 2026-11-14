@@ -158,14 +158,6 @@
                     android:host="payment.callback" />
             </intent-filter>
             
-            <!-- Appwrite OAuth callback for Google / Social Login -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="appwrite-callback-6a3bef53002f5090dedf" />
-            </intent-filter>
-            
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues

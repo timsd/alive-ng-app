@@ -577,7 +577,9 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
             .timeout(const Duration(seconds: 25));
       } catch (_) {}
 
-      final isAdmin = RoleAccessService.instance.canAccessAdmin() || widget.isModerator;
+      final canNotifyMembers = RoleAccessService.instance.canStartConferencing() ||
+          RoleAccessService.instance.canAccessAdmin() ||
+          widget.isModerator;
       final roomSlug = _getRoomSlug();
       final roomTitle = widget.meetingType?.displayName ?? roomName;
 
@@ -588,7 +590,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         userId: user.uid,
         userName: user.displayNameOrFallback,
         meetingType: widget.meetingType?.name ?? 'general',
-        notifyMembers: isAdmin && _notifyMembers,
+        notifyMembers: canNotifyMembers && _notifyMembers,
         meetingTitle: roomTitle,
         targetAudience: _targetAudience,
         targetChapter: _targetAudience == 'chapter' ? _selectedTargetChapter : null,
