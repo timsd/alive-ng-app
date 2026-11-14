@@ -1135,31 +1135,56 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                   ),
               ],
             ),
+            actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  final saved = await MonthlyReminderSettingService
-                      .setUserToggleEnabled(enabled);
-                  if (!dialogContext.mounted) return;
-                  Navigator.of(dialogContext).pop();
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        saved
-                            ? (enabled
-                                ? 'Members can now opt out of the monthly reminder'
-                                : 'Monthly reminder is now admin-managed for everyone')
-                            : 'Could not save the monthly reminder setting',
+              SizedBox(
+                width: double.maxFinite,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Cancel'),
                       ),
                     ),
-                  );
-                },
-                child: const Text('Save'),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final saved = await MonthlyReminderSettingService
+                              .setUserToggleEnabled(enabled);
+                          if (!dialogContext.mounted) return;
+                          Navigator.of(dialogContext).pop();
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                saved
+                                    ? (enabled
+                                        ? 'Members can now opt out of the monthly reminder'
+                                        : 'Monthly reminder is now admin-managed for everyone')
+                                    : 'Could not save the monthly reminder setting',
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

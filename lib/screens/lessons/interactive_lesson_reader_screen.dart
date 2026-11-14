@@ -9,6 +9,7 @@ import '../../services/pdf_extractor_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/discipleship_service.dart';
 import '../../models/discipleship_models.dart';
+import '../../config/default_content_data.dart';
 import 'components/lesson_reader_widgets.dart';
 
 /// Full interactive study screen for Lesson 1: Something We Can Trust (What The Bible Says Series)
@@ -67,68 +68,7 @@ class _InteractiveLessonReaderScreenState
   bool _isSaving = false;
 
   // Messianic prophecies table
-  final List<Map<String, String>> _allMessianicProphecies = [
-    {
-      'subject': 'Born in Bethlehem',
-      'ot': 'Micah 5:2',
-      'nt': 'Matthew 2:1',
-    },
-    {
-      'subject': 'Born of a virgin',
-      'ot': 'Isaiah 7:14',
-      'nt': 'Matthew 1:18-23',
-    },
-    {
-      'subject': "David's lineage",
-      'ot': 'Jeremiah 23:5',
-      'nt': 'Revelation 22:16',
-    },
-    {
-      'subject': "Herod's murder attempt",
-      'ot': 'Jeremiah 31:15',
-      'nt': 'Matthew 2:16-18',
-    },
-    {
-      'subject': 'Betrayed by friend',
-      'ot': 'Psalm 41:9',
-      'nt': 'John 13:18, 19, 26',
-    },
-    {
-      'subject': 'Sold for 30 silver coins',
-      'ot': 'Zechariah 11:12',
-      'nt': 'Matthew 26:14-16',
-    },
-    {
-      'subject': 'Crucified',
-      'ot': 'Zechariah 12:10',
-      'nt': 'John 19:16-18, 37',
-    },
-    {
-      'subject': 'Lots cast on His clothes',
-      'ot': 'Psalm 22:18',
-      'nt': 'Matthew 27:35',
-    },
-    {
-      'subject': 'No bones broken',
-      'ot': 'Psalm 34:20',
-      'nt': 'John 19:31-36',
-    },
-    {
-      'subject': "Buried in rich man's tomb",
-      'ot': 'Isaiah 53:9',
-      'nt': 'Matthew 27:57-60',
-    },
-    {
-      'subject': 'Year, day, hour of death',
-      'ot': 'Daniel 9:26, 27',
-      'nt': 'Matthew 27:45-50',
-    },
-    {
-      'subject': 'Raised the third day',
-      'ot': 'Hosea 6:2',
-      'nt': 'Acts 10:38-40',
-    },
-  ];
+  final List<Map<String, String>> _allMessianicProphecies = DefaultContentData.messianicProphecies;
 
   List<Map<String, String>> _filteredMessianicProphecies = [];
 

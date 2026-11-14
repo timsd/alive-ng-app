@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alive_flutter_app/constants/app_constants.dart';
@@ -8,8 +7,10 @@ import '../../utils/responsive_utils.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../models/donation_presentation_models.dart';
+import 'widgets/donation_amount_selector.dart';
 import 'widgets/donation_type_card.dart';
 import 'widgets/giving_method_row.dart';
+import 'widgets/guest_info_form.dart';
 import 'widgets/project_card.dart';
 import 'widgets/project_fund_update.dart';
 import '../../models/donation_models.dart';
@@ -886,215 +887,34 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   }
 
   Widget _buildAmountSelector(BuildContext context, ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _isMonthlySelected
-                  ? translate('enter_amount_monthly')
-                  : translate('enter_amount_one_time'),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            _buildCurrencySelector(context, theme),
-          ],
-        ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-        _buildPresetAmounts(context, theme),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-        _buildCustomAmountInput(context, theme),
-        if (_selectedAmount > 0 && _selectedFundDesignations.length > 1) ...[
-          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.2),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.call_split_rounded,
-                    size: 18, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Split: ${_selectedCurrency == 'USD' ? '\$' : '₦'}${(_selectedAmount / _selectedFundDesignations.length).toStringAsFixed(2)} each across ${_selectedFundDesignations.length} designated areas (${(100.0 / _selectedFundDesignations.length).toStringAsFixed(0)}% each)',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildCurrencySelector(BuildContext context, ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
-      ),
-      child: ModernDropdownButton<String>(
-        value: _selectedCurrency,
-        underline: const SizedBox(),
-        items: ['USD', 'NGN'].map((currency) {
-          return DropdownMenuItem(
-            value: currency,
-            child: Text(
-              currency,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 14,
-                      tablet: 16,
-                      desktop: 18,
-                    ),
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          );
-        }).toList(),
-        onChanged: (value) {
-          if (value != null) {
-            setState(() {
-              _selectedCurrency = value;
-              _selectedAmount = 0;
-              _customAmountController.clear();
-            });
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _buildPresetAmounts(BuildContext context, ThemeData theme) {
-    final amounts = _donationAmounts[_selectedCurrency] ?? [];
-
-    return Wrap(
-      spacing: ResponsiveUtils.getResponsiveSpacing(context, 12),
-      runSpacing: ResponsiveUtils.getResponsiveSpacing(context, 12),
-      children: amounts.map((amountData) {
-        final amount = amountData.amount;
-        final label = amountData.label;
-        final isSelected = _selectedAmount == amount;
-
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedAmount = amount;
-              _customAmountController.clear();
-            });
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: EdgeInsets.symmetric(
-              horizontal: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 24,
-                tablet: 28,
-                desktop: 32,
-              ),
-              vertical: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 16,
-                tablet: 18,
-                desktop: 20,
-              ),
-            ),
-            decoration: BoxDecoration(
-              color: isSelected ? theme.colorScheme.primary : theme.cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.dividerColor.withValues(alpha: 0.3),
-                width: isSelected ? 2 : 1,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: isSelected
-                        ? theme.colorScheme.onPrimary
-                        : theme.colorScheme.onSurface,
-                  ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildCustomAmountInput(BuildContext context, ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Other Amount',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface,
-              ),
-        ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-        TextField(
-          controller: _customAmountController,
-          keyboardType: TextInputType.number,
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-          decoration: InputDecoration(
-            prefixText: _selectedCurrency == 'USD' ? '\$ ' : '₦ ',
-            prefixStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-            hintText: 'Enter amount',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: theme.colorScheme.primary, width: 2),
-            ),
-            filled: true,
-            fillColor: theme.cardColor,
-          ),
-          onChanged: (value) {
-            final amount = double.tryParse(value);
-            setState(() {
-              _selectedAmount = amount ?? 0;
-            });
-          },
-        ),
-      ],
+    return DonationAmountSelector(
+      title: _isMonthlySelected
+          ? translate('enter_amount_monthly')
+          : translate('enter_amount_one_time'),
+      selectedCurrency: _selectedCurrency,
+      selectedAmount: _selectedAmount,
+      presetAmounts: _donationAmounts[_selectedCurrency] ?? const [],
+      customAmountController: _customAmountController,
+      selectedDesignationCount: _selectedFundDesignations.length,
+      onCurrencyChanged: (value) {
+        setState(() {
+          _selectedCurrency = value;
+          _selectedAmount = 0;
+          _customAmountController.clear();
+        });
+      },
+      onPresetAmountSelected: (amount) {
+        setState(() {
+          _selectedAmount = amount;
+          _customAmountController.clear();
+        });
+      },
+      onCustomAmountChanged: (value) {
+        final amount = double.tryParse(value);
+        setState(() {
+          _selectedAmount = amount ?? 0;
+        });
+      },
     );
   }
 
@@ -1245,47 +1065,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   }
 
   Widget _buildGuestInfoForm(BuildContext context, ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Your Details',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-        TextField(
-          controller: _guestNameController,
-          textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(
-            labelText: 'Full Name',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
-            ),
-            filled: true,
-            fillColor: theme.cardColor,
-          ),
-        ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
-        TextField(
-          controller: _guestEmailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(
-            labelText: 'Email Address',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
-            ),
-            filled: true,
-            fillColor: theme.cardColor,
-          ),
-        ),
-      ],
+    return GuestInfoForm(
+      nameController: _guestNameController,
+      emailController: _guestEmailController,
+      onChanged: () => setState(() {}),
     );
   }
 

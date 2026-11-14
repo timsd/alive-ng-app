@@ -31,6 +31,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     'paystack_test_mode',
     'paystack_public_key',
     'paystack_secret_key',
+    'monthly_reminder',
   };
 
   @override

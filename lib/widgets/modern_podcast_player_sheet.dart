@@ -6,6 +6,8 @@ import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/custom_image.dart';
 import '../utils/podcast_share_helper.dart';
+import 'podcast_control_buttons.dart';
+import 'podcast_seek_bar.dart';
 
 /// Fullscreen modern podcast player modal with live transcription,
 /// interactive seeking, playback speed controls, and lively animations.
@@ -97,8 +99,6 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
   String _transcriptQuery = '';
   double _currentSpeed = 1.0;
-  bool _isSeeking = false;
-  double _dragPosition = 0.0;
 
   // Transcript Sync State (Spotify-style)
   List<_PodcastTranscriptLine> _transcriptLines = [];
@@ -879,221 +879,26 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
               ),
 
               // 3. Scrubbable Progress Bar & Duration
-              StreamBuilder<Duration>(
-                stream: widget.audioPlayer.positionStream,
-                builder: (context, positionSnapshot) {
-                  final position = positionSnapshot.data ?? Duration.zero;
-                  final duration = widget.audioPlayer.duration ??
-                      Duration(
-                          minutes:
-                              int.tryParse(durationStr.split(':').first) ?? 15);
-
-                  final totalMs = duration.inMilliseconds.toDouble();
-                  final posMs = _isSeeking
-                      ? _dragPosition
-                      : position.inMilliseconds
-                          .toDouble()
-                          .clamp(0.0, totalMs > 0 ? totalMs : 1.0);
-
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          trackHeight: 4,
-                          thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 6),
-                          overlayShape:
-                              const RoundSliderOverlayShape(overlayRadius: 14),
-                          activeTrackColor: colorScheme.primary,
-                          inactiveTrackColor:
-                              colorScheme.onSurface.withValues(alpha: 0.15),
-                          thumbColor: colorScheme.primary,
-                        ),
-                        child: Slider(
-                          min: 0.0,
-                          max: totalMs > 0 ? totalMs : 1.0,
-                          value: posMs,
-                          onChangeStart: (val) {
-                            setState(() {
-                              _isSeeking = true;
-                              _dragPosition = val;
-                            });
-                          },
-                          onChanged: (val) {
-                            setState(() {
-                              _dragPosition = val;
-                            });
-                          },
-                          onChangeEnd: (val) {
-                            _isSeeking = false;
-                            widget.audioPlayer
-                                .seek(Duration(milliseconds: val.round()));
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _formatDuration(_isSeeking
-                                  ? Duration(milliseconds: _dragPosition.round())
-                                  : position),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color:
-                                    colorScheme.onSurface.withValues(alpha: 0.6),
-                              ),
-                            ),
-                            Text(
-                              '-${_formatDuration(duration > position ? duration - position : Duration.zero)}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color:
-                                    colorScheme.onSurface.withValues(alpha: 0.6),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                },
+              PodcastSeekBar(
+                audioPlayer: widget.audioPlayer,
+                fallbackDurationString: durationStr,
               ),
 
               // 4. Playback Controls Row (Speed, Rewind 10, Play/Pause FAB, Forward 30, Share)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Speed Pill
-                  InkWell(
-                    onTap: _cycleSpeed,
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Text(
-                        '${_currentSpeed}x',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 14),
-
-                  // Skip Backward 10s
-                  IconButton(
-                    iconSize: controlIconSize,
-                    icon: const Icon(Icons.replay_10),
-                    onPressed: () {
-                      final newPos = widget.audioPlayer.position -
-                          const Duration(seconds: 10);
-                      widget.audioPlayer.seek(
-                          newPos < Duration.zero ? Duration.zero : newPos);
-                    },
-                    tooltip: 'Rewind 10 seconds',
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  // Play / Pause Large FAB
-                  StreamBuilder<PlayerState>(
-                    stream: widget.audioPlayer.playerStateStream,
-                    builder: (context, snapshot) {
-                      final state = snapshot.data;
-                      final isPlaying = state?.playing ?? false;
-                      final isBuffering =
-                          state?.processingState == ProcessingState.buffering;
-
-                      return Container(
-                        width: fabSize,
-                        height: fabSize,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              colorScheme.primary,
-                              colorScheme.primary.withValues(alpha: 0.85)
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colorScheme.primary.withValues(alpha: 0.4),
-                              blurRadius: 14,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: IconButton(
-                          iconSize: fabIconSize,
-                          color: colorScheme.onPrimary,
-                          icon: isBuffering
-                              ? SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: colorScheme.onPrimary,
-                                  ),
-                                )
-                              : Icon(isPlaying
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded),
-                          onPressed: () {
-                            if (isPlaying) {
-                              widget.audioPlayer.pause();
-                            } else {
-                              widget.audioPlayer.play();
-                            }
-                          },
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  // Skip Forward 30s
-                  IconButton(
-                    iconSize: controlIconSize,
-                    icon: const Icon(Icons.forward_30_rounded),
-                    onPressed: () {
-                      final duration = widget.audioPlayer.duration ??
-                          const Duration(hours: 1);
-                      final newPos = widget.audioPlayer.position +
-                          const Duration(seconds: 30);
-                      widget.audioPlayer
-                          .seek(newPos > duration ? duration : newPos);
-                    },
-                    tooltip: 'Forward 30 seconds',
-                  ),
-
-                  const SizedBox(width: 14),
-
-                  // Share Episode
-                  IconButton(
-                    iconSize: 22,
-                    icon: const Icon(Icons.share_outlined),
-                    onPressed: () {
-                      PodcastShareHelper.shareEpisode(
-                        context,
-                        episode: widget.episodeData,
-                        podcastTitle: widget.podcastTitle,
-                      );
-                    },
-                    tooltip: 'Share',
-                  ),
-                ],
+              PodcastControlButtons(
+                audioPlayer: widget.audioPlayer,
+                currentSpeed: _currentSpeed,
+                onCycleSpeed: _cycleSpeed,
+                fabSize: fabSize,
+                fabIconSize: fabIconSize,
+                controlIconSize: controlIconSize,
+                onShare: () {
+                  PodcastShareHelper.shareEpisode(
+                    context,
+                    episode: widget.episodeData,
+                    podcastTitle: widget.podcastTitle,
+                  );
+                },
               ),
             ],
           ),

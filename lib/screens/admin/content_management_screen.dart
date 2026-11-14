@@ -521,7 +521,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         TextEditingController(text: page?['content'] ?? '');
     String selectedLanguage =
         (page?['language'] ?? page?['language_code'] ?? 'en').toString();
-    if (!['en', 'yo', 'ha', 'ig'].contains(selectedLanguage)) {
+    if (!DefaultContentData.supportedContentLanguages.containsKey(selectedLanguage)) {
       selectedLanguage = 'en';
     }
     bool isPublished = page?['is_published'] ?? false;
@@ -577,12 +577,14 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                           prefixIcon: Icon(Icons.language),
                           border: OutlineInputBorder(),
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 'en', child: Text('English (en)')),
-                          DropdownMenuItem(value: 'yo', child: Text('Yorùbá (yo)')),
-                          DropdownMenuItem(value: 'ha', child: Text('Hausa (ha)')),
-                          DropdownMenuItem(value: 'ig', child: Text('Igbo (ig)')),
-                        ],
+                        items: DefaultContentData.supportedContentLanguages.entries
+                            .map(
+                              (entry) => DropdownMenuItem(
+                                value: entry.key,
+                                child: Text(entry.value),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (val) {
                           if (val != null) {
                             setDialogState(() => selectedLanguage = val);
@@ -1210,7 +1212,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                             labelText: 'Status',
                             border: OutlineInputBorder(),
                           ),
-                          items: ['active', 'planning', 'completed']
+                          items: DefaultContentData.projectStatuses
                               .map((s) => DropdownMenuItem(
                                   value: s, child: Text(TextFormatter.formatText(s))))
                               .toList(),
@@ -1676,8 +1678,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     String selectedLevel = lesson?.level ?? 'Beginner';
     bool isActive = lesson?.isActive ?? true;
 
-    final categories = ['Bible Study', 'Prophecy', 'Health', 'Missions', 'Discipleship', 'Doctrine'];
-    final levels = ['Beginner', 'Intermediate', 'Advanced'];
+    final categories = DefaultContentData.interactiveLessonCategories;
+    final levels = DefaultContentData.interactiveLessonLevels;
 
     showDialog(
       context: context,

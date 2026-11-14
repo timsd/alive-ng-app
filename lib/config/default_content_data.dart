@@ -104,6 +104,97 @@ class DefaultContentData {
         },
       ];
 
+  static const Map<String, String> supportedContentLanguages = {
+    'en': 'English (en)',
+    'yo': 'Yorùbá (yo)',
+    'ha': 'Hausa (ha)',
+    'ig': 'Igbo (ig)',
+  };
+
+  static const List<String> projectStatuses = [
+    'active',
+    'planning',
+    'completed',
+  ];
+
+  static const List<String> interactiveLessonCategories = [
+    'Bible Study',
+    'Prophecy',
+    'Health',
+    'Missions',
+    'Discipleship',
+    'Doctrine',
+  ];
+
+  static const List<String> interactiveLessonLevels = [
+    'Beginner',
+    'Intermediate',
+    'Advanced',
+  ];
+
+  static const List<Map<String, String>> messianicProphecies = [
+    {
+      'subject': 'Born in Bethlehem',
+      'ot': 'Micah 5:2',
+      'nt': 'Matthew 2:1',
+    },
+    {
+      'subject': 'Born of a virgin',
+      'ot': 'Isaiah 7:14',
+      'nt': 'Matthew 1:18-23',
+    },
+    {
+      'subject': "David's lineage",
+      'ot': 'Jeremiah 23:5',
+      'nt': 'Revelation 22:16',
+    },
+    {
+      'subject': "Herod's murder attempt",
+      'ot': 'Jeremiah 31:15',
+      'nt': 'Matthew 2:16-18',
+    },
+    {
+      'subject': 'Betrayed by friend',
+      'ot': 'Psalm 41:9',
+      'nt': 'John 13:18, 19, 26',
+    },
+    {
+      'subject': 'Sold for 30 silver coins',
+      'ot': 'Zechariah 11:12',
+      'nt': 'Matthew 26:14-16',
+    },
+    {
+      'subject': 'Crucified',
+      'ot': 'Zechariah 12:10',
+      'nt': 'John 19:16-18, 37',
+    },
+    {
+      'subject': 'Lots cast on His clothes',
+      'ot': 'Psalm 22:18',
+      'nt': 'Matthew 27:35',
+    },
+    {
+      'subject': 'No bones broken',
+      'ot': 'Psalm 34:20',
+      'nt': 'John 19:31-36',
+    },
+    {
+      'subject': "Buried in rich man's tomb",
+      'ot': 'Isaiah 53:9',
+      'nt': 'Matthew 27:57-60',
+    },
+    {
+      'subject': 'Year, day, hour of death',
+      'ot': 'Daniel 9:26, 27',
+      'nt': 'Matthew 27:45-50',
+    },
+    {
+      'subject': 'Raised the third day',
+      'ot': 'Hosea 6:2',
+      'nt': 'Acts 10:38-40',
+    },
+  ];
+
   static List<Map<String, dynamic>> get defaultProjects => [
         {
           'id': 'impact_hub_center',
