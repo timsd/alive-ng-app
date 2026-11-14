@@ -1261,20 +1261,20 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       ),
       title: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w500,
             ),
       ),
       subtitle: Text(
         subtitle,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
       ),
       trailing: Icon(
         Icons.arrow_forward_ios,
-        size: ResponsiveUtils.getResponsiveIconSize(context, 14),
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        size: 16,
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
       ),
       onTap: onTap,
     );

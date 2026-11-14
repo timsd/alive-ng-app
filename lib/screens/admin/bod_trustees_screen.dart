@@ -220,10 +220,21 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                 ),
                 title: Text(
                   'Leadership Directory',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-                subtitle: const Text('View, edit and update Trustees & Directors roster'),
-                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                subtitle: Text(
+                  'View, edit and update Trustees & Directors roster',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
                 onTap: () => context.push(AppConstants.leadershipDirectoryRoute),
               ),
             ),
@@ -364,8 +375,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
               Text(
                 subtitle,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontSize: 11,
+                  color: colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
@@ -395,14 +405,24 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             ),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Choose how to start the board meeting:'),
-            SizedBox(height: 16),
-            Text('• Quick Meeting: Start immediately'),
-            Text('• Scheduled Meeting: Join existing meeting'),
+            Text(
+              'Choose how to start the board meeting:',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '• Quick Meeting: Start immediately\n• Scheduled Meeting: Join existing meeting',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                height: 1.5,
+              ),
+            ),
           ],
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -416,7 +436,12 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                     _startQuickMeeting();
                   },
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    foregroundColor: colorScheme.onSurface,
+                    side: BorderSide(color: colorScheme.outlineVariant),
+                    backgroundColor:
+                        colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -430,15 +455,18 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: FilledButton(
+                child: OutlinedButton(
                   onPressed: () {
                     Navigator.pop(context);
                     _navigateToConferencePlatform();
                   },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colorScheme.onSurface,
+                    side: BorderSide(color: colorScheme.outlineVariant),
+                    backgroundColor:
+                        colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
