@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/pdf_extractor_service.dart';
 
-export 'verse_quote_card.dart';
-export 'reflection_input.dart';
-
 /// A card framing an interactive lesson section with a numbered badge and color palette.
 class LessonSectionCard extends StatelessWidget {
   final int number;

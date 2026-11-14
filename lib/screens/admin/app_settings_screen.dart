@@ -27,13 +27,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final Set<String> _visibleSecretKeys = {};
   Map<String, dynamic>? _paystackTestModeSetting;
 
-  static const Set<String> _hiddenInternalKeys = {
-    'paystack_test_mode',
-    'paystack_public_key',
-    'paystack_secret_key',
-    'monthly_reminder',
-  };
-
   @override
   void initState() {
     super.initState();
@@ -79,18 +72,23 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
         // Sync live PaymentConfig state from loaded settings
         if (key == 'paystack_test_mode') {
+          // Managed by the dedicated Paystack Mode card at the top of this screen
           _paystackTestModeSetting = setting;
           PaymentConfig.setTestMode(val.toLowerCase() == 'true');
-        } else if (key == 'paystack_live_public_key' && val.startsWith('pk_live_')) {
+          continue;
+        }
+        if (key == 'paystack_public_key' || key == 'paystack_secret_key') {
+          // Legacy single-mode Paystack keys superseded by the 4 explicit Live/Test keys
+          continue;
+        }
+        if (key == 'monthly_reminder') {
+          // Managed exclusively under Admin Dashboard -> Donations & Finance -> Monthly Support Reminder
+          continue;
+        }
+        if (key == 'paystack_live_public_key' && val.startsWith('pk_live_')) {
           PaymentConfig.setModePublicKey(isTest: false, key: val);
         } else if (key == 'paystack_test_public_key' && val.startsWith('pk_test_')) {
           PaymentConfig.setModePublicKey(isTest: true, key: val);
-        }
-
-        // Hide internal/duplicate Paystack keys since the top Paystack card and
-        // the 4 canonical Live/Test Public/Secret key rows handle them cleanly.
-        if (_hiddenInternalKeys.contains(key)) {
-          continue;
         }
 
         final category = _resolveCategoryForSetting(setting, key);
@@ -114,7 +112,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   String _resolveCategoryForSetting(Map<String, dynamic> setting, String key) {
     final raw = setting['category']?.toString().trim() ?? '';
     if (raw.isNotEmpty) return raw;
-    if (key == 'monthly_reminder') return 'notification';
     if (key.startsWith('paystack_')) return 'payment';
     if (key == 'app_version') return 'system';
     return 'app';
@@ -598,66 +595,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     final controller = _controllers[key]!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
-    // 1. Clean human-facing editor for Monthly Reminder (JSON)
-    if (key == 'monthly_reminder') {
-      bool allowOptOut = false;
-      try {
-        final decoded = jsonDecode(controller.text);
-        if (decoded is Map) {
-          allowOptOut = decoded['user_toggle_enabled'] == true;
-        }
-      } catch (_) {}
-
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              allowOptOut ? Icons.notifications_active_outlined : Icons.notifications_paused_outlined,
-              size: 18,
-              color: allowOptOut ? colorScheme.primary : colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Allow Member Opt-Out Toggle',
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    allowOptOut
-                        ? 'Members can toggle the monthly support reminder on or off in Profile.'
-                        : 'Monthly support reminder is managed globally by administration.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontSize: 11.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Switch.adaptive(
-              value: allowOptOut,
-              onChanged: isActive
-                  ? (val) {
-                      setState(() {
-                        controller.text = jsonEncode({'user_toggle_enabled': val});
-                      });
-                    }
-                  : null,
-            ),
-          ],
-        ),
-      );
-    }
 
     // 2. Clean human-facing editor for Android OTA App Version (JSON)
     if (key == 'app_version') {

@@ -11,6 +11,8 @@ import '../../services/discipleship_service.dart';
 import '../../models/discipleship_models.dart';
 import '../../config/default_content_data.dart';
 import 'components/lesson_reader_widgets.dart';
+import 'components/reflection_input.dart';
+import 'components/verse_quote_card.dart';
 
 /// Full interactive study screen for Lesson 1: Something We Can Trust (What The Bible Says Series)
 /// as well as any dynamically extracted Tract / Interactive Bible Study uploaded by Admins.
