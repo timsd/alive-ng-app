@@ -1354,7 +1354,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                'Recite the verse aloud (word-perfect)',
+                'Recite this verse (word-for-word)',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,

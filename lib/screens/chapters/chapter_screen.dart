@@ -381,7 +381,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'General Meeting is available',
+                  'General Meeting',
                   style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),

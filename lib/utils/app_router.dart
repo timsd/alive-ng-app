@@ -818,7 +818,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const NotificationSettingsScreen(),
             redirect: (context, state) {
               // Protect notification settings for unauthenticated users
-              final user = ref.read(appwriteUserProvider);
+              final user = ref.read(authGatewayProvider).currentUser;
               if (user == null) {
                 return AppConstants.authRoute;
               }
