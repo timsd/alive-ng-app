@@ -64,7 +64,6 @@ import '../screens/donation/donation_screen.dart';
 import '../screens/donation/gift_in_kind_form_screen.dart';
 import '../screens/donation/non_monetary_gift_form_screen.dart';
 import '../screens/achievements/achievement_screen.dart';
-import '../services/appwrite_auth_service.dart';
 import '../constants/app_constants.dart';
 import '../services/onboarding_service.dart';
 import '../utils/web_launch_params.dart';
@@ -881,10 +880,24 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.videoContentAdminRoute,
             builder: (context, state) => const VideoContentAdminScreen(),
+            redirect: (context, state) {
+              final roleService = RoleAccessService.instance;
+              if (!roleService.canAccessAdmin()) {
+                return '/home';
+              }
+              return null;
+            },
           ),
           GoRoute(
             path: AppConstants.sampleContentAdminRoute,
             builder: (context, state) => const VideoContentAdminScreen(),
+            redirect: (context, state) {
+              final roleService = RoleAccessService.instance;
+              if (!roleService.canAccessAdmin()) {
+                return '/home';
+              }
+              return null;
+            },
           ),
         ],
       ),
