@@ -881,7 +881,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
           _MgmtTile('Donation Reports', 'Search, filter and export every gift', Icons.receipt_long_outlined, () => context.push(AppConstants.adminDonationsReportRoute)),
         ]),
       _MgmtSection('Discipleship Operations', Icons.groups_2_outlined, [
-        _MgmtTile('Discipleship Operations Hub', 'Officer routing, report assignments, and disciple deletion approvals', Icons.groups_2_outlined, () => _showOfficerRoutingDialog()),
+        _MgmtTile('Discipleship Flow', 'Officer routing, report assignments, and disciple deletion approvals', Icons.groups_2_outlined, () => _showOfficerRoutingDialog()),
       ]),
       _MgmtSection('System Maintenance & Logs', Icons.dns_outlined, [
         _MgmtTile('Backup & Restore', 'Manage system backups and data restoration', Icons.backup_outlined, () => _navigateToBackupSettings()),

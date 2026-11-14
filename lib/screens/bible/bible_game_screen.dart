@@ -36,7 +36,7 @@ class BibleGameState {
 
   BibleGameState({
     this.currentVerse,
-    this.selectedVersion = 'NIV',
+    this.selectedVersion = 'KJV',
     this.currentLevel = 1,
     this.score = 0,
     this.completedVerses = const [],
