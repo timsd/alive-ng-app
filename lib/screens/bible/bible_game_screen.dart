@@ -40,7 +40,7 @@ class BibleGameState {
     this.currentLevel = 1,
     this.score = 0,
     this.completedVerses = const [],
-    this.gameMode = GameMode.fillInTheGap,
+    this.gameMode = GameMode.voiceRecitation,
     this.isListening = false,
     this.userInput = '',
     this.blankedWords = const [],
@@ -1150,19 +1150,19 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
               children: [
                 Expanded(
                   child: _buildModeButton(
-                    'Fill Gaps',
-                    Icons.edit,
-                    GameMode.fillInTheGap,
-                    gameState.gameMode == GameMode.fillInTheGap,
+                    'Voice',
+                    Icons.mic,
+                    GameMode.voiceRecitation,
+                    gameState.gameMode == GameMode.voiceRecitation,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildModeButton(
-                    'Voice',
-                    Icons.mic,
-                    GameMode.voiceRecitation,
-                    gameState.gameMode == GameMode.voiceRecitation,
+                    'Fill Gaps',
+                    Icons.edit,
+                    GameMode.fillInTheGap,
+                    gameState.gameMode == GameMode.fillInTheGap,
                   ),
                 ),
               ],

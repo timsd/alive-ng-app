@@ -17,6 +17,12 @@ class QuickActionsGrid extends ConsumerWidget {
 
     final actions = [
       QuickAction(
+        icon: Icons.chat_bubble_rounded,
+        title: translate('chat'),
+        color: const Color(0xFF06B6D4), // Cyan 500
+        route: AppConstants.chatRoute,
+      ),
+      QuickAction(
         icon: Icons.child_care_rounded,
         title: translate('kids_missions'),
         color: const Color(0xFFF43F5E), // Rose 500
