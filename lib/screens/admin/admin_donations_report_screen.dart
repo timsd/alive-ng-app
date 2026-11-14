@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/appwrite_admin_export_service.dart';
 import '../../models/donation_report_models.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/overview_stat_card.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/admin_filter_header.dart';
 import '../../utils/responsive_utils.dart';
@@ -458,60 +459,12 @@ class _AdminDonationsReportContentState
     required IconData icon,
     required Color color,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: color),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontSize: 11,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Tooltip(
-                  message: value,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      value,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return OverviewStatCard(
+      title: title,
+      value: value,
+      icon: icon,
+      color: color,
+      tooltip: value,
     );
   }
 

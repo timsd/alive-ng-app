@@ -10,6 +10,7 @@ import '../../services/auth_service.dart';
 import '../../main.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/overview_stat_card.dart';
 import '../../config/meeting_links_config.dart';
 import '../conference/livekit_meeting_screen.dart';
 import '../../providers/appwrite_auth_provider.dart';
@@ -461,38 +462,11 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
 
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 22, color: color),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-            ),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
+    return OverviewStatCard(
+      title: title,
+      value: value,
+      icon: icon,
+      color: color,
     );
   }
 

@@ -12,6 +12,7 @@ import '../../services/role_access_service.dart';
 import '../../services/office_access_service.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/overview_stat_card.dart';
 import '../../constants/chapters.dart';
 import '../../constants/app_constants.dart';
 import 'admin_announcements_screen.dart';
@@ -928,73 +929,12 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
 
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Icon(
-                icon,
-                size: 14,
-                color: color,
-              ),
-            ),
-          ),
-          const SizedBox(height: 3),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: theme.colorScheme.onSurface,
-                letterSpacing: -0.5,
-                height: 1.1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            title.toUpperCase(),
-            style: TextStyle(
-              fontSize: 8.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+    return OverviewStatCard(
+      title: title,
+      value: value,
+      icon: icon,
+      color: color,
+      compact: true,
     );
   }
 

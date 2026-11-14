@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/discipleship_models.dart';
 import '../../../utils/responsive_utils.dart';
+import '../../../widgets/overview_stat_card.dart';
 import 'discipleship_helpers.dart';
 
 /// The Discipleship Stages & Overview summary card widget.
@@ -252,35 +253,11 @@ class DiscipleshipStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: context.responsivePadding,
-        child: Column(
-          children: [
-            Icon(icon, size: context.responsiveIconSize(32), color: color),
-            SizedBox(
-              height: ResponsiveUtils.getResponsiveValue(
-                context: context,
-                mobile: 8.0,
-                tablet: 10.0,
-                desktop: 12.0,
-              ),
-            ),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-            ),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.labelSmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+    return OverviewStatCard(
+      title: title,
+      value: value,
+      icon: icon,
+      color: color,
     );
   }
 }
@@ -302,35 +279,12 @@ class DiscipleshipMiniStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+    return OverviewStatCard(
+      title: title,
+      value: value,
+      icon: icon,
+      color: color,
+      compact: true,
     );
   }
 }

@@ -8,6 +8,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/overview_stat_card.dart';
 
 class StudyGuideScreen extends StatefulWidget {
   const StudyGuideScreen({super.key});
@@ -202,59 +203,11 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
   }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      elevation: ResponsiveUtils.getResponsiveValue(
-          context: context, mobile: 2, tablet: 3, desktop: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 118),
-        padding: EdgeInsets.symmetric(
-          horizontal: ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 4, tablet: 12, desktop: 16),
-          vertical: ResponsiveUtils.getResponsiveValue(
-              context: context, mobile: 14, tablet: 18, desktop: 20),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: color,
-              size: ResponsiveUtils.getResponsiveValue(
-                  context: context, mobile: 26, tablet: 30, desktop: 34),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.7),
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 11.0, tablet: 12.0, desktop: 13.0),
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.2,
-                    height: 1.2,
-                  ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
+    return OverviewStatCard(
+      title: title,
+      value: value,
+      icon: icon,
+      color: color,
     );
   }
 

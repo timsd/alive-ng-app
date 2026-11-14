@@ -11,6 +11,7 @@ import '../../utils/error_handler.dart';
 import '../../models/leadership_models.dart';
 import '../../services/leadership_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/overview_stat_card.dart';
 import '../../widgets/admin_filter_header.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
@@ -1571,12 +1572,12 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           ),
           const SizedBox(height: 16),
 
-          // Primary 4 Stat Cards (compact horizontal style)
+          // Primary 4 Stat Cards
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 2.3,
+            childAspectRatio: 1.65,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
             children: [
@@ -1746,50 +1747,11 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     Color color,
     ThemeData theme,
   ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: color),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return OverviewStatCard(
+      title: title,
+      value: value,
+      icon: icon,
+      color: color,
     );
   }
 
