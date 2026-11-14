@@ -38,22 +38,12 @@ class DiscipleshipReportsTab extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
-                        theme.colorScheme.surfaceContainerHigh,
-                      ]
-                    : [
-                        theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
-                        theme.colorScheme.surfaceContainerLowest,
-                      ],
-              ),
+              color: isDark
+                  ? theme.colorScheme.surfaceContainerHigh
+                  : theme.colorScheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                color: theme.colorScheme.outlineVariant,
               ),
             ),
             child: Column(

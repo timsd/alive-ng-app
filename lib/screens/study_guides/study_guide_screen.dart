@@ -139,11 +139,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(context: context, mobile: 20, tablet: 24, desktop: 28)),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),
-          gradient: LinearGradient(
-            colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: Theme.of(context).colorScheme.primary,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

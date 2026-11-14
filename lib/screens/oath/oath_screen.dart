@@ -48,14 +48,7 @@ class OathScreen extends ConsumerWidget {
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        theme.colorScheme.primary.withValues(alpha: 0.18),
-                        theme.colorScheme.primary.withValues(alpha: 0.05),
-                      ],
-                    ),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
                     border: Border.all(
                       color: theme.colorScheme.primary.withValues(alpha: 0.35),
                       width: 1.5,

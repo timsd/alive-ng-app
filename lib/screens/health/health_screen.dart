@@ -123,11 +123,7 @@ class HealthScreen extends ConsumerWidget {
               width: double.infinity,
               padding: ResponsiveUtils.getResponsivePadding(context),
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF141F2D), Color(0xFF1F4C35)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: Color(0xFF141F2D),
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(24),
                   bottomRight: Radius.circular(24),

@@ -112,12 +112,7 @@ class _AchievementScreenState extends ConsumerState<AchievementScreen>
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.primary.withValues(alpha: 0.8),
-          ],
-        ),
+        color: theme.colorScheme.primary,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(

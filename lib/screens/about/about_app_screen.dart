@@ -42,14 +42,7 @@ class AboutAppScreen extends ConsumerWidget {
       ),
       body: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.surface,
-              theme.scaffoldBackgroundColor,
-            ],
-          ),
+          color: theme.scaffoldBackgroundColor,
         ),
         child: Align(
           alignment: Alignment.topCenter,

@@ -837,14 +837,7 @@ class _ProfileHeaderCardState extends ConsumerState<_ProfileHeaderCard> {
       padding: EdgeInsets.all(ResponsiveUtils.getResponsiveValue(
           context: context, mobile: 24, tablet: 28, desktop: 32)),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primary.withValues(alpha: 0.08),
-            theme.colorScheme.primary.withValues(alpha: 0.02),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),

@@ -32,11 +32,7 @@ class StudyScreen extends StatelessWidget {
               width: double.infinity,
               padding: ResponsiveUtils.getResponsivePadding(context),
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF141F2D), Color(0xFF233E5F)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: Color(0xFF141F2D),
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(24),
                   bottomRight: Radius.circular(24),

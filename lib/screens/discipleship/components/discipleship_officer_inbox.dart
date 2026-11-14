@@ -833,21 +833,11 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [
-                  const Color(0xFF1A2332),
-                  const Color(0xFF0F1923),
-                ]
-              : [
-                  theme.colorScheme.primary.withValues(alpha: 0.06),
-                  theme.colorScheme.primary.withValues(alpha: 0.02),
-                ],
-        ),
+        color: isDark
+            ? theme.colorScheme.surfaceContainerHigh
+            : theme.colorScheme.surfaceContainerLow,
         border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.15 : 0.10),
+          color: theme.colorScheme.outlineVariant,
         ),
       ),
       child: Padding(
