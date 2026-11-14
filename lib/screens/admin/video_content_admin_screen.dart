@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../services/file_picker_facade.dart';
 import '../../services/video_content_service.dart';
 import '../../widgets/role_guard.dart';
@@ -209,7 +210,7 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
+                    ModernDropdownFormField<String>(
                       value: _categories.contains(categoryController.text)
                           ? categoryController.text
                           : 'Bible Study',

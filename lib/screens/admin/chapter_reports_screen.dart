@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -407,7 +408,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
           const SizedBox(width: 8),
           Expanded(
             flex: 2,
-            child: DropdownButtonFormField<String>(
+            child: ModernDropdownFormField<String>(
               value: _selectedChapter,
               isExpanded: true,
               decoration: const InputDecoration(
@@ -838,7 +839,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DropdownButtonFormField<String>(
+                  ModernDropdownFormField<String>(
                     initialValue: selectedChapter,
                     isExpanded: true,
                     decoration: const InputDecoration(
@@ -853,7 +854,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
+                  ModernDropdownFormField<String>(
                     value: selectedReportingArm,
                     isExpanded: true,
                     decoration: const InputDecoration(
@@ -1099,7 +1100,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DropdownButtonFormField<String>(
+                  ModernDropdownFormField<String>(
                     initialValue: selectedChapter,
                     isExpanded: true,
                     decoration: const InputDecoration(
@@ -1119,7 +1120,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
+                  ModernDropdownFormField<String>(
                     initialValue: selectedDirector,
                     isExpanded: true,
                     decoration: const InputDecoration(

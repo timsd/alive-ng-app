@@ -1074,8 +1074,10 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
                                   backgroundColor: guide.color,
                                   child: Text(
                                     '${index + 1}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: guide.color.computeLuminance() > 0.5
+                                          ? const Color(0xFF0D1520)
+                                          : Colors.white,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                     ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../models/discipleship_models.dart';
@@ -415,7 +416,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 140),
                 child: DropdownButtonHideUnderline(
-                  child: DropdownButton<DiscipleshipLevel?>(
+                  child: ModernDropdownButton<DiscipleshipLevel?>(
                     isExpanded: true,
                     isDense: true,
                     value: _selectedLevel,

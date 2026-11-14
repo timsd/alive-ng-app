@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/modern_dropdown.dart';
 import 'package:intl/intl.dart';
 import '../../../models/app_models.dart' as app_models;
 import '../../../models/discipleship_models.dart';
@@ -541,7 +542,7 @@ void showUpdatePrayerStatusDialog(
               ],
               Text('Prayer: "${prayer.request}"', style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              DropdownButtonFormField<PrayerRequestStatus>(
+              ModernDropdownFormField<PrayerRequestStatus>(
                 initialValue: status,
                 borderRadius: BorderRadius.circular(12),
                 dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -764,7 +765,7 @@ void showAddPrayerRequestDialog(
                     style: TextStyle(color: Colors.redAccent, fontSize: 12),
                   )
                 else
-                  DropdownButtonFormField<String>(
+                  ModernDropdownFormField<String>(
                     initialValue: selectedContactId,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),

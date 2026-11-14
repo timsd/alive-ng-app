@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/file_picker_facade.dart';
 import 'package:image_picker/image_picker.dart';
@@ -529,7 +530,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
 
-          DropdownButtonFormField<String>(
+          ModernDropdownFormField<String>(
             initialValue: _maritalStatus,
             decoration: InputDecoration(
               labelText: 'Marital Status',

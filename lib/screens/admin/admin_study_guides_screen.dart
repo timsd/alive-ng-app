@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import '../../utils/error_handler.dart';
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../services/file_picker_facade.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../services/appwrite_storage_service.dart';
@@ -303,7 +304,7 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<StudyGuideType>(
+                          child: ModernDropdownFormField<StudyGuideType>(
                             initialValue: _selectedType,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -321,7 +322,7 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: DropdownButtonFormField<StudyDifficulty>(
+                          child: ModernDropdownFormField<StudyDifficulty>(
                             initialValue: _selectedDifficulty,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,

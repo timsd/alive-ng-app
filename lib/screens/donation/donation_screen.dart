@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alive_flutter_app/constants/app_constants.dart';
@@ -947,7 +948,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
       ),
-      child: DropdownButton<String>(
+      child: ModernDropdownButton<String>(
         value: _selectedCurrency,
         underline: const SizedBox(),
         items: ['USD', 'NGN'].map((currency) {

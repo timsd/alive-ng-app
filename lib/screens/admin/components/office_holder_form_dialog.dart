@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/modern_dropdown.dart';
 
 /// Form dialog component for adding or editing leadership office holders (BOD, Trustees, Directors).
 class OfficeHolderFormDialog extends StatefulWidget {
@@ -130,7 +131,7 @@ class _OfficeHolderFormDialogState extends State<OfficeHolderFormDialog> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             const SizedBox(height: 6),
-            DropdownButtonFormField<String>(
+            ModernDropdownFormField<String>(
               initialValue: _selectedUserId.isNotEmpty ? _selectedUserId : null,
               isExpanded: true,
               decoration: const InputDecoration(

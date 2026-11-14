@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import './modern_dropdown.dart';
 import '../utils/app_theme.dart';
 import '../services/bible_database_helper.dart';
 import '../services/offline_bible_service.dart';
@@ -267,7 +268,7 @@ class _BibleReferenceModalSheetState extends State<BibleReferenceModalSheet> {
                 onPressed: () => Navigator.of(context).pop(),
               ),
               DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
+                child: ModernDropdownButton<String>(
                   value: _availableVersions.contains(_selectedVersion)
                       ? _selectedVersion
                       : _availableVersions.first,

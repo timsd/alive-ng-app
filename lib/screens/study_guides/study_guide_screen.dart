@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
 import '../../models/study_guide_models.dart';
 import '../../services/study_guide_service.dart';
@@ -348,7 +349,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<StudyGuideType>(
+                child: ModernDropdownFormField<StudyGuideType>(
                   isExpanded: true,
                   initialValue: _selectedType,
                   borderRadius: BorderRadius.circular(12),
@@ -378,7 +379,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
               ),
               SizedBox(width: ResponsiveUtils.getResponsiveValue(context: context, mobile: 6, tablet: 12, desktop: 16)),
               Expanded(
-                child: DropdownButtonFormField<StudyDifficulty>(
+                child: ModernDropdownFormField<StudyDifficulty>(
                   isExpanded: true,
                   initialValue: _selectedDifficulty,
                   borderRadius: BorderRadius.circular(12),

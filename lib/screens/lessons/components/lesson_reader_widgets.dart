@@ -52,8 +52,10 @@ class LessonSectionCard extends StatelessWidget {
                 backgroundColor: primaryColor,
                 child: Text(
                   '$number',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: primaryColor.computeLuminance() > 0.5
+                        ? const Color(0xFF0D1520)
+                        : Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),

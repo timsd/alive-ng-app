@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../models/chapter_models.dart';
 import '../../services/chapter_service.dart';
 import '../../constants/chapters.dart';
@@ -483,7 +484,7 @@ class _AdminChaptersScreenState extends State<AdminChaptersScreen> {
                   maxLines: 2,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<WorkersType>(
+                ModernDropdownFormField<WorkersType>(
                   initialValue: selectedType,
                   borderRadius: BorderRadius.circular(12),
                   dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,

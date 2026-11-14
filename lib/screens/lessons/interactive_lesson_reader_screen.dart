@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/bible_reference_modal_sheet.dart';
@@ -1824,7 +1825,7 @@ class _InteractiveLessonReaderScreenState
                           border: Border.all(color: Colors.white30),
                         ),
                         child: DropdownButtonHideUnderline(
-                          child: DropdownButton<DiscipleshipLevel>(
+                          child: ModernDropdownButton<DiscipleshipLevel>(
                             value: _selectedDiscipleshipLevel,
                             dropdownColor: const Color(0xFF14241B),
                             isExpanded: true,

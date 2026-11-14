@@ -560,7 +560,7 @@ class MainNavigationScreen extends ConsumerWidget {
                     'route': AppConstants.chatRoute
                   },
                   {
-                    'icon': Icons.diversity_3_rounded,
+                    'icon': Icons.groups_rounded,
                     'label': 'chapters',
                     'route': AppConstants.chaptersRoute
                   },
@@ -577,12 +577,12 @@ class MainNavigationScreen extends ConsumerWidget {
                     'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee']
                   },
                   {
-                    'icon': Icons.groups_2_rounded,
+                    'icon': Icons.people_alt_rounded,
                     'label': 'discipleship',
                     'route': AppConstants.discipleshipTrackerRoute,
                   },
                   {
-                    'icon': Icons.draw_rounded,
+                    'icon': Icons.edit_note_rounded,
                     'label': 'scribe',
                     'customLabel': 'ALIVE Scribe',
                     'route': AppConstants.scribeRoute,

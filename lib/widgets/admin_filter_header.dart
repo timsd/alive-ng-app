@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'modern_dropdown.dart';
 
 /// Model representing an interactive metric pill (Option 3 for Admin UX).
 /// Displays a label, an optional live record count (e.g. "4"), an optional
@@ -45,20 +46,18 @@ class AdminDropdownPill<T> extends StatelessWidget {
       orElse: () => items.first,
     );
 
-    return PopupMenuButton<T>(
-      initialValue: selectedValue,
-      tooltip: label,
-      onSelected: (val) => onChanged(val),
-      itemBuilder: (context) => items
-          .map(
-            (item) => PopupMenuItem<T>(
-              value: item.value,
-              child: item.child,
-            ),
-          )
-          .toList(),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: theme.colorScheme.surfaceContainerHighest,
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        showModernDropdownSheet<T>(
+          context: context,
+          items: items,
+          selectedValue: selectedValue,
+          title: label,
+          headerIcon: icon,
+          onChanged: onChanged,
+        );
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -95,9 +94,9 @@ class AdminDropdownPill<T> extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Icon(
-              Icons.arrow_drop_down_rounded,
-              size: 18,
-              color: theme.colorScheme.onSurfaceVariant,
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: theme.colorScheme.primary,
             ),
           ],
         ),

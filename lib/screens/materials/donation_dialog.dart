@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/donation_models.dart';
 import '../../services/donation_service.dart';
-import '../../utils/app_theme.dart';
 import '../../utils/error_handler.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/custom_image.dart';
@@ -217,13 +216,13 @@ class _DonationDialogState extends State<DonationDialog> {
       width: 72,
       height: 96,
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withValues(alpha: 0.12),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Center(
         child: Icon(
           Icons.article_rounded,
-          color: AppTheme.primaryColor,
+          color: Theme.of(context).colorScheme.primary,
           size: 36,
         ),
       ),
@@ -289,12 +288,12 @@ class _DonationDialogState extends State<DonationDialog> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.volunteer_activism,
-                        color: AppTheme.primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                         size: 24,
                       ),
                     ),

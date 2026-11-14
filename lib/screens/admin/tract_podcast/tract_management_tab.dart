@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/modern_dropdown.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../../services/file_picker_facade.dart';
 import 'dart:convert';
@@ -490,7 +491,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                       const SizedBox(height: 16),
 
                       // Category (dynamic from Appwrite)
-                      DropdownButtonFormField<String>(
+                      ModernDropdownFormField<String>(
                         isExpanded: true,
                         value: _selectedCategoryName,
                         decoration: InputDecoration(
@@ -1373,7 +1374,7 @@ class _StandaloneLessonFormDialogState
                       const SizedBox(height: 16),
 
                       // Category (full width to comfortably fit long category names without clipping)
-                      DropdownButtonFormField<String>(
+                      ModernDropdownFormField<String>(
                         isExpanded: true,
                         initialValue: _selectedCategory,
                         decoration: const InputDecoration(
@@ -1403,7 +1404,7 @@ class _StandaloneLessonFormDialogState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: DropdownButtonFormField<String>(
+                            child: ModernDropdownFormField<String>(
                               isExpanded: true,
                               initialValue: _selectedLevel,
                               decoration: const InputDecoration(

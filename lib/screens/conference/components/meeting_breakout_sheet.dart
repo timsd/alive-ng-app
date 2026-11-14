@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/modern_dropdown.dart';
 
 import '../../../models/meeting_models.dart';
 import '../../../services/ports/meeting_gateway.dart';
@@ -348,7 +349,7 @@ class _MeetingBreakoutSheetState extends State<MeetingBreakoutSheet> {
                 children: [
                   const Text('Number of Rooms:'),
                   const SizedBox(width: 16),
-                  DropdownButton<int>(
+                  ModernDropdownButton<int>(
                     value: _roomCount,
                     items: List.generate(
                       7,
@@ -366,7 +367,7 @@ class _MeetingBreakoutSheetState extends State<MeetingBreakoutSheet> {
                 children: [
                   const Text('Session Duration:'),
                   const SizedBox(width: 16),
-                  DropdownButton<int?>(
+                  ModernDropdownButton<int?>(
                     value: _selectedDurationMins,
                     items: const [
                       DropdownMenuItem(value: 5, child: Text('5 minutes')),
@@ -428,7 +429,7 @@ class _MeetingBreakoutSheetState extends State<MeetingBreakoutSheet> {
                   return Row(
                     children: [
                       Expanded(child: Text(member.name)),
-                      DropdownButton<int>(
+                      ModernDropdownButton<int>(
                         value: assignedIdx < _roomCount ? assignedIdx : 0,
                         items: List.generate(
                           _roomCount,

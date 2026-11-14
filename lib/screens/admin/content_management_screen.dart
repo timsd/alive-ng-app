@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../../utils/appwrite_id_utils.dart';
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../services/appwrite_facade.dart';
 import 'package:intl/intl.dart';
 import '../../config/appwrite_backend_config.dart';
@@ -569,7 +570,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                         ),
                       ),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
+                      ModernDropdownFormField<String>(
                         initialValue: selectedLanguage,
                         decoration: const InputDecoration(
                           labelText: 'Language',
@@ -1200,7 +1201,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: ModernDropdownFormField<String>(
                           value: status,
                           borderRadius: BorderRadius.circular(12),
                           dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -1701,7 +1702,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: ModernDropdownFormField<String>(
                           value: selectedCategory,
                           decoration: const InputDecoration(
                             labelText: 'Category',
@@ -1719,7 +1720,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
+                        child: ModernDropdownFormField<String>(
                           value: selectedLevel,
                           decoration: const InputDecoration(
                             labelText: 'Level',

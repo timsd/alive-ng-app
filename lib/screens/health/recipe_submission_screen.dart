@@ -13,6 +13,7 @@ import '../../utils/responsive_utils.dart';
 import '../../widgets/guest_access_indicator.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/modern_dropdown.dart';
 
 /// Screen for authenticated users to submit meal and natural remedy recipes
 class RecipeSubmissionScreen extends ConsumerStatefulWidget {
@@ -185,63 +186,30 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                     context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Category
-            FormBuilderDropdown<String>(
+            _buildModernFormDropdown(
               name: 'category',
-              decoration: InputDecoration(
-                labelText: translate('category'),
-                border: OutlineInputBorder(
-                  borderRadius: context.responsiveBorderRadius,
-                ),
-              ),
-              validator: FormBuilderValidators.required(),
-              items: _mealCategories
-                  .map((category) => DropdownMenuItem(
-                        value: category,
-                        child: Text(category),
-                      ))
-                  .toList(),
+              labelText: translate('category'),
+              options: _mealCategories,
             ),
             SizedBox(
                 height: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Difficulty Level
-            FormBuilderDropdown<String>(
+            _buildModernFormDropdown(
               name: 'difficulty',
-              decoration: InputDecoration(
-                labelText: translate('difficulty_level'),
-                border: OutlineInputBorder(
-                  borderRadius: context.responsiveBorderRadius,
-                ),
-              ),
-              validator: FormBuilderValidators.required(),
-              items: _difficultyLevels
-                  .map((level) => DropdownMenuItem(
-                        value: level,
-                        child: Text(level),
-                      ))
-                  .toList(),
+              labelText: translate('difficulty_level'),
+              options: _difficultyLevels,
             ),
             SizedBox(
                 height: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Preparation Time
-            FormBuilderDropdown<String>(
+            _buildModernFormDropdown(
               name: 'prep_time',
-              decoration: InputDecoration(
-                labelText: translate('preparation_time'),
-                border: OutlineInputBorder(
-                  borderRadius: context.responsiveBorderRadius,
-                ),
-              ),
-              validator: FormBuilderValidators.required(),
-              items: _preparationTimes
-                  .map((time) => DropdownMenuItem(
-                        value: time,
-                        child: Text(time),
-                      ))
-                  .toList(),
+              labelText: translate('preparation_time'),
+              options: _preparationTimes,
             ),
             SizedBox(
                 height: ResponsiveUtils.getResponsiveValue(
@@ -389,63 +357,30 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
                     context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Category
-            FormBuilderDropdown<String>(
+            _buildModernFormDropdown(
               name: 'category',
-              decoration: InputDecoration(
-                labelText: translate('health_category'),
-                border: OutlineInputBorder(
-                  borderRadius: context.responsiveBorderRadius,
-                ),
-              ),
-              validator: FormBuilderValidators.required(),
-              items: _remedyCategories
-                  .map((category) => DropdownMenuItem(
-                        value: category,
-                        child: Text(category),
-                      ))
-                  .toList(),
+              labelText: translate('health_category'),
+              options: _remedyCategories,
             ),
             SizedBox(
                 height: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Difficulty Level
-            FormBuilderDropdown<String>(
+            _buildModernFormDropdown(
               name: 'difficulty',
-              decoration: InputDecoration(
-                labelText: translate('difficulty_level'),
-                border: OutlineInputBorder(
-                  borderRadius: context.responsiveBorderRadius,
-                ),
-              ),
-              validator: FormBuilderValidators.required(),
-              items: _difficultyLevels
-                  .map((level) => DropdownMenuItem(
-                        value: level,
-                        child: Text(level),
-                      ))
-                  .toList(),
+              labelText: translate('difficulty_level'),
+              options: _difficultyLevels,
             ),
             SizedBox(
                 height: ResponsiveUtils.getResponsiveValue(
                     context: context, mobile: 12, tablet: 16, desktop: 20)),
 
             // Preparation Time
-            FormBuilderDropdown<String>(
+            _buildModernFormDropdown(
               name: 'prep_time',
-              decoration: InputDecoration(
-                labelText: translate('preparation_time'),
-                border: OutlineInputBorder(
-                  borderRadius: context.responsiveBorderRadius,
-                ),
-              ),
-              validator: FormBuilderValidators.required(),
-              items: _preparationTimes
-                  .map((time) => DropdownMenuItem(
-                        value: time,
-                        child: Text(time),
-                      ))
-                  .toList(),
+              labelText: translate('preparation_time'),
+              options: _preparationTimes,
             ),
             SizedBox(
                 height: ResponsiveUtils.getResponsiveValue(
@@ -724,5 +659,35 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
         });
       }
     }
+  }
+
+  Widget _buildModernFormDropdown({
+    required String name,
+    required String labelText,
+    required List<String> options,
+  }) {
+    return FormBuilderField<String>(
+      name: name,
+      validator: FormBuilderValidators.required(),
+      builder: (field) {
+        return ModernDropdownFormField<String>(
+          value: field.value,
+          decoration: InputDecoration(
+            labelText: labelText,
+            errorText: field.errorText,
+            border: OutlineInputBorder(
+              borderRadius: context.responsiveBorderRadius,
+            ),
+          ),
+          items: options
+              .map((opt) => DropdownMenuItem<String>(
+                    value: opt,
+                    child: Text(opt),
+                  ))
+              .toList(),
+          onChanged: (val) => field.didChange(val),
+        );
+      },
+    );
   }
 }

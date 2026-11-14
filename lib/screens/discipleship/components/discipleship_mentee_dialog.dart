@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/modern_dropdown.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/discipleship_models.dart';
@@ -148,7 +149,7 @@ void showAddContactDialog(BuildContext context, VoidCallback onSuccess) {
                 ),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<DiscipleshipLevel>(
+              ModernDropdownFormField<DiscipleshipLevel>(
                 initialValue: level,
                 isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Initial Level'),
@@ -672,7 +673,7 @@ void showUpdateLevelDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setDialogState) => AlertDialog(
         title: Text('Update ${contact.firstName}\'s level'),
-        content: DropdownButton<DiscipleshipLevel>(
+        content: ModernDropdownButton<DiscipleshipLevel>(
           value: level,
           isExpanded: true,
           items: DiscipleshipLevel.values
@@ -760,7 +761,7 @@ void showRequestDeletionDialog(
                 style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
+              ModernDropdownFormField<String>(
                 initialValue: requesterRole,
                 decoration: const InputDecoration(
                   labelText: 'Your Office / Role *',
@@ -854,7 +855,7 @@ void showAddInteractionDialog(
           children: [
             TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
             TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Notes')),
-            DropdownButton<ContactMethod>(
+            ModernDropdownButton<ContactMethod>(
               value: method,
               isExpanded: true,
               borderRadius: BorderRadius.circular(12),
@@ -925,7 +926,7 @@ void showAddStudySessionDialog(
           children: [
             TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
             TextField(controller: topicController, decoration: const InputDecoration(labelText: 'Topic')),
-            DropdownButton<StudyType>(
+            ModernDropdownButton<StudyType>(
               value: type,
               isExpanded: true,
               borderRadius: BorderRadius.circular(12),

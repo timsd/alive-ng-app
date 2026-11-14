@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
 import 'package:intl/intl.dart';
 import '../../models/board_models.dart';
@@ -726,7 +727,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                     style: TextStyle(color: theme.colorScheme.onSurface),
                   ),
                   const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
+                  ModernDropdownFormField<String>(
                     initialValue: selectedCat,
                     borderRadius: BorderRadius.circular(12),
                     dropdownColor: theme.colorScheme.surfaceContainerHighest,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../services/appwrite_facade.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
@@ -154,7 +155,7 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                DropdownButton<String>(
+                ModernDropdownButton<String>(
                   value: _selectedFilter,
                   underline: const SizedBox.shrink(),
                   items: const [
@@ -236,9 +237,9 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
           backgroundColor: isActive
               ? colorScheme.primary
               : colorScheme.outline.withValues(alpha: 0.5),
-          child: const Icon(
+          child: Icon(
             Icons.campaign_rounded,
-            color: Colors.white,
+            color: isActive ? colorScheme.onPrimary : Colors.white,
           ),
         ),
         title: Text(

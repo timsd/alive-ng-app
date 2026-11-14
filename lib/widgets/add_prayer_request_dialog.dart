@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import './modern_dropdown.dart';
 import '../utils/error_handler.dart';
 
 class AddPrayerRequestDialog extends StatefulWidget {
@@ -181,7 +182,7 @@ class _AddPrayerRequestDialogState extends State<AddPrayerRequestDialog> {
                 ),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
+              ModernDropdownFormField<String>(
                 isExpanded: true,
                 initialValue: _urgencyLevel,
                 decoration: const InputDecoration(

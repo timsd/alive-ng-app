@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import '../../utils/error_handler.dart';
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../services/file_picker_facade.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../services/appwrite_storage_service.dart';
@@ -325,7 +326,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<StoryCategory>(
+                          child: ModernDropdownFormField<StoryCategory>(
                             initialValue: _selectedCategory,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -343,7 +344,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: DropdownButtonFormField<AgeGroup>(
+                          child: ModernDropdownFormField<AgeGroup>(
                             initialValue: _selectedAgeGroup,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/modern_dropdown.dart';
 
 import '../../../constants/chapters.dart';
 
@@ -100,7 +101,7 @@ class MeetingPrejoinLobby extends StatelessWidget {
           ),
           if (notifyMembers) ...[
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
+            ModernDropdownFormField<String>(
               value: effectiveAudience,
               isExpanded: true,
               decoration: InputDecoration(
@@ -127,7 +128,7 @@ class MeetingPrejoinLobby extends StatelessWidget {
             ),
             if (targetAudience == 'chapter') ...[
               const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
+              ModernDropdownFormField<String>(
                 value: selectedTargetChapter,
                 decoration: const InputDecoration(
                   labelText: 'Select Chapter to Notify',

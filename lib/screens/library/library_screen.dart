@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -578,7 +579,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             // Category Filter
-            DropdownButtonFormField<String>(
+            ModernDropdownFormField<String>(
               decoration: const InputDecoration(
                 labelText: 'Category',
                 border: OutlineInputBorder(),
@@ -600,7 +601,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     context: context, mobile: 12, tablet: 14, desktop: 16)),
 
             // Language Filter
-            DropdownButtonFormField<String>(
+            ModernDropdownFormField<String>(
               decoration: const InputDecoration(
                 labelText: 'Language',
                 border: OutlineInputBorder(),

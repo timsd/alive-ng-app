@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/modern_dropdown.dart';
 import 'package:intl/intl.dart';
 import '../../../models/discipleship_models.dart';
 import '../../../services/auth_service.dart';
@@ -181,7 +182,7 @@ void showGenerateReportDialog(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                DropdownButtonFormField<ReportFrequency>(
+                ModernDropdownFormField<ReportFrequency>(
                   initialValue: frequency,
                   borderRadius: BorderRadius.circular(12),
                   dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -196,7 +197,7 @@ void showGenerateReportDialog(
                 ),
                 const SizedBox(height: 14),
                 if (officerAssignments.isNotEmpty)
-                  DropdownButtonFormField<OfficerOfficeAssignment>(
+                  ModernDropdownFormField<OfficerOfficeAssignment>(
                     initialValue: routedOfficer,
                     isExpanded: true,
                     decoration: const InputDecoration(

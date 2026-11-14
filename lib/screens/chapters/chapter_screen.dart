@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
 import 'package:appwrite/appwrite.dart';
 import '../../models/app_models.dart';
@@ -596,7 +597,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<WorkersType?>(
+                child: ModernDropdownFormField<WorkersType?>(
                   isExpanded: true,
                   initialValue: _selectedType,
                   decoration: const InputDecoration(

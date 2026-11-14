@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/language_provider.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -214,7 +215,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         borderRadius: context.responsiveBorderRadius,
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
+        child: ModernDropdownButton<String>(
           value: value,
           isExpanded: true,
           hint: Text(label, overflow: TextOverflow.ellipsis),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/appwrite_facade.dart';
 import '../../config/appwrite_backend_config.dart';
@@ -274,7 +275,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                       LayoutFixUtils.safeRow(
                         children: [
                           Expanded(
-                            child: DropdownButtonFormField<String>(
+                            child: ModernDropdownFormField<String>(
                               isExpanded: true,
                               initialValue: _selectedAgeGroup,
                               decoration: InputDecoration(
@@ -319,7 +320,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
                                   tablet: 12.0,
                                   desktop: 14.0)),
                           Expanded(
-                            child: DropdownButtonFormField<String>(
+                            child: ModernDropdownFormField<String>(
                               isExpanded: true,
                               initialValue: _selectedCategory,
                               decoration: InputDecoration(

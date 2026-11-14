@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -589,7 +590,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   maxLines: 4,
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
+                ModernDropdownFormField<String>(
                   initialValue: priority,
                   decoration: InputDecoration(
                     labelText: translate('priority'),

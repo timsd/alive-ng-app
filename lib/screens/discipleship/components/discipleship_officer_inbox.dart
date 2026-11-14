@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../../widgets/modern_dropdown.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../models/discipleship_models.dart';
@@ -914,7 +915,7 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
                 ),
               )
             else
-              DropdownButtonFormField<OfficerOfficeAssignment>(
+              ModernDropdownFormField<OfficerOfficeAssignment>(
                 value: selectedOffice,
                 isExpanded: true,
                 decoration: InputDecoration(

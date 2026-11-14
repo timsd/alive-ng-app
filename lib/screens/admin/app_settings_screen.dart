@@ -386,6 +386,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     );
   }
 
+  Future<void> _saveSingleSetting(String settingId, String newValue) async {
+    await _updateSetting(settingId, {
+      'setting_value': newValue,
+      'value': newValue,
+    });
+  }
+
   Future<void> _togglePaystackTestMode(bool enableTest) async {
     try {
       PaymentConfig.setTestMode(enableTest);
@@ -764,7 +771,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       );
     }
 
-    // 3. Clean human-facing summary for Discipleship Officer Assignments (JSON Array)
+    // 3. Admin-editable Officer & Office Tagging for Discipleship Officer Assignments (JSON Array)
     if (key == 'alive_officer_office_assignments') {
       List<Map<String, dynamic>> assignments = [];
       try {
@@ -777,11 +784,24 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         }
       } catch (_) {}
 
+      const availableOffices = <String, String>{
+        'follow_up': 'Follow-Up',
+        'bible_study': 'Bible Study',
+        'baptism': 'Baptism',
+        'general': 'General',
+      };
+
+      void syncAssignments(List<Map<String, dynamic>> updated) {
+        final encoded = jsonEncode(updated);
+        controller.text = encoded;
+        setting['value'] = encoded;
+      }
+
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
         ),
         child: Column(
@@ -793,54 +813,171 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '${assignments.length} Configured Officer Assignment${assignments.length == 1 ? '' : 's'}',
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    '${assignments.length} Assigned Officer${assignments.length == 1 ? '' : 's'}',
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    'Protected Encoding',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.primary,
-                    ),
+                FilledButton.tonalIcon(
+                  onPressed: isActive
+                      ? () => _showOfficerAssignmentTagDialog(
+                            assignments: assignments,
+                            availableOffices: availableOffices,
+                            onSave: (updatedList) {
+                              setState(() => syncAssignments(updatedList));
+                              _saveSingleSetting(setting['id'], jsonEncode(updatedList));
+                            },
+                          )
+                      : null,
+                  icon: const Icon(Icons.add_rounded, size: 15),
+                  label: const Text('Add Officer', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ],
             ),
-            if (assignments.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: assignments.take(6).map((item) {
-                  final name = (item['officer_name'] ?? item['office_title'] ?? 'Officer').toString();
-                  final office = (item['office_title'] ?? item['role'] ?? '').toString();
-                  final label = office.isNotEmpty && office != name ? '$name • $office' : name;
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-                    ),
-                    child: Text(
-                      label,
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11.5),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
+            if (assignments.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'No officers assigned yet. Tap "Add Officer" to tag an officer to discipleship offices.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+              )
+            else
+              ...assignments.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final item = entry.value;
+                final officerName = (item['name'] ?? item['officer_name'] ?? item['email'] ?? 'Officer').toString();
+                final officerEmail = (item['email'] ?? '').toString();
+                final officesList = (item['offices'] is List)
+                    ? (item['offices'] as List).map((e) => e.toString()).toList()
+                    : <String>[];
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline_rounded, size: 16, color: colorScheme.primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  officerName,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                if (officerEmail.isNotEmpty)
+                                  Text(
+                                    officerEmail,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 16),
+                            tooltip: 'Edit Officer Tags',
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            onPressed: isActive
+                                ? () => _showOfficerAssignmentTagDialog(
+                                      assignments: assignments,
+                                      existingIndex: idx,
+                                      availableOffices: availableOffices,
+                                      onSave: (updatedList) {
+                                        setState(() => syncAssignments(updatedList));
+                                        _saveSingleSetting(setting['id'], jsonEncode(updatedList));
+                                      },
+                                    )
+                                : null,
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.close_rounded, size: 16, color: colorScheme.error),
+                            tooltip: 'Remove Officer',
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            onPressed: isActive
+                                ? () {
+                                    final updatedList = List<Map<String, dynamic>>.from(assignments)..removeAt(idx);
+                                    setState(() => syncAssignments(updatedList));
+                                    _saveSingleSetting(setting['id'], jsonEncode(updatedList));
+                                  }
+                                : null,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: availableOffices.entries.map((officeEntry) {
+                          final officeKey = officeEntry.key;
+                          final officeLabel = officeEntry.value;
+                          final isSelected = officesList.contains(officeKey);
+                          return FilterChip(
+                            selected: isSelected,
+                            showCheckmark: true,
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                            label: Text(
+                              officeLabel,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                            onSelected: isActive
+                                ? (selected) {
+                                    final nextOffices = List<String>.from(officesList);
+                                    if (selected) {
+                                      if (!nextOffices.contains(officeKey)) {
+                                        nextOffices.add(officeKey);
+                                      }
+                                    } else {
+                                      nextOffices.remove(officeKey);
+                                    }
+                                    final updatedList = List<Map<String, dynamic>>.from(assignments);
+                                    updatedList[idx] = {
+                                      ...item,
+                                      'offices': nextOffices,
+                                    };
+                                    setState(() => syncAssignments(updatedList));
+                                    _saveSingleSetting(setting['id'], jsonEncode(updatedList));
+                                  }
+                                : null,
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            const SizedBox(height: 4),
             Text(
-              'Officer routing is safely encoded behind the scenes. Manage officer assignments visually in Discipleship Flow.',
+              'Tap any office tag chip above to toggle it on/off for that officer, or tap Edit / Add Officer.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 fontSize: 11,
@@ -1005,10 +1142,198 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     }
   }
 
+  Future<void> _showOfficerAssignmentTagDialog({
+    required List<Map<String, dynamic>> assignments,
+    int? existingIndex,
+    required Map<String, String> availableOffices,
+    required ValueChanged<List<Map<String, dynamic>>> onSave,
+  }) async {
+    final existing = existingIndex != null ? assignments[existingIndex] : null;
+    final nameCtrl = TextEditingController(
+      text: (existing?['name'] ?? existing?['officer_name'] ?? '').toString(),
+    );
+    final emailCtrl = TextEditingController(
+      text: (existing?['email'] ?? '').toString(),
+    );
+    final roleCtrl = TextEditingController(
+      text: (existing?['role'] ?? 'director').toString(),
+    );
+    final selectedOffices = <String>{
+      if (existing != null && existing['offices'] is List)
+        ...(existing['offices'] as List).map((e) => e.toString())
+      else ...['follow_up', 'general'],
+    };
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final colorScheme = theme.colorScheme;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            titlePadding: const EdgeInsets.fromLTRB(20, 18, 14, 8),
+            contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+            title: Row(
+              children: [
+                Icon(Icons.badge_outlined, color: colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    existing == null ? 'Add Officer Tagging' : 'Edit Officer Tagging',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: () => Navigator.pop(ctx),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Officer Full Name *',
+                      hintText: 'e.g. Pastor John Doe',
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Officer Email *',
+                      hintText: 'e.g. officer@alivenigeria.org',
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: roleCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Ministry Role',
+                      hintText: 'e.g. director, coordinator, super_admin',
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Assigned Discipleship Offices',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: availableOffices.entries.map((entry) {
+                      final isSelected = selectedOffices.contains(entry.key);
+                      return FilterChip(
+                        selected: isSelected,
+                        label: Text(entry.value),
+                        onSelected: (val) {
+                          setDialogState(() {
+                            if (val) {
+                              selectedOffices.add(entry.key);
+                            } else {
+                              selectedOffices.remove(entry.key);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              SizedBox(
+                width: double.maxFinite,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton.icon(
+                        icon: const Icon(Icons.check_rounded, size: 16),
+                        label: const Text('Save Officer'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          final name = nameCtrl.text.trim();
+                          final email = emailCtrl.text.trim();
+                          if (name.isEmpty) return;
+                          final updatedItem = <String, dynamic>{
+                            if (existing != null) ...existing,
+                            'user_id': existing?['user_id'] ??
+                                email.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
+                            'name': name,
+                            'email': email,
+                            'role': roleCtrl.text.trim().isEmpty
+                                ? 'director'
+                                : roleCtrl.text.trim(),
+                            'offices': selectedOffices.toList(),
+                          };
+                          final nextList = List<Map<String, dynamic>>.from(assignments);
+                          if (existingIndex != null) {
+                            nextList[existingIndex] = updatedItem;
+                          } else {
+                            nextList.add(updatedItem);
+                          }
+                          Navigator.pop(ctx);
+                          onSave(nextList);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   IconData _getCategoryIcon(String category) {
     switch (category.toLowerCase()) {
       case 'app':
         return Icons.mobile_friendly;
+      case 'system':
+        return Icons.memory_rounded;
       case 'notification':
         return Icons.notifications;
       case 'security':
@@ -1226,7 +1551,6 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Add New Setting'),
@@ -1285,51 +1609,24 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
                 maxLines: 2,
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: _category,
-                borderRadius: BorderRadius.circular(16),
-                dropdownColor: theme.colorScheme.surfaceContainerHigh,
-                menuMaxHeight: 340,
-                icon: const Icon(Icons.arrow_drop_down_rounded),
-                decoration: InputDecoration(
-                  labelText: 'Category',
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                items: _categories.map((cat) {
-                  return DropdownMenuItem(
-                    value: cat,
-                    child: Text(TextFormatter.formatCategory(cat)),
-                  );
-                }).toList(),
-                onChanged: (value) => setState(() => _category = value!),
+              _buildModernSettingSelector(
+                context: context,
+                label: 'Category',
+                value: _category,
+                options: _categories,
+                formatOption: TextFormatter.formatCategory,
+                iconForOption: _categoryIconStatic,
+                onSelected: (value) => setState(() => _category = value),
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: _dataType,
-                borderRadius: BorderRadius.circular(16),
-                dropdownColor: theme.colorScheme.surfaceContainerHigh,
-                icon: const Icon(Icons.arrow_drop_down_rounded),
-                decoration: InputDecoration(
-                  labelText: 'Data Type',
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                items: _dataTypes.map((type) {
-                  return DropdownMenuItem(
-                    value: type,
-                    child: Text(TextFormatter.formatText(type)),
-                  );
-                }).toList(),
-                onChanged: (value) => setState(() => _dataType = value!),
+              _buildModernSettingSelector(
+                context: context,
+                label: 'Data Type',
+                value: _dataType,
+                options: _dataTypes,
+                formatOption: TextFormatter.formatText,
+                iconForOption: _dataTypeIconStatic,
+                onSelected: (value) => setState(() => _dataType = value),
               ),
               const SizedBox(height: 14),
               TextFormField(
@@ -1346,31 +1643,235 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
           ),
         ),
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              Navigator.pop(context, {
-                'setting_key': _keyController.text.trim(),
-                'display_name': _displayNameController.text.trim(),
-                'description': _descriptionController.text.trim().isNotEmpty 
-                    ? _descriptionController.text.trim() 
-                    : null,
-                'category': _category,
-                'data_type': _dataType,
-                'setting_value': _valueController.text.trim(),
-                'is_active': true,
-              });
-            }
-          },
-          child: const Text('Add Setting'),
+        SizedBox(
+          width: double.maxFinite,
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: const Text('Add Setting'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      Navigator.pop(context, {
+                        'setting_key': _keyController.text.trim(),
+                        'display_name': _displayNameController.text.trim(),
+                        'description': _descriptionController.text.trim().isNotEmpty
+                            ? _descriptionController.text.trim()
+                            : null,
+                        'category': _category,
+                        'data_type': _dataType,
+                        'setting_value': _valueController.text.trim(),
+                        'is_active': true,
+                      });
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
+  }
+}
+
+Widget _buildModernSettingSelector({
+  required BuildContext context,
+  required String label,
+  required String value,
+  required List<String> options,
+  required String Function(String) formatOption,
+  required IconData Function(String) iconForOption,
+  required ValueChanged<String> onSelected,
+}) {
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  return InkWell(
+    borderRadius: BorderRadius.circular(12),
+    onTap: () async {
+      final picked = await showModalBottomSheet<String>(
+        context: context,
+        backgroundColor: colorScheme.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (sheetCtx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Select $label',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: options.map((opt) {
+                        final isSelected = opt == value;
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => Navigator.pop(sheetCtx, opt),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? colorScheme.primary.withValues(alpha: 0.14)
+                                  : colorScheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.4),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? colorScheme.primary
+                                    : colorScheme.outlineVariant,
+                                width: isSelected ? 1.5 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  iconForOption(opt),
+                                  size: 16,
+                                  color: isSelected
+                                      ? colorScheme.primary
+                                      : colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  formatOption(opt),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? colorScheme.primary
+                                        : colorScheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (picked != null) {
+        onSelected(picked);
+      }
+    },
+    child: InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(iconForOption(value), size: 18, color: colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              formatOption(value),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+          ),
+          Icon(Icons.keyboard_arrow_down_rounded, color: colorScheme.onSurfaceVariant),
+        ],
+      ),
+    ),
+  );
+}
+
+IconData _categoryIconStatic(String category) {
+  switch (category.toLowerCase()) {
+    case 'app':
+      return Icons.mobile_friendly;
+    case 'system':
+      return Icons.memory_rounded;
+    case 'notification':
+      return Icons.notifications_outlined;
+    case 'security':
+      return Icons.security_outlined;
+    case 'payment':
+      return Icons.payments_outlined;
+    case 'social':
+      return Icons.forum_outlined;
+    case 'api':
+      return Icons.api_rounded;
+    case 'ui':
+      return Icons.palette_outlined;
+    case 'feature':
+      return Icons.tune_rounded;
+    default:
+      return Icons.settings_outlined;
+  }
+}
+
+IconData _dataTypeIconStatic(String type) {
+  switch (type.toLowerCase()) {
+    case 'boolean':
+      return Icons.toggle_on_outlined;
+    case 'number':
+      return Icons.numbers_rounded;
+    case 'json':
+      return Icons.data_object_rounded;
+    default:
+      return Icons.text_fields_rounded;
   }
 }
 
@@ -1409,7 +1910,6 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Edit Setting'),
@@ -1446,51 +1946,63 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
                 maxLines: 2,
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: _category,
-                borderRadius: BorderRadius.circular(16),
-                dropdownColor: theme.colorScheme.surfaceContainerHigh,
-                menuMaxHeight: 340,
-                icon: const Icon(Icons.arrow_drop_down_rounded),
-                decoration: InputDecoration(
-                  labelText: 'Category',
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                items: _categories.map((cat) {
-                  return DropdownMenuItem(
-                    value: cat,
-                    child: Text(TextFormatter.formatCategory(cat)),
-                  );
-                }).toList(),
-                onChanged: (value) => setState(() => _category = value!),
+              _buildModernSettingSelector(
+                context: context,
+                label: 'Category',
+                value: _category,
+                options: _categories,
+                formatOption: TextFormatter.formatCategory,
+                iconForOption: _categoryIconStatic,
+                onSelected: (value) => setState(() => _category = value),
               ),
             ],
           ),
         ),
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              Navigator.pop(context, {
-                'display_name': _displayNameController.text.trim(),
-                'description': _descriptionController.text.trim().isNotEmpty 
-                    ? _descriptionController.text.trim() 
-                    : null,
-                'category': _category,
-              });
-            }
-          },
-          child: const Text('Update'),
+        SizedBox(
+          width: double.maxFinite,
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.check_rounded, size: 16),
+                  label: const Text('Update'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      Navigator.pop(context, {
+                        'display_name': _displayNameController.text.trim(),
+                        'description': _descriptionController.text.trim().isNotEmpty
+                            ? _descriptionController.text.trim()
+                            : null,
+                        'category': _category,
+                      });
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

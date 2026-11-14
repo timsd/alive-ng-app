@@ -4,6 +4,7 @@ import '../../widgets/in_app_pdf_viewer.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -125,7 +126,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
                         mobile: 12.0,
                         tablet: 14.0,
                         desktop: 16.0)),
-                DropdownButtonFormField<String>(
+                ModernDropdownFormField<String>(
                   initialValue: _selectedCategory,
                   decoration: InputDecoration(
                     labelText: 'Category',

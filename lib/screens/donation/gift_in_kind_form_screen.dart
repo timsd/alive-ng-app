@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -285,7 +286,7 @@ class _GiftInKindFormScreenState extends ConsumerState<GiftInKindFormScreen> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
+          child: ModernDropdownButton<String>(
             value: _selectedItemType,
             items: _itemTypes
                 .map((e) => DropdownMenuItem<String>(value: e, child: Text(e)))

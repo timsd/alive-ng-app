@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../../widgets/modern_dropdown.dart';
 import '../../../services/file_picker_facade.dart';
 import '../../../models/podcast_models.dart';
 import '../../../utils/error_handler.dart';
@@ -501,7 +502,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
                       const SizedBox(height: 16),
 
                       // Category (dynamic from Appwrite)
-                      DropdownButtonFormField<String>(
+                      ModernDropdownFormField<String>(
                         isExpanded: true,
                         value: _selectedPodcastCategoryName,
                         decoration: InputDecoration(

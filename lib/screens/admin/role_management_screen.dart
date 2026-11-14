@@ -2,6 +2,7 @@ import 'dart:async';
 import '../../utils/error_handler.dart';
 import '../../utils/appwrite_id_utils.dart';
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 
 import '../../config/appwrite_backend_config.dart';
 import '../../models/app_models.dart';
@@ -718,7 +719,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
           children: [
             Text('Current role: ${user.role.toUpperCase()}'),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
+            ModernDropdownFormField<String>(
               initialValue: user.role,
               borderRadius: BorderRadius.circular(12),
               dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,

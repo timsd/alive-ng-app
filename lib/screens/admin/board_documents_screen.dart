@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
 import 'package:intl/intl.dart';
 import '../../services/file_picker_facade.dart';
@@ -154,7 +155,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: ModernDropdownFormField<String>(
                         isExpanded: true,
                         initialValue: _selectedCategory,
                         borderRadius: BorderRadius.circular(16),
@@ -217,7 +218,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: ModernDropdownFormField<String>(
                         isExpanded: true,
                         initialValue: _selectedAccessLevel,
                         borderRadius: BorderRadius.circular(16),
@@ -878,7 +879,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                 ),
                 SizedBox(
                     height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-                DropdownButtonFormField<String>(
+                ModernDropdownFormField<String>(
                   isExpanded: true,
                   initialValue: selectedCategory,
                   borderRadius: BorderRadius.circular(16),
@@ -903,7 +904,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                 ),
                 SizedBox(
                     height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-                DropdownButtonFormField<String>(
+                ModernDropdownFormField<String>(
                   isExpanded: true,
                   initialValue: selectedAccessLevel,
                   borderRadius: BorderRadius.circular(16),

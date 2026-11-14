@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../../utils/error_handler.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../services/file_picker_facade.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../services/appwrite_storage_service.dart';
@@ -314,7 +315,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<MissionCategory>(
+                          child: ModernDropdownFormField<MissionCategory>(
                             initialValue: _selectedCategory,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -332,7 +333,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: DropdownButtonFormField<MissionDifficulty>(
+                          child: ModernDropdownFormField<MissionDifficulty>(
                             initialValue: _selectedDifficulty,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -386,7 +387,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: DropdownButtonFormField<VerificationMethod>(
+                          child: ModernDropdownFormField<VerificationMethod>(
                             initialValue: _selectedVerification,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -435,7 +436,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                       maxLines: 6,
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
+                    ModernDropdownFormField<String>(
                       initialValue: _expectedResponseModeController.text,
                       decoration: const InputDecoration(
                         labelText: 'Scoring Mode',

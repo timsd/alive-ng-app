@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -115,7 +116,7 @@ class _ProfileCompletionScreenState
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DropdownButtonFormField<String>(
+            ModernDropdownFormField<String>(
               initialValue: _commitmentType,
               decoration: _decoration('Commitment Type',
                   Icons.volunteer_activism_outlined),

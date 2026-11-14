@@ -49,7 +49,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="preload" as="script" href="flutter_bootstrap.js">
   <!-- Cache-busting: forces browsers to fetch fresh assets after each deploy -->
-  <meta name="version" content="2.0.7+15">
+  <meta name="version" content="2.0.9+20">
   <script>
     // Clean stale flutter service workers while protecting sqflite SQLite worker for offline Bible
     (function () {
@@ -73,6 +73,22 @@
               if (k.indexOf('sqflite') !== -1 || k.indexOf('bible') !== -1) return;
               caches.delete(k);
             });
+          });
+        }
+        // Bust browser HTTP disk cache for icon fonts & font manifest so newly added icons never render blank
+        var fontVersionKey = 'alive_icon_font_ver';
+        var currentFontVer = '2.0.9+20';
+        if (window.localStorage && localStorage.getItem(fontVersionKey) !== currentFontVer) {
+          var fontAssets = [
+            'assets/FontManifest.json',
+            'assets/AssetManifest.bin.json',
+            'assets/fonts/MaterialIcons-Regular.otf',
+            'assets/packages/font_awesome_flutter/lib/fonts/fa-solid-900.ttf'
+          ];
+          Promise.all(fontAssets.map(function (p) {
+            return fetch(p, { cache: 'reload' }).catch(function () { });
+          })).then(function () {
+            try { localStorage.setItem(fontVersionKey, currentFontVer); } catch (_) { }
           });
         }
       } catch (_) { }

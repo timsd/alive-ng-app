@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../services/appwrite_facade.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
@@ -254,7 +255,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: DropdownButtonFormField<String>(
+                            child: ModernDropdownFormField<String>(
                               initialValue: _priority,
                               borderRadius: BorderRadius.circular(12),
                               dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -289,7 +290,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: DropdownButtonFormField<String>(
+                            child: ModernDropdownFormField<String>(
                               initialValue: _type,
                               borderRadius: BorderRadius.circular(12),
                               dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -318,7 +319,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
 
                       const SizedBox(height: 16),
 
-                      DropdownButtonFormField<String>(
+                      ModernDropdownFormField<String>(
                         initialValue: _targetAudience,
                         borderRadius: BorderRadius.circular(12),
                         dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,

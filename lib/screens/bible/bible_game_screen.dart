@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
@@ -1255,7 +1256,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: DropdownButtonFormField<String>(
+              child: ModernDropdownFormField<String>(
                 initialValue: gameState.selectedVersion,
                 items: supportedVersions
                     .map((v) => DropdownMenuItem<String>(

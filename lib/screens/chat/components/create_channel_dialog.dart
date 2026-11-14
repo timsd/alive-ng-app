@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/modern_dropdown.dart';
 
 import '../../../config/appwrite_backend_config.dart';
 import '../../../models/chat_models.dart';
@@ -138,7 +139,7 @@ class _CreateChannelDialogState extends State<CreateChannelDialog> {
               maxLines: 3,
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<ChannelType>(
+            ModernDropdownFormField<ChannelType>(
               initialValue: _selectedType,
               borderRadius: BorderRadius.circular(12),
               dropdownColor:

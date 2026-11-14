@@ -510,7 +510,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                 _buildSidebarTile(Icons.location_city_outlined, 'Chapters', () => _navigateToChapterManagement()),
                 if (_canAccessFinance)
                   _buildSidebarTile(Icons.savings_outlined, 'Finance', () => context.push(AppConstants.adminDonationsReportRoute)),
-                _buildSidebarTile(Icons.groups_2_outlined, 'Discipleship', () => _showOfficerRoutingDialog()),
+                _buildSidebarTile(Icons.groups_rounded, 'Discipleship', () => _showOfficerRoutingDialog()),
                 _buildSidebarTile(Icons.cloud_upload_outlined, 'Storage', () => _navigateToStorageAdmin()),
                 _buildSidebarTile(Icons.settings_outlined, 'Settings', () => _navigateToAppSettings()),
                 const Divider(height: 32),
@@ -863,7 +863,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _MgmtTile('Content Pages & Projects', 'Manage app content pages, core sections, and mission projects', Icons.post_add_outlined, () => context.push(AppConstants.contentManagementRoute)),
         _MgmtTile('Tract & Podcast Management', 'Manage tracts, podcasts, and categories', Icons.article_outlined, () => context.push(AppConstants.tractPodcastAdminRoute)),
         _MgmtTile('Video Content Management', 'Upload and manage videos, categories, and media playback', Icons.video_library_outlined, () => context.push(AppConstants.videoContentAdminRoute)),
-        _MgmtTile('Monthly Support Reminder', 'Send on the 1st of each month. Enable to let members opt out.', Icons.notifications_active_outlined, () => _showMonthlyReminderControl()),
         _MgmtTile('App Broadcast', 'Create and manage app broadcasts and announcements', Icons.campaign_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAnnouncementsScreen()))),
         _MgmtTile('Kids Stories', 'Upload PDF or type content with media', Icons.auto_stories_rounded, () => context.push(AppConstants.adminKidsStoriesRoute)),
         _MgmtTile('Kids Missions', 'Upload PDF or type content with media', Icons.child_care_rounded, () => context.push(AppConstants.adminKidsMissionsRoute)),
@@ -879,22 +878,23 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       if (_canAccessFinance)
         _MgmtSection('Donations & Finance', Icons.savings_outlined, [
           _MgmtTile('Donation Reports', 'Search, filter and export every gift', Icons.receipt_long_outlined, () => context.push(AppConstants.adminDonationsReportRoute)),
+          _MgmtTile('Monthly Support Reminder', 'Send on the 1st of each month. Enable to let members opt out.', Icons.notifications_active_outlined, () => _showMonthlyReminderControl()),
         ]),
-      _MgmtSection('Discipleship Operations', Icons.groups_2_outlined, [
-        _MgmtTile('Discipleship Flow', 'Officer routing, report assignments, and disciple deletion approvals', Icons.groups_2_outlined, () => _showOfficerRoutingDialog()),
+      _MgmtSection('Discipleship Operations', Icons.groups_rounded, [
+        _MgmtTile('Discipleship Flow', 'Officer routing, report assignments, and disciple deletion approvals', Icons.groups_rounded, () => _showOfficerRoutingDialog()),
       ]),
-      _MgmtSection('System Maintenance & Logs', Icons.dns_outlined, [
-        _MgmtTile('Backup & Restore', 'Manage system backups and data restoration', Icons.backup_outlined, () => _navigateToBackupSettings()),
-        _MgmtTile('System Logs', 'View system logs and error reports', Icons.bug_report_outlined, () => _navigateToSystemLogs()),
-        _MgmtTile('App Configuration', 'Configure app settings and preferences', Icons.tune_outlined, () => _navigateToAppSettings()),
-      ]),
-      _MgmtSection('Storage & Meeting Documents', Icons.cloud_upload_outlined, [
+      _MgmtSection('Storage Management', Icons.cloud_upload_outlined, [
         _MgmtTile('File Storage', 'Manage buckets, audio, PDFs and profile pictures', Icons.folder_outlined, () => _navigateToStorageAdmin()),
         _MgmtTile('Meeting File Sharing', 'Manage and share leadership files and meeting documents', Icons.folder_shared_outlined, () => context.push(AppConstants.meetingFileSharingRoute)),
+        _MgmtTile('Backup & Restore', 'Manage system backups and data restoration', Icons.backup_outlined, () => _navigateToBackupSettings()),
+        _MgmtTile('System Logs', 'View system logs and error reports', Icons.bug_report_outlined, () => _navigateToSystemLogs()),
       ]),
       _MgmtSection('Communication & Data Export', Icons.import_export_rounded, [
         _MgmtTile('Chat & Tag Management', 'Manage role tags, @announcement scopes, and channel bridges', Icons.tag_rounded, () => context.push(AppConstants.adminChatTagManagementRoute)),
         _MgmtTile('Chat & Messages Export', 'Export chat channels, messages, and communication backups', Icons.chat_outlined, () => _showChatExportDialog()),
+      ]),
+      _MgmtSection('System Settings', Icons.settings_outlined, [
+        _MgmtTile('App Configuration', 'Configure app settings and preferences', Icons.tune_outlined, () => _navigateToAppSettings()),
       ]),
     ];
 
@@ -1204,8 +1204,13 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                             : null;
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.notifications_off_outlined, size: 18),
+                      leading: CircleAvatar(
+                        backgroundColor: Theme.of(listContext).colorScheme.primary.withValues(alpha: 0.14),
+                        child: Icon(
+                          Icons.notifications_off_outlined,
+                          size: 18,
+                          color: Theme.of(listContext).colorScheme.primary,
+                        ),
                       ),
                       title: Text(o.label),
                       subtitle: subtitle != null ? Text(subtitle) : null,
@@ -1363,114 +1368,181 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
 
       showDialog(
         context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              const Icon(Icons.chat_outlined, color: Colors.blue),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Chat Backup Exported',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 20),
-                tooltip: 'Close',
-                onPressed: () => Navigator.pop(ctx),
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Prefix: ${data['prefix'] ?? ''}'),
-              const SizedBox(height: 8),
-              Text('Channels exported: ${data['count'] ?? 0}'),
-              const SizedBox(height: 12),
-              Text(
-                'You can save/share the JSON backup directly or export channel message logs.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+        builder: (ctx) {
+          final dialogTheme = Theme.of(ctx);
+          final colorScheme = dialogTheme.colorScheme;
+          final isDark = dialogTheme.brightness == Brightness.dark;
+          final hasBackupPayload = content.isNotEmpty || downloadUrl != null;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            titlePadding: const EdgeInsets.fromLTRB(20, 18, 14, 8),
+            contentPadding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+            actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+            title: Row(
               children: [
-                if (content.isNotEmpty || downloadUrl != null) ...[
-                  FilledButton.icon(
-                    icon: const Icon(Icons.share_rounded, size: 16),
-                    label: const Text('Share / Save Backup'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () async {
-                      if (content.isNotEmpty) {
-                        await SharePlus.instance.share(
-                          ShareParams(
-                            files: [
-                              XFile.fromData(
-                                Uint8List.fromList(utf8.encode(content)),
-                                name: 'alive_chat_channels_backup.json',
-                                mimeType: 'application/json',
-                              ),
-                            ],
-                            subject: 'ALIVE Nigeria Chat Backup',
-                          ),
-                        );
-                      } else if (downloadUrl != null) {
-                        final url = Uri.parse(downloadUrl);
-                        if (await canLaunchUrl(url)) {
-                          await launchUrl(url, mode: LaunchMode.externalApplication);
-                        }
-                      }
-                    },
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  const SizedBox(height: 8),
-                ],
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.forum_outlined, size: 16),
-                  label: const Text('Export Messages'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                  child: const Icon(Icons.chat_outlined, color: Colors.blue, size: 18),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Chat Backup Exported',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  onPressed: () async {
-                    try {
-                      final msgData = await AppwriteAdminExportService.instance
-                          .exportChatMessages(type: 'messaging', limitPerChannel: 500);
-                      if (!mounted) return;
-                      final files = (msgData['files'] as List?) ?? const [];
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Exported ${files.length} channel message file(s)')),
-                      );
-                    } catch (e) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Export failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
-                      );
-                    }
-                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(ctx),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
-          ],
-        ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Prefix: ${data['prefix'] ?? ''}',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Channels exported: ${data['count'] ?? 0}',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'You can save/share the JSON backup directly or export channel message logs.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.4,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              SizedBox(
+                width: double.maxFinite,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.forum_outlined, size: 15),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Export Messages',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5),
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          side: BorderSide(color: colorScheme.outline),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          try {
+                            final msgData = await AppwriteAdminExportService.instance
+                                .exportChatMessages(type: 'messaging', limitPerChannel: 500);
+                            if (!mounted) return;
+                            final files = (msgData['files'] as List?) ?? const [];
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Exported ${files.length} channel message file(s)')),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Export failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    if (hasBackupPayload) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          icon: const Icon(Icons.share_rounded, size: 15),
+                          label: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Share / Save Backup',
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            if (content.isNotEmpty) {
+                              await SharePlus.instance.share(
+                                ShareParams(
+                                  files: [
+                                    XFile.fromData(
+                                      Uint8List.fromList(utf8.encode(content)),
+                                      name: 'alive_chat_channels_backup.json',
+                                      mimeType: 'application/json',
+                                    ),
+                                  ],
+                                  subject: 'ALIVE Nigeria Chat Backup',
+                                ),
+                              );
+                            } else if (downloadUrl != null) {
+                              final url = Uri.parse(downloadUrl);
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       );
     } catch (e) {
       if (mounted) {

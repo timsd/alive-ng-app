@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -926,7 +927,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_selectedCategory == 'coordinator') ...[
-          DropdownButtonFormField<String>(
+          ModernDropdownFormField<String>(
             initialValue: _coordinatorRole,
             decoration: _signupDecoration(context, 'Staff / Coordinator Role', Icons.admin_panel_settings_outlined),
             items: const [
@@ -996,7 +997,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           ),
         ),
         const SizedBox(height: 14),
-        DropdownButtonFormField<String>(
+        ModernDropdownFormField<String>(
           initialValue: _commitmentType,
           decoration: _signupDecoration(context, 'Commitment Type', Icons.volunteer_activism_outlined),
           items: const [

@@ -398,13 +398,13 @@ class _ChannelListWidgetState extends State<ChannelListWidget> {
   Color _getChannelColor(ChannelType type, ThemeData theme) {
     switch (type) {
       case ChannelType.general:
-        return theme.colorScheme.primary;
+        return const Color(0xFF2563EB);
       case ChannelType.singles:
         return Colors.cyan;
       case ChannelType.married:
         return Colors.pinkAccent;
       case ChannelType.donors:
-        return Colors.amber;
+        return const Color(0xFFD97706);
       case ChannelType.bod:
         return Colors.purple;
       case ChannelType.directors:
