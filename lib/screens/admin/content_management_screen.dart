@@ -384,7 +384,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Widget _buildContentPageCard(Map<String, dynamic> page) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final isPublished = page['is_published'] == true ||
         page['is_published'] == 'true' ||
         page['is_published'] == 1;
@@ -404,11 +403,11 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12.0),
-      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      color: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          color: theme.colorScheme.outlineVariant,
         ),
       ),
       child: ListTile(
@@ -831,7 +830,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
 
   Widget _buildProjectCard(Map<String, dynamic> project) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final goal = double.tryParse(project['goal']?.toString() ?? '') ?? 0.0;
     final raised = double.tryParse(project['raised']?.toString() ?? '') ?? 0.0;
     final percent = goal > 0 ? (raised / goal).clamp(0.0, 1.0) : 0.0;
@@ -845,11 +843,11 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12.0),
-      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      color: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          color: theme.colorScheme.outlineVariant,
         ),
       ),
       child: ExpansionTile(
@@ -873,9 +871,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: percent,
-                backgroundColor: Colors.grey.shade200,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
                 valueColor:
-                    AlwaysStoppedAnimation<Color>(Colors.green.shade600),
+                    AlwaysStoppedAnimation<Color>(theme.colorScheme.tertiary),
                 minHeight: 8,
               ),
             ),

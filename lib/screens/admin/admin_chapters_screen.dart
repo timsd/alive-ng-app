@@ -96,6 +96,7 @@ class _AdminChaptersScreenState extends State<AdminChaptersScreen> {
       appBar: CustomAppBar(
         title: 'Chapter Overview',
         showBackButton: true,
+        showDonationButton: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.add_location_alt_rounded),

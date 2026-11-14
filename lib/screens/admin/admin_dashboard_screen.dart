@@ -401,8 +401,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         appBar: CustomAppBar(
           showBackButton: true,
           showDonationButton: false,
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Theme.of(context).colorScheme.onPrimary,
         ),
         body: const AdminDashboardSkeleton(),
       );
@@ -452,8 +450,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       appBar: CustomAppBar(
         showBackButton: true,
         showDonationButton: false,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -953,15 +949,14 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          color: theme.colorScheme.outlineVariant,
           width: 1,
         ),
         boxShadow: [
@@ -999,7 +994,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : Colors.black87,
+                color: theme.colorScheme.onSurface,
                 letterSpacing: -0.5,
                 height: 1.1,
               ),
@@ -1012,7 +1007,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
               fontSize: 8.5,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.3,
-              color: isDark ? Colors.white60 : Colors.black54,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

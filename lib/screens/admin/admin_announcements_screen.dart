@@ -118,9 +118,17 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: const CustomAppBar(
+      appBar: CustomAppBar(
         title: 'App Broadcast',
         showBackButton: true,
+        showDonationButton: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadAnnouncements,
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openEditor(),

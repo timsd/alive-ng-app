@@ -682,7 +682,9 @@ class _AdminDonationsReportContentState
                           child: Text(
                             'TEST',
                             style: TextStyle(
-                              color: Colors.amber.shade900,
+                              color: theme.brightness == Brightness.dark
+                                  ? const Color(0xFFE7D39B)
+                                  : Colors.amber.shade900,
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
                             ),
@@ -764,7 +766,9 @@ class _AdminDonationsReportContentState
                           child: Text(
                             'TEST',
                             style: TextStyle(
-                              color: Colors.amber.shade900,
+                              color: theme.brightness == Brightness.dark
+                                  ? const Color(0xFFE7D39B)
+                                  : Colors.amber.shade900,
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
                             ),
@@ -820,6 +824,7 @@ class _AdminDonationsReportContentState
   }
 
   Widget _buildStatusBadge(String status) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Color bg;
     Color fg;
     String label;
@@ -828,18 +833,18 @@ class _AdminDonationsReportContentState
       case 'completed':
       case 'success':
         bg = Colors.green.withValues(alpha: 0.15);
-        fg = Colors.green.shade800;
+        fg = isDark ? const Color(0xFF52C38B) : Colors.green.shade800;
         label = 'COMPLETED';
         break;
       case 'failed':
         bg = Colors.red.withValues(alpha: 0.15);
-        fg = Colors.red.shade800;
+        fg = isDark ? const Color(0xFFF28B82) : Colors.red.shade800;
         label = 'FAILED';
         break;
       case 'pending':
       default:
         bg = Colors.orange.withValues(alpha: 0.15);
-        fg = Colors.orange.shade800;
+        fg = isDark ? const Color(0xFFE7D39B) : Colors.orange.shade800;
         label = 'PENDING';
         break;
     }

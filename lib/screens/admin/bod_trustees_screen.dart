@@ -66,6 +66,11 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
 
     if (_isLoading) {
       return Scaffold(
+        appBar: const CustomAppBar(
+          title: 'Board of Directors',
+          showBackButton: true,
+          showDonationButton: false,
+        ),
         body: Center(
           child: CircularProgressIndicator(
             color: colorScheme.primary,
@@ -79,6 +84,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
         appBar: const CustomAppBar(
           title: 'Access Denied',
           showBackButton: true,
+          showDonationButton: false,
         ),
         body: Center(
           child: Padding(
@@ -125,9 +131,17 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
     }
 
     return Scaffold(
-      appBar: const CustomAppBar(
+      appBar: CustomAppBar(
         title: 'Board of Directors',
         showBackButton: true,
+        showDonationButton: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _checkAccess,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -549,20 +563,32 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _joinMeeting(roomName);
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: colorScheme.tertiary,
-              foregroundColor: colorScheme.onTertiary,
+          SizedBox(
+            width: double.maxFinite,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Close'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      await _joinMeeting(roomName);
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colorScheme.tertiary,
+                      foregroundColor: colorScheme.onTertiary,
+                    ),
+                    child: const Text('Join Meeting'),
+                  ),
+                ),
+              ],
             ),
-            child: const Text('Join Meeting'),
           ),
         ],
       ),

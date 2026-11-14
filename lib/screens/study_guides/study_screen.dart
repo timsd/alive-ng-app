@@ -18,8 +18,6 @@ class StudyScreen extends StatelessWidget {
         title: l10n.study,
         showBackButton: true,
         elevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         showThemeToggle: false,
         showLanguageToggle: false,
         showDonationButton: true,
@@ -33,9 +31,13 @@ class StudyScreen extends StatelessWidget {
             Container(
               width: double.infinity,
               padding: ResponsiveUtils.getResponsivePadding(context),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF141F2D), Color(0xFF233E5F)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(24),
                   bottomRight: Radius.circular(24),
                 ),
@@ -46,10 +48,7 @@ class StudyScreen extends StatelessWidget {
                   Text(
                     TextFormatter.formatText('grow_in_faith'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onPrimary
-                              .withValues(alpha: 0.95),
+                          color: Colors.white.withValues(alpha: 0.95),
                           fontWeight: FontWeight.w500,
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 16),

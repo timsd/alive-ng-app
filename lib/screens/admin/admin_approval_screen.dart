@@ -495,6 +495,13 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
         title: 'User Approval Management',
         showBackButton: true,
         showDonationButton: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadUsers,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Theme.of(context).colorScheme.primary,
@@ -526,10 +533,6 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
                 _buildUserList(_rejectedUsers, 'No rejected users'),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _loadUsers,
-        child: const Icon(Icons.refresh),
-      ),
     );
   }
 }

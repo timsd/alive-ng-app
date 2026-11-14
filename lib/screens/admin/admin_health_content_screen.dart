@@ -49,7 +49,11 @@ class _AdminHealthContentScreenState
     // `dietist` can add recipes/remedies without being a full admin.
     if (!roleService.canManageHealthContent()) {
       return Scaffold(
-        appBar: const CustomAppBar(title: 'Access Restricted'),
+        appBar: const CustomAppBar(
+          title: 'Access Restricted',
+          showBackButton: true,
+          showDonationButton: false,
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

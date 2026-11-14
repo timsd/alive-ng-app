@@ -173,8 +173,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       appBar: CustomAppBar(
         title: 'Archived Users',
         showBackButton: true,
-        backgroundColor: theme.colorScheme.secondary,
-        foregroundColor: theme.colorScheme.onSecondary,
+        showDonationButton: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

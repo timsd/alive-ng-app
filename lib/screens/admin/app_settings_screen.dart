@@ -197,6 +197,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         appBar: CustomAppBar(
           title: 'App Settings',
           showBackButton: true,
+          showDonationButton: false,
           actions: [
             IconButton(
               icon: const Icon(Icons.add),

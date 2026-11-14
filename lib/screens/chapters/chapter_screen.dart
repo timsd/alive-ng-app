@@ -798,8 +798,13 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: Colors.amber.shade100,
-                  child: Icon(Icons.hourglass_top_rounded, color: Colors.amber.shade900),
+                  backgroundColor: Colors.amber.withValues(alpha: 0.16),
+                  child: Icon(
+                    Icons.hourglass_top_rounded,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFFE7D39B)
+                        : Colors.amber.shade900,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -815,7 +820,9 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
                         'Awaiting Leadership Approval',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.amber.shade900,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFE7D39B)
+                              : Colors.amber.shade900,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1095,10 +1102,22 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
                                 targetChapter!.name.toLowerCase() ||
                             _currentUserProfile!.chapterId == targetChapter!.id))
                     ? Chip(
-                        avatar: Icon(Icons.hourglass_top_rounded,
-                            size: 16, color: Colors.amber.shade900),
-                        label: const Text('Pending Approval'),
-                        backgroundColor: Colors.amber.shade50,
+                        avatar: Icon(
+                          Icons.hourglass_top_rounded,
+                          size: 16,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFE7D39B)
+                              : Colors.amber.shade900,
+                        ),
+                        label: Text(
+                          'Pending Approval',
+                          style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFFE7D39B)
+                                : Colors.amber.shade900,
+                          ),
+                        ),
+                        backgroundColor: Colors.amber.withValues(alpha: 0.14),
                       )
                     : FilledButton.icon(
                         icon: const Icon(Icons.group_add_rounded, size: 18),

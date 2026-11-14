@@ -555,6 +555,8 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Leadership Directory',
+        showBackButton: true,
+        showDonationButton: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -960,7 +962,9 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: isPending ? const Color(0xFFECE6D8) : Colors.green.withValues(alpha: 0.12),
+                              color: isPending
+                                  ? Colors.amber.withValues(alpha: 0.14)
+                                  : Colors.green.withValues(alpha: 0.14),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -968,7 +972,13 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: isPending ? const Color(0xFF6B6355) : Colors.green.shade800,
+                                color: isPending
+                                    ? (theme.brightness == Brightness.dark
+                                        ? const Color(0xFFE7D39B)
+                                        : const Color(0xFF9A7418))
+                                    : (theme.brightness == Brightness.dark
+                                        ? const Color(0xFF52C38B)
+                                        : const Color(0xFF1E7E4E)),
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -1076,7 +1086,13 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                         Icon(
                           isLinked ? Icons.verified_user_rounded : Icons.pending_actions_rounded,
                           size: 14,
-                          color: isLinked ? Colors.green.shade700 : Colors.amber.shade900,
+                          color: isLinked
+                              ? (theme.brightness == Brightness.dark
+                                  ? const Color(0xFF52C38B)
+                                  : Colors.green.shade700)
+                              : (theme.brightness == Brightness.dark
+                                  ? const Color(0xFFE7D39B)
+                                  : Colors.amber.shade900),
                         ),
                         const SizedBox(width: 6),
                         Flexible(
@@ -1085,7 +1101,13 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
-                              color: isLinked ? Colors.green.shade800 : Colors.amber.shade900,
+                              color: isLinked
+                                  ? (theme.brightness == Brightness.dark
+                                      ? const Color(0xFF52C38B)
+                                      : Colors.green.shade800)
+                                  : (theme.brightness == Brightness.dark
+                                      ? const Color(0xFFE7D39B)
+                                      : Colors.amber.shade900),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1549,14 +1571,14 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           ),
           const SizedBox(height: 16),
 
-          // Primary 4 Stat Cards
+          // Primary 4 Stat Cards (compact horizontal style)
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.45,
-            crossAxisSpacing: 14,
-            mainAxisSpacing: 14,
+            childAspectRatio: 2.3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
             children: [
               _buildStatCard(
                 'Active Leaders',
@@ -1724,33 +1746,49 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     Color color,
     ThemeData theme,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 32,
-              color: color,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: theme.textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -2430,18 +2468,21 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                border: Border.all(color: Colors.orange.shade200),
+                color: Colors.orange.withValues(alpha: 0.12),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.warning, color: Colors.orange),
-                  SizedBox(width: 8),
+                  const Icon(Icons.warning, color: Colors.orange),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Archived records can be restored later if needed.',
-                      style: TextStyle(fontSize: 12),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                   ),
                 ],

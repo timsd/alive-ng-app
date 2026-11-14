@@ -241,7 +241,7 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
     final totalVotes = decision.votes.length;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(24),

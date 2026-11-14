@@ -298,6 +298,8 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Backup & Restore',
+        showBackButton: true,
+        showDonationButton: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -59,7 +59,11 @@ class _AdminApprovalLinkHandlerScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: 'Approval Link'),
+      appBar: const CustomAppBar(
+        title: 'Approval Link',
+        showBackButton: true,
+        showDonationButton: false,
+      ),
       body: Center(
         child: _processing
             ? const CircularProgressIndicator()

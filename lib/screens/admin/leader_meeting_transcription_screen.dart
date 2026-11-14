@@ -275,11 +275,12 @@ class _LeaderMeetingTranscriptionScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
           children: [
-            Icon(Icons.folder_special, color: Color(0xFF1B365D)),
-            SizedBox(width: 8),
-            Text('Save to Meeting Files'),
+            Icon(Icons.folder_special, color: Theme.of(ctx).colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text('Save to Meeting Files'),
           ],
         ),
         content: Column(
@@ -403,7 +404,7 @@ class _LeaderMeetingTranscriptionScreenState
               ),
               const SizedBox(height: 12),
               ListTile(
-                leading: const Icon(Icons.copy_rounded, color: Color(0xFF1B365D)),
+                leading: Icon(Icons.copy_rounded, color: Theme.of(ctx).colorScheme.primary),
                 title: const Text('Copy to Clipboard'),
                 subtitle: const Text('Markdown format with overview, decisions & table'),
                 onTap: () async {
@@ -473,6 +474,8 @@ class _LeaderMeetingTranscriptionScreenState
 
     return Scaffold(
       appBar: CustomAppBar(
+        showBackButton: true,
+        showDonationButton: false,
         titleWidget: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -491,7 +494,6 @@ class _LeaderMeetingTranscriptionScreenState
             ),
           ],
         ),
-        showBackButton: true,
         actions: [
           // Prominent High-Contrast Microphone / Recording Status Indicator
           Padding(

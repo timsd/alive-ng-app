@@ -5,6 +5,7 @@ import 'package:appwrite/appwrite.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../services/channel_membership_sync_service.dart';
+import '../../widgets/custom_app_bar.dart';
 
 /// Admin screen for managing and editing chat #role tags, special @announcement tags,
 /// and channel directory & bridge mappings.
@@ -347,16 +348,16 @@ class _ChatTagManagementScreenState extends State<ChatTagManagementScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chat & Tag Management'),
-        centerTitle: true,
+      appBar: CustomAppBar(
+        title: 'Chat & Tag Management',
+        showBackButton: true,
+        showDonationButton: false,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFFD49B28),
-          labelColor: isDark ? Colors.white : theme.colorScheme.primary,
+          indicatorColor: theme.colorScheme.primary,
+          labelColor: theme.colorScheme.primary,
           unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
           tabs: const [
             Tab(icon: Icon(Icons.tag_rounded, size: 18), text: 'Role Tags'),

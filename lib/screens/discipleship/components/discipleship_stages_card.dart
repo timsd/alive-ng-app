@@ -212,7 +212,7 @@ class DiscipleshipOverviewTab extends StatelessWidget {
               flex: 2,
               child: LinearProgressIndicator(
                 value: statistics.totalContacts > 0 ? count / statistics.totalContacts : 0,
-                backgroundColor: Colors.grey[300],
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation(DiscipleshipHelpers.getLevelColor(level)),
               ),
             ),
@@ -323,7 +323,10 @@ class DiscipleshipMiniStatCard extends StatelessWidget {
           ),
           Text(
             title,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            style: TextStyle(
+              fontSize: 11,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             textAlign: TextAlign.center,
           ),
         ],

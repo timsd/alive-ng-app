@@ -420,8 +420,12 @@ class _TractFormDialogState extends State<_TractFormDialog> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                gradient: LinearGradient(
+                  colors: [Color(0xFF141F2D), Color(0xFF233E5F)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Row(
                 children: [
@@ -1324,8 +1328,12 @@ class _StandaloneLessonFormDialogState
             Container(
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                gradient: LinearGradient(
+                  colors: [Color(0xFF141F2D), Color(0xFF233E5F)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Row(
                 children: [

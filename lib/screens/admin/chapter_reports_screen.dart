@@ -225,6 +225,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
       appBar: CustomAppBar(
         title: 'Hierarchical Reports',
         showBackButton: true,
+        showDonationButton: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -664,8 +665,12 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                             : Icons.rate_review_outlined,
                         size: 14,
                         color: report.metadata?['apex_directive'] == true
-                            ? Colors.amber.shade800
-                            : Colors.blue.shade700,
+                            ? (theme.brightness == Brightness.dark
+                                ? const Color(0xFFE7D39B)
+                                : Colors.amber.shade800)
+                            : (theme.brightness == Brightness.dark
+                                ? const Color(0xFF90CAF9)
+                                : Colors.blue.shade700),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -677,8 +682,12 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
                             color: report.metadata?['apex_directive'] == true
-                                ? Colors.amber.shade900
-                                : Colors.blue.shade900,
+                                ? (theme.brightness == Brightness.dark
+                                    ? const Color(0xFFE7D39B)
+                                    : Colors.amber.shade900)
+                                : (theme.brightness == Brightness.dark
+                                    ? const Color(0xFF90CAF9)
+                                    : Colors.blue.shade900),
                           ),
                         ),
                       ),

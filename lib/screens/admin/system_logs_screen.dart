@@ -245,6 +245,8 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
     return Scaffold(
       appBar: CustomAppBar(
         title: 'System Logs',
+        showBackButton: true,
+        showDonationButton: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

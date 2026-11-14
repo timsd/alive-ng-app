@@ -158,8 +158,6 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
       appBar: CustomAppBar(
         title: translate('missions'),
         showBackButton: true,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           IconButton(
             icon: Icon(_showSearch ? Icons.close : Icons.search),

@@ -62,14 +62,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
       appBar: CustomAppBar(
         title: translate('help_support'),
         showBackButton: true,
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: theme.colorScheme.onPrimary,
-          labelColor: theme.colorScheme.onPrimary,
-          unselectedLabelColor:
-              theme.colorScheme.onPrimary.withValues(alpha: 0.7),
+          indicatorColor: theme.colorScheme.primary,
+          labelColor: theme.colorScheme.primary,
+          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
           labelStyle: theme.textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w700,
           ),

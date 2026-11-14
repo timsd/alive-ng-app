@@ -285,34 +285,46 @@ class _OfficeHolderFormDialogState extends State<OfficeHolderFormDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () async {
-            if (_nameCtrl.text.trim().isEmpty || _titleCtrl.text.trim().isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Name and title are required')),
-              );
-              return;
-            }
-            Navigator.pop(context);
-            await widget.onSave(
-              docId: widget.holder?['\$id'],
-              fullName: _nameCtrl.text.trim(),
-              officeTitle: _titleCtrl.text.trim(),
-              description: _descriptionCtrl.text.trim(),
-              tenureYear: _tenureStartCtrl.text.trim(),
-              tenureEndYear: _tenureEndCtrl.text.trim(),
-              isCurrent: _isCurrentTenure,
-              email: _emailCtrl.text.trim(),
-              userId: _selectedUserId,
-              category: widget.category,
-              officeId: _officeId,
-            );
-          },
-          child: const Text('Save'),
+        SizedBox(
+          width: double.maxFinite,
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () async {
+                    if (_nameCtrl.text.trim().isEmpty || _titleCtrl.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Name and title are required')),
+                      );
+                      return;
+                    }
+                    Navigator.pop(context);
+                    await widget.onSave(
+                      docId: widget.holder?['\$id'],
+                      fullName: _nameCtrl.text.trim(),
+                      officeTitle: _titleCtrl.text.trim(),
+                      description: _descriptionCtrl.text.trim(),
+                      tenureYear: _tenureStartCtrl.text.trim(),
+                      tenureEndYear: _tenureEndCtrl.text.trim(),
+                      isCurrent: _isCurrentTenure,
+                      email: _emailCtrl.text.trim(),
+                      userId: _selectedUserId,
+                      category: widget.category,
+                      officeId: _officeId,
+                    );
+                  },
+                  child: const Text('Save'),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

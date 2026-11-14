@@ -38,12 +38,11 @@ class _TractPodcastAdminScreenState extends State<TractPodcastAdminScreen>
           title: 'Tract & Podcast Management',
           showBackButton: true,
           showDonationButton: false,
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
           bottom: TabBar(
             controller: _tabController,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
+            indicatorColor: Theme.of(context).colorScheme.primary,
+            labelColor: Theme.of(context).colorScheme.primary,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
             tabs: const [
               Tab(
                 icon: Icon(Icons.article),

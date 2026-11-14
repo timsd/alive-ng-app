@@ -103,6 +103,7 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
       appBar: CustomAppBar(
         title: 'Meeting File Sharing',
         showBackButton: true,
+        showDonationButton: false,
         onBackPressed: () {
           if (context.canPop()) {
             context.pop();

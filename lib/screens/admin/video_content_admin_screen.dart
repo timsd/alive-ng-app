@@ -533,6 +533,7 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
         appBar: CustomAppBar(
           title: 'Video Content Management',
           showBackButton: true,
+          showDonationButton: false,
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),

@@ -81,8 +81,6 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
       appBar: CustomAppBar(
         title: 'Prayer Wall',
         showBackButton: true,
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
         showThemeToggle: false,
         showLanguageToggle: false,
         showDonationButton: false,
@@ -97,10 +95,9 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: theme.colorScheme.onPrimary,
-          labelColor: theme.colorScheme.onPrimary,
-          unselectedLabelColor:
-              theme.colorScheme.onPrimary.withValues(alpha: 0.72),
+          indicatorColor: theme.colorScheme.primary,
+          labelColor: theme.colorScheme.primary,
+          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
           tabs: const [
             Tab(
               icon: Icon(Icons.public_rounded, size: 20),

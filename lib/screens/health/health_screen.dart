@@ -105,8 +105,6 @@ class HealthScreen extends ConsumerWidget {
         showBackButton: true,
         title: translate('health'),
         elevation: 0,
-        backgroundColor: Colors.green,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         showThemeToggle: false,
         showLanguageToggle: false,
         showDonationButton: true,
@@ -124,7 +122,11 @@ class HealthScreen extends ConsumerWidget {
               width: double.infinity,
               padding: ResponsiveUtils.getResponsivePadding(context),
               decoration: const BoxDecoration(
-                color: Colors.green,
+                gradient: LinearGradient(
+                  colors: [Color(0xFF141F2D), Color(0xFF1F4C35)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(24),
                   bottomRight: Radius.circular(24),
@@ -136,10 +138,7 @@ class HealthScreen extends ConsumerWidget {
                   Text(
                     TextFormatter.formatHealthCategory('gods_natural_healing'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onPrimary
-                              .withValues(alpha: 0.95),
+                          color: Colors.white.withValues(alpha: 0.95),
                           fontWeight: FontWeight.w500,
                           fontSize: ResponsiveUtils.getResponsiveFontSize(
                               context, 16),

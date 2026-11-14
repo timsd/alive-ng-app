@@ -108,9 +108,13 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
       appBar: CustomAppBar(
         title: 'Board Documents',
         showBackButton: true,
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        showDonationButton: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadDocuments,
+          ),
           IconButton(
             icon: const Icon(Icons.upload_file),
             tooltip: 'Upload Document',

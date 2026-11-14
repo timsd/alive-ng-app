@@ -169,6 +169,11 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
+        appBar: const CustomAppBar(
+          title: 'Role Management',
+          showBackButton: true,
+          showDonationButton: false,
+        ),
         body: Center(
           child: CircularProgressIndicator(
             color: Theme.of(context).colorScheme.primary,
@@ -563,7 +568,13 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
     final colorScheme = Theme.of(context).colorScheme;
     switch (role) {
       case 'admin':
+      case 'super_admin':
         return colorScheme.error;
+      case 'bod':
+      case 'trustee':
+        return const Color(0xFFB45309);
+      case 'director':
+        return const Color(0xFF7C3AED);
       case 'leader':
         return colorScheme.tertiary;
       case 'coordinator':
@@ -586,10 +597,14 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
     final colorScheme = Theme.of(context).colorScheme;
     switch (role) {
       case 'admin':
+      case 'super_admin':
         return colorScheme.onError;
       case 'leader':
       case 'dietist':
         return colorScheme.onTertiary;
+      case 'bod':
+      case 'trustee':
+      case 'director':
       case 'field_worker':
       case 'campus_missionary':
       case 'amtc_team':

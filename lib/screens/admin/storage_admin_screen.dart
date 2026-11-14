@@ -647,8 +647,6 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
         title: 'Storage Management',
         showBackButton: true,
         showDonationButton: false,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           Tooltip(
             message: 'Sync Tracts to Materials',
@@ -659,7 +657,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
                       height: 24,
                       child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.onPrimary),
+                          color: Theme.of(context).colorScheme.primary),
                     )
                   : const Icon(Icons.sync),
               onPressed: _isSyncing ? null : _syncTractsToMaterials,
@@ -669,10 +667,9 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          indicatorColor: Theme.of(context).colorScheme.onPrimary,
-          labelColor: Theme.of(context).colorScheme.onPrimary,
-          unselectedLabelColor:
-              Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
+          indicatorColor: Theme.of(context).colorScheme.primary,
+          labelColor: Theme.of(context).colorScheme.primary,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
           tabs: _buckets
               .map((bucket) => Tab(
                     text: bucket.replaceAll('-', ' ').toUpperCase(),
