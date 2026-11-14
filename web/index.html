@@ -102,6 +102,30 @@
       }
       e.preventDefault();
     }, false);
+
+    // Mobile Browser Freeze Guard: prevent permanent WebGL context loss when phone calls
+    // or background app switches reclaim GPU memory, and nudge Flutter to repaint on resume.
+    window.addEventListener('webglcontextlost', function (e) {
+      if (e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+      }
+    }, true);
+
+    window.addEventListener('webglcontextrestored', function () {
+      try {
+        window.dispatchEvent(new Event('resize'));
+      } catch (_) { }
+    }, true);
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') {
+        setTimeout(function () {
+          try {
+            window.dispatchEvent(new Event('resize'));
+          } catch (_) { }
+        }, 120);
+      }
+    });
   </script>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.google.com" crossorigin>

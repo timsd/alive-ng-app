@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/offline_bible_service.dart';
-import '../widgets/custom_app_bar.dart';
 import '../screens/splash/animated_splash_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/oath/oath_screen.dart';
@@ -215,10 +214,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Check before allowing any main-app route, including post-auth links.
+      // Skip async provider await immediately if already cached for this session.
       if (currentUser != null &&
-          state.uri.path != '/profile-completion') {
+          state.uri.path != '/profile-completion' &&
+          !ProfileSetupCache.isCompleted(currentUser.uid)) {
         try {
-          final required = await ref.read(profileSetupRequiredProvider(currentUser.uid).future);
+          final required = await ref
+              .read(profileSetupRequiredProvider(currentUser.uid).future)
+              .timeout(const Duration(seconds: 4), onTimeout: () => false);
           if (required) return '/profile-completion';
         } catch (e) {
           debugPrint('Profile check failed; open setup for retry: $e');
@@ -932,37 +935,52 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
 
-    // Error handling
+    // Error handling: lightweight self-contained fallback so dead routes never
+    // trigger secondary router/state exceptions or freeze the web app.
     errorBuilder: (context, state) => Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Error',
+      appBar: AppBar(
+        title: const Text('Page Not Found'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (GoRouter.of(context).canPop()) {
+              context.pop();
+            } else {
+              context.go(AppConstants.homeRoute);
+            }
+          },
+        ),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Page not found',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              state.error?.toString() ?? 'Unknown error occurred',
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => context.go(AppConstants.homeRoute),
-              child: const Text('Go Home'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.explore_off_rounded,
+                size: 56,
+                color: Colors.orange,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Route unavailable',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                state.uri.toString(),
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () => context.go(AppConstants.homeRoute),
+                icon: const Icon(Icons.home_rounded),
+                label: const Text('Go Home'),
+              ),
+            ],
+          ),
         ),
       ),
     ),
