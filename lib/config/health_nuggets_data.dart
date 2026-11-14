@@ -556,7 +556,7 @@ class HealthNuggetsData {
       title: 'Local Nigerian Superfoods: Beans & Leafy Greens',
       nugget:
           'Oloyin beans, ugwu, efo, and okra packed with plant protein and iron are affordable, God-given powerhouses for daily vitality.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Psalm 104:14',
     ),
     HealthNugget(
@@ -943,7 +943,7 @@ class HealthNuggetsData {
       title: 'Sweet Potatoes: Nature\'s Beta-Carotene Gift',
       nugget:
           'Roasted or boiled sweet potatoes deliver slow-release carbohydrates, potassium, and vitamin A for sharp vision and skin health.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Psalm 145:15-16',
     ),
     HealthNugget(
@@ -1258,7 +1258,7 @@ class HealthNuggetsData {
       title: 'Plantain & Beans: Balanced Local Nutrition',
       nugget:
           'Boiled or baked ripe plantain paired with seasoned beans and leafy greens gives slow energy, potassium, and complete amino acids.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Psalm 145:16',
     ),
     HealthNugget(
@@ -1447,7 +1447,7 @@ class HealthNuggetsData {
       title: 'Active Chores Count as Real Movement',
       nugget:
           'Sweeping, mopping, carrying groceries, and walking to the market all burn calories and keep metabolism responsive.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Colossians 3:23',
     ),
     HealthNugget(
@@ -1654,7 +1654,7 @@ class HealthNuggetsData {
       title: 'Millet and Sorghum: Resilient Whole Grains',
       nugget:
           'Traditional African grains like millet and guinea corn are naturally gluten-free, mineral-rich, and gentle on blood sugar.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Ezekiel 4:9',
     ),
     HealthNugget(
@@ -1834,7 +1834,7 @@ class HealthNuggetsData {
       title: 'Filter or Boil Questionable Water',
       nugget:
           'Clean water is foundational to health. Always ensure drinking water is properly filtered or boiled when away from trusted sources.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: '2 Kings 2:21',
     ),
     HealthNugget(
@@ -1978,7 +1978,7 @@ class HealthNuggetsData {
       title: 'Watermelon Hydrates and Refreshes',
       nugget:
           'Watermelon is over 90% water and rich in citrulline and lycopene—an ideal tropical refresher between meals.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Numbers 11:5',
     ),
     HealthNugget(
@@ -2014,7 +2014,7 @@ class HealthNuggetsData {
       title: 'Pumpkin Leaves (Ugwu) Pack Iron & Folate',
       nugget:
           'Lightly steamed dark green leaves paired with vitamin C-rich tomatoes or lemon boost non-heme iron absorption naturally.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -2302,7 +2302,7 @@ class HealthNuggetsData {
       title: 'Whole Corn, Yam, and Cocoyam in Balance',
       nugget:
           'Pair traditional whole starches with generous vegetable soups and beans rather than heavy palm-oil sauces for lasting energy.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Psalm 104:14',
     ),
     HealthNugget(
@@ -2464,7 +2464,7 @@ class HealthNuggetsData {
       title: 'Papaya (Pawpaw) Aids Gentle Digestion',
       nugget:
           'Ripe pawpaw contains natural papain enzymes and soothing fiber that calm sluggish digestion.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Ezekiel 47:12',
     ),
     HealthNugget(
@@ -2572,7 +2572,7 @@ class HealthNuggetsData {
       title: 'Dance or March Indoors on Rainy Days',
       nugget:
           'Heavy rain is no excuse to stay sedentary—put on uplifting gospel music and march briskly indoors for 20 minutes.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Psalm 149:3',
     ),
     HealthNugget(
@@ -2698,7 +2698,7 @@ class HealthNuggetsData {
       title: 'Avoid Burning Plastics or Trash Near Homes',
       nugget:
           'Protect your neighborhood\'s air—toxic smoke from burning waste lingers in lungs and harms children.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Matthew 22:39',
     ),
     HealthNugget(
@@ -2824,7 +2824,7 @@ class HealthNuggetsData {
       title: 'Limit Refined White Rice and White Bread',
       nugget:
           'Swap white rice occasionally for brown rice, ofada rice, quinoa, or bulgur to triple fiber and B-vitamin intake.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Psalm 81:16',
     ),
     HealthNugget(
@@ -2905,7 +2905,7 @@ class HealthNuggetsData {
       title: 'Garden Eggs (African Eggplant) Support Cholesterol',
       nugget:
           'Low in calories and rich in soluble fiber and polyphenols, garden eggs make a crisp, heart-friendly snack.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -3148,7 +3148,7 @@ class HealthNuggetsData {
       title: 'Avoid Excess Fried Street Snacks',
       nugget:
           'Carry roasted groundnuts, bananas, or apples in your bag so hunger never forces you into greasy pastries.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Proverbs 27:12',
     ),
     HealthNugget(
@@ -3193,7 +3193,7 @@ class HealthNuggetsData {
       title: 'Coconut Water: Natural Electrolyte Boost',
       nugget:
           'Fresh green coconut water replenishes potassium and fluids naturally after hot outdoor exertion.',
-      speaker: 'ALIVE Nigeria Health Ministry',
+      speaker: 'ALIVE Nigeria Health Tips',
       scripture: 'Psalm 104:14',
     ),
     HealthNugget(
