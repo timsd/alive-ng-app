@@ -1579,18 +1579,8 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     required bool isAudioMuted,
     required bool isVideoMuted,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFF0F1520)
-            : const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white10
-              : Colors.black.withValues(alpha: 0.08),
-        ),
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
       child: MeetingControlBar(
         session: session,
         gateway: gateway,
