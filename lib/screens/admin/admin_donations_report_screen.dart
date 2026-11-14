@@ -356,8 +356,18 @@ class _AdminDonationsReportContentState
                         ),
                       ),
                       OutlinedButton.icon(
-                        icon: const Icon(Icons.file_download, size: 16),
-                        label: const Text('Export CSV'),
+                        icon: const Icon(Icons.file_download_outlined, size: 16),
+                        label: const Text(
+                          'Export CSV',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
                         onPressed: _filteredDonations.isEmpty || _isExporting
                             ? null
                             : () => _exportReport('csv'),
@@ -449,47 +459,49 @@ class _AdminDonationsReportContentState
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: theme.colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 18, color: color),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: color),
           ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         ],

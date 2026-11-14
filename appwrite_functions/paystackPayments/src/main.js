@@ -187,8 +187,8 @@ async function getConfiguredUsdToNgnRate(log) {
 async function getPaystackConfigKeys(log, options = {}) {
   let isTestMode = options.forceTestMode === true || process.env.PAYSTACK_TEST_MODE === 'true';
 
-  let testPublicKey = process.env.PAYSTACK_TEST_PUBLIC_KEY?.trim() || '';
-  let testSecretKey = process.env.PAYSTACK_TEST_SECRET_KEY?.trim() || '';
+  let testPublicKey = process.env.PAYSTACK_TEST_PUBLIC_KEY?.trim() || (process.env.PAYSTACK_PUBLIC_KEY?.trim()?.startsWith('pk_test_') ? process.env.PAYSTACK_PUBLIC_KEY.trim() : '');
+  let testSecretKey = process.env.PAYSTACK_TEST_SECRET_KEY?.trim() || (process.env.PAYSTACK_SECRET_KEY?.trim()?.startsWith('sk_test_') ? process.env.PAYSTACK_SECRET_KEY.trim() : '');
   let livePublicKey = process.env.PAYSTACK_LIVE_PUBLIC_KEY?.trim() || (process.env.PAYSTACK_PUBLIC_KEY?.trim()?.startsWith('pk_live_') ? process.env.PAYSTACK_PUBLIC_KEY.trim() : '');
   let liveSecretKey = process.env.PAYSTACK_LIVE_SECRET_KEY?.trim() || (process.env.PAYSTACK_SECRET_KEY?.trim()?.startsWith('sk_live_') ? process.env.PAYSTACK_SECRET_KEY.trim() : '');
 
@@ -246,6 +246,10 @@ async function getPaystackConfigKeys(log, options = {}) {
     if (!isTestMode && dynamicPublicKey.startsWith('pk_live_')) publicKey = dynamicPublicKey;
   }
 
+  if (!secret) {
+    secret = liveSecretKey || testSecretKey || process.env.PAYSTACK_SECRET_KEY?.trim() || '';
+  }
+
   // CRITICAL FAIL-SAFE: Paystack test and live keys must NEVER be mismatched.
   // If secret is live, public key MUST be live. If secret is test, public key MUST be test.
   if (secret.startsWith('sk_live_') && !publicKey.startsWith('pk_live_')) {
@@ -254,7 +258,7 @@ async function getPaystackConfigKeys(log, options = {}) {
     publicKey = testPublicKey;
   }
 
-  return { secret, publicKey, isTestMode };
+  return { secret, publicKey, isTestMode, liveSecretKey, livePublicKey, testSecretKey, testPublicKey };
 }
 
 async function getPaystackPublicKey(log, options = {}) {
@@ -287,8 +291,8 @@ export default async ({ req, res, log, error }) => {
     const paystackConfig = await getPaystackConfigKeys(log, {
       forceTestMode: body?.test_mode !== undefined ? (body.test_mode === true || body.test_mode === 'true') : undefined,
     });
-    const secret = paystackConfig.secret;
-    const publicKey = paystackConfig.publicKey;
+    let secret = paystackConfig.secret;
+    let publicKey = paystackConfig.publicKey;
 
     if (!secret) {
       error('Missing PAYSTACK_SECRET_KEY in function environment or app_settings.');
@@ -636,6 +640,42 @@ export default async ({ req, res, log, error }) => {
       body: JSON.stringify(payload),
     });
     let json = await paystackResponse.json();
+
+    // ── Invalid key recovery ────────────────────────────────────────────────
+    // If the active secret key (e.g. test key when sandbox mode was toggled) is
+    // rejected by Paystack with "Invalid key" / 401, seamlessly fall back to any
+    // other valid secret key configured in the function environment.
+    if (!json?.status && (json?.message?.toLowerCase().includes('key') || paystackResponse.status === 401)) {
+      const candidateKeys = [
+        paystackConfig.liveSecretKey,
+        paystackConfig.testSecretKey,
+        process.env.PAYSTACK_SECRET_KEY?.trim(),
+        process.env.PAYSTACK_LIVE_SECRET_KEY?.trim(),
+        process.env.PAYSTACK_TEST_SECRET_KEY?.trim(),
+      ].filter((k) => k && k !== secret);
+
+      for (const altKey of candidateKeys) {
+        log(`Paystack init returned "${json?.message}". Retrying with fallback key ${altKey.substring(0, 10)}...`);
+        const retryRes = await fetch('https://api.paystack.co/transaction/initialize', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${altKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        const retryJson = await retryRes.json();
+        if (retryJson?.status || !retryJson?.message?.toLowerCase().includes('key')) {
+          paystackResponse = retryRes;
+          json = retryJson;
+          secret = altKey;
+          publicKey = altKey.startsWith('sk_live_')
+            ? (paystackConfig.livePublicKey || publicKey)
+            : (paystackConfig.testPublicKey || publicKey);
+          break;
+        }
+      }
+    }
 
     // ── Channel rejection recovery ──────────────────────────────────────────
     // Paystack fails the WHOLE initialization when `channels` contains one it

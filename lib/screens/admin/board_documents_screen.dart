@@ -155,22 +155,46 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedCategory,
-                        borderRadius: BorderRadius.circular(12),
+                        isExpanded: true,
+                        initialValue: _selectedCategory,
+                        borderRadius: BorderRadius.circular(16),
                         dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                         icon: const Icon(Icons.arrow_drop_down_rounded),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Category',
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                           filled: true,
                           fillColor: Theme.of(context).colorScheme.surface,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.outlineVariant,
+                            ),
                           ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: ResponsiveUtils.getResponsiveSpacing(
-                                context, 12),
-                            vertical: ResponsiveUtils.getResponsiveSpacing(
-                                context, 8),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.outlineVariant,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.5,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
                           ),
                         ),
                         items: _categories.map((category) {
@@ -179,7 +203,11 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                               : TextFormatter.formatCategory(category);
                           return DropdownMenuItem(
                             value: category,
-                            child: Text(label, overflow: TextOverflow.ellipsis),
+                            child: Text(
+                              label,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -187,36 +215,62 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                         },
                       ),
                     ),
-                    SizedBox(
-                        width:
-                            ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedAccessLevel,
-                        borderRadius: BorderRadius.circular(12),
+                        isExpanded: true,
+                        initialValue: _selectedAccessLevel,
+                        borderRadius: BorderRadius.circular(16),
                         dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                         icon: const Icon(Icons.arrow_drop_down_rounded),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Access Level',
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                           filled: true,
                           fillColor: Theme.of(context).colorScheme.surface,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.outlineVariant,
+                            ),
                           ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: ResponsiveUtils.getResponsiveSpacing(
-                                context, 12),
-                            vertical: ResponsiveUtils.getResponsiveSpacing(
-                                context, 8),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.outlineVariant,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.5,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
                           ),
                         ),
                         items: _accessLevels.map((level) {
                           final label = level.toLowerCase() == 'all'
-                              ? 'All Access Levels'
+                              ? 'All Levels'
                               : TextFormatter.formatRole(level);
                           return DropdownMenuItem(
                             value: level,
-                            child: Text(label, overflow: TextOverflow.ellipsis),
+                            child: Text(
+                              label,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -825,19 +879,24 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                 SizedBox(
                     height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: selectedCategory,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   icon: const Icon(Icons.arrow_drop_down_rounded),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Category',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   items: _categories.skip(1).map((category) {
                     return DropdownMenuItem(
                       value: category,
                       child: Text(
-                          TextFormatter.formatCategory(category)),
+                        TextFormatter.formatCategory(category),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     );
                   }).toList(),
                   onChanged: (value) => selectedCategory = value!,
@@ -845,19 +904,24 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                 SizedBox(
                     height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: selectedAccessLevel,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   icon: const Icon(Icons.arrow_drop_down_rounded),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Access Level',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   items: _accessLevels.skip(1).map((level) {
                     return DropdownMenuItem(
                       value: level,
-                      child:
-                          Text(TextFormatter.formatRole(level)),
+                      child: Text(
+                        TextFormatter.formatRole(level),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     );
                   }).toList(),
                   onChanged: (value) => selectedAccessLevel = value!,

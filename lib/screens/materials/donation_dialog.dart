@@ -433,7 +433,7 @@ class _DonationDialogState extends State<DonationDialog> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Donation Amount ($_selectedCurrency)',
+                        'Amount ($_selectedCurrency)',
                         style:
                             Theme.of(context).textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.bold,

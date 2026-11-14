@@ -826,7 +826,9 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Add New Setting'),
       content: Form(
         key: _formKey,
@@ -836,9 +838,12 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
             children: [
               TextFormField(
                 controller: _keyController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Setting Key *',
                   hintText: 'e.g., max_upload_size',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -850,12 +855,15 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               TextFormField(
                 controller: _displayNameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Display Name *',
                   hintText: 'e.g., Maximum Upload Size',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -864,22 +872,34 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Description',
                   hintText: 'Brief description of this setting',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 maxLines: 2,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _category,
-                borderRadius: BorderRadius.circular(12),
-                dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+                dropdownColor: theme.colorScheme.surfaceContainerHigh,
+                menuMaxHeight: 340,
                 icon: const Icon(Icons.arrow_drop_down_rounded),
-                decoration: const InputDecoration(labelText: 'Category'),
+                decoration: InputDecoration(
+                  labelText: 'Category',
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 items: _categories.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
@@ -888,13 +908,21 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
                 }).toList(),
                 onChanged: (value) => setState(() => _category = value!),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _dataType,
-                borderRadius: BorderRadius.circular(12),
-                dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+                dropdownColor: theme.colorScheme.surfaceContainerHigh,
                 icon: const Icon(Icons.arrow_drop_down_rounded),
-                decoration: const InputDecoration(labelText: 'Data Type'),
+                decoration: InputDecoration(
+                  labelText: 'Data Type',
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 items: _dataTypes.map((type) {
                   return DropdownMenuItem(
                     value: type,
@@ -903,12 +931,15 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
                 }).toList(),
                 onChanged: (value) => setState(() => _dataType = value!),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               TextFormField(
                 controller: _valueController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Default Value',
                   hintText: 'Initial value for this setting',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ],
@@ -920,7 +951,7 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               Navigator.pop(context, {
@@ -977,7 +1008,9 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Edit Setting'),
       content: Form(
         key: _formKey,
@@ -987,8 +1020,11 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
             children: [
               TextFormField(
                 controller: _displayNameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Display Name *',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -997,21 +1033,33 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Description',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 maxLines: 2,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _category,
-                borderRadius: BorderRadius.circular(12),
-                dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+                dropdownColor: theme.colorScheme.surfaceContainerHigh,
+                menuMaxHeight: 340,
                 icon: const Icon(Icons.arrow_drop_down_rounded),
-                decoration: const InputDecoration(labelText: 'Category'),
+                decoration: InputDecoration(
+                  labelText: 'Category',
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 items: _categories.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
@@ -1029,7 +1077,7 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               Navigator.pop(context, {

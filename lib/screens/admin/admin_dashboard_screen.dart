@@ -1364,6 +1364,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
               const Icon(Icons.chat_outlined, color: Colors.blue),
@@ -1392,67 +1393,82 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
               const SizedBox(height: 8),
               Text('Channels exported: ${data['count'] ?? 0}'),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'You can save/share the JSON backup directly or export channel message logs.',
-                style: TextStyle(fontSize: 13),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
-          actionsAlignment: MainAxisAlignment.end,
-          actionsOverflowButtonSpacing: 8,
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           actions: [
-            OutlinedButton.icon(
-              icon: const Icon(Icons.forum_outlined, size: 16),
-              label: const Text('Export Messages'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              onPressed: () async {
-                try {
-                  final msgData = await AppwriteAdminExportService.instance
-                      .exportChatMessages(type: 'messaging', limitPerChannel: 500);
-                  if (!mounted) return;
-                  final files = (msgData['files'] as List?) ?? const [];
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Exported ${files.length} channel message file(s)')),
-                  );
-                } catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Export failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
-                  );
-                }
-              },
-            ),
-            if (content.isNotEmpty || downloadUrl != null)
-              FilledButton.icon(
-                icon: const Icon(Icons.share_rounded, size: 16),
-                label: const Text('Share / Save Backup'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                onPressed: () async {
-                  if (content.isNotEmpty) {
-                    await SharePlus.instance.share(
-                      ShareParams(
-                        files: [
-                          XFile.fromData(
-                            Uint8List.fromList(utf8.encode(content)),
-                            name: 'alive_chat_channels_backup.json',
-                            mimeType: 'application/json',
-                          ),
-                        ],
-                        subject: 'ALIVE Nigeria Chat Backup',
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (content.isNotEmpty || downloadUrl != null) ...[
+                  FilledButton.icon(
+                    icon: const Icon(Icons.share_rounded, size: 16),
+                    label: const Text('Share / Save Backup'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  } else if (downloadUrl != null) {
-                    final url = Uri.parse(downloadUrl);
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    ),
+                    onPressed: () async {
+                      if (content.isNotEmpty) {
+                        await SharePlus.instance.share(
+                          ShareParams(
+                            files: [
+                              XFile.fromData(
+                                Uint8List.fromList(utf8.encode(content)),
+                                name: 'alive_chat_channels_backup.json',
+                                mimeType: 'application/json',
+                              ),
+                            ],
+                            subject: 'ALIVE Nigeria Chat Backup',
+                          ),
+                        );
+                      } else if (downloadUrl != null) {
+                        final url = Uri.parse(downloadUrl);
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url, mode: LaunchMode.externalApplication);
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.forum_outlined, size: 16),
+                  label: const Text('Export Messages'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () async {
+                    try {
+                      final msgData = await AppwriteAdminExportService.instance
+                          .exportChatMessages(type: 'messaging', limitPerChannel: 500);
+                      if (!mounted) return;
+                      final files = (msgData['files'] as List?) ?? const [];
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Exported ${files.length} channel message file(s)')),
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Export failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
+                      );
                     }
-                  }
-                },
-              ),
+                  },
+                ),
+              ],
+            ),
           ],
         ),
       );

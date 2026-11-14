@@ -302,7 +302,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
                   child: _buildActionCard(
                     'Meeting Notes',
                     Icons.note_alt_rounded,
-                    'Fathom-style notes + transcript',
+                    'Meeting notes & transcripts',
                     () => _openMeetingNotes(),
                   ),
                 ),
@@ -405,24 +405,52 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             Text('• Scheduled Meeting: Join existing meeting'),
           ],
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _startQuickMeeting();
-            },
-            child: const Text('Quick Meeting'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _navigateToConferencePlatform();
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: colorScheme.primary,
-              foregroundColor: colorScheme.onPrimary,
-            ),
-            child: const Text('Conference Platform'),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _startQuickMeeting();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Quick Meeting',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _navigateToConferencePlatform();
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Conference Hub',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

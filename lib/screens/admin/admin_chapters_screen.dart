@@ -281,10 +281,13 @@ class _AdminChaptersScreenState extends State<AdminChaptersScreen> {
               children: [
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    color: colorScheme.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: colorScheme.primary.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: Text(
                     chapter.type.name.toUpperCase(),
@@ -292,51 +295,72 @@ class _AdminChaptersScreenState extends State<AdminChaptersScreen> {
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: colorScheme.primary,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
+                Icon(
+                  Icons.people_alt_rounded,
+                  size: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
                 Text(
-                  '${chapter.memberIds.length} members',
+                  '${chapter.memberIds.length} ${chapter.memberIds.length == 1 ? "member" : "members"}',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const Spacer(),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AdminApprovalScreen(),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminApprovalScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.how_to_reg_outlined, size: 16),
+                    label: const Text('Approvals', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.how_to_reg_outlined, size: 16),
-                  label: const Text('Approvals', style: TextStyle(fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ChapterReportsScreen(initialChapter: chapter.name),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ChapterReportsScreen(initialChapter: chapter.name),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.assessment_outlined, size: 16),
+                    label: const Text('Reports', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.assessment_outlined, size: 16),
-                  label: const Text('Reports',
-                      style: TextStyle(fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
                   ),
                 ),
               ],

@@ -476,14 +476,17 @@ class _LeaderMeetingTranscriptionScreenState
         titleWidget: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.draw_rounded, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'ALIVE Scribe',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: theme.colorScheme.onSurface,
+            const Icon(Icons.draw_rounded, size: 18),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'ALIVE Scribe',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: theme.colorScheme.onSurface,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -492,7 +495,7 @@ class _LeaderMeetingTranscriptionScreenState
         actions: [
           // Prominent High-Contrast Microphone / Recording Status Indicator
           Padding(
-            padding: const EdgeInsets.only(right: 14),
+            padding: const EdgeInsets.only(left: 8, right: 8),
             child: Tooltip(
               message: isListening
                   ? 'ALIVE Scribe Recording Active (Tap to Mute Mic)'
@@ -504,7 +507,7 @@ class _LeaderMeetingTranscriptionScreenState
                   borderRadius: BorderRadius.circular(20),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: isListening
                           ? (isDark

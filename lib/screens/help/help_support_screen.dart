@@ -405,7 +405,6 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
 
   Widget _buildGuidesTab(
       BuildContext context, String Function(String) translate) {
-    final theme = Theme.of(context);
     final guides = [
       GuideItem(
         title: 'ALIVE Meet: Video Conferencing & Breakout Rooms',
@@ -787,72 +786,92 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
 
   Widget _buildFeedbackTab(
       BuildContext context, String Function(String) translate) {
+    final theme = Theme.of(context);
+    final rawDesc = translate('feedback_message_desc');
+    final feedbackDesc = (rawDesc.isEmpty ||
+            rawDesc.toLowerCase().contains('feedback message desc') ||
+            rawDesc == 'feedback_message_desc')
+        ? 'Share your thoughts, report a bug, or suggest a feature to help us improve.'
+        : rawDesc;
+
     return LayoutFixUtils.safeColumn(
       padding: ResponsiveUtils.getResponsivePadding(context),
       children: [
-        // Feedback Header
+        // Compact Horizontal Feedback Header
         Container(
           width: double.infinity,
-          padding: ResponsiveUtils.getResponsivePadding(context),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Theme.of(context).colorScheme.tertiaryContainer,
-                Theme.of(context).colorScheme.surface,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border:
-                Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
-          child: Column(
+          child: Row(
             children: [
-              Icon(
-                Icons.feedback_outlined,
-                size: ResponsiveUtils.getResponsiveIconSize(context, 48),
-                color: Theme.of(context).colorScheme.tertiary,
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.tertiary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.feedback_outlined,
+                  size: 24,
+                  color: theme.colorScheme.tertiary,
+                ),
               ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-              Text(
-                translate('we_value_feedback'),
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      translate('we_value_feedback'),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-              ),
-              SizedBox(
-                  height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-              Text(
-                translate('feedback_message_desc'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
+                    const SizedBox(height: 3),
+                    Text(
+                      feedbackDesc,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+        const SizedBox(height: 16),
         // Feedback Type Selection
-        Text(
-          translate('feedback_type'),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            translate('feedback_type'),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
-        Wrap(
-          spacing: ResponsiveUtils.getResponsiveSpacing(context, 8),
-          children: [
-            _buildFeedbackTypeChip(context, translate('general'), 'General'),
-            _buildFeedbackTypeChip(
-                context, translate('bug_report'), 'Bug Report'),
-            _buildFeedbackTypeChip(
-                context, translate('feature_request'), 'Feature Request'),
-            _buildFeedbackTypeChip(context, translate('other'), 'Other'),
-          ],
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildFeedbackTypeChip(context, translate('general'), 'General'),
+              _buildFeedbackTypeChip(
+                  context, translate('bug_report'), 'Bug Report'),
+              _buildFeedbackTypeChip(
+                  context, translate('feature_request'), 'Feature Request'),
+              _buildFeedbackTypeChip(context, translate('other'), 'Other'),
+            ],
+          ),
         ),
-        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 20)),
+        const SizedBox(height: 16),
         // Email Input
         TextField(
           controller: _feedbackControllers[0],

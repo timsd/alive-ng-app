@@ -10,6 +10,7 @@ import '../../utils/error_handler.dart';
 import '../../models/leadership_models.dart';
 import '../../services/leadership_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/admin_filter_header.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../../config/meeting_links_config.dart';
@@ -32,7 +33,6 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
   List<LeadershipRecord> _activeRecords = [];
   List<LeadershipRecord> _completedRecords = [];
   List<LeadershipRecord> _archivedRecords = [];
-  Map<String, dynamic> _statistics = {};
 
   List<Map<String, dynamic>> _trustees = [];
   List<Map<String, dynamic>> _bod = [];
@@ -115,7 +115,6 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         _activeRecords = futures[0] as List<LeadershipRecord>;
         _completedRecords = futures[1] as List<LeadershipRecord>;
         _archivedRecords = futures[2] as List<LeadershipRecord>;
-        _statistics = futures[3] as Map<String, dynamic>;
         _isLoading = false;
       });
     } catch (e) {
@@ -581,7 +580,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                             onPressed: _joinLeadershipMeeting,
                             icon: const Icon(Icons.video_call_rounded, size: 18),
                             label: const Text(
-                              'Join',
+                              'Join Meeting',
                               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             style: FilledButton.styleFrom(
@@ -632,171 +631,82 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
   }
 
   Widget _buildSearchAndFilters(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(color: theme.dividerColor),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Leadership by tenure dropdown filter (Images 2 & 3)
-          Row(
-            children: [
-              Icon(Icons.history_edu_rounded, color: theme.colorScheme.primary, size: 22),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Leadership by tenure',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: AdminFilterHeader<String>(
+        searchController: _searchController,
+        searchHint: 'Search by name, email, or position...',
+        onSearchChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
+        onSearchCleared: () {
+          setState(() {
+            _searchQuery = '';
+          });
+        },
+        dropdownFilters: [
+          AdminDropdownPill<String>(
+            label: 'Tenure',
+            icon: Icons.history_edu_rounded,
+            selectedValue: _tenureFilter,
+            items: _availableTenures
+                .map(
+                  (tenure) => DropdownMenuItem<String>(
+                    value: tenure,
+                    child: Text(tenure == 'all' ? 'All Tenures' : tenure),
                   ),
-                ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _tenureFilter = value);
+              }
+            },
+          ),
+          AdminDropdownPill<String>(
+            label: 'Position',
+            icon: Icons.badge_outlined,
+            selectedValue: _selectedPosition?.name ?? 'all',
+            items: [
+              const DropdownMenuItem<String>(
+                value: 'all',
+                child: Text('All Positions'),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.colorScheme.outlineVariant),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _tenureFilter,
-                    borderRadius: BorderRadius.circular(12),
-                    dropdownColor: theme.colorScheme.surface,
-                    items: _availableTenures
-                        .map((tenure) => DropdownMenuItem(
-                              value: tenure,
-                              child: Text(
-                                tenure == 'all' ? 'All Tenures' : tenure,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) setState(() => _tenureFilter = value);
-                    },
-                  ),
+              ...LeadershipPosition.values.map(
+                (position) => DropdownMenuItem<String>(
+                  value: position.name,
+                  child: Text(position.displayName),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 14),
-
-          // Search bar
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Search by name, email, or position...',
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Filters
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<LeadershipPosition>(
-                  initialValue: _selectedPosition,
-                  borderRadius: BorderRadius.circular(16),
-                  dropdownColor: theme.colorScheme.surfaceContainerHigh,
-                  menuMaxHeight: 380,
-                  icon: const Icon(Icons.arrow_drop_down_rounded),
-                  decoration: InputDecoration(
-                    labelText: 'Position',
-                    labelStyle: TextStyle(
-                      fontSize: 13,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                  ),
-                  items: [
-                    DropdownMenuItem<LeadershipPosition>(
-                      value: null,
-                      child: Text(
-                        'All Positions',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    ...LeadershipPosition.values.map(
-                      (position) => DropdownMenuItem(
-                        value: position,
-                        child: Text(
-                          position.displayName,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedPosition = value;
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _searchController.clear();
-                    _selectedPosition = null;
-                  });
-                },
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                icon: const Icon(Icons.clear, size: 18),
-                label: const Text('Clear'),
-              ),
-            ],
+            onChanged: (value) {
+              setState(() {
+                if (value == null || value == 'all') {
+                  _selectedPosition = null;
+                } else {
+                  _selectedPosition = LeadershipPosition.values.firstWhere(
+                    (p) => p.name == value,
+                  );
+                }
+              });
+            },
           ),
         ],
+        selectedMetric: 'all',
+        onSelectMetric: (_) {},
+        hasActiveNonDefaultFilters: _tenureFilter != 'all' ||
+            _selectedPosition != null ||
+            _searchQuery.isNotEmpty,
+        onClearAllFilters: () {
+          _searchController.clear();
+          setState(() {
+            _tenureFilter = 'all';
+            _selectedPosition = null;
+            _searchQuery = '';
+          });
+        },
       ),
     );
   }
@@ -1064,7 +974,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         officeTitle,
                         style: TextStyle(
@@ -1083,97 +993,140 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
                           ),
                         ),
                       ],
-                      const SizedBox(height: 4),
-                      Text(
-                        'Tenure: ${getTenureText()}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
-                      if (email.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.email_outlined,
-                                size: 14,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                email,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 13,
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Tenure: ${getTenureText()}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (email.isNotEmpty)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.email_outlined,
+                                  size: 14,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 220),
+                                  child: Text(
+                                    email,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontSize: 12,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ],
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  tooltip: 'Edit details / Link account',
-                  onPressed: () => _showEditOfficeHolderDialog(holder, category),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.archive_outlined, size: 20, color: Colors.orange),
-                  tooltip: 'Archive (Out of Tenure)',
-                  onPressed: () => _confirmArchiveOfficeHolder(holder, category),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                  tooltip: 'Remove',
-                  onPressed: () => _confirmDeleteOfficeHolder(holder),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: isLinked
-                    ? Colors.green.withValues(alpha: 0.1)
-                    : Colors.amber.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isLinked
-                      ? Colors.green.withValues(alpha: 0.3)
-                      : Colors.amber.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isLinked ? Icons.verified_user_rounded : Icons.pending_actions_rounded,
-                    size: 14,
-                    color: isLinked ? Colors.green.shade700 : Colors.amber.shade900,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    isLinked ? 'Linked App Account' : 'Pending App Registration',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isLinked ? Colors.green.shade800 : Colors.amber.shade900,
-                    ),
-                  ),
-                  if (isLinked) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      '($userId)',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.green.shade700,
+            Divider(
+              height: 1,
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isLinked
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.amber.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isLinked
+                            ? Colors.green.withValues(alpha: 0.3)
+                            : Colors.amber.withValues(alpha: 0.3),
                       ),
                     ),
-                  ],
-                ],
-              ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isLinked ? Icons.verified_user_rounded : Icons.pending_actions_rounded,
+                          size: 14,
+                          color: isLinked ? Colors.green.shade700 : Colors.amber.shade900,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            isLinked ? 'Linked App Account' : 'Pending App Registration',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: isLinked ? Colors.green.shade800 : Colors.amber.shade900,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  tooltip: 'Edit details / Link account',
+                  onPressed: () => _showEditOfficeHolderDialog(holder, category),
+                ),
+                const SizedBox(width: 6),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.orange.withValues(alpha: 0.12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.archive_outlined, size: 18, color: Colors.orange),
+                  tooltip: 'Archive (Out of Tenure)',
+                  onPressed: () => _confirmArchiveOfficeHolder(holder, category),
+                ),
+                const SizedBox(width: 6),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.red.withValues(alpha: 0.12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                  tooltip: 'Remove',
+                  onPressed: () => _confirmDeleteOfficeHolder(holder),
+                ),
+              ],
             ),
           ],
         ),
@@ -1799,31 +1752,6 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         ),
       ),
     );
-  }
-
-  List<Widget> _buildPositionBreakdown(
-    Map<String, dynamic> positionCounts,
-    ThemeData theme,
-  ) {
-    return positionCounts.entries.map((entry) {
-      return Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: theme.colorScheme.primary,
-            child: Text(
-              entry.value.toString(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          title: Text(entry.key),
-          subtitle: Text('${entry.value} active leader(s)'),
-        ),
-      );
-    }).toList();
   }
 
   Widget _buildRecordsTab(List<LeadershipRecord> records, String title) {
