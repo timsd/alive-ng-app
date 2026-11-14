@@ -282,7 +282,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             ),
             if (event.description.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(
+              SmartLinkHelper.buildLinkifiedText(
+                context,
                 event.description,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
@@ -379,7 +380,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             ),
             if (message.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(
+              SmartLinkHelper.buildLinkifiedText(
+                context,
                 message,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),

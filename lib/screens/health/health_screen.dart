@@ -9,6 +9,7 @@ import '../../utils/text_formatter.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../utils/responsive_utils.dart';
 import '../../services/appwrite_health_service.dart';
+import 'widgets/daily_health_nugget_card.dart';
 
 // Provider for health tracking data
 final healthTrackingProvider =
@@ -147,6 +148,25 @@ class HealthScreen extends ConsumerWidget {
                 ],
               ),
             ),
+
+            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 20)),
+
+            // Daily 365-Day Rotating Adventist Health Nugget
+            Padding(
+              padding: ResponsiveUtils.getResponsiveHorizontalPadding(context),
+              child: Text(
+                'Daily Health Nugget',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize:
+                          ResponsiveUtils.getResponsiveFontSize(context, 20),
+                    ),
+              ),
+            ),
+
+            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+
+            const DailyHealthNuggetCard(),
 
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
 
