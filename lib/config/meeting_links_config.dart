@@ -4,6 +4,7 @@ class AliveMeetConfig {
   static const String boardRoom = 'alive-meet-board';
   static const String leadershipRoom = 'alive-meet-leadership';
   static const String prayerRoom = 'alive-meet-prayer';
+  static const String quickRoom = 'alive-meet-quick';
   static const String communityRoom = 'alive-meet-community';
 
   static String roomFor(MeetingType type) {
@@ -14,6 +15,8 @@ class AliveMeetConfig {
         return leadershipRoom;
       case MeetingType.prayer:
         return prayerRoom;
+      case MeetingType.quick:
+        return quickRoom;
       case MeetingType.general:
         return communityRoom;
     }
@@ -24,6 +27,7 @@ enum MeetingType {
   board,
   leadership,
   prayer,
+  quick,
   general,
 }
 
@@ -36,6 +40,8 @@ extension MeetingTypeExtension on MeetingType {
         return 'ALIVE Meet: Leadership';
       case MeetingType.prayer:
         return 'ALIVE Meet: Prayer';
+      case MeetingType.quick:
+        return 'ALIVE Meet: Quick Meeting';
       case MeetingType.general:
         return 'ALIVE Meet';
     }

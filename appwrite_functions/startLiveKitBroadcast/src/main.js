@@ -11,6 +11,7 @@ const FACEBOOK_INGEST = 'rtmps://live-api-s.facebook.com:443/rtmp';
 const roomPolicies = {
   general: { room: 'alive-meet-community', roles: null },
   prayer: { room: 'alive-meet-prayer', roles: null },
+  quick: { room: 'alive-meet-quick', roles: null },
   leadership: {
     room: 'alive-meet-leadership',
     roles: ['coordinator', 'leader', 'director', 'bod', 'trustee', 'admin'],

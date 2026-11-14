@@ -91,6 +91,8 @@ class _ConferencePlatformScreenState
         return MeetingType.leadership;
       case 'prayer':
         return MeetingType.prayer;
+      case 'quick':
+        return MeetingType.quick;
       default:
         if (roomName == AliveMeetConfig.boardRoom ||
             roomName.startsWith('board-meeting-')) {
@@ -102,6 +104,9 @@ class _ConferencePlatformScreenState
         if (roomName == AliveMeetConfig.prayerRoom) {
           return MeetingType.prayer;
         }
+        if (roomName == AliveMeetConfig.quickRoom) {
+          return MeetingType.quick;
+        }
         return MeetingType.general;
     }
   }
@@ -112,6 +117,9 @@ class _ConferencePlatformScreenState
     }
     if (roomName == AliveMeetConfig.prayerRoom) {
       return 'Prayer Room Meeting';
+    }
+    if (roomName == AliveMeetConfig.quickRoom) {
+      return 'Quick Meeting Room';
     }
     if (roomName == AliveMeetConfig.leadershipRoom) {
       return 'Leadership Meeting';
@@ -240,6 +248,11 @@ class _ConferencePlatformScreenState
         roomName: AliveMeetConfig.prayerRoom,
         displayName: 'Prayer Room Meeting',
         meetingType: MeetingType.prayer,
+      ),
+      const _RoomCandidate(
+        roomName: AliveMeetConfig.quickRoom,
+        displayName: 'Quick Meeting Room',
+        meetingType: MeetingType.quick,
       ),
       if (canLeader)
         const _RoomCandidate(

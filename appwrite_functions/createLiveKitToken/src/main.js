@@ -15,6 +15,7 @@ function formatRoomDisplayName(roomName, metadataStr) {
   }
   if (roomName === 'alive-meet-community') return 'General Meeting Room';
   if (roomName === 'alive-meet-prayer') return 'Prayer Room Meeting';
+  if (roomName === 'alive-meet-quick') return 'Quick Meeting Room';
   if (roomName === 'alive-meet-leadership') return 'Leadership Meeting';
   if (roomName === 'alive-meet-board' || roomName.startsWith('board-meeting-')) {
     return 'Board of Directors Meeting';
@@ -29,12 +30,14 @@ function inferMeetingType(roomName) {
   if (roomName === 'alive-meet-board' || roomName.startsWith('board-meeting-')) return 'board';
   if (roomName === 'alive-meet-leadership') return 'leadership';
   if (roomName === 'alive-meet-prayer') return 'prayer';
+  if (roomName === 'alive-meet-quick') return 'quick';
   return 'general';
 }
 
 const roomPolicies = {
   general: { room: 'alive-meet-community', roles: null },
   prayer: { room: 'alive-meet-prayer', roles: null },
+  quick: { room: 'alive-meet-quick', roles: null },
   leadership: {
     room: 'alive-meet-leadership',
     roles: ['coordinator', 'leader', 'director', 'bod', 'trustee', 'admin'],
