@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -278,10 +279,17 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     return text.replaceAll(' ', '-').toLowerCase();
   }
 
+  bool _isMinimizing = false;
+
   void _minimizeMeeting() {
+    if (_isMinimizing || !mounted) return;
+    _isMinimizing = true;
     ref.read(isMeetingMinimizedProvider.notifier).state = true;
-    if (mounted) {
-      Navigator.of(context).maybePop();
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      context.go('/home');
     }
   }
 
