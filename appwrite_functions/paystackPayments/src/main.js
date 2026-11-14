@@ -293,6 +293,13 @@ export default async ({ req, res, log, error }) => {
     });
     let secret = paystackConfig.secret;
     let publicKey = paystackConfig.publicKey;
+    const candidateKeys = [
+      paystackConfig.liveSecretKey,
+      paystackConfig.testSecretKey,
+      process.env.PAYSTACK_SECRET_KEY?.trim(),
+      process.env.PAYSTACK_LIVE_SECRET_KEY?.trim(),
+      process.env.PAYSTACK_TEST_SECRET_KEY?.trim(),
+    ].filter((k, idx, arr) => k && arr.indexOf(k) === idx);
 
     if (!secret) {
       error('Missing PAYSTACK_SECRET_KEY in function environment or app_settings.');
@@ -331,10 +338,7 @@ export default async ({ req, res, log, error }) => {
 
       // If verification failed with invalid key / auth error, attempt alternative key fallback
       if (!verifyData.status && (verifyData.message?.toLowerCase().includes('key') || verifyRes.status === 401)) {
-        const altSecret = paystackConfig.isTestMode
-          ? (process.env.PAYSTACK_LIVE_SECRET_KEY || process.env.PAYSTACK_SECRET_KEY || '')
-          : (process.env.PAYSTACK_TEST_SECRET_KEY || '');
-        if (altSecret && altSecret !== secret) {
+        for (const altSecret of candidateKeys.filter((k) => k !== secret)) {
           log(`Retrying verification with alternative key: ${altSecret.substring(0, 10)}...`);
           const retryRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
             headers: {
@@ -343,9 +347,11 @@ export default async ({ req, res, log, error }) => {
             },
           });
           const retryData = await retryRes.json();
-          if (retryData.status) {
+          if (retryData.status || !retryData.message?.toLowerCase().includes('key')) {
             verifyRes = retryRes;
             verifyData = retryData;
+            secret = altSecret;
+            break;
           }
         }
       }
@@ -372,7 +378,7 @@ export default async ({ req, res, log, error }) => {
     if (action === 'list_subscriptions' || action === 'cancel_subscription') {
       const fnError = (message, status = 400) => res.json({ error: message }, status);
       const paystack = async (path, { method = 'GET', payload = null } = {}) => {
-        const resp = await fetch(`https://api.paystack.co${path}`, {
+        let resp = await fetch(`https://api.paystack.co${path}`, {
           method,
           headers: {
             Authorization: `Bearer ${secret}`,
@@ -380,7 +386,26 @@ export default async ({ req, res, log, error }) => {
           },
           ...(payload ? { body: JSON.stringify(payload) } : {}),
         });
-        const json = await resp.json().catch(() => ({}));
+        let json = await resp.json().catch(() => ({}));
+        if (!json?.status && (json?.message?.toLowerCase().includes('key') || resp.status === 401)) {
+          for (const altKey of candidateKeys.filter((k) => k !== secret)) {
+            const retryResp = await fetch(`https://api.paystack.co${path}`, {
+              method,
+              headers: {
+                Authorization: `Bearer ${altKey}`,
+                'Content-Type': 'application/json',
+              },
+              ...(payload ? { body: JSON.stringify(payload) } : {}),
+            });
+            const retryJson = await retryResp.json().catch(() => ({}));
+            if (retryJson?.status || !retryJson?.message?.toLowerCase().includes('key')) {
+              resp = retryResp;
+              json = retryJson;
+              secret = altKey;
+              break;
+            }
+          }
+        }
         if (!json?.status) {
           throw new Error(json?.message || 'Paystack request failed.');
         }
@@ -544,13 +569,21 @@ export default async ({ req, res, log, error }) => {
 
         // 1. Attempt direct USD plan creation on merchant account
         planName = makeDynamicPlanName('USD', planAmountMinor, false);
-        planCode = await createDynamicPlan({
+        const usdPlanRes = await createDynamicPlan({
           secret,
+          candidateKeys,
           log,
           name: planName,
           amount: planAmountMinor,
           currency: 'USD',
         });
+        planCode = usdPlanRes?.planCode || null;
+        if (usdPlanRes?.activeSecret && usdPlanRes.activeSecret !== secret) {
+          secret = usdPlanRes.activeSecret;
+          publicKey = secret.startsWith('sk_live_')
+            ? (paystackConfig.livePublicKey || publicKey)
+            : (paystackConfig.testPublicKey || publicKey);
+        }
 
         // 2. If Paystack rejects direct USD plan creation, fallback to NGN conversion
         if (!planCode) {
@@ -587,13 +620,21 @@ export default async ({ req, res, log, error }) => {
           }
 
           planName = makeDynamicPlanName(planCurrency, planAmountMinor, true);
-          planCode = await createDynamicPlan({
+          const ngnPlanRes = await createDynamicPlan({
             secret,
+            candidateKeys,
             log,
             name: planName,
             amount: planAmountMinor,
             currency: planCurrency,
           });
+          planCode = ngnPlanRes?.planCode || null;
+          if (ngnPlanRes?.activeSecret && ngnPlanRes.activeSecret !== secret) {
+            secret = ngnPlanRes.activeSecret;
+            publicKey = secret.startsWith('sk_live_')
+              ? (paystackConfig.livePublicKey || publicKey)
+              : (paystackConfig.testPublicKey || publicKey);
+          }
         }
       } else {
         if (planAmountMinor < MIN_PLAN_KOBO) {
@@ -602,13 +643,21 @@ export default async ({ req, res, log, error }) => {
           }, 400);
         }
         planName = makeDynamicPlanName(planCurrency, planAmountMinor, false);
-        planCode = await createDynamicPlan({
+        const directPlanRes = await createDynamicPlan({
           secret,
+          candidateKeys,
           log,
           name: planName,
           amount: planAmountMinor,
           currency: planCurrency,
         });
+        planCode = directPlanRes?.planCode || null;
+        if (directPlanRes?.activeSecret && directPlanRes.activeSecret !== secret) {
+          secret = directPlanRes.activeSecret;
+          publicKey = secret.startsWith('sk_live_')
+            ? (paystackConfig.livePublicKey || publicKey)
+            : (paystackConfig.testPublicKey || publicKey);
+        }
       }
 
       if (!planCode) {
@@ -646,15 +695,7 @@ export default async ({ req, res, log, error }) => {
     // rejected by Paystack with "Invalid key" / 401, seamlessly fall back to any
     // other valid secret key configured in the function environment.
     if (!json?.status && (json?.message?.toLowerCase().includes('key') || paystackResponse.status === 401)) {
-      const candidateKeys = [
-        paystackConfig.liveSecretKey,
-        paystackConfig.testSecretKey,
-        process.env.PAYSTACK_SECRET_KEY?.trim(),
-        process.env.PAYSTACK_LIVE_SECRET_KEY?.trim(),
-        process.env.PAYSTACK_TEST_SECRET_KEY?.trim(),
-      ].filter((k) => k && k !== secret);
-
-      for (const altKey of candidateKeys) {
+      for (const altKey of candidateKeys.filter((k) => k !== secret)) {
         log(`Paystack init returned "${json?.message}". Retrying with fallback key ${altKey.substring(0, 10)}...`);
         const retryRes = await fetch('https://api.paystack.co/transaction/initialize', {
           method: 'POST',
@@ -778,13 +819,21 @@ export default async ({ req, res, log, error }) => {
           }, 400);
         }
         const ngnPlanName = makeDynamicPlanName('NGN', ngnAmountMinor, true);
-        const ngnPlanCode = await createDynamicPlan({
+        const ngnPlanRes = await createDynamicPlan({
           secret,
+          candidateKeys,
           log,
           name: ngnPlanName,
           amount: ngnAmountMinor,
           currency: 'NGN',
         });
+        const ngnPlanCode = ngnPlanRes?.planCode || null;
+        if (ngnPlanRes?.activeSecret && ngnPlanRes.activeSecret !== secret) {
+          secret = ngnPlanRes.activeSecret;
+          publicKey = secret.startsWith('sk_live_')
+            ? (paystackConfig.livePublicKey || publicKey)
+            : (paystackConfig.testPublicKey || publicKey);
+        }
         if (!ngnPlanCode) {
           return res.json({ error: 'Could not create a recurring plan. Please try a one-time donation.' }, 400);
         }
@@ -923,12 +972,13 @@ function makeDynamicPlanName(currency, amountMinor, fromUsd = false) {
   return `ALIVE Monthly ${currency} ${money}${suffix} ${stamp}`;
 }
 
-async function createDynamicPlan({ secret, log, name, amount, currency }) {
+async function createDynamicPlan({ secret, candidateKeys = [], log, name, amount, currency }) {
   try {
-    const createPlanRes = await fetch('https://api.paystack.co/plan', {
+    let activeSecret = secret;
+    let createPlanRes = await fetch('https://api.paystack.co/plan', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${secret}`,
+        Authorization: `Bearer ${activeSecret}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -938,16 +988,43 @@ async function createDynamicPlan({ secret, log, name, amount, currency }) {
         currency,
       }),
     });
-    const planJson = await createPlanRes.json();
+    let planJson = await createPlanRes.json();
+
+    if (!planJson?.status && (planJson?.message?.toLowerCase().includes('key') || createPlanRes.status === 401)) {
+      for (const altKey of candidateKeys.filter((k) => k && k !== activeSecret)) {
+        if (log) log(`Plan creation returned "${planJson?.message}". Retrying with fallback key ${altKey.substring(0, 10)}...`);
+        const retryRes = await fetch('https://api.paystack.co/plan', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${altKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name,
+            interval: 'monthly',
+            amount,
+            currency,
+          }),
+        });
+        const retryJson = await retryRes.json();
+        if (retryJson?.status || !retryJson?.message?.toLowerCase().includes('key')) {
+          createPlanRes = retryRes;
+          planJson = retryJson;
+          activeSecret = altKey;
+          break;
+        }
+      }
+    }
+
     if (planJson?.status && planJson?.data?.plan_code) {
       if (log) log(`Created dynamic plan: ${planJson.data.plan_code} (${name})`);
-      return planJson.data.plan_code;
+      return { planCode: planJson.data.plan_code, activeSecret };
     }
     if (log) log(`Dynamic plan creation failed: ${planJson?.message || 'unknown'}`);
-    return null;
+    return { planCode: null, activeSecret };
   } catch (planErr) {
     if (log) log(`Dynamic plan creation error: ${planErr.message}`);
-    return null;
+    return { planCode: null, activeSecret: secret };
   }
 }
 

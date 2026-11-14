@@ -47,12 +47,18 @@ class PaymentConfig {
   /// - If Test Mode is OFF: always returns a valid pk_live_ key
   static String get paystackPublicKey {
     if (isTestMode) {
+      if (_testPublicKeyFromSettings != null && _testPublicKeyFromSettings!.startsWith('pk_test_')) {
+        return _testPublicKeyFromSettings!;
+      }
       if (_cachedDynamicPublicKey != null && _cachedDynamicPublicKey!.startsWith('pk_test_')) {
         return _cachedDynamicPublicKey!;
       }
-      return _testPublicKeyFromSettings ?? testPublicKey;
+      return testPublicKey;
     }
 
+    if (_livePublicKeyFromSettings != null && _livePublicKeyFromSettings!.startsWith('pk_live_')) {
+      return _livePublicKeyFromSettings!;
+    }
     if (_cachedDynamicPublicKey != null && _cachedDynamicPublicKey!.startsWith('pk_live_')) {
       return _cachedDynamicPublicKey!;
     }
@@ -61,7 +67,20 @@ class PaymentConfig {
       defaultValue: '',
     );
     if (envKey.startsWith('pk_live_')) return envKey;
-    return _livePublicKeyFromSettings ?? livePublicKey;
+    return livePublicKey;
+  }
+
+  /// Updates the cached Live or Test public key from admin settings at runtime.
+  static void setModePublicKey({required bool isTest, required String key}) {
+    final trimmed = key.trim();
+    if (isTest && trimmed.startsWith('pk_test_')) {
+      _testPublicKeyFromSettings = trimmed;
+    } else if (!isTest && trimmed.startsWith('pk_live_')) {
+      _livePublicKeyFromSettings = trimmed;
+    }
+    if (isTest == isTestMode && trimmed.startsWith('pk_')) {
+      setDynamicPublicKey(trimmed);
+    }
   }
 
   /// Sets the dynamic public key at runtime (e.g. from Appwrite function response

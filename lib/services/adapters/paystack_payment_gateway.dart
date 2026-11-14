@@ -78,6 +78,7 @@ class PaystackPaymentGateway implements PaymentGateway {
 
       final payload = {
         'action': 'initialize_transaction',
+        'test_mode': PaymentConfig.isTestMode,
         'amount': request.amountMinor,
         // Currency priority: explicit metadata override (e.g. Paystack-only
         // NGN billing) -> request.currency -> NGN default. Never let a null /
@@ -146,6 +147,7 @@ class PaystackPaymentGateway implements PaymentGateway {
       // amount — there are no pre-configured monthly plans to send.
       final payload = {
         'action': 'initialize_subscription',
+        'test_mode': PaymentConfig.isTestMode,
         'currency': request.currency,
         'amount': request.amountMinor,
         'email': request.email,

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../../utils/appwrite_id_utils.dart';
 import '../../services/appwrite_facade.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _isLoading = true;
   final Map<String, List<Map<String, dynamic>>> _settingsByCategory = {};
   final Map<String, TextEditingController> _controllers = {};
+  final Set<String> _visibleSecretKeys = {};
+  Map<String, dynamic>? _paystackTestModeSetting;
+
+  static const Set<String> _hiddenInternalKeys = {
+    'paystack_test_mode',
+    'paystack_public_key',
+    'paystack_secret_key',
+  };
 
   @override
   void initState() {
@@ -31,6 +40,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Map<String, dynamic>? _findSettingByKey(String key) {
+    if (key == 'paystack_test_mode' && _paystackTestModeSetting != null) {
+      return _paystackTestModeSetting;
+    }
     for (final categorySettings in _settingsByCategory.values) {
       for (final setting in categorySettings) {
         if (_settingKey(setting) == key) {
@@ -58,18 +70,37 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       // Group settings by category
       _settingsByCategory.clear();
       _controllers.clear();
+      _paystackTestModeSetting = null;
 
       for (final setting in settings) {
-        final category = setting['category']?.toString() ?? 'app';
+        final key = _settingKey(setting);
+        final val = _settingValue(setting).trim();
+
+        // Sync live PaymentConfig state from loaded settings
+        if (key == 'paystack_test_mode') {
+          _paystackTestModeSetting = setting;
+          PaymentConfig.setTestMode(val.toLowerCase() == 'true');
+        } else if (key == 'paystack_live_public_key' && val.startsWith('pk_live_')) {
+          PaymentConfig.setModePublicKey(isTest: false, key: val);
+        } else if (key == 'paystack_test_public_key' && val.startsWith('pk_test_')) {
+          PaymentConfig.setModePublicKey(isTest: true, key: val);
+        }
+
+        // Hide internal/duplicate Paystack keys since the top Paystack card and
+        // the 4 canonical Live/Test Public/Secret key rows handle them cleanly.
+        if (_hiddenInternalKeys.contains(key)) {
+          continue;
+        }
+
+        final category = _resolveCategoryForSetting(setting, key);
         if (!_settingsByCategory.containsKey(category)) {
           _settingsByCategory[category] = [];
         }
         _settingsByCategory[category]!.add(setting);
 
         // Create controller for each setting
-        final key = _settingKey(setting);
         _controllers[key] = TextEditingController(
-          text: _settingValue(setting),
+          text: val,
         );
       }
     } catch (e) {
@@ -77,6 +108,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  String _resolveCategoryForSetting(Map<String, dynamic> setting, String key) {
+    final raw = setting['category']?.toString().trim() ?? '';
+    if (raw.isNotEmpty) return raw;
+    if (key == 'monthly_reminder') return 'notification';
+    if (key.startsWith('paystack_')) return 'payment';
+    if (key == 'app_version') return 'system';
+    return 'app';
   }
 
   Future<List<Map<String, dynamic>>> _listSettings() async {
@@ -371,15 +411,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         });
       }
 
-      final keySetting = _findSettingByKey('paystack_public_key');
-      final targetKey = enableTest ? PaymentConfig.testPublicKey : PaymentConfig.livePublicKey;
-      if (keySetting != null) {
-        await _updateSetting(keySetting['id'], {
-          'setting_value': targetKey,
-          'value': targetKey,
-        });
-      }
-
       ToastUtils.showSuccess(
         enableTest ? 'Switched to Paystack Test Mode' : 'Switched to Paystack Live Production Mode',
       );
@@ -557,59 +588,418 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   Widget _buildSettingInput(Map<String, dynamic> setting, String key, String dataType, bool isActive) {
     final controller = _controllers[key]!;
-    
-    switch (dataType) {
-      case 'boolean':
-        return Row(
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    // 1. Clean human-facing editor for Monthly Reminder (JSON)
+    if (key == 'monthly_reminder') {
+      bool allowOptOut = false;
+      try {
+        final decoded = jsonDecode(controller.text);
+        if (decoded is Map) {
+          allowOptOut = decoded['user_toggle_enabled'] == true;
+        }
+      } catch (_) {}
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        child: Row(
           children: [
-            const Text('Value: '),
-            Switch(
-              value: controller.text.toLowerCase() == 'true',
+            Icon(
+              allowOptOut ? Icons.notifications_active_outlined : Icons.notifications_paused_outlined,
+              size: 18,
+              color: allowOptOut ? colorScheme.primary : colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Allow Member Opt-Out Toggle',
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    allowOptOut
+                        ? 'Members can toggle the monthly support reminder on or off in Profile.'
+                        : 'Monthly support reminder is managed globally by administration.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch.adaptive(
+              value: allowOptOut,
               onChanged: isActive
-                  ? (value) {
+                  ? (val) {
                       setState(() {
-                        controller.text = value.toString();
+                        controller.text = jsonEncode({'user_toggle_enabled': val});
                       });
                     }
                   : null,
             ),
-            Text(controller.text.toLowerCase() == 'true' ? 'Enabled' : 'Disabled'),
           ],
+        ),
+      );
+    }
+
+    // 2. Clean human-facing editor for Android OTA App Version (JSON)
+    if (key == 'app_version') {
+      Map<String, dynamic> versionMap = {};
+      try {
+        final decoded = jsonDecode(controller.text);
+        if (decoded is Map) {
+          versionMap = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+
+      final latestVersion = (versionMap['latest_version'] ?? '2.0.7').toString();
+      final buildNumber = (versionMap['build_number'] ?? 15).toString();
+      final forceUpdate = versionMap['force_update'] == true;
+      final updateUrl = (versionMap['update_url'] ?? '').toString();
+
+      void updateVersionField(String fieldKey, dynamic fieldVal) {
+        final next = Map<String, dynamic>.from(versionMap);
+        next[fieldKey] = fieldVal;
+        controller.text = jsonEncode(next);
+      }
+
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: TextFormField(
+                    key: ValueKey('app_ver_str_${setting['id']}'),
+                    initialValue: latestVersion,
+                    enabled: isActive,
+                    onChanged: (v) => updateVersionField('latest_version', v.trim()),
+                    decoration: InputDecoration(
+                      labelText: 'Latest Version',
+                      hintText: 'e.g. 2.0.9',
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    key: ValueKey('app_ver_bld_${setting['id']}'),
+                    initialValue: buildNumber,
+                    enabled: isActive,
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) => updateVersionField('build_number', int.tryParse(v.trim()) ?? 1),
+                    decoration: InputDecoration(
+                      labelText: 'Build #',
+                      hintText: 'e.g. 18',
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              key: ValueKey('app_ver_url_${setting['id']}'),
+              initialValue: updateUrl,
+              enabled: isActive,
+              onChanged: (v) => updateVersionField('update_url', v.trim()),
+              decoration: InputDecoration(
+                labelText: 'APK Download URL',
+                hintText: 'https://...',
+                isDense: true,
+                prefixIcon: const Icon(Icons.link_rounded, size: 18),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.system_security_update_warning_rounded,
+                  size: 16,
+                  color: forceUpdate ? Colors.orange : colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Require Mandatory Update (Force Update)',
+                    style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Switch.adaptive(
+                  value: forceUpdate,
+                  onChanged: isActive
+                      ? (val) {
+                          setState(() {
+                            updateVersionField('force_update', val);
+                          });
+                        }
+                      : null,
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 3. Clean human-facing summary for Discipleship Officer Assignments (JSON Array)
+    if (key == 'alive_officer_office_assignments') {
+      List<Map<String, dynamic>> assignments = [];
+      try {
+        final decoded = jsonDecode(controller.text);
+        if (decoded is List) {
+          assignments = decoded
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+      } catch (_) {}
+
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.badge_outlined, size: 18, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${assignments.length} Configured Officer Assignment${assignments.length == 1 ? '' : 's'}',
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Protected Encoding',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (assignments.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: assignments.take(6).map((item) {
+                  final name = (item['officer_name'] ?? item['office_title'] ?? 'Officer').toString();
+                  final office = (item['office_title'] ?? item['role'] ?? '').toString();
+                  final label = office.isNotEmpty && office != name ? '$name • $office' : name;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                    ),
+                    child: Text(
+                      label,
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11.5),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Text(
+              'Officer routing is safely encoded behind the scenes. Manage officer assignments visually in Discipleship Flow.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    switch (dataType) {
+      case 'boolean':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  controller.text.toLowerCase() == 'true' ? 'Enabled' : 'Disabled',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Switch.adaptive(
+                value: controller.text.toLowerCase() == 'true',
+                onChanged: isActive
+                    ? (value) {
+                        setState(() {
+                          controller.text = value.toString();
+                        });
+                      }
+                    : null,
+              ),
+            ],
+          ),
         );
-      
+
       case 'number':
         return TextFormField(
           controller: controller,
           enabled: isActive,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Value',
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             isDense: true,
           ),
         );
-      
+
       case 'json':
+        // Generic structured JSON key-value viewer/editor so raw JSON syntax is protected
+        try {
+          final decoded = jsonDecode(controller.text);
+          if (decoded is Map<String, dynamic>) {
+            return Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+              ),
+              child: Column(
+                children: decoded.entries.map((e) {
+                  final k = e.key;
+                  final v = e.value;
+                  if (v is bool) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            TextFormatter.formatText(k),
+                            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        Switch.adaptive(
+                          value: v,
+                          onChanged: isActive
+                              ? (nextVal) {
+                                  setState(() {
+                                    final copy = Map<String, dynamic>.from(decoded);
+                                    copy[k] = nextVal;
+                                    controller.text = jsonEncode(copy);
+                                  });
+                                }
+                              : null,
+                        ),
+                      ],
+                    );
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: TextFormField(
+                      key: ValueKey('json_${setting['id']}_$k'),
+                      initialValue: v?.toString() ?? '',
+                      enabled: isActive,
+                      onChanged: (nextText) {
+                        final copy = Map<String, dynamic>.from(decoded);
+                        copy[k] = v is num ? (num.tryParse(nextText) ?? nextText) : nextText;
+                        controller.text = jsonEncode(copy);
+                      },
+                      decoration: InputDecoration(
+                        labelText: TextFormatter.formatText(k),
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            );
+          }
+        } catch (_) {}
         return TextFormField(
           controller: controller,
           enabled: isActive,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'JSON Value',
-            border: OutlineInputBorder(),
+          maxLines: 2,
+          decoration: InputDecoration(
+            labelText: 'Configuration Value',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             isDense: true,
-            helperText: 'Enter valid JSON',
           ),
         );
-      
+
       default: // string
+        final isSecret = key.contains('secret') || key.contains('password') || key.contains('token');
+        final isRevealed = _visibleSecretKeys.contains(key);
         return TextFormField(
           controller: controller,
           enabled: isActive,
-          decoration: const InputDecoration(
-            labelText: 'Value',
-            border: OutlineInputBorder(),
+          obscureText: isSecret && !isRevealed,
+          style: key.startsWith('paystack_')
+              ? const TextStyle(fontFamily: 'monospace', fontSize: 13)
+              : null,
+          decoration: InputDecoration(
+            labelText: isSecret ? 'Secret Key' : 'Value',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             isDense: true,
+            suffixIcon: isSecret
+                ? IconButton(
+                    icon: Icon(
+                      isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      size: 18,
+                    ),
+                    tooltip: isRevealed ? 'Hide Secret Key' : 'Show Secret Key',
+                    onPressed: () {
+                      setState(() {
+                        if (isRevealed) {
+                          _visibleSecretKeys.remove(key);
+                        } else {
+                          _visibleSecretKeys.add(key);
+                        }
+                      });
+                    },
+                  )
+                : null,
           ),
         );
     }
@@ -711,20 +1101,30 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       for (final entry in _controllers.entries) {
         final key = entry.key;
         final controller = entry.value;
+        final val = controller.text.trim();
+
+        if (key == 'paystack_live_public_key' && val.startsWith('pk_live_')) {
+          PaymentConfig.setModePublicKey(isTest: false, key: val);
+        } else if (key == 'paystack_test_public_key' && val.startsWith('pk_test_')) {
+          PaymentConfig.setModePublicKey(isTest: true, key: val);
+        }
         
         // Find the setting by key and update it
         final setting = _findSettingByKey(key);
         if (setting != null) {
           updates.add(
             _updateSetting(setting['id'], {
-              'setting_value': controller.text,
+              'setting_value': val,
+              'value': val,
             })
           );
         }
       }
       
       await Future.wait(updates);
-      ToastUtils.showSuccess('All settings saved successfully');
+      await PaymentConfig.syncPublicKeyFromAppwrite();
+      if (mounted) setState(() {});
+      ToastUtils.showSuccess('All settings saved and synced in real time');
     } catch (e) {
       ToastUtils.showError('Error saving settings: $e');
     }
@@ -820,7 +1220,7 @@ class _AddSettingDialogState extends State<_AddSettingDialog> {
   String _dataType = 'string';
   
   final List<String> _categories = [
-    'app', 'notification', 'security', 'payment', 'social', 'api', 'ui', 'feature'
+    'app', 'system', 'notification', 'security', 'payment', 'social', 'api', 'ui', 'feature'
   ];
   final List<String> _dataTypes = ['string', 'number', 'boolean', 'json'];
 
@@ -991,7 +1391,7 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
   late String _category;
   
   final List<String> _categories = [
-    'app', 'notification', 'security', 'payment', 'social', 'api', 'ui', 'feature'
+    'app', 'system', 'notification', 'security', 'payment', 'social', 'api', 'ui', 'feature'
   ];
 
   @override
@@ -1003,7 +1403,8 @@ class _EditSettingDialogState extends State<_EditSettingDialog> {
     _descriptionController = TextEditingController(
       text: widget.setting['description'] ?? '',
     );
-    _category = widget.setting['category'] ?? 'app';
+    final rawCat = widget.setting['category']?.toString() ?? 'app';
+    _category = _categories.contains(rawCat) ? rawCat : 'app';
   }
 
   @override
