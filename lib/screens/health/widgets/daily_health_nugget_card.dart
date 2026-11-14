@@ -89,7 +89,7 @@ class _DailyHealthNuggetCardState extends State<DailyHealthNuggetCard> {
         'ALIVE Nigeria Daily Health Nugget (${nugget.category})\n\n'
         '"${nugget.title}"\n'
         '${nugget.nugget}\n\n'
-        '— ${nugget.speaker} (${nugget.scripture})\n\n'
+        'Source: ${nugget.speaker} (${nugget.scripture})\n\n'
         'Read more on ALIVE Nigeria: https://app.alivenigeria.org/health';
     SharePlus.instance.share(
       ShareParams(
@@ -178,14 +178,26 @@ class _DailyHealthNuggetCardState extends State<DailyHealthNuggetCard> {
                 ),
                 const Spacer(),
                 if (!isToday)
-                  TextButton(
+                  TextButton.icon(
                     onPressed: () => setState(() => _selectedDay = _todayDay),
+                    icon: const Icon(Icons.today_rounded, size: 15),
+                    label: const Text(
+                      'Today',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: const Size(0, 32),
+                      foregroundColor: colorScheme.primary,
+                      backgroundColor:
+                          colorScheme.primary.withValues(alpha: 0.12),
+                      side: BorderSide(
+                        color: colorScheme.primary.withValues(alpha: 0.35),
+                      ),
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      minimumSize: const Size(0, 30),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    child: const Text('Today'),
                   ),
                 IconButton(
                   icon: const Icon(Icons.share_outlined, size: 20),

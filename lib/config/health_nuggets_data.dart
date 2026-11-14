@@ -61,7 +61,7 @@ class HealthNuggetsData {
       title: 'The Temple of the Living God',
       nugget:
           'Your body is not your own—it is the dwelling place of the Holy Spirit. Every daily habit of eating, resting, and moving is an act of worship.',
-      speaker: 'Pastor Mark Finley',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '1 Corinthians 6:19-20',
     ),
     HealthNugget(
@@ -70,7 +70,7 @@ class HealthNuggetsData {
       title: 'Eat as Close to Nature as Possible',
       nugget:
           'Grains, fruits, nuts, and vegetables, prepared in a simple and natural way, are the most healthful and nourishing diet chosen for us by the Creator.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -79,7 +79,7 @@ class HealthNuggetsData {
       title: 'Pure Water Inside and Out',
       nugget:
           'In health and in sickness, pure water is one of heaven\'s choicest blessings. Drink two glasses upon waking to flush overnight metabolic waste.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Isaiah 44:3',
     ),
     HealthNugget(
@@ -88,7 +88,7 @@ class HealthNuggetsData {
       title: 'The Power of a Brisk Daily Walk',
       nugget:
           'Walking outdoors in fresh air is one of the finest medicines known to humanity. Thirty minutes of brisk walking daily lowers blood pressure and clears the mind.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: '3 John 1:2',
     ),
     HealthNugget(
@@ -97,7 +97,7 @@ class HealthNuggetsData {
       title: 'Sunlight Builds Immunity and Joy',
       nugget:
           'Fifteen to twenty minutes of morning sunlight activates vitamin D synthesis, strengthens bones, and naturally elevates brain serotonin.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Malachi 4:2',
     ),
     HealthNugget(
@@ -106,7 +106,7 @@ class HealthNuggetsData {
       title: 'True Temperance Defined',
       nugget:
           'True temperance teaches us to dispense entirely with everything hurtful and to use judiciously that which is healthful.',
-      speaker: 'Ellen G. White — Patriarchs and Prophets',
+      speaker: 'Inspired by Ellen G. White — Patriarchs and Prophets',
       scripture: '1 Corinthians 9:25',
     ),
     HealthNugget(
@@ -115,7 +115,7 @@ class HealthNuggetsData {
       title: 'Sabbath: God\'s Weekly Sanctuary in Time',
       nugget:
           'God built a weekly rhythm of restoration into creation. Stepping away from secular labor on the Sabbath lowers stress hormones and renews the soul.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Exodus 20:8-11',
     ),
     HealthNugget(
@@ -124,7 +124,7 @@ class HealthNuggetsData {
       title: 'Deep Diaphragmatic Breathing',
       nugget:
           'Most people use only the top third of their lungs. Slow, deep abdominal breathing in clean outdoor air oxygenates the blood and calms the nervous system.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Genesis 2:7',
     ),
     HealthNugget(
@@ -133,7 +133,7 @@ class HealthNuggetsData {
       title: 'Daniel\'s Ten-Day Proof',
       nugget:
           'Daniel purposed in his heart not to defile himself. A simple, unrefined plant-based diet produced clearer minds and stronger bodies in just ten days.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Daniel 1:12-15',
     ),
     HealthNugget(
@@ -142,7 +142,7 @@ class HealthNuggetsData {
       title: 'Never Drink Water With Meals',
       nugget:
           'Drinking large amounts of liquid during meals dilutes digestive enzymes and slows gastric emptying. Hydrate well between meals instead.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Proverbs 25:25',
     ),
     HealthNugget(
@@ -151,7 +151,7 @@ class HealthNuggetsData {
       title: 'A Merry Heart Does Good Like a Medicine',
       nugget:
           'Gratitude and joy are not mere emotions—they measurably strengthen immune cells and lower inflammatory markers in the bloodstream.',
-      speaker: 'Dr. Neil Nedley — Depression & Anxiety Recovery',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Proverbs 17:22',
     ),
     HealthNugget(
@@ -160,7 +160,7 @@ class HealthNuggetsData {
       title: 'Eat Breakfast Like a King',
       nugget:
           'A hearty, fiber-rich breakfast stabilizes blood glucose for hours, sharpens mental focus, and prevents late-night overeating.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Ecclesiastes 10:17',
     ),
     HealthNugget(
@@ -169,7 +169,7 @@ class HealthNuggetsData {
       title: 'The Healing Power of Early Sleep',
       nugget:
           'Two hours of sleep before midnight are worth more to cellular repair and melatonin production than four hours after midnight.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Psalm 127:2',
     ),
     HealthNugget(
@@ -178,7 +178,7 @@ class HealthNuggetsData {
       title: 'Motion Is Lotion for the Joints',
       nugget:
           'Joint cartilage has no direct blood supply; it receives nutrients through the compression and release of regular movement.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Isaiah 40:31',
     ),
     HealthNugget(
@@ -187,7 +187,7 @@ class HealthNuggetsData {
       title: 'Guard the Mind Against Digital Overload',
       nugget:
           'Temperance applies to our eyes and ears as much as our stomach. Constant screen stimulation fatigues the frontal lobe where moral decisions are made.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Philippians 4:8',
     ),
     HealthNugget(
@@ -196,7 +196,7 @@ class HealthNuggetsData {
       title: 'Chew Your Food Thoroughly',
       nugget:
           'Digestion begins in the mouth. Thorough chewing mixes food with salivary amylase, eases stomach workload, and signals fullness naturally.',
-      speaker: 'Dr. John Harvey Kellogg — Battle Creek Sanitarium',
+      speaker: 'Hydrotherapy & Sanitarium Principles',
       scripture: '1 Corinthians 10:31',
     ),
     HealthNugget(
@@ -205,7 +205,7 @@ class HealthNuggetsData {
       title: 'Open the Curtains to Sunlight',
       nugget:
           'Sunlight is nature\'s disinfectant. Let direct sunshine into your bedrooms and living spaces daily to destroy mold spores and bacteria.',
-      speaker: 'Ellen G. White — Counsels on Health',
+      speaker: 'Inspired by Ellen G. White — Counsels on Health',
       scripture: 'Psalm 84:11',
     ),
     HealthNugget(
@@ -214,7 +214,7 @@ class HealthNuggetsData {
       title: 'Sleep With Fresh Ventilation',
       nugget:
           'Stagnant bedroom air deprives the brain of oxygen overnight. Keep a window slightly cracked for gentle cross-ventilation while sleeping.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Job 33:4',
     ),
     HealthNugget(
@@ -223,7 +223,7 @@ class HealthNuggetsData {
       title: 'Forgiveness Frees the Body',
       nugget:
           'Harboring bitterness keeps the sympathetic nervous system locked in fight-or-flight. Forgiveness releases both the soul and the cardiovascular system.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Ephesians 4:32',
     ),
     HealthNugget(
@@ -232,7 +232,7 @@ class HealthNuggetsData {
       title: 'The Longevity Secret of Legumes',
       nugget:
           'Adventist Health Studies show that people who eat beans, lentils, and peas regularly enjoy significantly longer, healthier lives.',
-      speaker: 'Dr. Gary Fraser — Loma Linda University',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Daniel 1:16',
     ),
     HealthNugget(
@@ -241,7 +241,7 @@ class HealthNuggetsData {
       title: 'Contrast Hydrotherapy for Circulation',
       nugget:
           'Alternating warm and cool water in the shower stimulates white blood cell activity, relieves muscle soreness, and invigorates sluggish circulation.',
-      speaker: 'Dr. John Harvey Kellogg — Rational Hydrotherapy',
+      speaker: 'Hydrotherapy & Sanitarium Principles',
       scripture: 'John 7:38',
     ),
     HealthNugget(
@@ -250,7 +250,7 @@ class HealthNuggetsData {
       title: 'Five Hours Between Meals',
       nugget:
           'Allow at least five hours between meals with nothing but water in between. The stomach needs rest to complete digestion before receiving new food.',
-      speaker: 'Ellen G. White — Counsels on Diet and Foods',
+      speaker: 'Inspired by Ellen G. White — Counsels on Diet and Foods',
       scripture: 'Ecclesiastes 3:1',
     ),
     HealthNugget(
@@ -259,7 +259,7 @@ class HealthNuggetsData {
       title: 'Exercise Reverses Insulin Resistance',
       nugget:
           'A 15-minute walk immediately after a meal helps muscles absorb glucose without needing extra insulin, protecting against type 2 diabetes.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Proverbs 31:17',
     ),
     HealthNugget(
@@ -268,7 +268,7 @@ class HealthNuggetsData {
       title: 'Avoid Stimulants That Borrow Tomorrow\'s Energy',
       nugget:
           'Caffeine and energy drinks do not create energy—they whip tired nerves into spending reserves. True vitality comes from rest and nourishment.',
-      speaker: 'Dr. Walter Veith — Amazing Discoveries',
+      speaker: 'Creation & Health Principles',
       scripture: 'Proverbs 20:1',
     ),
     HealthNugget(
@@ -277,7 +277,7 @@ class HealthNuggetsData {
       title: 'Faith Over Fear in Health Crises',
       nugget:
           'When anxiety rises, prayer shifts the brain from panic to peace. Cast every care upon the Great Physician who knows every cell of your frame.',
-      speaker: 'Pastor Pavel Goia — Ministry Magazine',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '1 Peter 5:7',
     ),
     HealthNugget(
@@ -286,7 +286,7 @@ class HealthNuggetsData {
       title: 'A Handful of Nuts Daily',
       nugget:
           'Loma Linda researchers found that eating a small handful of raw nuts five times a week cuts heart disease risk nearly in half.',
-      speaker: 'Dr. Gary Fraser — Adventist Health Study',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Genesis 43:11',
     ),
     HealthNugget(
@@ -295,7 +295,7 @@ class HealthNuggetsData {
       title: 'Light Evening Meals for Deep Sleep',
       nugget:
           'Eating a heavy meal right before bed forces the stomach to work while the brain tries to rest. Finish supper at least three hours before sleep.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 4:8',
     ),
     HealthNugget(
@@ -304,7 +304,7 @@ class HealthNuggetsData {
       title: 'Morning Light Resets Your Biological Clock',
       nugget:
           'Stepping outside into natural daylight within 30 minutes of waking anchors your circadian rhythm and improves nighttime sleep quality.',
-      speaker: 'Dr. Neil Nedley — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Psalm 113:3',
     ),
     HealthNugget(
@@ -313,7 +313,7 @@ class HealthNuggetsData {
       title: 'Dehydration Mimics Fatigue and Hunger',
       nugget:
           'Even mild dehydration reduces concentration and triggers false hunger signals. Before reaching for a snack, drink a full glass of clean water.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'John 4:14',
     ),
     HealthNugget(
@@ -322,7 +322,7 @@ class HealthNuggetsData {
       title: 'Nature Walks Clear Brain Fog',
       nugget:
           'Trees release phytoncides and negative ions that refresh the lungs, lower cortisol, and restore mental clarity after hours indoors.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 104:10-14',
     ),
     HealthNugget(
@@ -331,7 +331,7 @@ class HealthNuggetsData {
       title: 'Simplicity Over Excess',
       nugget:
           'Too many varieties at a single meal confuse digestion. Two or three simple, wholesome dishes are kinder to the stomach than a banquet.',
-      speaker: 'Ellen G. White — Counsels on Diet and Foods',
+      speaker: 'Inspired by Ellen G. White — Counsels on Diet and Foods',
       scripture: 'Proverbs 23:2',
     ),
     HealthNugget(
@@ -340,7 +340,7 @@ class HealthNuggetsData {
       title: 'Whole Grains Over Refined Flour',
       nugget:
           'Refining strips away fiber, B-vitamins, and minerals. Choose whole oats, brown rice, millet, sorghum, and whole-wheat bread for steady energy.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Psalm 81:16',
     ),
     HealthNugget(
@@ -349,7 +349,7 @@ class HealthNuggetsData {
       title: 'Strength Training Preserves Independence',
       nugget:
           'Simple resistance exercises—like bodyweight squats, push-ups, or gardening—preserve muscle mass and bone density at every age.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Deuteronomy 33:25',
     ),
     HealthNugget(
@@ -358,7 +358,7 @@ class HealthNuggetsData {
       title: 'Health Message as the Right Arm of the Gospel',
       nugget:
           'Caring for people\'s physical needs opens hearts to spiritual truth. Jesus healed bodies before preaching sermons—medical ministry is His method.',
-      speaker: 'Pastor Ted Wilson — GC Health Outreach',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Matthew 9:35',
     ),
     HealthNugget(
@@ -367,7 +367,7 @@ class HealthNuggetsData {
       title: 'Eat the Rainbow Every Day',
       nugget:
           'Deep greens, bright reds, oranges, and purples contain distinct phytochemicals that protect your DNA and fight cellular inflammation.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 104:14',
     ),
     HealthNugget(
@@ -376,7 +376,7 @@ class HealthNuggetsData {
       title: 'Warm Foot Baths for Congestion',
       nugget:
           'A hot foot bath draws excess blood away from a congested head or chest, easing colds, headaches, and sleeplessness naturally.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Remedies',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Psalm 23:2',
     ),
     HealthNugget(
@@ -385,7 +385,7 @@ class HealthNuggetsData {
       title: 'Micro-Breaks Restore Productivity',
       nugget:
           'Standing up to stretch and rest your eyes for two minutes every hour prevents vascular stiffness and sustains mental sharpness.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Mark 6:31',
     ),
     HealthNugget(
@@ -394,7 +394,7 @@ class HealthNuggetsData {
       title: 'Sugar Suppresses Immune Defenses',
       nugget:
           'Refined sugar temporarily impairs white blood cells\' ability to engulf bacteria. Satisfy your sweet tooth with whole, ripe fruits instead.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Proverbs 25:27',
     ),
     HealthNugget(
@@ -403,7 +403,7 @@ class HealthNuggetsData {
       title: 'Sunlight Lowers Blood Pressure',
       nugget:
           'Moderate sun exposure releases nitric oxide from the skin into the bloodstream, gently relaxing blood vessels and lowering blood pressure.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Ecclesiastes 11:7',
     ),
     HealthNugget(
@@ -412,7 +412,7 @@ class HealthNuggetsData {
       title: 'Posture Shapes Lung Capacity',
       nugget:
           'Slouching compresses the diaphragm and shrinks lung volume. Sit and stand tall with shoulders relaxed back to breathe freely.',
-      speaker: 'Ellen G. White — Education',
+      speaker: 'Inspired by Ellen G. White — Education',
       scripture: 'Psalm 139:14',
     ),
     HealthNugget(
@@ -421,7 +421,7 @@ class HealthNuggetsData {
       title: 'Fiber Is the Broom of the Digestive Tract',
       nugget:
           'Dietary fiber—found exclusively in plant foods—feeds beneficial gut bacteria, lowers cholesterol, and prevents colon disease.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -430,7 +430,7 @@ class HealthNuggetsData {
       title: 'Morning Devotion Anchors Emotional Health',
       nugget:
           'Beginning the day with Scripture and prayer before checking notifications calms the amygdala and strengthens resilience against stress.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 5:3',
     ),
     HealthNugget(
@@ -439,7 +439,7 @@ class HealthNuggetsData {
       title: 'Gardening: Exercise With Purpose',
       nugget:
           'God placed our first parents in a garden to tend it. Digging, planting, and weeding combine strength, flexibility, sunshine, and fresh air.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Genesis 2:15',
     ),
     HealthNugget(
@@ -448,7 +448,7 @@ class HealthNuggetsData {
       title: 'Keep Your Urine Pale Straw-Colored',
       nugget:
           'A simple daily check for proper hydration is urine color: pale straw means well-hydrated; dark yellow means drink more water now.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Isaiah 58:11',
     ),
     HealthNugget(
@@ -457,7 +457,7 @@ class HealthNuggetsData {
       title: 'Darkness Triggers Healing Melatonin',
       nugget:
           'Keep your bedroom dark and free of glowing screens at night. Even dim blue light suppresses melatonin and fragments deep sleep.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 139:12',
     ),
     HealthNugget(
@@ -466,7 +466,7 @@ class HealthNuggetsData {
       title: 'Healthy Fats From Whole Plants',
       nugget:
           'Replace refined oils and animal fats with whole avocados, walnuts, flaxseeds, chia seeds, and olives for heart and brain protection.',
-      speaker: 'Dr. Walter Veith — Creation & Health',
+      speaker: 'Creation & Health Principles',
       scripture: 'Deuteronomy 8:8',
     ),
     HealthNugget(
@@ -475,7 +475,7 @@ class HealthNuggetsData {
       title: 'Say No to Tobacco and Vaping',
       nugget:
           'Every breath is a gift from God. Avoiding all tobacco, nicotine, and recreational drugs protects the lungs, arteries, and brain.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: '1 Corinthians 3:16-17',
     ),
     HealthNugget(
@@ -484,7 +484,7 @@ class HealthNuggetsData {
       title: 'Houseplants and Fresh Air Flow',
       nugget:
           'Clean indoor air reduces headaches and fatigue. Open windows daily for 15 minutes to replace stale indoor air with crisp outdoor oxygen.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Psalm 150:6',
     ),
     HealthNugget(
@@ -493,7 +493,7 @@ class HealthNuggetsData {
       title: 'God\'s Laws of Health Are Laws of Love',
       nugget:
           'Every health principle in Scripture and nature is designed by a loving Father to spare us unnecessary suffering and maximize our joy.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Exodus 15:26',
     ),
     HealthNugget(
@@ -502,7 +502,7 @@ class HealthNuggetsData {
       title: 'Cut Back on Excess Salt',
       nugget:
           'High sodium stiffens blood vessels and strains the kidneys. Season meals generously with garlic, ginger, turmeric, basil, and lemon instead.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Colossians 4:6',
     ),
     HealthNugget(
@@ -511,7 +511,7 @@ class HealthNuggetsData {
       title: 'Exercise Grows New Brain Cells',
       nugget:
           'Aerobic exercise increases BDNF—a natural growth factor that builds new neurons in the hippocampus and sharpens memory.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Romans 12:1-2',
     ),
     HealthNugget(
@@ -520,7 +520,7 @@ class HealthNuggetsData {
       title: 'Fever Baths and Cool Compresses',
       nugget:
           'Water is nature\'s gentlest temperature regulator. A cool cloth on the forehead and plenty of fluids support the body during fever.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Proverbs 17:22',
     ),
     HealthNugget(
@@ -529,7 +529,7 @@ class HealthNuggetsData {
       title: 'Respect the Midday Sun',
       nugget:
           'Gentle morning or late-afternoon sun nourishes without burning. Avoid harsh midday sunburn while still enjoying daily outdoor light.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 121:6',
     ),
     HealthNugget(
@@ -538,7 +538,7 @@ class HealthNuggetsData {
       title: 'Consistent Wake Times Heal Insomnia',
       nugget:
           'Waking up at the same hour every morning—even on weekends—trains your brain to fall asleep effortlessly at night.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Psalm 92:1-2',
     ),
     HealthNugget(
@@ -547,7 +547,7 @@ class HealthNuggetsData {
       title: 'Alcohol Offers No Safe Dose for the Brain',
       nugget:
           'Modern medical studies confirm what Scripture warned long ago: alcohol damages brain gray matter and raises cancer risk even in small amounts.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Proverbs 23:29-32',
     ),
     HealthNugget(
@@ -565,7 +565,7 @@ class HealthNuggetsData {
       title: 'Peace That Guards Heart and Mind',
       nugget:
           'Chronic worry wears out the immune system. Prayerful thanksgiving acts as a garrison guarding both your emotional peace and physical health.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Philippians 4:6-7',
     ),
     HealthNugget(
@@ -574,7 +574,7 @@ class HealthNuggetsData {
       title: 'Take the Stairs Today',
       nugget:
           'Small bursts of movement add up. Choosing stairs over elevators and parking farther away strengthens the heart without needing a gym.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: '2 Samuel 22:33',
     ),
     HealthNugget(
@@ -583,7 +583,7 @@ class HealthNuggetsData {
       title: 'Nasal Breathing Filters and Warms Air',
       nugget:
           'Breathe through your nose rather than your mouth. The nasal passages filter dust, humidify air, and produce nitric oxide for lung health.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Genesis 2:7',
     ),
     HealthNugget(
@@ -592,7 +592,7 @@ class HealthNuggetsData {
       title: 'Wash Hands Often With Clean Water',
       nugget:
           'Biblical sanitation laws were centuries ahead of modern medicine. Simple handwashing with soap and clean running water prevents most infections.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Leviticus 15:13',
     ),
     HealthNugget(
@@ -601,7 +601,7 @@ class HealthNuggetsData {
       title: 'Garlic and Ginger: Natural Kitchen Allies',
       nugget:
           'Fresh garlic and ginger support healthy circulation, calm digestive inflammation, and bolster natural immune defenses.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Remedies',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Ezekiel 47:12',
     ),
     HealthNugget(
@@ -610,7 +610,7 @@ class HealthNuggetsData {
       title: 'Worry-Free Bedtime Routine',
       nugget:
           'Write down tomorrow\'s tasks and pray over them an hour before bed so your mind can enter sleep unburdened.',
-      speaker: 'Pastor Pavel Goia — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 3:5',
     ),
     HealthNugget(
@@ -619,7 +619,7 @@ class HealthNuggetsData {
       title: 'Stop Eating at 80% Full',
       nugget:
           'Leaving the table slightly light—rather than stuffed—prevents sluggishness, acid reflux, and metabolic strain.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Proverbs 25:16',
     ),
     HealthNugget(
@@ -628,7 +628,7 @@ class HealthNuggetsData {
       title: 'Outdoor Light Combats Seasonal Blues',
       nugget:
           'Bright natural light entering the eyes signals the brain to curb daytime drowsiness and lift depressive moods.',
-      speaker: 'Dr. Neil Nedley — Depression & Anxiety Recovery',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Psalm 27:1',
     ),
     HealthNugget(
@@ -637,7 +637,7 @@ class HealthNuggetsData {
       title: 'Cooperate With the Great Physician',
       nugget:
           'Prayer is not a substitute for obedience to health laws, nor are remedies a substitute for prayer. Faith and lifestyle work hand in hand.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'James 2:17',
     ),
     HealthNugget(
@@ -646,7 +646,7 @@ class HealthNuggetsData {
       title: 'Ground Flaxseed for Heart and Brain',
       nugget:
           'One to two tablespoons of freshly ground flaxseed or chia seed daily supplies plant-based omega-3 fats without mercury or cholesterol.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Genesis 1:11',
     ),
     HealthNugget(
@@ -655,7 +655,7 @@ class HealthNuggetsData {
       title: 'Stretch Tight Muscles Daily',
       nugget:
           'Gentle stretching after a warm walk relieves lower-back tension, improves balance, and keeps the body supple.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Hebrews 12:12',
     ),
     HealthNugget(
@@ -664,7 +664,7 @@ class HealthNuggetsData {
       title: 'Warm Lemon Water in the Morning',
       nugget:
           'A glass of warm water with a squeeze of fresh lemon gently stimulates bowel motility and refreshes the palate.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Psalm 107:35',
     ),
     HealthNugget(
@@ -673,7 +673,7 @@ class HealthNuggetsData {
       title: 'Avoid Secondhand Smoke and Fumes',
       nugget:
           'Protect your lungs from indoor cooking smoke, exhaust fumes, and tobacco smoke—clean air is essential for clear blood and bright minds.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Job 33:4',
     ),
     HealthNugget(
@@ -682,7 +682,7 @@ class HealthNuggetsData {
       title: 'Sabbath Fellowship Heals Loneliness',
       nugget:
           'Loneliness harms health as much as smoking. Gathering with your church family on Sabbath provides belonging, encouragement, and joy.',
-      speaker: 'Dr. Gary Fraser — Loma Linda University',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Hebrews 10:25',
     ),
     HealthNugget(
@@ -691,7 +691,7 @@ class HealthNuggetsData {
       title: 'Cruciferous Vegetables Protect Cells',
       nugget:
           'Cabbage, broccoli, kale, and cauliflower contain sulforaphane, a potent compound that activates the liver\'s natural detox enzymes.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Daniel 1:12',
     ),
     HealthNugget(
@@ -700,7 +700,7 @@ class HealthNuggetsData {
       title: 'Fast Occasionally for Digestive Renewal',
       nugget:
           'Skipping an evening meal when feeling sluggish or mildly unwell gives the digestive organs a restorative break.',
-      speaker: 'Ellen G. White — Counsels on Diet and Foods',
+      speaker: 'Inspired by Ellen G. White — Counsels on Diet and Foods',
       scripture: 'Matthew 6:17-18',
     ),
     HealthNugget(
@@ -709,7 +709,7 @@ class HealthNuggetsData {
       title: 'Serve Someone Today for Better Health',
       nugget:
           'Doing good to others is the best remedy for self-absorption and gloom. Generous service releases oxytocin and lowers stress.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Acts 20:35',
     ),
     HealthNugget(
@@ -718,7 +718,7 @@ class HealthNuggetsData {
       title: 'Charcoal Poultices for Bites and Swelling',
       nugget:
           'Activated charcoal mixed with flaxseed or water makes a time-tested Adventist natural poultice to draw out toxins from insect bites.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Remedies',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: '2 Kings 20:7',
     ),
     HealthNugget(
@@ -727,7 +727,7 @@ class HealthNuggetsData {
       title: 'Walk With a Friend for Accountability',
       nugget:
           'Walking with a spouse, friend, or church member turns exercise into joyful fellowship and doubles your consistency.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Ecclesiastes 4:9',
     ),
     HealthNugget(
@@ -736,7 +736,7 @@ class HealthNuggetsData {
       title: 'Sun-Ripened Foods Carry Nature\'s Energy',
       nugget:
           'Freshly harvested fruits and vegetables absorb solar energy directly. Prioritize fresh, local, in-season produce whenever available.',
-      speaker: 'Dr. Walter Veith — Creation & Health',
+      speaker: 'Creation & Health Principles',
       scripture: 'Deuteronomy 33:14',
     ),
     HealthNugget(
@@ -745,7 +745,7 @@ class HealthNuggetsData {
       title: 'Beware of Liquid Calories',
       nugget:
           'Sodas and sweetened juices spike blood sugar rapidly without satisfying hunger. Eat whole fruit so the fiber slows sugar absorption.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Isaiah 55:2',
     ),
     HealthNugget(
@@ -754,7 +754,7 @@ class HealthNuggetsData {
       title: 'Unplug One Hour Before Sleep',
       nugget:
           'Trade late-night scrolling for calm reading, journaling, or prayer an hour before bed so your nervous system can unwind.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Psalm 46:10',
     ),
     HealthNugget(
@@ -763,7 +763,7 @@ class HealthNuggetsData {
       title: 'Sing Hymns to Strengthen Your Lungs',
       nugget:
           'Heartfelt singing expands lung capacity, regulates breathing rhythm, lowers cortisol, and lifts the spirit in praise.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 95:1',
     ),
     HealthNugget(
@@ -772,7 +772,7 @@ class HealthNuggetsData {
       title: 'Dress Comfortably and Healthfully',
       nugget:
           'Restrictive clothing and tight waistbands impede circulation and shallow out breathing. Dress for warmth, modesty, and free movement.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: '1 Timothy 2:9',
     ),
     HealthNugget(
@@ -781,7 +781,7 @@ class HealthNuggetsData {
       title: 'Plant-Based Calcium Sources',
       nugget:
           'Strong bones do not require cow\'s milk. Dark leafy greens, sesame seeds, almonds, okra, and fortified plant milks offer absorbable calcium.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Proverbs 3:8',
     ),
     HealthNugget(
@@ -790,7 +790,7 @@ class HealthNuggetsData {
       title: 'Steam Inhalation for Sinus Relief',
       nugget:
           'Inhaling warm steam with a drop of eucalyptus oil loosens sinus congestion naturally without rebound side effects.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Remedies',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Psalm 147:18',
     ),
     HealthNugget(
@@ -799,7 +799,7 @@ class HealthNuggetsData {
       title: 'Confidence in the Creator\'s Design',
       nugget:
           'Your body is fearfully and wonderfully made with built-in self-healing systems. Remove the hindrances and trust God\'s design.',
-      speaker: 'Pastor Ted Wilson — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 139:14',
     ),
     HealthNugget(
@@ -808,7 +808,7 @@ class HealthNuggetsData {
       title: 'Balance Exercises Prevent Falls',
       nugget:
           'Practicing standing on one foot safely near a counter for 30 seconds a day sharpens proprioception and protects longevity.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Psalm 18:33',
     ),
     HealthNugget(
@@ -817,7 +817,7 @@ class HealthNuggetsData {
       title: 'Fermented Foods Support Gut Immunity',
       nugget:
           'Nearly 70% of the immune system resides in the gut. Naturally fermented foods like ogi, sauerkraut, and plant yogurt nourish good flora.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: '1 Corinthians 6:19',
     ),
     HealthNugget(
@@ -826,7 +826,7 @@ class HealthNuggetsData {
       title: 'Avoid Heavy Spices That Irritate the Stomach',
       nugget:
           'Excessive hot pepper, vinegar, and harsh condiments inflame the gastric lining and numb natural taste buds to simple foods.',
-      speaker: 'Ellen G. White — Counsels on Diet and Foods',
+      speaker: 'Inspired by Ellen G. White — Counsels on Diet and Foods',
       scripture: 'Job 6:6',
     ),
     HealthNugget(
@@ -835,7 +835,7 @@ class HealthNuggetsData {
       title: 'Vitamin D Protects Against Respiratory Illness',
       nugget:
           'Optimal vitamin D levels from safe sun exposure dramatically strengthen frontline defenses against seasonal respiratory infections.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 19:4-6',
     ),
     HealthNugget(
@@ -844,7 +844,7 @@ class HealthNuggetsData {
       title: 'Short Power Naps Refresh Without Grogginess',
       nugget:
           'A 15-to-20-minute afternoon rest restores alertness without disrupting nighttime sleep.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 23:2-3',
     ),
     HealthNugget(
@@ -853,7 +853,7 @@ class HealthNuggetsData {
       title: 'Deep Breaths Before Stressful Conversations',
       nugget:
           'Taking three slow, deep breaths before responding activates the vagus nerve and replaces reactive anger with calm wisdom.',
-      speaker: 'Dr. Neil Nedley — Depression & Anxiety Recovery',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'James 1:19',
     ),
     HealthNugget(
@@ -862,7 +862,7 @@ class HealthNuggetsData {
       title: 'Zero Dietary Cholesterol in Plant Foods',
       nugget:
           'Plants contain zero cholesterol. Shifting toward whole plant foods naturally lowers LDL cholesterol and keeps arteries clear.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -871,7 +871,7 @@ class HealthNuggetsData {
       title: 'Hydrate Before Exercise and After',
       nugget:
           'Drink water 30 minutes before physical activity and replenish steadily afterward so your heart does not have to pump thickened blood.',
-      speaker: 'Dr. John Harvey Kellogg — Battle Creek Sanitarium',
+      speaker: 'Hydrotherapy & Sanitarium Principles',
       scripture: 'Proverbs 11:25',
     ),
     HealthNugget(
@@ -880,7 +880,7 @@ class HealthNuggetsData {
       title: 'Sabbath Rest Reminds Us Who Sustains Us',
       nugget:
           'Resting on the seventh day declares that our survival depends on God\'s grace, not our frantic overwork.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Genesis 2:2-3',
     ),
     HealthNugget(
@@ -889,7 +889,7 @@ class HealthNuggetsData {
       title: 'Consistency Beats Intensity',
       nugget:
           'Moderate daily movement is far safer and more effective than exhausting yourself once a week on Saturday night or Sunday.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Galatians 6:9',
     ),
     HealthNugget(
@@ -898,7 +898,7 @@ class HealthNuggetsData {
       title: 'B12 Awareness on a Plant-Based Diet',
       nugget:
           'On a predominantly or fully plant-based diet, ensure reliable vitamin B12 intake through fortified foods or a simple supplement.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Proverbs 27:23',
     ),
     HealthNugget(
@@ -907,7 +907,7 @@ class HealthNuggetsData {
       title: 'Calm Speech Lowers Blood Pressure',
       nugget:
           'A gentle answer turns away wrath—and also prevents adrenaline spikes that strain the heart.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Proverbs 15:1',
     ),
     HealthNugget(
@@ -916,7 +916,7 @@ class HealthNuggetsData {
       title: 'Sunlight Synchronizes Hormone Balance',
       nugget:
           'Daily outdoor light helps regulate cortisol in the morning and melatonin at night, supporting thyroid and metabolic health.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Genesis 1:16',
     ),
     HealthNugget(
@@ -925,7 +925,7 @@ class HealthNuggetsData {
       title: 'A Cool, Quiet Bedroom Aids Deep Sleep',
       nugget:
           'Your core body temperature drops to initiate sleep. Keep your sleeping space cool, tidy, and ventilated.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Proverbs 3:24',
     ),
     HealthNugget(
@@ -934,7 +934,7 @@ class HealthNuggetsData {
       title: 'Aerobic Movement Trains Oxygen Delivery',
       nugget:
           'Brisk walking or cycling strengthens the heart and diaphragm so every cell receives abundant oxygen with less effort.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: '1 Timothy 4:8',
     ),
     HealthNugget(
@@ -952,7 +952,7 @@ class HealthNuggetsData {
       title: 'Celebrate 100 Days of Faithful Stewardship',
       nugget:
           'Small, faithful daily choices compound into lifelong transformation. Keep honoring God in body, mind, and spirit.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Luke 16:10',
     ),
     HealthNugget(
@@ -961,7 +961,7 @@ class HealthNuggetsData {
       title: 'Ice-Cold Drinks Slow Digestion',
       nugget:
           'Room-temperature or warm water is absorbed smoothly, whereas ice-cold drinks chill stomach enzymes and delay digestion.',
-      speaker: 'Ellen G. White — Counsels on Diet and Foods',
+      speaker: 'Inspired by Ellen G. White — Counsels on Diet and Foods',
       scripture: 'Proverbs 25:25',
     ),
     HealthNugget(
@@ -970,7 +970,7 @@ class HealthNuggetsData {
       title: 'Break Up Sitting Time Every 45 Minutes',
       nugget:
           'Prolonged sitting slows blood flow in the legs. Stand, walk to get water, or stretch for two minutes every 45 minutes of desk work.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Ecclesiastes 11:6',
     ),
     HealthNugget(
@@ -979,7 +979,7 @@ class HealthNuggetsData {
       title: 'Garlic Allicin Needs 10 Minutes to Activate',
       nugget:
           'Crush or chop fresh garlic and let it rest for 10 minutes before cooking so its beneficial allicin compound forms fully.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Numbers 11:5',
     ),
     HealthNugget(
@@ -988,7 +988,7 @@ class HealthNuggetsData {
       title: 'Contentment Curbs Stress Eating',
       nugget:
           'Often we eat not from physical hunger, but from boredom or stress. Pause to pray and ask what your soul truly needs.',
-      speaker: 'Pastor Pavel Goia — Ministry Magazine',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '1 Timothy 6:6',
     ),
     HealthNugget(
@@ -997,7 +997,7 @@ class HealthNuggetsData {
       title: 'Mental Rest Requires Unfinished-Task Boundaries',
       nugget:
           'Set a clear evening stop time for work emails and chores so your brain knows when the workday has ended.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 127:2',
     ),
     HealthNugget(
@@ -1006,7 +1006,7 @@ class HealthNuggetsData {
       title: 'Expose Arms and Face Without Sunscreen Briefly',
       nugget:
           'Ten to fifteen minutes of gentle morning sun on arms and face lets your skin synthesize vitamin D naturally before seeking shade.',
-      speaker: 'Dr. Neil Nedley — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Malachi 4:2',
     ),
     HealthNugget(
@@ -1015,7 +1015,7 @@ class HealthNuggetsData {
       title: 'Clean Bedding Improves Night Breathing',
       nugget:
           'Sun-dry pillows and wash sheets regularly in hot water to reduce dust mites and keep nighttime airways clear.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Psalm 51:7',
     ),
     HealthNugget(
@@ -1024,7 +1024,7 @@ class HealthNuggetsData {
       title: 'Oats Lower LDL Cholesterol Naturally',
       nugget:
           'The soluble beta-glucan fiber in whole rolled oats binds excess cholesterol in the digestive tract and sweeps it out.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -1033,7 +1033,7 @@ class HealthNuggetsData {
       title: 'Hope Is an Anchor for Physical Recovery',
       nugget:
           'Patients anchored in hopeful faith recover faster and maintain healthier habits because they believe their life has eternal purpose.',
-      speaker: 'Dr. Gary Fraser — Loma Linda University',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Hebrews 6:19',
     ),
     HealthNugget(
@@ -1042,7 +1042,7 @@ class HealthNuggetsData {
       title: 'Fomentations Ease Muscle Spasms',
       nugget:
           'Moist heat (hot fomentation) followed by a brief cool wipe relaxes deep muscle spasms and boosts local healing blood flow.',
-      speaker: 'Dr. John Harvey Kellogg — Rational Hydrotherapy',
+      speaker: 'Hydrotherapy & Sanitarium Principles',
       scripture: 'Isaiah 1:6',
     ),
     HealthNugget(
@@ -1051,7 +1051,7 @@ class HealthNuggetsData {
       title: 'Swimming: Gentle Full-Body Conditioning',
       nugget:
           'Water supports body weight while providing resistance in every direction, making swimming ideal for joint-friendly fitness.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Psalm 93:4',
     ),
     HealthNugget(
@@ -1060,7 +1060,7 @@ class HealthNuggetsData {
       title: 'Turmeric + Black Pepper Boosts Absorption',
       nugget:
           'Pairing turmeric with a pinch of black pepper increases curcumin absorption dramatically, offering natural anti-inflammatory support.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Ezekiel 47:12',
     ),
     HealthNugget(
@@ -1069,7 +1069,7 @@ class HealthNuggetsData {
       title: 'Avoid Snacking Between Meals',
       nugget:
           'Constant grazing keeps insulin elevated all day and prevents the migrating motor complex from sweeping the small intestine clean.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Ecclesiastes 3:1',
     ),
     HealthNugget(
@@ -1078,7 +1078,7 @@ class HealthNuggetsData {
       title: 'Brain Cleaning Happens During Deep Sleep',
       nugget:
           'During deep sleep, the brain\'s glymphatic system flushes out toxic proteins accumulated during waking hours.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Jeremiah 31:25-26',
     ),
     HealthNugget(
@@ -1087,7 +1087,7 @@ class HealthNuggetsData {
       title: 'Outdoor Exercise Doubles Mood Benefits',
       nugget:
           'Exercising in green outdoor spaces reduces tension and boosts energy more effectively than identical workouts indoors.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 23:2',
     ),
     HealthNugget(
@@ -1096,7 +1096,7 @@ class HealthNuggetsData {
       title: 'Avoid Ultra-Processed Meats and Additives',
       nugget:
           'Processed meats and chemical preservatives carry the highest cardiovascular and cancer risks. Choose fresh, whole plant proteins.',
-      speaker: 'Dr. Walter Veith — Creation & Health',
+      speaker: 'Creation & Health Principles',
       scripture: 'Leviticus 11:44',
     ),
     HealthNugget(
@@ -1105,7 +1105,7 @@ class HealthNuggetsData {
       title: 'Gratitude Journal Before Bed',
       nugget:
           'Writing down three blessings each evening trains the brain to scan for God\'s goodness instead of rehearsing tomorrow\'s fears.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '1 Thessalonians 5:18',
     ),
     HealthNugget(
@@ -1114,7 +1114,7 @@ class HealthNuggetsData {
       title: 'Drink Water Before Feeling Thirsty',
       nugget:
           'Thirst is a late signal—by the time your mouth feels dry, cellular hydration has already dropped. Sip steadily throughout the day.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Revelation 22:17',
     ),
     HealthNugget(
@@ -1123,7 +1123,7 @@ class HealthNuggetsData {
       title: 'Eye Health Needs Natural Distance Viewing',
       nugget:
           'Looking out at distant trees or horizons in natural daylight relaxes eye focusing muscles strained by close-up phone screens.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Ecclesiastes 11:7',
     ),
     HealthNugget(
@@ -1132,7 +1132,7 @@ class HealthNuggetsData {
       title: 'Core Strength Protects Your Spine',
       nugget:
           'Simple daily planks and back extensions stabilize the spine, prevent back pain, and support upright posture.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 18:32',
     ),
     HealthNugget(
@@ -1141,7 +1141,7 @@ class HealthNuggetsData {
       title: 'Eat Fruits Separately or First',
       nugget:
           'Fresh fruits digest quickly in the stomach; eating them at the start of a meal or as a simple meal prevents fermentation.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Song of Solomon 2:3',
     ),
     HealthNugget(
@@ -1150,7 +1150,7 @@ class HealthNuggetsData {
       title: 'Keep Your Temper by Guarding Your Sleep',
       nugget:
           'Sleep deprivation lowers self-control and magnifies irritability. Getting full rest is a spiritual safeguard for kindness.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Ephesians 4:26',
     ),
     HealthNugget(
@@ -1159,7 +1159,7 @@ class HealthNuggetsData {
       title: 'Take a Weekly Break From News Cycles',
       nugget:
           'Constant alarming headlines keep stress hormones elevated. Let Sabbath be a sanctuary from worldly anxiety and bad news.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Isaiah 26:3',
     ),
     HealthNugget(
@@ -1168,7 +1168,7 @@ class HealthNuggetsData {
       title: 'Laugh Often to Ventilate the Lungs',
       nugget:
           'Hearty laughter expels stale residual air from the lungs, boosts oxygen intake, and releases natural pain-relieving endorphins.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 126:2',
     ),
     HealthNugget(
@@ -1177,7 +1177,7 @@ class HealthNuggetsData {
       title: 'Seeds: Tiny Packages of Minerals',
       nugget:
           'Pumpkin, sunflower, and sesame seeds are rich in zinc, magnesium, and iron—essential for immune resilience and energy.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -1186,7 +1186,7 @@ class HealthNuggetsData {
       title: 'Trust God With What You Cannot Control',
       nugget:
           'Do your faithful part with NEWSTART habits, then surrender outcomes to God. Peace of conscience is stronger than any tonic.',
-      speaker: 'Pastor Pavel Goia — Ministry Magazine',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Proverbs 3:5-6',
     ),
     HealthNugget(
@@ -1195,7 +1195,7 @@ class HealthNuggetsData {
       title: 'Saltwater Gargle for Sore Throats',
       nugget:
           'Gargling warm salted water draws fluid out of swollen throat tissues and washes away irritants safely.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Remedies',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Job 6:6',
     ),
     HealthNugget(
@@ -1204,7 +1204,7 @@ class HealthNuggetsData {
       title: 'Post-Meal Strolls Aid Digestion',
       nugget:
           'Instead of lying down right after eating, take a calm 10-minute stroll to assist gastric motility and prevent acid reflux.',
-      speaker: 'Ellen G. White — Counsels on Health',
+      speaker: 'Inspired by Ellen G. White — Counsels on Health',
       scripture: 'Psalm 128:1',
     ),
     HealthNugget(
@@ -1213,7 +1213,7 @@ class HealthNuggetsData {
       title: 'Berries Protect Memory and Blood Vessels',
       nugget:
           'Blueberries, blackberries, and hibiscus (zobo without excess sugar) pack anthocyanins that protect brain neurons from oxidative stress.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Psalm 104:15',
     ),
     HealthNugget(
@@ -1222,7 +1222,7 @@ class HealthNuggetsData {
       title: 'Moderation Even in Good Work',
       nugget:
           'Even ministry and noble labor require boundaries. Overwork without rest is intemperance that shortens your years of service.',
-      speaker: 'Pastor Ted Wilson — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Mark 6:31',
     ),
     HealthNugget(
@@ -1231,7 +1231,7 @@ class HealthNuggetsData {
       title: 'Sunlight Destroys Household Pathogens',
       nugget:
           'Air out blankets, mats, and shoes in direct sunshine weekly—ultraviolet light naturally sanitizes fabrics.',
-      speaker: 'Dr. John Harvey Kellogg — Battle Creek Sanitarium',
+      speaker: 'Hydrotherapy & Sanitarium Principles',
       scripture: 'Psalm 19:6',
     ),
     HealthNugget(
@@ -1240,7 +1240,7 @@ class HealthNuggetsData {
       title: 'Aim for Seven to Eight Hours Nightly',
       nugget:
           'Adults consistently sleeping 7 to 8 hours show lower rates of hypertension, obesity, and cognitive decline.',
-      speaker: 'Dr. Gary Fraser — Adventist Health Study',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Psalm 4:8',
     ),
     HealthNugget(
@@ -1249,7 +1249,7 @@ class HealthNuggetsData {
       title: 'Avoid Synthetic Air Fresheners',
       nugget:
           'Chemical sprays mask odors while adding volatile compounds to indoor air. Choose open windows and clean surfaces instead.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Psalm 150:6',
     ),
     HealthNugget(
@@ -1267,7 +1267,7 @@ class HealthNuggetsData {
       title: 'Pray Before Every Meal With Gratitude',
       nugget:
           'Pausing to thank God before eating shifts the nervous system into "rest and digest" mode, improving enzyme secretion.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '1 Timothy 4:4-5',
     ),
     HealthNugget(
@@ -1276,7 +1276,7 @@ class HealthNuggetsData {
       title: 'Warm Herbal Teas Without Caffeine',
       nugget:
           'Chamomile, peppermint, ginger, and hibiscus teas hydrate and soothe digestion without the adrenal jolt of coffee or black tea.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Psalm 104:14',
     ),
     HealthNugget(
@@ -1285,7 +1285,7 @@ class HealthNuggetsData {
       title: 'Exercise Is Nature\'s Antidepressant',
       nugget:
           'Regular brisk aerobic exercise rivals medication for mild-to-moderate depression while strengthening the heart and sleep.',
-      speaker: 'Dr. Neil Nedley — Depression & Anxiety Recovery',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Nehemiah 8:10',
     ),
     HealthNugget(
@@ -1294,7 +1294,7 @@ class HealthNuggetsData {
       title: 'Read Ingredient Labels Carefully',
       nugget:
           'If a packaged food has a long list of chemical names and added sugars, leave it on the shelf and choose whole ingredients.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Isaiah 55:2',
     ),
     HealthNugget(
@@ -1303,7 +1303,7 @@ class HealthNuggetsData {
       title: 'Avoid Eating Between Anxiety Triggers',
       nugget:
           'When stressed, take a brisk 5-minute walk or drink water instead of reaching for comfort sweets.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Philippians 4:13',
     ),
     HealthNugget(
@@ -1312,7 +1312,7 @@ class HealthNuggetsData {
       title: 'Morning Walk Beats Sunglasses Early',
       nugget:
           'In gentle early-morning light, letting natural daylight reach your eyes (without staring at the sun) cues healthy circadian hormones.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Psalm 113:3',
     ),
     HealthNugget(
@@ -1321,7 +1321,7 @@ class HealthNuggetsData {
       title: 'Protect the Sabbath Hours From Friday Dusk',
       nugget:
           'Preparing meals and tidying the home before Friday sunset lets you enter Sabbath rest peacefully without last-minute rush.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Luke 23:54',
     ),
     HealthNugget(
@@ -1330,7 +1330,7 @@ class HealthNuggetsData {
       title: 'Box Breathing Calms Acute Anxiety',
       nugget:
           'Inhale for 4 seconds, hold 4, exhale 4, pause 4. Two minutes of calm breathing steadies heart rate and clears panic.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'John 14:27',
     ),
     HealthNugget(
@@ -1339,7 +1339,7 @@ class HealthNuggetsData {
       title: 'Don\'t Fry What You Can Steam or Bake',
       nugget:
           'Deep frying creates oxidized fats and inflammatory compounds. Steaming, boiling, roasting, and baking preserve nutrients cleanly.',
-      speaker: 'Dr. Walter Veith — Creation & Health',
+      speaker: 'Creation & Health Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -1348,7 +1348,7 @@ class HealthNuggetsData {
       title: 'Community Prayer Multiplies Resilience',
       nugget:
           'Sharing burdens with trusted believers lowers feelings of isolation and strengthens emotional endurance.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Galatians 6:2',
     ),
     HealthNugget(
@@ -1357,7 +1357,7 @@ class HealthNuggetsData {
       title: 'Cold Compress for Acute Sprains',
       nugget:
           'In the first 24 hours after a minor sprain, resting, elevating, and applying a cool damp compress limits swelling.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Remedies',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Psalm 147:3',
     ),
     HealthNugget(
@@ -1366,7 +1366,7 @@ class HealthNuggetsData {
       title: 'Build Endurance Gradually',
       nugget:
           'Start with 10 minutes a day if you are new to exercise, adding 5 minutes each week until 30–45 minutes feels natural.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Zechariah 4:10',
     ),
     HealthNugget(
@@ -1375,7 +1375,7 @@ class HealthNuggetsData {
       title: 'Mushrooms Support Immune Surveillance',
       nugget:
           'Cooked mushrooms supply beta-glucans and ergothioneine, natural compounds that help white blood cells stay vigilant.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 104:24',
     ),
     HealthNugget(
@@ -1384,7 +1384,7 @@ class HealthNuggetsData {
       title: 'Keep Caffeine Out of Children\'s Drinks',
       nugget:
           'Developing brains need steady sleep and calm focus—avoid sodas, energy drinks, and caffeinated beverages for children and teens.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Proverbs 22:6',
     ),
     HealthNugget(
@@ -1393,7 +1393,7 @@ class HealthNuggetsData {
       title: 'Sunlight Strengthens Muscle Function',
       nugget:
           'Adequate vitamin D from regular sunlight improves muscle strength, balance, and recovery after physical work.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Ecclesiastes 11:7',
     ),
     HealthNugget(
@@ -1402,7 +1402,7 @@ class HealthNuggetsData {
       title: 'Avoid Heavy Debates Before Bedtime',
       nugget:
           'Resolve conflicts kindly before nightfall so anger does not keep adrenaline pumping into your sleep hours.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Ephesians 4:26',
     ),
     HealthNugget(
@@ -1411,7 +1411,7 @@ class HealthNuggetsData {
       title: 'Stand and Stretch Your Ribcage',
       nugget:
           'Reaching both arms overhead while taking a deep breath opens the intercostal muscles and refreshes sluggish afternoon energy.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Job 33:4',
     ),
     HealthNugget(
@@ -1420,7 +1420,7 @@ class HealthNuggetsData {
       title: 'Dates and Raisins: Whole Natural Sweetness',
       nugget:
           'Use blended dates or ripe bananas in porridge and baking instead of white refined sugar to retain fiber and potassium.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Psalm 92:12',
     ),
     HealthNugget(
@@ -1429,7 +1429,7 @@ class HealthNuggetsData {
       title: 'God\'s Promise of Renewed Strength',
       nugget:
           'Those who wait upon the Lord renew their strength—spiritual trust sustains physical perseverance when life feels heavy.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Isaiah 40:31',
     ),
     HealthNugget(
@@ -1438,7 +1438,7 @@ class HealthNuggetsData {
       title: 'Hydration Lubricates Joints and Discs',
       nugget:
           'Spinal discs are largely water. Consistent daily hydration keeps cushions resilient and reduces stiffness.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Isaiah 58:11',
     ),
     HealthNugget(
@@ -1456,7 +1456,7 @@ class HealthNuggetsData {
       title: 'Avoid Reheated Burnt Cooking Oils',
       nugget:
           'Reusing cooking oil repeatedly creates free radicals that damage blood vessel linings. Cook fresh with minimal water or steam.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: '1 Corinthians 6:19',
     ),
     HealthNugget(
@@ -1465,7 +1465,7 @@ class HealthNuggetsData {
       title: 'Regular Meal Times Train Digestion',
       nugget:
           'Eating at predictable hours each day prepares stomach acid and digestive enzymes right on schedule, preventing indigestion.',
-      speaker: 'Ellen G. White — Counsels on Diet and Foods',
+      speaker: 'Inspired by Ellen G. White — Counsels on Diet and Foods',
       scripture: 'Ecclesiastes 3:1',
     ),
     HealthNugget(
@@ -1474,7 +1474,7 @@ class HealthNuggetsData {
       title: 'Silence Is Medicine for an Overstimulated Brain',
       nugget:
           'Spend 15 quiet minutes daily without podcasts, music, or screens so your brain can consolidate memory and hear God\'s still small voice.',
-      speaker: 'Pastor Pavel Goia — Ministry Magazine',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '1 Kings 19:12',
     ),
     HealthNugget(
@@ -1483,7 +1483,7 @@ class HealthNuggetsData {
       title: 'Afternoon Sun After Work Refreshes',
       nugget:
           'Stepping outside for 15 minutes in late afternoon light eases transition from work stress to peaceful evening family time.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 104:19',
     ),
     HealthNugget(
@@ -1492,7 +1492,7 @@ class HealthNuggetsData {
       title: 'Clean Kitchen Ventilation Matters',
       nugget:
           'Always vent steam and cooking smoke outdoors so fine particles do not irritate sensitive bronchial passages.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Genesis 2:7',
     ),
     HealthNugget(
@@ -1501,7 +1501,7 @@ class HealthNuggetsData {
       title: 'Potassium-Rich Foods Balance Blood Pressure',
       nugget:
           'Bananas, avocados, spinach, sweet potatoes, and beans supply potassium that naturally counterbalances sodium and relaxes arteries.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -1510,7 +1510,7 @@ class HealthNuggetsData {
       title: 'Stewardship Includes Preventive Care',
       nugget:
           'Routine blood pressure and blood sugar checks are wise stewardship—catch imbalances early and address them with lifestyle reform.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Proverbs 22:3',
     ),
     HealthNugget(
@@ -1519,7 +1519,7 @@ class HealthNuggetsData {
       title: 'Warm Bath Before Bed Aids Sleep',
       nugget:
           'A warm bath an hour before bedtime relaxes tight muscles; as your body cools afterward, sleepiness follows naturally.',
-      speaker: 'Dr. John Harvey Kellogg — Rational Hydrotherapy',
+      speaker: 'Hydrotherapy & Sanitarium Principles',
       scripture: 'Psalm 4:8',
     ),
     HealthNugget(
@@ -1528,7 +1528,7 @@ class HealthNuggetsData {
       title: 'Involve the Whole Family in Weekend Hikes',
       nugget:
           'Nature walks on Sabbath afternoon build family bonds, spark wonder at God\'s creation, and keep everyone active.',
-      speaker: 'Pastor Ted Wilson — GC Health Outreach',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 19:1',
     ),
     HealthNugget(
@@ -1537,7 +1537,7 @@ class HealthNuggetsData {
       title: 'Soak Beans Well Before Cooking',
       nugget:
           'Soaking dried beans overnight and discarding the soaking water reduces gas-forming oligosaccharides and improves mineral absorption.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Daniel 1:12',
     ),
     HealthNugget(
@@ -1546,7 +1546,7 @@ class HealthNuggetsData {
       title: 'Eat Slowly and Without Distraction',
       nugget:
           'Put down your phone during meals. Mindful eating lets you enjoy flavor, chew well, and notice natural fullness cues.',
-      speaker: 'Dr. Neil Nedley — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Ecclesiastes 2:24',
     ),
     HealthNugget(
@@ -1555,7 +1555,7 @@ class HealthNuggetsData {
       title: 'Don\'t Overcommit Your Calendar',
       nugget:
           'Saying a gracious "no" to non-essential demands protects margin for sleep, family worship, and genuine service.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Matthew 11:28-30',
     ),
     HealthNugget(
@@ -1564,7 +1564,7 @@ class HealthNuggetsData {
       title: 'Walk Away From Traffic Exhaust When Exercising',
       nugget:
           'Choose quiet side streets, parks, or school tracks for your morning walk so you breathe cleaner air into deep lungs.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 23:2',
     ),
     HealthNugget(
@@ -1573,7 +1573,7 @@ class HealthNuggetsData {
       title: 'Tomatoes and Lycopene Benefit Heart & Prostate',
       nugget:
           'Cooked tomatoes concentrate lycopene, a powerful antioxidant linked to healthier blood vessels and cellular protection.',
-      speaker: 'Dr. Gary Fraser — Adventist Health Study',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -1582,7 +1582,7 @@ class HealthNuggetsData {
       title: 'Kindness Is Contagious Wellness',
       nugget:
           'Offering a sincere word of encouragement lowers both the giver\'s and receiver\'s stress levels.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Proverbs 16:24',
     ),
     HealthNugget(
@@ -1591,7 +1591,7 @@ class HealthNuggetsData {
       title: 'Keep a Reusable Water Bottle Visible',
       nugget:
           'Keeping clean water right on your desk or in your bag makes reaching 8 glasses a day effortless.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'John 7:37',
     ),
     HealthNugget(
@@ -1600,7 +1600,7 @@ class HealthNuggetsData {
       title: 'Natural Light Boosts Classroom and Work Focus',
       nugget:
           'Position desks near windows when possible; natural daylight reduces eye strain and increases daytime alertness.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 36:9',
     ),
     HealthNugget(
@@ -1609,7 +1609,7 @@ class HealthNuggetsData {
       title: 'Calf Raises Improve Leg Circulation',
       nugget:
           'Your calf muscles act as a "second heart" pumping blood back upward. Do 20 slow calf raises while brushing your teeth.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Isaiah 35:3',
     ),
     HealthNugget(
@@ -1618,7 +1618,7 @@ class HealthNuggetsData {
       title: 'Make Half Your Plate Vegetables',
       nugget:
           'Filling half your plate with steamed or fresh vegetables automatically crowds out excess calories while flooding cells with micronutrients.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Daniel 1:15',
     ),
     HealthNugget(
@@ -1627,7 +1627,7 @@ class HealthNuggetsData {
       title: 'Choose Water Over Energy Drinks During Study',
       nugget:
           'Students who hydrate with water and sleep well retain far more information than those cramming on energy drinks.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Proverbs 2:6',
     ),
     HealthNugget(
@@ -1636,7 +1636,7 @@ class HealthNuggetsData {
       title: 'Forgive Yourself and Rest in Grace',
       nugget:
           'Guilt over past mistakes steals sleep and peace. Bring every failure to Jesus, receive full pardon, and rest peacefully.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '1 John 1:9',
     ),
     HealthNugget(
@@ -1645,7 +1645,7 @@ class HealthNuggetsData {
       title: 'Exhale Completely to Refresh Oxygen',
       nugget:
           'A full, slow exhale empties stale carbon dioxide from the lower lungs, allowing the next inhale to draw fresh air deeply.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Job 33:4',
     ),
     HealthNugget(
@@ -1663,7 +1663,7 @@ class HealthNuggetsData {
       title: 'Worship Resets Perspective',
       nugget:
           'Singing praises and reading the Psalms lifts our eyes above temporary worries to the faithfulness of an unchanging God.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 103:1-5',
     ),
     HealthNugget(
@@ -1672,7 +1672,7 @@ class HealthNuggetsData {
       title: 'Drink Water After Waking Before Coffee or Tea',
       nugget:
           'Rehydrating with plain water first thing restores overnight fluid loss and wakes up the brain naturally without stimulants.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 63:1',
     ),
     HealthNugget(
@@ -1681,7 +1681,7 @@ class HealthNuggetsData {
       title: 'Midyear Check: How Active Is Your Week?',
       nugget:
           'Aim for at least 150 minutes of moderate movement per week—just 25 minutes a day six days a week transforms heart health.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: '1 Corinthians 9:24',
     ),
     HealthNugget(
@@ -1690,7 +1690,7 @@ class HealthNuggetsData {
       title: 'Avoid Heavy Cheese and Greasy Pastries',
       nugget:
           'Saturated fat and refined flour clog arteries and promote insulin resistance. Choose nut-based spreads and whole-grain breads.',
-      speaker: 'Dr. Walter Veith — Creation & Health',
+      speaker: 'Creation & Health Principles',
       scripture: 'Isaiah 55:2',
     ),
     HealthNugget(
@@ -1699,7 +1699,7 @@ class HealthNuggetsData {
       title: 'Guard Against Overeating on Festive Days',
       nugget:
           'Fellowship meals are for joy, not stomach overload. Sample thoughtfully and savor conversation more than second helpings.',
-      speaker: 'Ellen G. White — Counsels on Diet and Foods',
+      speaker: 'Inspired by Ellen G. White — Counsels on Diet and Foods',
       scripture: 'Proverbs 23:1-3',
     ),
     HealthNugget(
@@ -1708,7 +1708,7 @@ class HealthNuggetsData {
       title: 'Sunlight Helps Regulate Healthy Mood',
       nugget:
           'Even on cloudy days, outdoor light is far brighter than indoor bulbs—step outside for 15 minutes to brighten your outlook.',
-      speaker: 'Dr. Neil Nedley — Depression & Anxiety Recovery',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Psalm 97:11',
     ),
     HealthNugget(
@@ -1717,7 +1717,7 @@ class HealthNuggetsData {
       title: 'Avoid Caffeine Altogether for Deeper Sleep',
       nugget:
           'Even morning caffeine lingers in the bloodstream for hours and reduces deep restorative sleep architecture.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Psalm 127:2',
     ),
     HealthNugget(
@@ -1726,7 +1726,7 @@ class HealthNuggetsData {
       title: 'Keep Dust Down With Damp Cloths',
       nugget:
           'Wiping surfaces with a damp cloth traps dust instead of tossing allergens into the air you breathe.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Psalm 150:6',
     ),
     HealthNugget(
@@ -1735,7 +1735,7 @@ class HealthNuggetsData {
       title: 'Lentils Cook Fast Without Overnight Soaking',
       nugget:
           'Red and brown lentils cook in 20 minutes, pack folate and iron, and make hearty stews that stabilize energy all afternoon.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Genesis 25:34',
     ),
     HealthNugget(
@@ -1744,7 +1744,7 @@ class HealthNuggetsData {
       title: 'Sabbath Peace Is a Foretaste of Heaven',
       nugget:
           'Every seventh day, lay down earthly anxieties and remember the Creator who restores all things.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Isaiah 58:13-14',
     ),
     HealthNugget(
@@ -1753,7 +1753,7 @@ class HealthNuggetsData {
       title: 'Warm Wet Socks Remedy for Head Colds',
       nugget:
           'Wearing damp cool cotton socks covered by dry wool socks overnight gently boosts foot circulation and relieves nasal congestion.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Remedies',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'John 7:38',
     ),
     HealthNugget(
@@ -1762,7 +1762,7 @@ class HealthNuggetsData {
       title: 'Protect Your Knees With Strong Quads',
       nugget:
           'Wall sits and gentle step-ups strengthen thigh muscles that absorb shock and protect knee cartilage.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Hebrews 12:12-13',
     ),
     HealthNugget(
@@ -1771,7 +1771,7 @@ class HealthNuggetsData {
       title: 'Eat Raw Vegetables Daily for Enzymes',
       nugget:
           'Crisp salads of cucumber, carrot, cabbage, and tomatoes add natural crunch, hydration, and heat-sensitive vitamins like vitamin C.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -1780,7 +1780,7 @@ class HealthNuggetsData {
       title: 'Practice Digital Sabbath Hours',
       nugget:
           'Turning off social media notifications for a full day each week restores attention span and deepens real-life relationships.',
-      speaker: 'Pastor Pavel Goia — Ministry Magazine',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 46:10',
     ),
     HealthNugget(
@@ -1789,7 +1789,7 @@ class HealthNuggetsData {
       title: 'Listen to Your Body\'s Fatigue Signals',
       nugget:
           'Pushing past exhaustion with stimulants leads to burnout. Respect tiredness as God\'s built-in dashboard warning light.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Exodus 33:14',
     ),
     HealthNugget(
@@ -1798,7 +1798,7 @@ class HealthNuggetsData {
       title: 'Morning Sun Aids Calcium Absorption',
       nugget:
           'Vitamin D activated by sunlight is the key that unlocks calcium absorption in the gut—both sun and greens work together.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Malachi 4:2',
     ),
     HealthNugget(
@@ -1807,7 +1807,7 @@ class HealthNuggetsData {
       title: 'Avoid Mould in Damp Corners',
       nugget:
           'Fix leaks promptly and let sunlight and airflow dry damp bathrooms so airborne mold spores never trigger asthma or fatigue.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Leviticus 14:40',
     ),
     HealthNugget(
@@ -1816,7 +1816,7 @@ class HealthNuggetsData {
       title: 'Almonds and Groundnuts in Moderation',
       nugget:
           'Roast nuts lightly without excess salt or oil. A small palmful satisfies hunger with healthy fats, vitamin E, and protein.',
-      speaker: 'Dr. Gary Fraser — Loma Linda University',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Genesis 43:11',
     ),
     HealthNugget(
@@ -1825,7 +1825,7 @@ class HealthNuggetsData {
       title: 'Contentment Guards the Cardiovascular System',
       nugget:
           'Envy and comparison breed chronic stress; contentment in Christ brings restful sleep and steady peace.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Proverbs 14:30',
     ),
     HealthNugget(
@@ -1843,7 +1843,7 @@ class HealthNuggetsData {
       title: 'Walk Faster for Extra Heart Protection',
       nugget:
           'Adding short 1-minute brisk intervals into your regular walk boosts cardiovascular fitness without straining joints.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Isaiah 40:31',
     ),
     HealthNugget(
@@ -1852,7 +1852,7 @@ class HealthNuggetsData {
       title: '200 Days of Living Whole!',
       nugget:
           'Health is not perfection in one meal—it is the faithful direction of your daily table toward simple, nourishing plant foods.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: '3 John 1:2',
     ),
     HealthNugget(
@@ -1861,7 +1861,7 @@ class HealthNuggetsData {
       title: 'Avoid Very Hot or Very Cold Foods',
       nugget:
           'Eating piping-hot foods or ice-cold desserts shocks delicate oral and gastric tissues. Enjoy foods comfortably warm or cool.',
-      speaker: 'Ellen G. White — Counsels on Diet and Foods',
+      speaker: 'Inspired by Ellen G. White — Counsels on Diet and Foods',
       scripture: '1 Corinthians 9:25',
     ),
     HealthNugget(
@@ -1870,7 +1870,7 @@ class HealthNuggetsData {
       title: 'Keep Work Devices Out of the Bedroom',
       nugget:
           'Associate your bed exclusively with rest and peace—not spreadsheets, alerts, or late-night debates.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 4:8',
     ),
     HealthNugget(
@@ -1879,7 +1879,7 @@ class HealthNuggetsData {
       title: 'Protect Eyes With Wide-Brimmed Hats Outdoors',
       nugget:
           'Under intense tropical midday sun, a simple brimmed hat shades eyes and face while keeping you cool outdoors.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 121:5-6',
     ),
     HealthNugget(
@@ -1888,7 +1888,7 @@ class HealthNuggetsData {
       title: 'Breathe Calmly Through Traffic Delays',
       nugget:
           'You cannot speed up traffic, but deep rhythmic breathing keeps your blood pressure steady and your spirit patient.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'James 1:4',
     ),
     HealthNugget(
@@ -1897,7 +1897,7 @@ class HealthNuggetsData {
       title: 'Avocado: Heart-Healthy Butter Alternative',
       nugget:
           'Mashed ripe avocado with a pinch of lemon and garlic replaces dairy butter on bread with zero cholesterol and rich potassium.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Deuteronomy 8:8',
     ),
     HealthNugget(
@@ -1906,7 +1906,7 @@ class HealthNuggetsData {
       title: 'God Values Your Body and Soul Together',
       nugget:
           'In Scripture, humans are a unified whole—caring for physical health honors the Creator who formed us from the dust and breathed life.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '1 Thessalonians 5:23',
     ),
     HealthNugget(
@@ -1915,7 +1915,7 @@ class HealthNuggetsData {
       title: 'Rinse Fresh Produce Under Running Water',
       nugget:
           'Washing fruits and leafy greens thoroughly in clean water removes soil bacteria and surface residues safely.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Psalm 24:3-4',
     ),
     HealthNugget(
@@ -1924,7 +1924,7 @@ class HealthNuggetsData {
       title: 'Shoulder Rolls Relieve Desk Tension',
       nugget:
           'Roll your shoulders slowly backward ten times every hour to release neck stiffness and invite deeper breathing.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Matthew 11:29',
     ),
     HealthNugget(
@@ -1933,7 +1933,7 @@ class HealthNuggetsData {
       title: 'Avoid Hydrogenated Trans Fats Completely',
       nugget:
           'Partially hydrogenated oils in cheap margarines and commercial snacks stiffen cell membranes. Read labels and skip them.',
-      speaker: 'Dr. Walter Veith — Creation & Health',
+      speaker: 'Creation & Health Principles',
       scripture: '1 Corinthians 6:19',
     ),
     HealthNugget(
@@ -1942,7 +1942,7 @@ class HealthNuggetsData {
       title: 'Self-Control Begins With Small Choices',
       nugget:
           'Saying no to an unnecessary second dessert strengthens the brain\'s prefrontal cortex for every moral choice.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Galatians 5:22-23',
     ),
     HealthNugget(
@@ -1951,7 +1951,7 @@ class HealthNuggetsData {
       title: 'Stretch Gently Before Climbing Into Bed',
       nugget:
           'Three minutes of gentle calf and back stretches signals muscles to release the day\'s physical tension.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Psalm 3:5',
     ),
     HealthNugget(
@@ -1960,7 +1960,7 @@ class HealthNuggetsData {
       title: 'Eat Lunch Outdoors When Weather Permits',
       nugget:
           'Stepping outside during your lunch break gives fresh air, sunlight, and a real mental reset for the afternoon.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Ecclesiastes 11:7',
     ),
     HealthNugget(
@@ -1969,7 +1969,7 @@ class HealthNuggetsData {
       title: 'Deep Breathing Eases Mild Tension Headaches',
       nugget:
           'Many afternoon headaches stem from shallow breathing and dehydration. Drink a glass of water and breathe deeply outdoors.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Genesis 2:7',
     ),
     HealthNugget(
@@ -1987,7 +1987,7 @@ class HealthNuggetsData {
       title: 'Peaceful Homes Nurture Healthy Hearts',
       nugget:
           'Speaking tenderly and praying together as a family lowers household stress more than any supplement.',
-      speaker: 'Pastor Ted Wilson — GC Health Outreach',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Joshua 24:15',
     ),
     HealthNugget(
@@ -1996,7 +1996,7 @@ class HealthNuggetsData {
       title: 'Evening Bath Washes Away Day\'s Fatigue',
       nugget:
           'Clean skin breathes better and regulates temperature more efficiently during sleep.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Hebrews 10:22',
     ),
     HealthNugget(
@@ -2005,7 +2005,7 @@ class HealthNuggetsData {
       title: 'Skip the Car for Short Errands',
       nugget:
           'Walking to nearby shops builds daily step counts naturally while saving fuel and clearing your head.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Micah 6:8',
     ),
     HealthNugget(
@@ -2023,7 +2023,7 @@ class HealthNuggetsData {
       title: 'Avoid Late-Night Heavy Suppers',
       nugget:
           'Let the digestive tract clock out with the sun. A light piece of fruit or warm herbal tea is plenty if hungry late.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Ecclesiastes 10:17',
     ),
     HealthNugget(
@@ -2032,7 +2032,7 @@ class HealthNuggetsData {
       title: 'Music With Calm Tempo Lowers Heart Rate',
       nugget:
           'Soft acoustic hymns in the evening slow breathing and prepare the mind for peaceful rest.',
-      speaker: 'Pastor Pavel Goia — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '1 Samuel 16:23',
     ),
     HealthNugget(
@@ -2041,7 +2041,7 @@ class HealthNuggetsData {
       title: 'Plants Need Sun—And So Do You',
       nugget:
           'Just as leaves wilt in dark basements, human immunity and mood fade without daily natural light.',
-      speaker: 'Ellen G. White — Counsels on Health',
+      speaker: 'Inspired by Ellen G. White — Counsels on Health',
       scripture: 'Psalm 84:11',
     ),
     HealthNugget(
@@ -2050,7 +2050,7 @@ class HealthNuggetsData {
       title: 'Walk Briskly to Expand Lung Alveoli',
       nugget:
           'During rest, many tiny air sacs in the lungs stay partially collapsed; brisk walking opens them fully for better oxygen exchange.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Job 33:4',
     ),
     HealthNugget(
@@ -2059,7 +2059,7 @@ class HealthNuggetsData {
       title: 'Cinnamon Helps Steady Blood Sugar',
       nugget:
           'A sprinkle of Ceylon cinnamon on morning oats adds natural sweetness and supports healthy insulin sensitivity.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Exodus 30:23',
     ),
     HealthNugget(
@@ -2068,7 +2068,7 @@ class HealthNuggetsData {
       title: 'Memorize Healing Promises of Scripture',
       nugget:
           'Storing verses like Psalm 103 and Isaiah 41:10 in your heart gives instant strength during sleepless nights or illness.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 119:11',
     ),
     HealthNugget(
@@ -2077,7 +2077,7 @@ class HealthNuggetsData {
       title: 'Cold Water Splash Refreshes Drowsy Eyes',
       nugget:
           'Instead of reaching for an afternoon soda, splash cool water on your face and drink a glass of pure water.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Proverbs 25:25',
     ),
     HealthNugget(
@@ -2086,7 +2086,7 @@ class HealthNuggetsData {
       title: 'Push-Ups Build Upper-Body Resilience',
       nugget:
           'Whether against a wall, on knees, or full floor push-ups, strengthening chest and arm muscles supports daily lifting safely.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 144:1',
     ),
     HealthNugget(
@@ -2095,7 +2095,7 @@ class HealthNuggetsData {
       title: 'Avoid Excess White Sugar in Tea and Pap',
       nugget:
           'Gradually reduce added sugar by half each week—within 21 days your taste buds reset to enjoy natural sweetness.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Proverbs 25:27',
     ),
     HealthNugget(
@@ -2104,7 +2104,7 @@ class HealthNuggetsData {
       title: 'Balance Screen Time With Face-to-Face Care',
       nugget:
           'Visit an elderly neighbor or call a friend instead of scrolling—real human warmth heals loneliness.',
-      speaker: 'Dr. Gary Fraser — Loma Linda University',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: '3 John 1:14',
     ),
     HealthNugget(
@@ -2113,7 +2113,7 @@ class HealthNuggetsData {
       title: 'Keep a Consistent Bedtime Anchor',
       nugget:
           'Going to bed within the same 30-minute window each night deepens REM and slow-wave restorative sleep.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Psalm 127:2',
     ),
     HealthNugget(
@@ -2122,7 +2122,7 @@ class HealthNuggetsData {
       title: 'Morning Sunlight Helps Prevent Myopia in Youth',
       nugget:
           'Research shows children who spend 1–2 hours playing outdoors in natural daylight have far lower rates of nearsightedness.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Zechariah 8:5',
     ),
     HealthNugget(
@@ -2131,7 +2131,7 @@ class HealthNuggetsData {
       title: 'Keep Bedroom Clutter-Free for Cleaner Air',
       nugget:
           'Fewer piles of clothes and papers mean less trapped dust and calmer visual rest.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: '1 Corinthians 14:40',
     ),
     HealthNugget(
@@ -2140,7 +2140,7 @@ class HealthNuggetsData {
       title: 'Soybeans and Tofu: Versatile Plant Protein',
       nugget:
           'Minimally processed soy foods like tofu, tempeh, and soy milk provide complete protein and isoflavones linked to heart protection.',
-      speaker: 'Dr. Gary Fraser — Adventist Health Study',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Daniel 1:12',
     ),
     HealthNugget(
@@ -2149,7 +2149,7 @@ class HealthNuggetsData {
       title: 'Wait Patiently on God\'s Timing',
       nugget:
           'Healing—whether emotional or physical—often unfolds step by step. Stay faithful in daily habits and trust God\'s clock.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 27:14',
     ),
     HealthNugget(
@@ -2158,7 +2158,7 @@ class HealthNuggetsData {
       title: 'Drink More Water in Hot or Humid Weather',
       nugget:
           'Perspiration rapidly depletes fluids and electrolytes. Pair extra water with mineral-rich fruits like oranges and bananas.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Isaiah 49:10',
     ),
     HealthNugget(
@@ -2167,7 +2167,7 @@ class HealthNuggetsData {
       title: 'Cycling Protects Joints While Building Stamina',
       nugget:
           'Stationary or outdoor cycling delivers strong aerobic conditioning with minimal impact on ankles and knees.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: '1 Timothy 4:8',
     ),
     HealthNugget(
@@ -2176,7 +2176,7 @@ class HealthNuggetsData {
       title: 'Onion Flavonoids Support Blood Vessels',
       nugget:
           'Red and yellow onions are rich in quercetin, an antioxidant that helps calm vascular inflammation.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Numbers 11:5',
     ),
     HealthNugget(
@@ -2185,7 +2185,7 @@ class HealthNuggetsData {
       title: 'Do Not Eat When Deeply Upset',
       nugget:
           'Stress and anger halt digestive juices. Calm down with prayer and deep breaths before sitting down to eat.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Proverbs 15:17',
     ),
     HealthNugget(
@@ -2194,7 +2194,7 @@ class HealthNuggetsData {
       title: 'Protect Youth Sleep From Late Homework',
       nugget:
           'Teenagers need 8–10 hours of sleep for brain development. Help young people finish studying earlier for sharper focus.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Proverbs 3:24',
     ),
     HealthNugget(
@@ -2203,7 +2203,7 @@ class HealthNuggetsData {
       title: 'Open Curtains First Thing in the Morning',
       nugget:
           'Flooding your home with morning light lifts energy, discourages oversleeping, and sets a cheerful tone for worship.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 118:24',
     ),
     HealthNugget(
@@ -2212,7 +2212,7 @@ class HealthNuggetsData {
       title: 'Take Slow Outdoor Walks After Rain',
       nugget:
           'Rain washes dust and pollen from the atmosphere, leaving crisp, refreshing air ideal for deep breathing.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 72:6',
     ),
     HealthNugget(
@@ -2221,7 +2221,7 @@ class HealthNuggetsData {
       title: 'Carrots and Squash Nourish Eyes and Skin',
       nugget:
           'Vibrant orange vegetables deliver carotenoids that protect the retina and keep mucous membranes resilient.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -2230,7 +2230,7 @@ class HealthNuggetsData {
       title: 'Cast Burdens Through Intercessory Prayer',
       nugget:
           'Praying for others shifts focus outward and reminds us that God is actively at work across His church.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'James 5:16',
     ),
     HealthNugget(
@@ -2239,7 +2239,7 @@ class HealthNuggetsData {
       title: 'Avoid Sweetened Sports Drinks for Light Activity',
       nugget:
           'For workouts under an hour, plain water is all your body needs—save yourself the unnecessary sugar and dyes.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Isaiah 55:2',
     ),
     HealthNugget(
@@ -2248,7 +2248,7 @@ class HealthNuggetsData {
       title: 'Good Posture Starts With Strong Back Muscles',
       nugget:
           'Gentle row exercises or squeezing shoulder blades together for 5 seconds counters hours of leaning over phones.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 145:14',
     ),
     HealthNugget(
@@ -2257,7 +2257,7 @@ class HealthNuggetsData {
       title: 'Homemade Dressings Beat Bottled Sauces',
       nugget:
           'Blend lemon juice, garlic, herbs, and blended cashews or tahini for creamy salads without chemical thickeners.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -2266,7 +2266,7 @@ class HealthNuggetsData {
       title: 'Keep Speech Pure and Uplifting',
       nugget:
           'Gossip poisons the mind just as spoiled food poisons the stomach. Speak what builds faith and courage.',
-      speaker: 'Pastor Pavel Goia — Ministry Magazine',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Ephesians 4:29',
     ),
     HealthNugget(
@@ -2275,7 +2275,7 @@ class HealthNuggetsData {
       title: 'Sabbath Afternoons Are Made for Restoration',
       nugget:
           'Combine unhurried family time, nature walks, and quiet rest on Sabbath afternoon to enter the new week refreshed.',
-      speaker: 'Pastor Ted Wilson — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Mark 2:27',
     ),
     HealthNugget(
@@ -2284,7 +2284,7 @@ class HealthNuggetsData {
       title: 'Gentle Sun Helps Calm Skin Flare-Ups',
       nugget:
           'Brief, non-burning morning sunlight often soothes eczema and psoriasis while boosting local skin immunity.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Malachi 4:2',
     ),
     HealthNugget(
@@ -2293,7 +2293,7 @@ class HealthNuggetsData {
       title: 'Check Your Breathing Right Now',
       nugget:
           'Drop your shoulders, unclench your jaw, and take one slow, deep belly breath. Stress leaves on the exhale.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 46:10',
     ),
     HealthNugget(
@@ -2311,7 +2311,7 @@ class HealthNuggetsData {
       title: 'God\'s Mercies Are New Every Morning',
       nugget:
           'Yesterday\'s slip in diet or exercise does not define today. Begin fresh this morning with gratitude and resolve.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Lamentations 3:22-23',
     ),
     HealthNugget(
@@ -2320,7 +2320,7 @@ class HealthNuggetsData {
       title: 'Warm Water Soothes Morning Coughs',
       nugget:
           'Sipping warm water with a touch of honey (for adults and children over age 1) calms throat irritation naturally.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Proverbs 16:24',
     ),
     HealthNugget(
@@ -2329,7 +2329,7 @@ class HealthNuggetsData {
       title: 'Climb Hills or Inclines Gradually',
       nugget:
           'Walking up gentle slopes builds leg power and heart capacity quickly—pace yourself so you can still speak comfortably.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Habakkuk 3:19',
     ),
     HealthNugget(
@@ -2338,7 +2338,7 @@ class HealthNuggetsData {
       title: 'Beets Support Natural Blood Flow',
       nugget:
           'Dietary nitrates in beets convert to nitric oxide in the body, helping blood vessels dilate and supporting stamina.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -2347,7 +2347,7 @@ class HealthNuggetsData {
       title: 'Guard Against Late-Night Entertainment',
       nugget:
           'Exciting movies or heated social feeds right before bed flood the brain with cortisol when you need peace.',
-      speaker: 'Dr. Neil Nedley — Depression & Anxiety Recovery',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Psalm 101:3',
     ),
     HealthNugget(
@@ -2356,7 +2356,7 @@ class HealthNuggetsData {
       title: 'Change Your Work Posture Often',
       nugget:
           'Alternating between sitting and standing while working reduces lower-back fatigue and keeps legs energized.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Ecclesiastes 3:1',
     ),
     HealthNugget(
@@ -2365,7 +2365,7 @@ class HealthNuggetsData {
       title: 'Natural Sunlight Lifts Hospital Recovery',
       nugget:
           'Studies show patients in sunlit rooms heal faster and need less pain medication than those in dim rooms.',
-      speaker: 'Dr. Gary Fraser — Loma Linda University',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Malachi 4:2',
     ),
     HealthNugget(
@@ -2374,7 +2374,7 @@ class HealthNuggetsData {
       title: 'Avoid Sleeping Under Heavy Blankets Over Face',
       nugget:
           'Covering your head while sleeping traps exhaled carbon dioxide. Keep your face uncovered to breathe fresh room air.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Genesis 2:7',
     ),
     HealthNugget(
@@ -2383,7 +2383,7 @@ class HealthNuggetsData {
       title: 'Replace Mayonnaise With Avocado or Hummus',
       nugget:
           'Chickpea hummus and mashed avocado add creaminess and fiber to sandwiches without refined oils or eggs.',
-      speaker: 'Dr. Walter Veith — Creation & Health',
+      speaker: 'Creation & Health Principles',
       scripture: 'Daniel 1:12',
     ),
     HealthNugget(
@@ -2392,7 +2392,7 @@ class HealthNuggetsData {
       title: 'Heals All Our Diseases',
       nugget:
           'Whether through natural laws, skilled physicians, or direct miracle, all true healing comes from the Lord.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 103:3',
     ),
     HealthNugget(
@@ -2401,7 +2401,7 @@ class HealthNuggetsData {
       title: 'Stay Hydrated During Long Travel',
       nugget:
           'Bus, car, and air travel dehydrate the body quickly. Carry clean water and stretch your legs at every stop.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 121:8',
     ),
     HealthNugget(
@@ -2410,7 +2410,7 @@ class HealthNuggetsData {
       title: 'Grip Strength Predicts Healthy Aging',
       nugget:
           'Carrying groceries, squeezing a stress ball, or hanging gently from a bar maintains hand and forearm strength for life.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Ecclesiastes 9:10',
     ),
     HealthNugget(
@@ -2419,7 +2419,7 @@ class HealthNuggetsData {
       title: 'Eat Breakfast Within Two Hours of Waking',
       nugget:
           'Fueling your brain early prevents mid-morning cortisol spikes and reduces cravings for sugary pastries.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'John 21:12',
     ),
     HealthNugget(
@@ -2428,7 +2428,7 @@ class HealthNuggetsData {
       title: 'Keep Household Portions Moderate',
       nugget:
           'Serving food onto smaller plates naturally prevents overeating without leaving anyone feeling deprived.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Proverbs 23:2',
     ),
     HealthNugget(
@@ -2437,7 +2437,7 @@ class HealthNuggetsData {
       title: 'Make Sabbath Eve Peaceful',
       nugget:
           'A calm family worship at sundown Friday signals body and soul that six days of toil are complete.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Genesis 2:2',
     ),
     HealthNugget(
@@ -2446,7 +2446,7 @@ class HealthNuggetsData {
       title: 'Sunlight Encourages Healthy Serotonin',
       nugget:
           'Higher brain serotonin from daily sunlight brings calm focus during the day and converts to melatonin at night.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Psalm 19:4-5',
     ),
     HealthNugget(
@@ -2455,7 +2455,7 @@ class HealthNuggetsData {
       title: 'Sing Together in Worship',
       nugget:
           'Congregational singing synchronizes breathing, deepens community bonds, and uplifts weary hearts.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Colossians 3:16',
     ),
     HealthNugget(
@@ -2473,7 +2473,7 @@ class HealthNuggetsData {
       title: 'Do Not Borrow Tomorrow\'s Trouble',
       nugget:
           'Jesus reminds us that each day has enough of its own care. Live faithfully today and leave tomorrow in His hands.',
-      speaker: 'Pastor Pavel Goia — Ministry Magazine',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Matthew 6:34',
     ),
     HealthNugget(
@@ -2482,7 +2482,7 @@ class HealthNuggetsData {
       title: 'Clean Water Prevents Kidney Stones',
       nugget:
           'Drinking 8–10 glasses of water daily dilutes urine minerals and protects kidneys from painful crystal buildup.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Isaiah 58:11',
     ),
     HealthNugget(
@@ -2491,7 +2491,7 @@ class HealthNuggetsData {
       title: 'Warm Up Before Vigorous Work',
       nugget:
           'Spend 5 minutes walking slowly or swinging arms gently before lifting or sprinting to protect tendons and joints.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Proverbs 24:27',
     ),
     HealthNugget(
@@ -2500,7 +2500,7 @@ class HealthNuggetsData {
       title: 'Whole Apples Over Apple Juice',
       nugget:
           'Pectin fiber in whole apples feeds healthy gut bacteria and slows sugar absorption—skip stripped juices.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Proverbs 25:11',
     ),
     HealthNugget(
@@ -2509,7 +2509,7 @@ class HealthNuggetsData {
       title: 'Avoid Energy-Draining Comparisons',
       nugget:
           'Focus on progressing from where you were last month rather than comparing your body or pace to others.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Galatians 6:4',
     ),
     HealthNugget(
@@ -2518,7 +2518,7 @@ class HealthNuggetsData {
       title: 'Dim House Lights After Sunset',
       nugget:
           'Lowering bright overhead lights in the evening tells your pineal gland that night has arrived.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Psalm 104:20',
     ),
     HealthNugget(
@@ -2527,7 +2527,7 @@ class HealthNuggetsData {
       title: 'Vitamin D Supports Mood During Stressful Seasons',
       nugget:
           'Keeping vitamin D healthy through safe sun exposure protects emotional resilience when life gets demanding.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 27:1',
     ),
     HealthNugget(
@@ -2536,7 +2536,7 @@ class HealthNuggetsData {
       title: 'Practice Belly Breathing Lying Down',
       nugget:
           'Place one hand on your chest and one on your belly; let only the belly hand rise as you inhale slowly.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Genesis 2:7',
     ),
     HealthNugget(
@@ -2545,7 +2545,7 @@ class HealthNuggetsData {
       title: 'Sesame Seeds & Tahini Build Strong Bones',
       nugget:
           'Just two tablespoons of ground sesame or tahini deliver substantial calcium, copper, and healthy fats.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -2554,7 +2554,7 @@ class HealthNuggetsData {
       title: 'Love Casts Out Fear',
       nugget:
           'Chronic fear weakens immunity; resting in God\'s unconditional love quiets the nervous system.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '1 John 4:18',
     ),
     HealthNugget(
@@ -2563,7 +2563,7 @@ class HealthNuggetsData {
       title: 'Wash Fruits Before Peeling',
       nugget:
           'Even oranges, mangoes, and melons should be rinsed first so your knife does not drag surface bacteria inside.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 51:2',
     ),
     HealthNugget(
@@ -2581,7 +2581,7 @@ class HealthNuggetsData {
       title: 'Avoid Artificial Sweeteners',
       nugget:
           'Zero-calorie chemical sweeteners can disrupt gut microbiota and confuse appetite regulation. Choose whole fruit instead.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Isaiah 55:2',
     ),
     HealthNugget(
@@ -2590,7 +2590,7 @@ class HealthNuggetsData {
       title: 'Don\'t Eat Standing Up in a Rush',
       nugget:
           'Sitting calmly at a table helps you digest food properly and prevents mindless overconsumption.',
-      speaker: 'Ellen G. White — Counsels on Diet and Foods',
+      speaker: 'Inspired by Ellen G. White — Counsels on Diet and Foods',
       scripture: '1 Corinthians 14:40',
     ),
     HealthNugget(
@@ -2599,7 +2599,7 @@ class HealthNuggetsData {
       title: 'Take Annual Vacation Time Seriously',
       nugget:
           'Stepping away from routine duties for a few days each year restores creativity, marriage joy, and heart health.',
-      speaker: 'Dr. Gary Fraser — Loma Linda University',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Mark 6:31',
     ),
     HealthNugget(
@@ -2608,7 +2608,7 @@ class HealthNuggetsData {
       title: 'Sun-Warmed Walkways Invite Outdoor Habits',
       nugget:
           'Keep walking shoes right by the door so stepping out into morning sun becomes automatic.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Psalm 119:105',
     ),
     HealthNugget(
@@ -2617,7 +2617,7 @@ class HealthNuggetsData {
       title: 'Fresh Air Prevents Afternoon Slump',
       nugget:
           'Stuffy offices build up carbon dioxide, causing drowsiness. Step outside for three minutes of fresh air at 3 PM.',
-      speaker: 'Dr. Neil Nedley — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Job 33:4',
     ),
     HealthNugget(
@@ -2626,7 +2626,7 @@ class HealthNuggetsData {
       title: 'Cook Vegetables Lightly to Keep Crunch',
       nugget:
           'Overboiling greens until mushy destroys vitamin C and folate. Steam briefly until vibrant green and tender-crisp.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -2635,7 +2635,7 @@ class HealthNuggetsData {
       title: 'Serve in Health Evangelism',
       nugget:
           'Sharing a simple healthy recipe or praying with a sick neighbor turns your wellness habits into loving witness.',
-      speaker: 'Pastor Ted Wilson — GC Health Outreach',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Matthew 10:8',
     ),
     HealthNugget(
@@ -2644,7 +2644,7 @@ class HealthNuggetsData {
       title: 'Warm Compress Relieves Tension Neck Pain',
       nugget:
           'A warm damp towel wrapped around stiff neck muscles for 10 minutes melts tightness safely.',
-      speaker: 'Dr. John Harvey Kellogg — Rational Hydrotherapy',
+      speaker: 'Hydrotherapy & Sanitarium Principles',
       scripture: 'Isaiah 1:6',
     ),
     HealthNugget(
@@ -2653,7 +2653,7 @@ class HealthNuggetsData {
       title: 'Stretch Hamstrings to Ease Low Back',
       nugget:
           'Tight back-of-thigh muscles pull on the pelvis. Gentle daily hamstring stretches keep your lower back comfortable.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Psalm 18:32',
     ),
     HealthNugget(
@@ -2662,7 +2662,7 @@ class HealthNuggetsData {
       title: 'Walnuts Nourish Brain Membranes',
       nugget:
           'Shaped remarkably like the human brain, walnuts are rich in plant omega-3 ALA and polyphenols for cognitive longevity.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Song of Solomon 6:11',
     ),
     HealthNugget(
@@ -2671,7 +2671,7 @@ class HealthNuggetsData {
       title: 'Practice Fasting From Complaining',
       nugget:
           'Grumbling elevates cortisol and discourages everyone nearby. Replace complaints with one concrete thing you appreciate.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Philippians 2:14',
     ),
     HealthNugget(
@@ -2680,7 +2680,7 @@ class HealthNuggetsData {
       title: 'Avoid Heavy Exercise Right Before Sleep',
       nugget:
           'Vigorous workouts raise core body temperature and adrenaline; finish intense exercise at least 3 hours before bedtime.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 4:8',
     ),
     HealthNugget(
@@ -2689,7 +2689,7 @@ class HealthNuggetsData {
       title: 'Let Children Play Outdoors Daily',
       nugget:
           'Active outdoor play builds strong bones, sharper eyesight, better sleep, and cheerful social skills.',
-      speaker: 'Ellen G. White — Education',
+      speaker: 'Inspired by Ellen G. White — Education',
       scripture: 'Zechariah 8:5',
     ),
     HealthNugget(
@@ -2707,7 +2707,7 @@ class HealthNuggetsData {
       title: 'Black-Eyed Peas & Corn: Classic Protein Pair',
       nugget:
           'Combining legumes and whole grains provides all essential amino acids effortlessly without saturated animal fat.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Daniel 1:12',
     ),
     HealthNugget(
@@ -2716,7 +2716,7 @@ class HealthNuggetsData {
       title: 'Trust God\'s Healing When Diagnosis Scares You',
       nugget:
           'Seek wise medical counsel, adopt every NEWSTART habit, and anchor your heart in the Great Physician\'s presence.',
-      speaker: 'Pastor Pavel Goia — Ministry Magazine',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Isaiah 41:10',
     ),
     HealthNugget(
@@ -2725,7 +2725,7 @@ class HealthNuggetsData {
       title: 'Drink Water After Every Restroom Break',
       nugget:
           'Linking a half-glass of water to every restroom break keeps hydration steady without needing to count.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'John 4:14',
     ),
     HealthNugget(
@@ -2734,7 +2734,7 @@ class HealthNuggetsData {
       title: 'Jump Rope or Step-Ups Boost Bone Density',
       nugget:
           'Gentle weight-bearing impacts signal bone cells to lay down stronger mineral matrix, preventing osteoporosis.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Proverbs 3:8',
     ),
     HealthNugget(
@@ -2743,7 +2743,7 @@ class HealthNuggetsData {
       title: 'Avoid Skipping Meals Then Binging',
       nugget:
           'Starving all day triggers extreme evening hunger and poor food choices. Eat a nourishing breakfast and balanced lunch.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Ecclesiastes 10:17',
     ),
     HealthNugget(
@@ -2752,7 +2752,7 @@ class HealthNuggetsData {
       title: '300 Days of Walking With the Creator',
       nugget:
           'Every healthy meal, deep breath, and Sabbath rest is a testimony that God cares about your whole life today.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '3 John 1:2',
     ),
     HealthNugget(
@@ -2761,7 +2761,7 @@ class HealthNuggetsData {
       title: 'Guard Against Workaholism',
       nugget:
           'Your worth is rooted in Christ, not endless busyness. Work diligently, then rest without guilt.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 127:2',
     ),
     HealthNugget(
@@ -2770,7 +2770,7 @@ class HealthNuggetsData {
       title: 'Read Something Uplifting Before Sleep',
       nugget:
           'A chapter of Psalms or inspiring devotional reading leaves peaceful thoughts in your subconscious overnight.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Psalm 63:6',
     ),
     HealthNugget(
@@ -2779,7 +2779,7 @@ class HealthNuggetsData {
       title: 'Sunlight Helps Clear Mild Winter/Rainy Blues',
       nugget:
           'Whenever the clouds break, take 15 minutes outside—bright sky light boosts mood even through light haze.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Ecclesiastes 11:7',
     ),
     HealthNugget(
@@ -2788,7 +2788,7 @@ class HealthNuggetsData {
       title: 'Keep Nasal Passages Clear With Saline',
       nugget:
           'A gentle warm saline rinse clears dust and pollen naturally without medicated spray dependency.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Remedies',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Genesis 2:7',
     ),
     HealthNugget(
@@ -2797,7 +2797,7 @@ class HealthNuggetsData {
       title: 'Chickpeas (Garbanzo) Keep You Full Longer',
       nugget:
           'High fiber and slow-digesting protein in chickpeas prevent mid-afternoon energy crashes.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Daniel 1:15',
     ),
     HealthNugget(
@@ -2806,7 +2806,7 @@ class HealthNuggetsData {
       title: 'Hydrate Well When Nursing a Cold',
       nugget:
           'Extra water and warm vegetable broths thin mucus secretions and help the body clear viral invaders faster.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Proverbs 17:22',
     ),
     HealthNugget(
@@ -2815,7 +2815,7 @@ class HealthNuggetsData {
       title: 'Evening Family Walks Build Connection',
       nugget:
           'A 15-minute stroll after supper lets parents and children talk openly while aiding digestion.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Deuteronomy 6:7',
     ),
     HealthNugget(
@@ -2833,7 +2833,7 @@ class HealthNuggetsData {
       title: 'Practice Patience While Waiting',
       nugget:
           'Impatience spikes blood pressure unnecessarily. Use waiting lines as moments to pray silently for people around you.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Galatians 5:22',
     ),
     HealthNugget(
@@ -2842,7 +2842,7 @@ class HealthNuggetsData {
       title: 'Check Your Mattress and Pillow Support',
       nugget:
           'A supportive pillow keeping your neck aligned with your spine prevents morning headaches and shoulder pain.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 4:8',
     ),
     HealthNugget(
@@ -2851,7 +2851,7 @@ class HealthNuggetsData {
       title: 'Vitamin D Works Alongside Physical Activity',
       nugget:
           'Outdoor walking combines vitamin D production with weight-bearing bone stimulation in one simple habit.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Malachi 4:2',
     ),
     HealthNugget(
@@ -2860,7 +2860,7 @@ class HealthNuggetsData {
       title: 'Humming Gently Boosts Sinus Nitric Oxide',
       nugget:
           'Soft humming vibrates sinus passages and dramatically increases natural nitric oxide airflow, helping clear mild congestion.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 95:1',
     ),
     HealthNugget(
@@ -2869,7 +2869,7 @@ class HealthNuggetsData {
       title: 'Herbs and Spices Pack Concentrated Antioxidants',
       nugget:
           'Oregano, thyme, rosemary, basil, and cloves contain far more antioxidants per gram than most fruits—season freely!',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Psalm 104:14',
     ),
     HealthNugget(
@@ -2878,7 +2878,7 @@ class HealthNuggetsData {
       title: 'Forgive Quickly to Protect Your Peace',
       nugget:
           'Resentment is a heavy backpack your heart was never built to carry. Lay it at the cross today.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Colossians 3:13',
     ),
     HealthNugget(
@@ -2887,7 +2887,7 @@ class HealthNuggetsData {
       title: 'Cool Showers After Sweating Restore Tone',
       nugget:
           'Finishing a warm post-exercise shower with 30 seconds of cool water closes pores and leaves you invigorated.',
-      speaker: 'Dr. John Harvey Kellogg — Rational Hydrotherapy',
+      speaker: 'Hydrotherapy & Sanitarium Principles',
       scripture: 'John 7:38',
     ),
     HealthNugget(
@@ -2896,7 +2896,7 @@ class HealthNuggetsData {
       title: 'Ankle Circles Prevent Stiffness on Flights',
       nugget:
           'Rotating ankles and flexing calves hourly during long journeys protects against sluggish leg circulation.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Isaiah 35:3',
     ),
     HealthNugget(
@@ -2914,7 +2914,7 @@ class HealthNuggetsData {
       title: 'Keep Mealtime Conversation Cheerful',
       nugget:
           'Laughter and warm conversation at the table relax the nervous system and help every family member digest better.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: 'Proverbs 15:17',
     ),
     HealthNugget(
@@ -2923,7 +2923,7 @@ class HealthNuggetsData {
       title: 'Avoid Heavy Problem-Solving After 9 PM',
       nugget:
           'Tackle complex budgets or tough decisions in the morning when your prefrontal cortex is fresh, not at midnight.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Psalm 127:2',
     ),
     HealthNugget(
@@ -2932,7 +2932,7 @@ class HealthNuggetsData {
       title: 'Sunlight Regulates Healthy Immune Balance',
       nugget:
           'Balanced sun exposure calms overactive autoimmune responses while strengthening defenses against infection.',
-      speaker: 'Dr. Walter Veith — Creation & Health',
+      speaker: 'Creation & Health Principles',
       scripture: 'Psalm 84:11',
     ),
     HealthNugget(
@@ -2941,7 +2941,7 @@ class HealthNuggetsData {
       title: 'Spend Time Under Trees Weekly',
       nugget:
           'Forest bathing—simply sitting or walking quietly among trees—lowers blood pressure and boosts natural killer immune cells.',
-      speaker: 'Dr. Gary Fraser — Loma Linda University',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Psalm 96:12',
     ),
     HealthNugget(
@@ -2950,7 +2950,7 @@ class HealthNuggetsData {
       title: 'Citrus Pith Holds Extra Bioflavonoids',
       nugget:
           'When eating oranges or tangerines, enjoy the soft white pith too—it contains rutin and hesperidin that strengthen capillaries.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -2959,7 +2959,7 @@ class HealthNuggetsData {
       title: 'Your Life Is Hid With Christ in God',
       nugget:
           'Security in God\'s love frees you from frantic status-seeking, allowing genuine rest and joyful health.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Colossians 3:3',
     ),
     HealthNugget(
@@ -2968,7 +2968,7 @@ class HealthNuggetsData {
       title: 'Sip Water Slowly Rather Than Gulping',
       nugget:
           'Sipping water steadily throughout the day hydrates tissues better than chugging a liter all at once.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Isaiah 58:11',
     ),
     HealthNugget(
@@ -2977,7 +2977,7 @@ class HealthNuggetsData {
       title: 'Sit-to-Stand Practice Keeps Legs Strong',
       nugget:
           'Standing up from a chair 10 times without using your hands strengthens thighs and preserves lifelong mobility.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Deuteronomy 33:25',
     ),
     HealthNugget(
@@ -2986,7 +2986,7 @@ class HealthNuggetsData {
       title: 'Whole Cornmeal Over Refined Starch',
       nugget:
           'Unrefined whole grains retain the germ and bran where vitamin E, magnesium, and protective antioxidants live.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Psalm 81:16',
     ),
     HealthNugget(
@@ -2995,7 +2995,7 @@ class HealthNuggetsData {
       title: 'Steer Clear of Gossip and Negativity',
       nugget:
           'Guard what enters your ears just as carefully as what enters your mouth—toxic media breeds anxious thoughts.',
-      speaker: 'Pastor Pavel Goia — Ministry Magazine',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Philippians 4:8',
     ),
     HealthNugget(
@@ -3004,7 +3004,7 @@ class HealthNuggetsData {
       title: 'Wake Gently Without Panic Alarms',
       nugget:
           'Waking to a calm chime at a consistent hour avoids morning adrenaline jolts and starts worship peacefully.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 5:3',
     ),
     HealthNugget(
@@ -3013,7 +3013,7 @@ class HealthNuggetsData {
       title: 'Morning Sun Helps Reset Jet Lag and Shift Fatigue',
       nugget:
           'Early daylight exposure is the fastest natural signal to align your body\'s internal clock.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 113:3',
     ),
     HealthNugget(
@@ -3022,7 +3022,7 @@ class HealthNuggetsData {
       title: 'Keep Car Windows Cracked Briefly on Drives',
       nugget:
           'Recirculated cabin air builds up CO2 quickly; briefly refreshing cabin air keeps drivers alert and focused.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Job 33:4',
     ),
     HealthNugget(
@@ -3031,7 +3031,7 @@ class HealthNuggetsData {
       title: 'Bananas: Quick Pre-Walk Potassium',
       nugget:
           'A ripe banana before a morning walk offers gentle energy, vitamin B6, and potassium for steady muscle contractions.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -3040,7 +3040,7 @@ class HealthNuggetsData {
       title: 'Be Still and Know That He Is God',
       nugget:
           'Daily stillness in God\'s presence lowers blood pressure and reminds us who holds the universe together.',
-      speaker: 'Pastor Ted Wilson — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 46:10',
     ),
     HealthNugget(
@@ -3049,7 +3049,7 @@ class HealthNuggetsData {
       title: 'Check Elderly Loved Ones\' Hydration',
       nugget:
           'Thirst sensation fades with age. Gently remind parents and grandparents to drink clean water throughout the day.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: '1 Timothy 5:8',
     ),
     HealthNugget(
@@ -3058,7 +3058,7 @@ class HealthNuggetsData {
       title: 'Move Every Day—Even If Only 10 Minutes',
       nugget:
           'On packed days, a brisk 10-minute walk keeps the daily habit unbroken and boosts circulation.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Zechariah 4:10',
     ),
     HealthNugget(
@@ -3067,7 +3067,7 @@ class HealthNuggetsData {
       title: 'Dates, Figs, and Plums Support Regularity',
       nugget:
           'Soluble and insoluble fibers in dried fruits gently support bowel regularity without harsh laxatives.',
-      speaker: 'Dr. Calvin Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Deuteronomy 8:8',
     ),
     HealthNugget(
@@ -3076,7 +3076,7 @@ class HealthNuggetsData {
       title: 'Avoid Eating Out of Boredom',
       nugget:
           'Ask yourself before opening the fridge: "Am I truly hungry, or just tired or bored?"',
-      speaker: 'Dr. Neil Nedley — Depression & Anxiety Recovery',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Proverbs 23:2',
     ),
     HealthNugget(
@@ -3085,7 +3085,7 @@ class HealthNuggetsData {
       title: 'Honor the Rhythm of Work and Rest',
       nugget:
           'God designed six days for purposeful labor and the seventh for complete rest—both are sacred commands.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Exodus 20:9-10',
     ),
     HealthNugget(
@@ -3094,7 +3094,7 @@ class HealthNuggetsData {
       title: 'Enjoy Sunset Walks for Evening Calm',
       nugget:
           'Watching the shifting evening light signals your brain to begin winding down toward restful sleep.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Genesis 24:63',
     ),
     HealthNugget(
@@ -3103,7 +3103,7 @@ class HealthNuggetsData {
       title: 'Clear Cluttered Airways With Hydration & Steam',
       nugget:
           'Moist air and good hydration keep nasal cilia sweeping away dust and microbes effortlessly.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Remedies',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Genesis 2:7',
     ),
     HealthNugget(
@@ -3112,7 +3112,7 @@ class HealthNuggetsData {
       title: 'Roasted Pumpkin & Sunflower Seeds Snack',
       nugget:
           'Swap fried chips for lightly toasted pumpkin or sunflower seeds—crunchy, satisfying, and packed with magnesium.',
-      speaker: 'Dr. Gary Fraser — Loma Linda University',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -3121,7 +3121,7 @@ class HealthNuggetsData {
       title: 'Pray Over Your Kitchen and Table',
       nugget:
           'Dedicate your home\'s meals to God\'s glory so preparing simple, wholesome food becomes joyful ministry.',
-      speaker: 'Ellen G. White — Ministry of Healing',
+      speaker: 'Inspired by Ellen G. White — Ministry of Healing',
       scripture: '1 Corinthians 10:31',
     ),
     HealthNugget(
@@ -3130,7 +3130,7 @@ class HealthNuggetsData {
       title: 'Warm Foot Soak Eases Cold Feet Before Sleep',
       nugget:
           'Warming cold feet in a basin of warm water for 10 minutes helps blood vessels relax so you fall asleep faster.',
-      speaker: 'Dr. John Harvey Kellogg — Rational Hydrotherapy',
+      speaker: 'Hydrotherapy & Sanitarium Principles',
       scripture: 'Psalm 4:8',
     ),
     HealthNugget(
@@ -3139,7 +3139,7 @@ class HealthNuggetsData {
       title: 'Take a Stretching Break Between Meetings',
       nugget:
           'Reach up, twist gently side to side, and walk across the room between calls to keep energy flowing.',
-      speaker: 'Dr. Fred Hardinge — Adventist Health Ministries',
+      speaker: 'Adventist Health Ministries Principles',
       scripture: 'Isaiah 40:31',
     ),
     HealthNugget(
@@ -3157,7 +3157,7 @@ class HealthNuggetsData {
       title: 'Simplicity Brings Peace to Hospitality',
       nugget:
           'Invite friends over for a simple pot of beans, salad, and warm fellowship—love matters far more than elaborate menus.',
-      speaker: 'Ellen G. White — Counsels on Diet and Foods',
+      speaker: 'Inspired by Ellen G. White — Counsels on Diet and Foods',
       scripture: 'Romans 12:13',
     ),
     HealthNugget(
@@ -3166,7 +3166,7 @@ class HealthNuggetsData {
       title: 'Turn Off Notification Sounds Overnight',
       nugget:
           'Even brief phone chimes fragment deep sleep cycles. Use Do Not Disturb so your brain rests uninterrupted.',
-      speaker: 'Dr. Milton Teske — Weimar NEWSTART',
+      speaker: 'Weimar NEWSTART Principles',
       scripture: 'Psalm 3:5',
     ),
     HealthNugget(
@@ -3175,7 +3175,7 @@ class HealthNuggetsData {
       title: 'Sun-Dry Laundry When Possible',
       nugget:
           'Fresh air and sunlight naturally freshen clothes and linens without harsh chemical dryer sheets.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Psalm 19:6',
     ),
     HealthNugget(
@@ -3184,7 +3184,7 @@ class HealthNuggetsData {
       title: 'Deep Exhalation Releases Shoulder Tension',
       nugget:
           'Let your breath out with a quiet sigh as you drop your shoulders—instant relief for desk-bound muscles.',
-      speaker: 'Dr. Peter Landless — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Matthew 11:28',
     ),
     HealthNugget(
@@ -3202,7 +3202,7 @@ class HealthNuggetsData {
       title: 'Rejoice Always in the Lord',
       nugget:
           'Joy rooted in Christ\'s salvation is steady regardless of circumstances, uplifting both spirit and immune health.',
-      speaker: 'Pastor Ty Gibson — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Philippians 4:4',
     ),
     HealthNugget(
@@ -3211,7 +3211,7 @@ class HealthNuggetsData {
       title: 'Drink Water Before Heavy Mental Work',
       nugget:
           'Your brain is roughly 75% water; even 2% dehydration slows reaction time and memory recall.',
-      speaker: 'Dr. Neil Nedley — Nedley Health',
+      speaker: 'Mental & Physical Health Principles',
       scripture: 'Proverbs 2:6',
     ),
     HealthNugget(
@@ -3220,7 +3220,7 @@ class HealthNuggetsData {
       title: 'Strengthen Your Ankles and Feet',
       nugget:
           'Walking barefoot safely indoors on clean floors or grass strengthens small stabilizing foot muscles.',
-      speaker: 'Dr. Eddie Ramirez — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Psalm 18:33',
     ),
     HealthNugget(
@@ -3229,7 +3229,7 @@ class HealthNuggetsData {
       title: 'Garlic, Onion, and Lemon: Everyday Defenders',
       nugget:
           'Building everyday soups and stews on garlic, onions, tomatoes, and fresh herbs packs immune protection into every bite.',
-      speaker: 'Dr. Agatha Thrash — Uchee Pines Institute',
+      speaker: 'Uchee Pines Natural Health Principles',
       scripture: 'Ezekiel 47:12',
     ),
     HealthNugget(
@@ -3238,7 +3238,7 @@ class HealthNuggetsData {
       title: 'End-of-Year Balance Without Gluttony',
       nugget:
           'Celebrate holidays with gratitude, vibrant fruit salads, and brisk walks—don\'t sacrifice January health to December excess.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: '1 Corinthians 10:31',
     ),
     HealthNugget(
@@ -3247,7 +3247,7 @@ class HealthNuggetsData {
       title: 'Reflect on God\'s Faithfulness This Year',
       nugget:
           'Looking back at answered prayers calms anxiety about the coming year and deepens restful trust.',
-      speaker: 'Pastor Pavel Goia — Ministry Magazine',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 77:11-12',
     ),
     HealthNugget(
@@ -3256,7 +3256,7 @@ class HealthNuggetsData {
       title: 'Step Outside Even on Busy Holiday Weeks',
       nugget:
           'Ten minutes in morning sunlight keeps mood bright and digestion smooth amid busy family schedules.',
-      speaker: 'Dr. Zeno Charles-Marcel — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Malachi 4:2',
     ),
     HealthNugget(
@@ -3265,7 +3265,7 @@ class HealthNuggetsData {
       title: 'Crack a Window During Family Gatherings',
       nugget:
           'Crowded rooms deplete oxygen quickly. Fresh cross-ventilation keeps guests alert, comfortable, and healthier.',
-      speaker: 'Dr. Allan Handysides — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Genesis 2:7',
     ),
     HealthNugget(
@@ -3274,7 +3274,7 @@ class HealthNuggetsData {
       title: 'Warm Oatmeal With Fruit and Walnuts',
       nugget:
           'Simple whole oats topped with banana, cinnamon, and walnuts fuel steady morning energy in minutes.',
-      speaker: 'Dr. Wes Youngberg — Lifestyle Medicine',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Genesis 1:29',
     ),
     HealthNugget(
@@ -3283,7 +3283,7 @@ class HealthNuggetsData {
       title: 'Peace On Earth Begins in Surrendered Hearts',
       nugget:
           'Receiving Christ\'s peace transforms how we treat our bodies, our families, and our neighbors.',
-      speaker: 'Pastor Mark Finley — Hope Channel',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Luke 2:14',
     ),
     HealthNugget(
@@ -3292,7 +3292,7 @@ class HealthNuggetsData {
       title: 'Clean Water Is a Ministry Opportunity',
       nugget:
           'Whenever we share clean water or teach simple hygiene, we reflect the love of Jesus, the Living Water.',
-      speaker: 'Pastor Ted Wilson — GC Health Outreach',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Matthew 10:42',
     ),
     HealthNugget(
@@ -3301,7 +3301,7 @@ class HealthNuggetsData {
       title: 'Finish the Year Moving Forward',
       nugget:
           'Invite a friend for a year-end walk and share one health goal you are praying about for the new year.',
-      speaker: 'Dr. Chidi Ngwaba — Lifestyle Physician',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Philippians 3:13-14',
     ),
     HealthNugget(
@@ -3310,7 +3310,7 @@ class HealthNuggetsData {
       title: 'Plan Simple Weekly Plant-Forward Menus',
       nugget:
           'Writing a simple 5-meal rotation of beans, greens, whole grains, and fresh fruit removes daily guesswork.',
-      speaker: 'Dr. Hans Diehl — CHIP Lifestyle Medicine',
+      speaker: 'CHIP & Lifestyle Medicine Principles',
       scripture: 'Proverbs 21:5',
     ),
     HealthNugget(
@@ -3319,7 +3319,7 @@ class HealthNuggetsData {
       title: 'Choose Habits You Can Sustain All Year',
       nugget:
           'Skip extreme crash diets. Steady, joyful NEWSTART habits practiced 365 days a year create lasting vitality.',
-      speaker: 'Dr. Gary Fraser — Loma Linda University',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Galatians 6:9',
     ),
     HealthNugget(
@@ -3328,7 +3328,7 @@ class HealthNuggetsData {
       title: 'Enter the New Year Rested in Body & Soul',
       nugget:
           'Give yourself permission to sleep well tonight—tomorrow\'s strength is forged in tonight\'s rest.',
-      speaker: 'Pastor David Asscherick — Light Bearers',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Psalm 4:8',
     ),
     HealthNugget(
@@ -3337,7 +3337,7 @@ class HealthNuggetsData {
       title: 'Every Day Belongs to the Great Physician',
       nugget:
           'As 365 days complete and the cycle begins anew, may you prosper and be in health, even as your soul prospers.',
-      speaker: 'Pastor Doug Batchelor — Amazing Facts',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '3 John 1:2',
     ),
     HealthNugget(
@@ -3346,7 +3346,7 @@ class HealthNuggetsData {
       title: 'Unrefined Mineral Salt & Cellular Hydration',
       nugget:
           'A tiny crystal of unrefined sea salt with a full glass of pure water supplies trace minerals that help water enter thirsty cells effectively.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Matthew 5:13',
     ),
     HealthNugget(
@@ -3355,7 +3355,7 @@ class HealthNuggetsData {
       title: 'Cayenne & Ginger Support Healthy Circulation',
       nugget:
           'A tiny pinch of cayenne or fresh ginger in warm water gently dilates peripheral blood vessels and warms cold hands and feet.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Psalm 104:14',
     ),
     HealthNugget(
@@ -3364,7 +3364,7 @@ class HealthNuggetsData {
       title: 'Castor Oil Compresses for Gentle Relief',
       nugget:
           'A warm flannel cloth lightly soaked with cold-pressed castor oil placed over a sore joint or abdomen supports lymphatic flow and comfort.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Isaiah 1:6',
     ),
     HealthNugget(
@@ -3373,7 +3373,7 @@ class HealthNuggetsData {
       title: 'Slippery Elm Soothes Irritated Digestion',
       nugget:
           'Stirring a teaspoon of slippery elm bark powder into warm water forms a gentle mucilage that coats and calms an upset stomach lining.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Ezekiel 47:12',
     ),
     HealthNugget(
@@ -3382,7 +3382,7 @@ class HealthNuggetsData {
       title: 'Gentle Rebounding Moves Lymphatic Fluid',
       nugget:
           'Unlike blood, the lymphatic system has no heart pump—gentle bouncing, brisk walking, and deep breathing keep lymph flowing cleanly.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Psalm 139:14',
     ),
     HealthNugget(
@@ -3391,7 +3391,7 @@ class HealthNuggetsData {
       title: 'Magnesium-Rich Greens Calm Evening Nerves',
       nugget:
           'Dark leafy greens, pumpkin seeds, and almonds provide natural magnesium that relaxes tight muscles and prepares the brain for deep sleep.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Psalm 4:8',
     ),
     HealthNugget(
@@ -3400,7 +3400,7 @@ class HealthNuggetsData {
       title: 'Give the Liver an Overnight Rest',
       nugget:
           'Finishing a light supper early allows the liver to complete detoxification and cellular repair overnight instead of digesting heavy fats.',
-      speaker: 'Barbara O\'Neill — Natural Health Educator',
+      speaker: 'Natural Health & NEWSTART Principles',
       scripture: 'Ecclesiastes 10:17',
     ),
     HealthNugget(
@@ -3409,7 +3409,7 @@ class HealthNuggetsData {
       title: 'Near-Infrared Sunlight Energizes Mitochondria',
       nugget:
           'Natural outdoor sunlight—even in shade near green trees—delivers near-infrared light that helps cell mitochondria produce melatonin and repair tissue.',
-      speaker: 'Dr. Roger Seheult — MedCram & Loma Linda',
+      speaker: 'Loma Linda & Adventist Health Study',
       scripture: 'Malachi 4:2',
     ),
     HealthNugget(
@@ -3418,7 +3418,7 @@ class HealthNuggetsData {
       title: 'Whole-Person Health Anchored in Hope',
       nugget:
           'God\'s health message is never about legalism—it is an invitation to live with clear minds so we can hear His voice and serve joyfully.',
-      speaker: 'Pastor John Bradshaw — It Is Written',
+      speaker: 'Biblical Health & Stewardship',
       scripture: '3 John 1:2',
     ),
     HealthNugget(
@@ -3427,7 +3427,7 @@ class HealthNuggetsData {
       title: 'Emotional Resilience Through Sabbath & Community',
       nugget:
           'Healing trauma and burnout requires safe spiritual community, unhurried Sabbath rest, and honest prayer before a compassionate Savior.',
-      speaker: 'Dr. Katia Reinert — GC Health Ministries',
+      speaker: 'GC Health Ministries Principles',
       scripture: 'Psalm 34:18',
     ),
     HealthNugget(
@@ -3436,7 +3436,7 @@ class HealthNuggetsData {
       title: 'Thirty Days to Lower Blood Pressure Naturally',
       nugget:
           'Combining potassium-rich whole plants, daily brisk walking, and stress reduction measurably lowers blood pressure in just weeks.',
-      speaker: 'Dr. David DeRose — CompassHealth',
+      speaker: 'Adventist Lifestyle Medicine',
       scripture: 'Proverbs 17:22',
     ),
     HealthNugget(
@@ -3445,7 +3445,7 @@ class HealthNuggetsData {
       title: 'Clear Minds Hear the Three Angels\' Messages',
       nugget:
           'Biblical health reform prepares God\'s people with discernment, temperance, and physical endurance for the final days of earth\'s history.',
-      speaker: 'Pastor Stephen Bohr — Secrets Unsealed',
+      speaker: 'Biblical Health & Stewardship',
       scripture: 'Revelation 14:7',
     ),
   ];
