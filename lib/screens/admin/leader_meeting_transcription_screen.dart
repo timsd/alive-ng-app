@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +11,7 @@ import '../../providers/meeting_provider.dart';
 import '../../services/alive_scribe_service.dart';
 import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/docx_report_generator.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/custom_app_bar.dart';
 
@@ -335,12 +335,16 @@ class _LeaderMeetingTranscriptionScreenState
           ) ??
           '';
 
-      final bytes = Uint8List.fromList(utf8.encode(markdown));
+      final meetingTitle = _meetingTitleController.text.trim();
+      final bytes = DocxReportGenerator.generateMeetingMinutesDocx(
+        meetingTitle: meetingTitle,
+        meetingType: _meetingType,
+        markdownContent: markdown,
+      );
       final dateClean = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
-      final sanitizedTitle = _meetingTitleController.text
-          .trim()
+      final sanitizedTitle = meetingTitle
           .replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
-      final fileName = 'Minutes_${sanitizedTitle}_$dateClean.md';
+      final fileName = 'Minutes_${sanitizedTitle}_$dateClean.docx';
 
       final user = AuthService.instance.currentUser;
       final uploaderId = user?.uid ?? 'alive-scribe';

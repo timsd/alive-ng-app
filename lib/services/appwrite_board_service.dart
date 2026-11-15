@@ -6,6 +6,7 @@ import 'package:appwrite/appwrite.dart';
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../utils/app_exception.dart';
+import '../utils/docx_report_generator.dart';
 import '../utils/logger.dart';
 
 class AppwriteBoardService {
@@ -288,4 +289,73 @@ class AppwriteBoardService {
   }
 
   String _now() => DateTime.now().toUtc().toIso8601String();
+
+  /// Resolves member/chapter/location/mission-field details for `.docx` reports.
+  Future<Map<String, DocxSenderDetails>> fetchDocxSenderDetails(
+    Set<String> userIds,
+  ) async {
+    final cleanIds = userIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList();
+    if (cleanIds.isEmpty) return const {};
+
+    final results = <String, DocxSenderDetails>{};
+
+    DocxSenderDetails mapRow(Map<String, dynamic> data) {
+      String pick(List<String> keys) {
+        for (final key in keys) {
+          final v = data[key]?.toString().trim() ?? '';
+          if (v.isNotEmpty) return v;
+        }
+        return '';
+      }
+
+      final city = pick(['city']);
+      final state = pick(['state']);
+      final fallbackLoc = [city, state].where((s) => s.isNotEmpty).join(', ');
+
+      return DocxSenderDetails(
+        name: pick(['full_name', 'fullName', 'display_name', 'displayName', 'name']),
+        chapter: pick(['chapter', 'chapter_name', 'chapterName']),
+        location: pick(['location', 'address']).isNotEmpty
+            ? pick(['location', 'address'])
+            : fallbackLoc,
+        missionField: pick(['mission_field', 'missionField', 'zone']),
+        email: pick(['email']),
+        phone: pick(['phone', 'phone_number', 'phoneNumber']),
+      );
+    }
+
+    try {
+      for (var i = 0; i < cleanIds.length; i += 50) {
+        final chunk = cleanIds.sublist(i, i + 50 > cleanIds.length ? cleanIds.length : i + 50);
+        final res = await _tables.listRows(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.usersCollectionId,
+          queries: [
+            Query.equal('\$id', chunk),
+            Query.limit(chunk.length),
+          ],
+        );
+        for (final row in res.rows) {
+          results[row.$id] = mapRow(row.data);
+        }
+      }
+    } catch (e) {
+      _logger.warning('Batch sender lookup failed, falling back to per-user fetch: $e');
+      for (final id in cleanIds) {
+        try {
+          final row = await _tables.getRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.usersCollectionId,
+            rowId: id,
+          );
+          results[id] = mapRow(row.data);
+        } catch (_) {}
+      }
+    }
+
+    return results;
+  }
 }

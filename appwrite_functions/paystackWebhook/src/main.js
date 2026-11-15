@@ -408,7 +408,9 @@ async function incrementProjectRaised(databases, metadata, log, reference, curre
   const amount = Number(metadata.amount_ngn || metadata.amount || 0);
   if (NON_PROJECT_IDS.has(projectId) || !Number.isFinite(amount) || amount <= 0) return;
 
-  const isTestMode = (process.env.PAYSTACK_SECRET_KEY || '').startsWith('sk_test_') || metadata.domain === 'test';
+  const isTestMode = metadata.domain
+    ? metadata.domain === 'test'
+    : (process.env.PAYSTACK_SECRET_KEY || '').startsWith('sk_test_');
   if (isTestMode) {
     log(`[TEST GUARD] Test payment detected - skipping project credit for ${projectId}`);
     return;

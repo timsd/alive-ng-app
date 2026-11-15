@@ -396,6 +396,8 @@ export default async ({ req, res, log, error }) => {
               targetAudience: targetAudience,
               targetChapter: targetChapter,
             },
+            sound: 'default',
+            priority: 'high',
             draft: false,
           };
 

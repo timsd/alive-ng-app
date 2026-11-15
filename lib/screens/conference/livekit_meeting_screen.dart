@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +21,7 @@ import '../../services/platform/app_store_helper.dart';
 import '../../services/platform/media_permission_adapter.dart';
 import '../../services/ports/meeting_gateway.dart';
 import '../../services/role_access_service.dart';
+import '../../utils/docx_report_generator.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/error_handler.dart';
 import '../../utils/toast_utils.dart';
@@ -452,10 +452,14 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       return;
     }
 
-    final bytes = Uint8List.fromList(utf8.encode(markdown));
+    final bytes = DocxReportGenerator.generateMeetingMinutesDocx(
+      meetingTitle: roomTitle,
+      meetingType: meetingTypeStr,
+      markdownContent: markdown,
+    );
     final dateClean = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
     final sanitizedTitle = roomTitle.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
-    final fileName = 'Minutes_${sanitizedTitle}_$dateClean.md';
+    final fileName = 'Minutes_${sanitizedTitle}_$dateClean.docx';
 
     final user = AuthService.instance.currentUser;
     final uploaderId = user?.uid ?? 'alive-scribe';

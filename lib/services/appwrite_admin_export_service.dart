@@ -27,7 +27,13 @@ class AppwriteAdminExportService {
     'profiles': AppwriteBackendConfig.usersCollectionId,
     'users': AppwriteBackendConfig.usersCollectionId,
     'prayer_requests': AppwriteBackendConfig.prayerRequestsCollectionId,
-    'prayer_testimonies': AppwriteBackendConfig.testimoniesCollectionId,
+    'prayer_testimonies': AppwriteBackendConfig.prayerTestimoniesCollectionId,
+    'testimonies': AppwriteBackendConfig.testimoniesCollectionId,
+    'discipleship_contacts':
+        AppwriteBackendConfig.discipleshipContactsCollectionId,
+    'daily_devotionals': AppwriteBackendConfig.dailyVersesCollectionId,
+    'daily_verses': AppwriteBackendConfig.dailyVersesCollectionId,
+    'announcements': AppwriteBackendConfig.announcementsCollectionId,
     'chapters': AppwriteBackendConfig.chaptersCollectionId,
     'notification_settings':
         AppwriteBackendConfig.notificationSettingsCollectionId,

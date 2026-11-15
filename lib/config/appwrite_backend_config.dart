@@ -126,6 +126,9 @@ class AppwriteBackendConfig {
   static const String tractsCollectionId = 'tracts';
   static const String tractContentsCollectionId = 'tract_contents';
   static const String tractCategoriesCollectionId = 'tract_categories';
+  static const String tractProgressCollectionId = 'tract_progress';
+  static const String userTractAnswersCollectionId = 'user_tract_answers';
+  static const String officerRegistryCollectionId = 'officer_registry';
   static const String podcastsCollectionId = 'podcasts';
   static const String podcastEpisodesCollectionId = 'podcast_episodes';
   static const String podcastCategoriesCollectionId = 'podcast_categories';

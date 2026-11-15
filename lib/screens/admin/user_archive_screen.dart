@@ -5,6 +5,7 @@ import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../models/app_models.dart';
 import '../../services/auth_service.dart';
+import '../../services/role_access_service.dart';
 import '../../utils/logger.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -39,8 +40,8 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
       final user = AuthService.instance.currentUser;
       _currentUser = user;
       if (user != null) {
-        // For now, allow access - role checking should be implemented with UserProfile
-        _hasAccess = true;
+        _hasAccess = RoleAccessService.instance.hasRole('director') ||
+            AppwriteBackendConfig.isSuperAdminEmail(user.email);
 
         if (_hasAccess) {
           await _loadArchivedUsers();

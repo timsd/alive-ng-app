@@ -137,7 +137,10 @@
             "schedule": "",
             "timeout": 15,
             "commands": "npm install",
-            "scopes": []
+            "scopes": [
+                "users.read",
+                "users.write"
+            ]
         },
         {
             "$id": "start_livekit_broadcast",
@@ -186,6 +189,9 @@
             "name": "bindOfficeOnSignup",
             "path": "appwrite_functions/bindOfficeOnSignup",
             "entrypoint": "src/main.js",
+            "enabled": true,
+            "logging": true,
+            "timeout": 15,
             "commands": "npm install",
             "events": [
                 "users.*.create"

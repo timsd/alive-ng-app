@@ -385,7 +385,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       const SizedBox(height: 2),
                       Text(
                         isTest
-                            ? 'Test payments active. Transactions are tagged as test records and do not affect live church finances.'
+                            ? 'Test payments active. Transactions are tagged as test records and do not affect live ministry finances.'
                             : 'Live payments active. Real donor contributions are processed and recorded to official ministry finances.',
                         style: TextStyle(
                           fontSize: 12,

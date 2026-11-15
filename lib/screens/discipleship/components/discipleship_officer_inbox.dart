@@ -13,7 +13,6 @@ import '../../../services/discipleship_service.dart';
 import '../../../services/role_access_service.dart';
 import '../../../utils/docx_report_generator.dart';
 import '../../../utils/error_handler.dart';
-import 'discipleship_helpers.dart';
 
 /// Parses raw feedback text containing threaded officer feedback and disciple maker responses.
 List<DiscipleshipThreadMessage> parseDiscipleshipFeedbackThread(
@@ -1360,11 +1359,17 @@ class _DiscipleshipOfficerInboxViewState
     final fileName =
         'discipleship_reports_${cleanTitle}_${DateFormat('yyyyMMdd_HHmm').format(now)}.docx';
 
+    final senderDetails =
+        await AppwriteBoardService.instance.fetchDocxSenderDetails(
+      exportableReports.map((r) => r.discipleMakerId).toSet(),
+    );
+
     final docxBytes = DocxReportGenerator.generateDiscipleshipOfficeReport(
       officeTitle: officeTitle,
       officerName: officerName,
       reports: exportableReports,
       generatedAt: now,
+      senderDetailsByUserId: senderDetails,
     );
 
     try {
@@ -1446,6 +1451,10 @@ class _DiscipleshipOfficerInboxViewState
           officerName: officerName,
           reports: targetReports,
           generatedAt: now,
+          senderDetailsByUserId:
+              await AppwriteBoardService.instance.fetchDocxSenderDetails(
+            targetReports.map((r) => r.discipleMakerId).toSet(),
+          ),
         );
 
     try {

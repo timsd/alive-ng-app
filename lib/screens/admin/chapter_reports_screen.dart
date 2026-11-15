@@ -393,7 +393,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
   List<BoardReport> _reports = [];
   bool _isLoading = true;
   String _selectedChapter = 'all';
-  String _selectedStatus = 'all';
+  final String _selectedStatus = 'all';
   ReportingLevel _selectedLevel = ReportingLevel.all;
   String _searchQuery = '';
 
@@ -401,15 +401,6 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
   bool _holdsDirectorOffice = false;
   bool _holdsCoordinatorOffice = false;
   List<String> _dynamicDirectors = [];
-
-  final List<String> _statuses = [
-    'all',
-    'submitted',
-    'reviewed',
-    'approved',
-    'done',
-    'draft',
-  ];
 
   @override
   void initState() {
@@ -1096,59 +1087,78 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                 ),
               ),
 
-              // Apex / Leadership Directive Banner if feedback exists
-              if (report.metadata?['review_feedback'] != null &&
-                  report.metadata!['review_feedback'].toString().trim().isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: (report.metadata?['apex_directive'] == true ? Colors.amber : Colors.blue)
-                        .withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: (report.metadata?['apex_directive'] == true ? Colors.amber : Colors.blue)
-                          .withValues(alpha: 0.4),
+              // Apex / Leadership Directive & Thread Preview Banner
+              Builder(builder: (context) {
+                final thread = _extractThreadMessages(report);
+                if (thread.isEmpty) return const SizedBox.shrink();
+                final latest = thread.last;
+                final isApex = report.metadata?['apex_directive'] == true;
+                final accent = isApex ? Colors.amber : Colors.blue;
+                final textColor = isApex
+                    ? (theme.brightness == Brightness.dark
+                        ? const Color(0xFFE7D39B)
+                        : Colors.amber.shade900)
+                    : (theme.brightness == Brightness.dark
+                        ? const Color(0xFF90CAF9)
+                        : Colors.blue.shade900);
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: accent.withValues(alpha: 0.4)),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        report.metadata?['apex_directive'] == true
-                            ? Icons.verified_user_rounded
-                            : Icons.rate_review_outlined,
-                        size: 14,
-                        color: report.metadata?['apex_directive'] == true
-                            ? (theme.brightness == Brightness.dark
-                                ? const Color(0xFFE7D39B)
-                                : Colors.amber.shade800)
-                            : (theme.brightness == Brightness.dark
-                                ? const Color(0xFF90CAF9)
-                                : Colors.blue.shade700),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '${report.metadata?['reviewer_office'] ?? "Leadership"}: "${report.metadata!['review_feedback']}"',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: report.metadata?['apex_directive'] == true
-                                ? (theme.brightness == Brightness.dark
-                                    ? const Color(0xFFE7D39B)
-                                    : Colors.amber.shade900)
-                                : (theme.brightness == Brightness.dark
-                                    ? const Color(0xFF90CAF9)
-                                    : Colors.blue.shade900),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isApex ? Icons.verified_user_rounded : Icons.forum_rounded,
+                          size: 14,
+                          color: isApex
+                              ? (theme.brightness == Brightness.dark
+                                  ? const Color(0xFFE7D39B)
+                                  : Colors.amber.shade800)
+                              : (theme.brightness == Brightness.dark
+                                  ? const Color(0xFF90CAF9)
+                                  : Colors.blue.shade700),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${latest['senderName']}: "${latest['message']}"',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: textColor,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        if (thread.length > 1) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${thread.length}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: textColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                );
+              }),
               const SizedBox(height: 10),
 
               // Bottom Metadata Strip
@@ -2001,206 +2011,480 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
     );
   }
 
-  // --- 9. View Report Details & Review Feedback Dialog ---
+  // --- 9. View Report Details & Chat Thread Review Dialog ---
+  List<Map<String, dynamic>> _extractThreadMessages(BoardReport report) {
+    final rawThread = report.metadata?['feedback_thread'];
+    final messages = <Map<String, dynamic>>[];
+    if (rawThread is List) {
+      for (final item in rawThread) {
+        if (item is Map) {
+          final text = item['message']?.toString().trim() ?? '';
+          if (text.isNotEmpty) {
+            messages.add(Map<String, dynamic>.from(item));
+          }
+        }
+      }
+    }
+    if (messages.isEmpty) {
+      final legacy = report.metadata?['review_feedback']?.toString().trim() ?? '';
+      if (legacy.isNotEmpty) {
+        messages.add({
+          'senderId': '',
+          'senderName': report.metadata?['reviewed_by_name']?.toString().trim().isNotEmpty == true
+              ? report.metadata!['reviewed_by_name'].toString()
+              : 'Leadership Officer',
+          'roleLabel': report.metadata?['reviewer_office']?.toString() ?? 'Leadership',
+          'isLeadership': true,
+          'message': legacy,
+          'sentAt': report.metadata?['reviewed_at']?.toString() ?? '',
+        });
+      }
+    }
+    return messages;
+  }
+
+  String _resolveUserThreadRole(BoardReport report) {
+    if (_isPresident) return 'Executive President';
+    if (_roleService.hasRole('bod') || _roleService.hasRole('trustee')) {
+      return 'Board of Directors / Trustees';
+    }
+    if (_isDirector) return 'Departmental Directorate';
+    if (_isCoordinator) return 'Chapter Coordinator';
+    if (_authService.currentUser?.uid == report.authorId) return 'Report Author';
+    return 'Leadership Officer';
+  }
+
+  String _formatThreadDate(String iso) {
+    final dt = DateTime.tryParse(iso)?.toLocal();
+    if (dt == null) return '';
+    return DateFormat('MMM d, h:mm a').format(dt);
+  }
+
   void _viewReportDetails(BoardReport report) {
-    final level = _getReportLevel(report);
     final chapterName =
         report.metadata?['chapter'] ?? report.metadata?['chapter_name'] ?? 'General';
     final routedTo = report.metadata?['routed_to_name']?.toString() ?? '';
-    final existingFeedback = report.metadata?['review_feedback']?.toString() ?? '';
-    final reviewedBy = report.metadata?['reviewed_by_name']?.toString() ?? '';
-    final feedbackController = TextEditingController(text: existingFeedback);
+    final messageController = TextEditingController();
     final hasAttachments = report.attachments.isNotEmpty;
     final attachmentName = report.metadata?['attachment_name']?.toString() ?? 'Attached Document';
+    final currentMeta = Map<String, dynamic>.from(report.metadata ?? {});
+    final threadMessages = _extractThreadMessages(report);
+    var currentStatus = report.status;
+    var isSending = false;
+
+    final user = _authService.currentUser;
+    final isLeadership = _isPresident ||
+        _isDirector ||
+        _isCoordinator ||
+        _roleService.hasRole('bod') ||
+        _roleService.hasRole('trustee');
+
+    Future<void> submitMessage(
+      StateSetter setDialogState, {
+      required String newStatus,
+      required bool closeOnSuccess,
+    }) async {
+      final text = messageController.text.trim();
+      if (text.isEmpty && !closeOnSuccess) return;
+
+      setDialogState(() => isSending = true);
+      try {
+        final senderName =
+            user?.name ?? user?.displayName ?? user?.email ?? 'Member';
+        final roleLabel = _resolveUserThreadRole(report);
+        final nowIso = DateTime.now().toIso8601String();
+
+        if (text.isNotEmpty) {
+          final entry = <String, dynamic>{
+            'senderId': user?.uid ?? '',
+            'senderName': senderName,
+            'roleLabel': roleLabel,
+            'isLeadership': isLeadership && user?.uid != report.authorId || isLeadership,
+            'message': text,
+            'sentAt': nowIso,
+          };
+          threadMessages.add(entry);
+          currentMeta['feedback_thread'] = threadMessages;
+          currentMeta['review_feedback'] = text;
+          currentMeta['reviewed_by_name'] = senderName;
+          currentMeta['reviewed_at'] = nowIso;
+          currentMeta['reviewer_office'] = roleLabel;
+        }
+        if (isLeadership) {
+          currentMeta['apex_directive'] =
+              _isPresident || _roleService.hasRole('bod') || _roleService.hasRole('trustee');
+        }
+
+        await _boardService.updateBoardReportReview(
+          reportId: report.id,
+          status: newStatus,
+          feedback: text.isNotEmpty ? text : currentMeta['review_feedback']?.toString(),
+          reviewerName: senderName,
+          updatedMetadata: currentMeta,
+        );
+
+        currentStatus = newStatus;
+        messageController.clear();
+        if (mounted) _loadReports();
+
+        if (closeOnSuccess && mounted) {
+          Navigator.pop(context);
+          ToastUtils.showSuccess('Report approved');
+        } else {
+          setDialogState(() => isSending = false);
+        }
+      } catch (e) {
+        setDialogState(() => isSending = false);
+        ToastUtils.showError('Failed to send message: $e');
+      }
+    }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Expanded(child: Text(report.title, style: const TextStyle(fontWeight: FontWeight.bold))),
-            _buildStatusBadge(report.status),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final theme = Theme.of(context);
+          final isDark = theme.brightness == Brightness.dark;
+          return AlertDialog(
+            title: Row(
               children: [
-                // Routing Info & Chapter Tag
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    Chip(
-                      avatar: const Icon(Icons.location_city_rounded, size: 14),
-                      label: Text(chapterName.toString()),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    if (routedTo.isNotEmpty)
-                      Chip(
-                        avatar: const Icon(Icons.send_rounded, size: 14),
-                        label: Text('To: $routedTo'),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                  ],
+                Expanded(
+                  child: Text(report.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Submitted by ${report.authorName} on ${DateFormat('MMM dd, yyyy – hh:mm a').format(report.createdAt)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const Divider(height: 20),
-
-                const Text(
-                  'Report Summary & Activities:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  report.content,
-                  style: const TextStyle(fontSize: 13, height: 1.45),
-                ),
-
-                // Metrics & Challenges
-                if (report.metadata != null && report.metadata!.isNotEmpty) ...[
-                  const Divider(height: 20),
-                  const Text('Report Details:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 6),
-                  if (report.metadata?['attendees'] != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Text('• Active Attendees: ${report.metadata!['attendees']}',
-                          style: const TextStyle(fontSize: 12)),
-                    ),
-                  if (report.metadata?['challenges'] != null &&
-                      report.metadata!['challenges'].toString().isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Text('• Challenges & Needs: ${report.metadata!['challenges']}',
-                          style: const TextStyle(fontSize: 12)),
-                    ),
-                ],
-
-                // Attachments
-                if (hasAttachments) ...[
-                  const Divider(height: 20),
-                  const Text('Attachments:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    children: report.attachments.map((url) {
-                      return ActionChip(
-                        avatar: const Icon(Icons.attach_file_rounded, size: 16),
-                        label: Text(attachmentName, style: const TextStyle(fontSize: 12)),
-                        onPressed: () async {
-                          final uri = Uri.parse(url);
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          } else {
-                            ToastUtils.showError('Could not open attachment link');
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ],
-
-                // Feedback section
-                const Divider(height: 24),
-                Row(
-                  children: [
-                    const Icon(Icons.feedback_outlined, size: 16, color: Colors.blue),
-                    const SizedBox(width: 6),
-                    Text(
-                      reviewedBy.isNotEmpty ? 'Leadership Feedback (by $reviewedBy):' : 'Leadership Feedback:',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: feedbackController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter review comments, guidance, or resolution...',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
+                _buildStatusBadge(currentStatus),
               ],
             ),
-          ),
-        ),
-        actions: [
-          if (_canDeleteReport(report))
-            TextButton.icon(
-              icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
-              label: const Text('Delete', style: TextStyle(color: Colors.red)),
-              onPressed: () {
-                Navigator.pop(context);
-                _confirmAndDeleteReport(report);
-              },
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Routing Info & Chapter Tag
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        Chip(
+                          avatar: const Icon(Icons.location_city_rounded, size: 14),
+                          label: Text(chapterName.toString()),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        if (routedTo.isNotEmpty)
+                          Chip(
+                            avatar: const Icon(Icons.send_rounded, size: 14),
+                            label: Text('To: $routedTo'),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Submitted by ${report.authorName} on ${DateFormat('MMM dd, yyyy – hh:mm a').format(report.createdAt)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const Divider(height: 20),
+
+                    const Text(
+                      'Report Summary & Activities:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      report.content,
+                      style: const TextStyle(fontSize: 13, height: 1.45),
+                    ),
+
+                    // Metrics & Challenges
+                    if (report.metadata != null && report.metadata!.isNotEmpty) ...[
+                      const Divider(height: 20),
+                      const Text('Report Details:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 6),
+                      if (report.metadata?['attendees'] != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text('• Active Attendees: ${report.metadata!['attendees']}',
+                              style: const TextStyle(fontSize: 12)),
+                        ),
+                      if (report.metadata?['challenges'] != null &&
+                          report.metadata!['challenges'].toString().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text('• Challenges & Needs: ${report.metadata!['challenges']}',
+                              style: const TextStyle(fontSize: 12)),
+                        ),
+                    ],
+
+                    // Attachments
+                    if (hasAttachments) ...[
+                      const Divider(height: 20),
+                      const Text('Attachments:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        children: report.attachments.map((url) {
+                          return ActionChip(
+                            avatar: const Icon(Icons.attach_file_rounded, size: 16),
+                            label: Text(attachmentName, style: const TextStyle(fontSize: 12)),
+                            onPressed: () async {
+                              final uri = Uri.parse(url);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              } else {
+                                ToastUtils.showError('Could not open attachment link');
+                              }
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
+
+                    // Chat-like Conversation Thread
+                    const Divider(height: 24),
+                    Row(
+                      children: [
+                        Icon(Icons.forum_rounded, size: 16, color: theme.colorScheme.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Conversation Thread',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${threadMessages.length}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (threadMessages.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Text(
+                          'No feedback messages yet. Start a conversation below.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      )
+                    else
+                      for (int i = 0; i < threadMessages.length; i++)
+                        _buildLeadershipChatBubble(
+                          theme: theme,
+                          isDark: isDark,
+                          entry: threadMessages[i],
+                          isLast: i == threadMessages.length - 1,
+                        ),
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: messageController,
+                            maxLines: 3,
+                            minLines: 1,
+                            decoration: InputDecoration(
+                              hintText: isLeadership
+                                  ? 'Write guidance, feedback, or follow-up...'
+                                  : 'Write a reply to leadership...',
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          onPressed: isSending
+                              ? null
+                              : () => submitMessage(
+                                    setDialogState,
+                                    newStatus: currentStatus == 'submitted' && isLeadership
+                                        ? 'reviewed'
+                                        : currentStatus,
+                                    closeOnSuccess: false,
+                                  ),
+                          icon: isSending
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.send_rounded, size: 18),
+                          tooltip: 'Send Message',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-          if (report.status.toLowerCase() != 'done')
-            TextButton.icon(
-              icon: const Icon(Icons.task_alt_rounded, size: 16, color: Colors.teal),
-              label: const Text('Mark Done', style: TextStyle(color: Colors.teal)),
-              onPressed: () {
-                Navigator.pop(context);
-                _markLeadershipReportsDoneAndArchive([report]);
-              },
+            actions: [
+              if (_canDeleteReport(report))
+                TextButton.icon(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
+                  label: const Text('Delete', style: TextStyle(color: Colors.red)),
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                    _confirmAndDeleteReport(report);
+                  },
+                ),
+              if (currentStatus.toLowerCase() != 'done')
+                TextButton.icon(
+                  icon: const Icon(Icons.task_alt_rounded, size: 16, color: Colors.teal),
+                  label: const Text('Mark Done', style: TextStyle(color: Colors.teal)),
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                    _markLeadershipReportsDoneAndArchive([report]);
+                  },
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Close'),
+              ),
+              if (isLeadership && currentStatus.toLowerCase() != 'approved')
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.check_circle_outline, size: 16),
+                  label: const Text('Approve'),
+                  onPressed: isSending
+                      ? null
+                      : () => submitMessage(
+                            setDialogState,
+                            newStatus: 'approved',
+                            closeOnSuccess: true,
+                          ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLeadershipChatBubble({
+    required ThemeData theme,
+    required bool isDark,
+    required Map<String, dynamic> entry,
+    required bool isLast,
+  }) {
+    final isLeaderMsg = entry['isLeadership'] == true;
+    final senderName = entry['senderName']?.toString() ?? 'Member';
+    final roleLabel = entry['roleLabel']?.toString() ?? '';
+    final msgText = entry['message']?.toString() ?? '';
+    final dateStr = _formatThreadDate(entry['sentAt']?.toString() ?? '');
+    final accentColor = isLeaderMsg ? Colors.amber.shade700 : theme.colorScheme.primary;
+    final bubbleColor = isLeaderMsg
+        ? Colors.amber.withValues(alpha: isDark ? 0.10 : 0.08)
+        : theme.colorScheme.primary.withValues(alpha: isDark ? 0.10 : 0.06);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: accentColor.withValues(alpha: 0.15),
+            child: Icon(
+              isLeaderMsg ? Icons.shield_rounded : Icons.person_rounded,
+              size: 14,
+              color: accentColor,
             ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
           ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.check_circle_outline, size: 16),
-            label: const Text('Save Feedback & Approve'),
-            onPressed: () async {
-              try {
-                final user = _authService.currentUser;
-                final meta = Map<String, dynamic>.from(report.metadata ?? {});
-                meta['review_feedback'] = feedbackController.text.trim();
-                meta['reviewed_by_name'] = user?.name ?? 'Leadership Officer';
-                meta['reviewed_at'] = DateTime.now().toIso8601String();
-
-                String reviewerOffice = 'Leadership Officer';
-                if (_isPresident) {
-                  reviewerOffice = 'Executive President';
-                } else if (_roleService.hasRole('bod') || _roleService.hasRole('trustee')) {
-                  reviewerOffice = 'Board of Directors / Trustees';
-                } else if (_isDirector) {
-                  reviewerOffice = 'Departmental Directorate';
-                } else if (_isCoordinator) {
-                  reviewerOffice = 'Chapter Coordinator';
-                }
-                meta['reviewer_office'] = reviewerOffice;
-                meta['apex_directive'] = (_isPresident || _roleService.hasRole('bod') || _roleService.hasRole('trustee'));
-
-                await _boardService.updateBoardReportReview(
-                  reportId: report.id,
-                  status: 'approved',
-                  feedback: feedbackController.text.trim(),
-                  reviewerName: user?.name,
-                  updatedMetadata: meta,
-                );
-
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ToastUtils.showSuccess('Report approved with feedback');
-                  _loadReports();
-                }
-              } catch (e) {
-                ToastUtils.showError('Failed to save review: $e');
-              }
-            },
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: bubbleColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(14),
+                  bottomLeft: Radius.circular(14),
+                  bottomRight: Radius.circular(14),
+                ),
+                border: Border(
+                  left: BorderSide(color: accentColor, width: 2.5),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          senderName,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: accentColor,
+                          ),
+                        ),
+                      ),
+                      if (roleLabel.isNotEmpty) ...[
+                        const SizedBox(width: 5),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: accentColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            roleLabel.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.4,
+                              color: accentColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      if (dateStr.isNotEmpty)
+                        Text(
+                          dateStr,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    msgText,
+                    style: theme.textTheme.bodySmall?.copyWith(height: 1.4),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -2227,11 +2511,17 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
     final fileName =
         'leadership_reports_${cleanLevel}_${DateFormat('yyyyMMdd_HHmm').format(now)}.docx';
 
+    final senderDetails =
+        await AppwriteBoardService.instance.fetchDocxSenderDetails(
+      exportableReports.map((r) => r.authorId).toSet(),
+    );
+
     final docxBytes = DocxReportGenerator.generateLeadershipReportsDocx(
       sectionTitle: sectionTitle,
       exportedBy: exportedBy,
       reports: exportableReports,
       generatedAt: now,
+      senderDetailsByUserId: senderDetails,
     );
 
     try {
@@ -2306,6 +2596,10 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
           exportedBy: exportedBy,
           reports: targetReports,
           generatedAt: now,
+          senderDetailsByUserId:
+              await AppwriteBoardService.instance.fetchDocxSenderDetails(
+            targetReports.map((r) => r.authorId).toSet(),
+          ),
         );
 
     try {
