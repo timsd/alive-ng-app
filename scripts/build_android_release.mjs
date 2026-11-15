@@ -88,7 +88,7 @@ async function prepareProductionJson() {
     RECAPTCHA_SITE_KEY: '6LcKstkrAAAAAMWfR5Ki5eBh1TdCLQD-e7ofMi4S',
     GLITCHTIP_DSN: 'https://73d0ec10487c4a92b5ea6d5f2e97da8d@glitchtip.alivenigeria.org/1',
     GLITCHTIP_ENVIRONMENT: 'production',
-    GLITCHTIP_RELEASE: 'alive-ng-app@2.0.9+17',
+    GLITCHTIP_RELEASE: 'alive-ng-app@2.0.9+19',
     GLITCHTIP_TRACES_SAMPLE_RATE: '0',
     FIREBASE_WEB_API_KEY: 'AIzaSyDmpl9Idp9Q0ult4BfWPg5J7A1URQOpDoU',
     FIREBASE_WEB_APP_ID: '1:234909240985:web:9d703098e9fcce3e8e3208',
@@ -107,6 +107,9 @@ async function prepareProductionJson() {
     if (!defineMap[k]) {
       defineMap[k] = envVars[k] || v;
     }
+  }
+  if (envVars.GLITCHTIP_RELEASE) {
+    defineMap.GLITCHTIP_RELEASE = envVars.GLITCHTIP_RELEASE;
   }
 
   writeFileSync(configJsonPath, JSON.stringify(defineMap, null, 2), 'utf8');

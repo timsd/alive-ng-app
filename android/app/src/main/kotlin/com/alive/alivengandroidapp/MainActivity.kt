@@ -3,38 +3,69 @@ package com.alive.alivengandroidapp
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.app.PendingIntent
 import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.util.Rational
 import androidx.annotation.NonNull
 import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
 
 class MainActivity: FlutterFragmentActivity() {
     private val CHANNEL = "com.alive.alivengandroidapp/native"
     private val PIP_CHANNEL = "com.alive.alivengandroidapp/pip"
+    private val ACTION_PIP_TOGGLE_MIC = "com.alive.alivengandroidapp.PIP_TOGGLE_MIC"
+    private val ACTION_PIP_LEAVE_MEETING = "com.alive.alivengandroidapp.PIP_LEAVE_MEETING"
 
     private var pipChannel: MethodChannel? = null
     private var isInActiveMeeting: Boolean = false
+    private var isAudioMuted: Boolean = false
+    private var pipReceiver: BroadcastReceiver? = null
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        registerPipActionReceiver()
 
         pipChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PIP_CHANNEL).apply {
             setMethodCallHandler { call, result ->
                 when (call.method) {
                     "setMeetingActive" -> {
                         val active = call.argument<Boolean>("active") ?: false
+                        val mutedArg = call.argument<Boolean>("isMuted")
                         isInActiveMeeting = active
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isPipSupported()) {
+                        if (mutedArg != null) {
+                            isAudioMuted = mutedArg
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isPipSupported()) {
                             try {
                                 setPictureInPictureParams(buildPipParams(autoEnter = active))
                             } catch (e: Exception) {
-                                Log.w("MainActivity", "Failed to update PiP auto-enter params", e)
+                                Log.w("MainActivity", "Failed to update PiP params", e)
+                            }
+                        }
+                        result.success(true)
+                    }
+                    "updatePipState" -> {
+                        val mutedArg = call.argument<Boolean>("isMuted")
+                        if (mutedArg != null) {
+                            isAudioMuted = mutedArg
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isPipSupported() && isInActiveMeeting) {
+                            try {
+                                setPictureInPictureParams(buildPipParams(autoEnter = isInActiveMeeting))
+                            } catch (e: Exception) {
+                                Log.w("MainActivity", "Failed to refresh PiP actions", e)
                             }
                         }
                         result.success(true)
@@ -195,10 +226,80 @@ class MainActivity: FlutterFragmentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        pipReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (_: Exception) {}
+            pipReceiver = null
+        }
+        super.onDestroy()
+    }
+
+    private fun registerPipActionReceiver() {
+        if (pipReceiver != null) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    ACTION_PIP_TOGGLE_MIC -> {
+                        pipChannel?.invokeMethod("onPipAction", "toggle_mic")
+                    }
+                    ACTION_PIP_LEAVE_MEETING -> {
+                        pipChannel?.invokeMethod("onPipAction", "leave_meeting")
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(ACTION_PIP_TOGGLE_MIC)
+            addAction(ACTION_PIP_LEAVE_MEETING)
+        }
+        ContextCompat.registerReceiver(
+            this,
+            receiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        pipReceiver = receiver
+    }
+
     @RequiresApi(Build.VERSION_CODES.O)
     private fun buildPipParams(autoEnter: Boolean): PictureInPictureParams {
+        val micLabel = if (isAudioMuted) "Unmute" else "Mute"
+        val micIconRes = if (isAudioMuted) {
+            android.R.drawable.ic_lock_silent_mode_off
+        } else {
+            android.R.drawable.ic_lock_silent_mode
+        }
+        val micPendingIntent = PendingIntent.getBroadcast(
+            this,
+            101,
+            Intent(ACTION_PIP_TOGGLE_MIC).setPackage(packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val micAction = RemoteAction(
+            Icon.createWithResource(this, micIconRes),
+            micLabel,
+            micLabel,
+            micPendingIntent
+        )
+
+        val leavePendingIntent = PendingIntent.getBroadcast(
+            this,
+            102,
+            Intent(ACTION_PIP_LEAVE_MEETING).setPackage(packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val leaveAction = RemoteAction(
+            Icon.createWithResource(this, android.R.drawable.ic_menu_close_clear_cancel),
+            "Leave",
+            "Leave meeting",
+            leavePendingIntent
+        )
+
         val builder = PictureInPictureParams.Builder()
             .setAspectRatio(Rational(16, 9))
+            .setActions(listOf(micAction, leaveAction))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(autoEnter)
             builder.setSeamlessResizeEnabled(true)

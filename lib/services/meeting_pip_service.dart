@@ -13,30 +13,53 @@ class MeetingPipService {
 
   bool _initialized = false;
   bool? _lastActiveState;
+  bool? _lastMutedState;
+  void Function(String action)? _onPipAction;
 
   bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   /// Registers the native callback that notifies Flutter whenever OS PiP mode
-  /// starts or stops.
-  void init(void Function(bool isInPipMode) onPipModeChanged) {
-    if (!_isAndroid || _initialized) return;
+  /// starts or stops, or when the user taps an OS PiP RemoteAction button.
+  void init(
+    void Function(bool isInPipMode) onPipModeChanged, {
+    void Function(String action)? onPipAction,
+  }) {
+    if (!_isAndroid) return;
+    _onPipAction = onPipAction;
+    if (_initialized) return;
     _initialized = true;
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'onPipModeChanged') {
         final isPip = call.arguments == true;
         onPipModeChanged(isPip);
+      } else if (call.method == 'onPipAction') {
+        final action = call.arguments?.toString();
+        if (action != null && action.isNotEmpty) {
+          _onPipAction?.call(action);
+        }
       }
     });
   }
 
   /// Tells Android whether a live meeting is currently connected so pressing
-  /// Home / switching apps auto-enters Picture-in-Picture mode.
-  Future<void> setMeetingActive(bool active) async {
-    if (!_isAndroid || _lastActiveState == active) return;
+  /// Home / switching apps auto-enters Picture-in-Picture mode, and keeps the
+  /// OS PiP Mute/Unmute RemoteAction icon in sync.
+  Future<void> setMeetingActive(bool active, {bool? isMuted}) async {
+    if (!_isAndroid) return;
+    if (_lastActiveState == active &&
+        (isMuted == null || _lastMutedState == isMuted)) {
+      return;
+    }
     _lastActiveState = active;
+    if (isMuted != null) {
+      _lastMutedState = isMuted;
+    }
     try {
-      await _channel.invokeMethod<bool>('setMeetingActive', {'active': active});
+      await _channel.invokeMethod<bool>('setMeetingActive', {
+        'active': active,
+        if (isMuted != null) 'isMuted': isMuted,
+      });
     } on MissingPluginException {
       // Ignored in tests or unsupported runners.
     } on PlatformException {

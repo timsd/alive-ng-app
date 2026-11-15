@@ -21,10 +21,21 @@ class _MeetingPipOverlayState extends ConsumerState<MeetingPipOverlay> {
   @override
   void initState() {
     super.initState();
-    MeetingPipService.instance.init((isInPipMode) {
-      if (!mounted) return;
-      ref.read(isMeetingPipModeProvider.notifier).state = isInPipMode;
-    });
+    MeetingPipService.instance.init(
+      (isInPipMode) {
+        if (!mounted) return;
+        ref.read(isMeetingPipModeProvider.notifier).state = isInPipMode;
+      },
+      onPipAction: (action) async {
+        if (!mounted) return;
+        final gateway = ref.read(meetingGatewayProvider);
+        if (action == 'toggle_mic') {
+          await gateway.toggleAudio();
+        } else if (action == 'leave_meeting') {
+          await gateway.leaveMeeting();
+        }
+      },
+    );
   }
 
   ParticipantInfo? _pickFeaturedParticipant(MeetingSession session) {
@@ -62,8 +73,11 @@ class _MeetingPipOverlayState extends ConsumerState<MeetingPipOverlay> {
     final session = sessionAsync.value;
     final isConnected = session?.isConnected ?? false;
 
-    // Keep native Android PiP auto-enter state in sync with live meeting state.
-    MeetingPipService.instance.setMeetingActive(isConnected);
+    // Keep native Android PiP auto-enter state and RemoteActions in sync.
+    MeetingPipService.instance.setMeetingActive(
+      isConnected,
+      isMuted: session?.isAudioMuted,
+    );
 
     if (!isPipMode || !isConnected || session == null) {
       return const SizedBox.shrink();
