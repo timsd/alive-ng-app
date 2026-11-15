@@ -250,7 +250,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           } else if (rawError.contains('key and secret not available') ||
               rawError.contains('invalid oauth2 response')) {
             displayMsg =
-                'Google Sign-In is pending server OAuth configuration. Please sign in with your email and password.';
+                'Google Sign-In did not complete. Please try again or sign in with your email and password.';
           } else if (rawError.contains('popup-blocked') ||
               rawError.contains('popup_blocked_by_browser')) {
             displayMsg =

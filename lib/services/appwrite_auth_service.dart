@@ -350,12 +350,8 @@ class AppwriteAuthService {
       return;
     }
 
-    const callbackScheme =
-        'appwrite-callback-${AppwriteBackendConfig.projectId}://';
     await _account.createOAuth2Session(
       provider: appwrite_enums.OAuthProvider.google,
-      success: callbackScheme,
-      failure: callbackScheme,
       scopes: const ['email', 'profile'],
     );
     await getCurrentUser();
