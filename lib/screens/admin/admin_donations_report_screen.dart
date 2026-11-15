@@ -341,11 +341,6 @@ class _AdminDonationsReportContentState
         showDonationButton: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.sync_rounded),
-            tooltip: 'Sync Live Paystack Records',
-            onPressed: _isLoading ? null : _syncFromPaystack,
-          ),
-          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: _loadDonations,
@@ -379,22 +374,43 @@ class _AdminDonationsReportContentState
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.file_download_outlined, size: 16),
-                        label: const Text(
-                          'Export CSV',
-                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.cloud_download_outlined, size: 16),
+                            label: const Text(
+                              'Sync Paystack',
+                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: _isLoading ? null : _syncFromPaystack,
                           ),
-                        ),
-                        onPressed: _filteredDonations.isEmpty || _isExporting
-                            ? null
-                            : () => _exportReport('csv'),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.file_download_outlined, size: 16),
+                            label: const Text(
+                              'Export CSV',
+                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: _filteredDonations.isEmpty || _isExporting
+                                ? null
+                                : () => _exportReport('csv'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
