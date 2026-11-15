@@ -120,6 +120,8 @@ class ExtractedLessonSection {
   final String bodyText;
   final List<String> scriptureReferences;
   final List<Map<String, String>> verseQuotes;
+  final List<Map<String, String>> steps;
+  final String? highlightNote;
   final bool isQuestion;
   final bool hasInputTarget;
   final String reflectionPrompt;
@@ -131,6 +133,8 @@ class ExtractedLessonSection {
     required this.bodyText,
     required this.scriptureReferences,
     required this.verseQuotes,
+    this.steps = const [],
+    this.highlightNote,
     required this.isQuestion,
     required this.hasInputTarget,
     required this.reflectionPrompt,
@@ -143,6 +147,9 @@ class ExtractedLessonSection {
         'bodyText': bodyText,
         'scriptureReferences': scriptureReferences,
         'verseQuotes': verseQuotes,
+        if (steps.isNotEmpty) 'steps': steps,
+        if (highlightNote != null && highlightNote!.isNotEmpty)
+          'highlightNote': highlightNote,
         'isQuestion': isQuestion,
         'hasInputTarget': hasInputTarget,
         'reflectionPrompt': reflectionPrompt,
@@ -152,6 +159,7 @@ class ExtractedLessonSection {
   factory ExtractedLessonSection.fromJson(Map<String, dynamic> json) {
     final rawRefs = json['scriptureReferences'];
     final rawQuotes = json['verseQuotes'];
+    final rawSteps = json['steps'];
     return ExtractedLessonSection(
       number: (json['number'] as num?)?.toInt() ?? 1,
       title: json['title']?.toString() ?? 'Study Section',
@@ -168,6 +176,16 @@ class ExtractedLessonSection {
                   })
               .toList()
           : const [],
+      steps: rawSteps is List
+          ? rawSteps
+              .whereType<Map>()
+              .map((m) => {
+                    'title': m['title']?.toString() ?? '',
+                    'text': m['text']?.toString() ?? '',
+                  })
+              .toList()
+          : const [],
+      highlightNote: json['highlightNote']?.toString(),
       isQuestion: json['isQuestion'] == true,
       hasInputTarget: json['hasInputTarget'] ?? true,
       reflectionPrompt:
@@ -187,6 +205,10 @@ class ExtractedTractArticle {
   final int totalWordCount;
   final String primaryPaletteId;
   final List<ExtractedLessonSection> interactiveSections;
+  final String? introSummary;
+  final String? heroVerse;
+  final String? heroVerseRef;
+  final String? estimatedReadTime;
 
   const ExtractedTractArticle({
     required this.title,
@@ -196,6 +218,10 @@ class ExtractedTractArticle {
     required this.totalWordCount,
     this.primaryPaletteId = 'emerald_forest',
     this.interactiveSections = const [],
+    this.introSummary,
+    this.heroVerse,
+    this.heroVerseRef,
+    this.estimatedReadTime,
   });
 }
 
@@ -269,9 +295,15 @@ class PdfExtractorService {
       );
     }
 
-    // 1. Normalize line endings and fix broken PDF hyphenated line-wraps
+    // 1. Normalize line endings, typography, verse-range dots (10:2.4 -> 10:2-4), and hyphenated wraps
     var text = rawText.replaceAll(RegExp(r'\r\n?'), '\n');
+    text = text.replaceAll('\u201C', '"').replaceAll('\u201D', '"');
+    text = text.replaceAll('\u2018', "'").replaceAll('\u2019', "'");
     text = text.replaceAll(RegExp(r'(\w+)-\n(\w+)'), r'$1$2');
+    text = text.replaceAllMapped(
+      RegExp(r'(\d+:\d+)\.(\d+)'),
+      (m) => '${m.group(1)}-${m.group(2)}',
+    );
 
     final rawLines = text.split('\n');
     final cleanedParagraphs = <String>[];
@@ -370,6 +402,31 @@ class PdfExtractorService {
       basePaletteIndex: seed,
     );
 
+    // Extract hero verse & intro summary for auto-filling Admin forms
+    String? heroVerse;
+    String? heroVerseRef;
+    String? introSummary;
+    if (interactiveSections.isNotEmpty) {
+      final firstWithQuote = interactiveSections
+          .where((s) => s.verseQuotes.isNotEmpty)
+          .firstOrNull;
+      if (firstWithQuote != null) {
+        heroVerse = firstWithQuote.verseQuotes.first['quote'];
+        heroVerseRef = firstWithQuote.verseQuotes.first['reference'];
+      }
+      final introCandidates = cleanedParagraphs
+          .where((p) =>
+              !p.startsWith('## ') &&
+              !p.startsWith('# ') &&
+              p.length > 60)
+          .toList();
+      if (introCandidates.isNotEmpty) {
+        introSummary = introCandidates.first.replaceAll('\n', ' ').trim();
+      }
+    }
+
+    final estMinutes = max(10, 5 * ((wordCount / 130) / 5).round());
+
     return ExtractedTractArticle(
       title: effectiveTitle,
       fullFormattedBody: fullBody,
@@ -378,6 +435,10 @@ class PdfExtractorService {
       totalWordCount: wordCount,
       primaryPaletteId: primaryPalette.id,
       interactiveSections: interactiveSections,
+      introSummary: introSummary,
+      heroVerse: heroVerse,
+      heroVerseRef: heroVerseRef,
+      estimatedReadTime: '$estMinutes–${estMinutes + 5} mins',
     );
   }
 
@@ -452,14 +513,29 @@ class PdfExtractorService {
         }
       }
 
-      // Extract quoted verses e.g. "All scripture is given..." (2 Timothy 3:16)
+      // Extract quoted verses ("..." (Ref)) AND unquoted verse lines ending with a Scripture reference
       final verseQuotes = <Map<String, String>>[];
       final quotePattern = RegExp(
-        r'"([^"]{10,320})"\s*(?:\(([^)]+)\))?',
+        r'"([^"]{10,360})"\s*(?:[—–-]\s*)?(?:\(([^)]+)\))?',
       );
+      final unquotedVersePattern = RegExp(
+        r'^(.{12,360}?)\s*(?:[—–-]\s*|\()?\s*((?:[1-3]\s*)?(?:Genesis|Gen|Exodus|Exo|Ex|Leviticus|Lev|Numbers|Num|Deuteronomy|Deut|Joshua|Josh|Judges|Judg|Ruth|Samuel|Sam|Kings|Kgs|Chronicles|Chron|Chr|Ezra|Nehemiah|Neh|Esther|Est|Job|Psalms|Psalm|Ps|Proverbs|Prov|Ecclesiastes|Eccl|Song of Solomon|Song|Isaiah|Isa|Jeremiah|Jer|Lamentations|Lam|Ezekiel|Ezek|Daniel|Dan|Hosea|Hos|Joel|Amos|Obadiah|Obad|Jonah|Micah|Mic|Nahum|Nah|Habakkuk|Hab|Zephaniah|Zeph|Haggai|Hag|Zechariah|Zech|Malachi|Mal|Matthew|Matt|Mat|Mark|Mk|Luke|Lk|John|Jn|Acts|Romans|Rom|Corinthians|Cor|Galatians|Gal|Ephesians|Eph|Philippians|Phil|Colossians|Col|Thessalonians|Thess|Timothy|Tim|Titus|Tit|Philemon|Phlm|Hebrews|Heb|James|Jas|Peter|Pet|Jude|Revelation|Rev)\s+\d+:\d+(?:\s*[-–]\s*\d+)?(?:\s*,\s*\d+(?:\s*[-–]\s*\d+)?)*)\s*\)?\.?$',
+        caseSensitive: false,
+      );
+
+      final steps = <Map<String, String>>[];
+      final stepPattern = RegExp(r'^(?:\d+[\.\)]\s*)?([A-Z][^:]{2,48}):\s+(.+)$');
+      final isStepsSection = title.toLowerCase().contains('tip') ||
+          title.toLowerCase().contains('step') ||
+          title.toLowerCase().contains('practice');
+
+      String? highlightNote;
       final remainingLines = <String>[];
 
-      for (final bLine in body.split('\n')) {
+      for (final rawBLine in body.split('\n')) {
+        final bLine = rawBLine.trim();
+        if (bLine.isEmpty) continue;
+
         final qMatch = quotePattern.firstMatch(bLine);
         if (qMatch != null) {
           final quoteText = qMatch.group(1)!.trim();
@@ -477,6 +553,49 @@ class PdfExtractorService {
             continue;
           }
         }
+
+        final uMatch = unquotedVersePattern.firstMatch(bLine);
+        if (uMatch != null) {
+          final quoteText = uMatch
+              .group(1)!
+              .trim()
+              .replaceFirst(RegExp(r'^["“]+'), '')
+              .replaceFirst(RegExp(r'["”]+$'), '')
+              .trim();
+          final refInLine = uMatch.group(2)!.trim();
+          if (quoteText.length >= 12 &&
+              !quoteText.toLowerCase().startsWith('when this was spoken') &&
+              !quoteText.toLowerCase().startsWith('this is ')) {
+            verseQuotes.add({
+              'quote': quoteText,
+              'reference': refInLine,
+            });
+            refs.add(refInLine);
+            continue;
+          }
+        }
+
+        if (isStepsSection) {
+          final sMatch = stepPattern.firstMatch(bLine);
+          if (sMatch != null) {
+            steps.add({
+              'title': '${sMatch.group(1)!.trim()}:',
+              'text': sMatch.group(2)!.trim(),
+            });
+            continue;
+          }
+        }
+
+        if (highlightNote == null &&
+            (bLine.startsWith('The Bible, from Genesis to Revelation') ||
+                bLine.startsWith('Note:') ||
+                bLine.startsWith('Key Principle:'))) {
+          highlightNote = bLine
+              .replaceFirst(RegExp(r'^(?:Note|Key Principle):\s*', caseSensitive: false), '')
+              .trim();
+          continue;
+        }
+
         remainingLines.add(bLine);
       }
 
@@ -492,8 +611,10 @@ class PdfExtractorService {
           bodyText: remainingLines.join('\n').trim(),
           scriptureReferences: refs.toList(),
           verseQuotes: verseQuotes,
+          steps: steps,
+          highlightNote: highlightNote,
           isQuestion: isQuestion,
-          hasInputTarget: true,
+          hasInputTarget: !isStepsSection,
           reflectionPrompt: isQuestion
               ? 'Your Answer & Personal Reflection'
               : 'Key Takeaway & Application',
@@ -521,13 +642,102 @@ class PdfExtractorService {
     }).join(' ');
   }
 
-  /// Parses a PDF file using syncfusion_flutter_pdf
+  /// Parses a PDF file using column-aware line extraction in syncfusion_flutter_pdf
+  /// so multi-column trifold / booklet tracts read in exact panel order.
   Future<String> _extractFromPdf(Uint8List bytes) async {
     final PdfDocument document = PdfDocument(inputBytes: bytes);
     final PdfTextExtractor extractor = PdfTextExtractor(document);
-    final String text = extractor.extractText();
+    final pageTexts = <String>[];
+
+    try {
+      for (int pageIdx = 0; pageIdx < document.pages.count; pageIdx++) {
+        final lines = extractor.extractTextLines(
+          startPageIndex: pageIdx,
+          endPageIndex: pageIdx,
+        );
+        if (lines.isEmpty) continue;
+
+        final orderedLines = _orderColumnLines(lines);
+        final pageBuf = StringBuffer();
+        TextLine? prev;
+        for (final line in orderedLines) {
+          final text = line.text.trim();
+          if (text.isEmpty) continue;
+          if (prev != null) {
+            final gap = line.bounds.top - prev.bounds.bottom;
+            final jumpedColumn =
+                (line.bounds.left - prev.bounds.left).abs() > 110 && gap < -20;
+            if (jumpedColumn || gap > (prev.bounds.height * 0.65).clamp(6.0, 18.0)) {
+              pageBuf.write('\n\n');
+            } else {
+              pageBuf.write('\n');
+            }
+          }
+          pageBuf.write(text);
+          prev = line;
+        }
+        if (pageBuf.isNotEmpty) {
+          pageTexts.add(pageBuf.toString());
+        }
+      }
+    } catch (e) {
+      debugPrint('Column-aware extraction fallback triggered: $e');
+      final fallback = extractor.extractText();
+      document.dispose();
+      return fallback.trim();
+    }
+
     document.dispose();
-    return text.trim();
+    if (pageTexts.isEmpty) return '';
+    return pageTexts.join('\n\n').trim();
+  }
+
+  /// Orders PDF text lines into left-to-right columns, then top-to-bottom within
+  /// each column, preventing trifold/2-column tract text from scrambling.
+  List<TextLine> _orderColumnLines(List<TextLine> lines) {
+    if (lines.length <= 1) return lines;
+
+    // Sort by X first to discover horizontal column clusters (> 45pt gutter gap)
+    final byX = List<TextLine>.from(lines)
+      ..sort((a, b) => a.bounds.left.compareTo(b.bounds.left));
+
+    final columns = <List<TextLine>>[];
+    double currentMaxRight = -1;
+
+    for (final line in byX) {
+      if (columns.isEmpty) {
+        columns.add([line]);
+        currentMaxRight = line.bounds.right;
+        continue;
+      }
+
+      // If this line starts noticeably to the right of the previous column's typical left
+      // and doesn't heavily overlap, start a new column band.
+      final avgColLeft = columns.last
+              .map((l) => l.bounds.left)
+              .reduce((a, b) => a + b) /
+          columns.last.length;
+      if (line.bounds.left - avgColLeft > 130 && line.bounds.left > currentMaxRight - 18) {
+        columns.add([line]);
+        currentMaxRight = line.bounds.right;
+      } else {
+        columns.last.add(line);
+        if (line.bounds.right > currentMaxRight) {
+          currentMaxRight = line.bounds.right;
+        }
+      }
+    }
+
+    // Sort each column top-to-bottom
+    final ordered = <TextLine>[];
+    for (final col in columns) {
+      col.sort((a, b) {
+        final dy = a.bounds.top.compareTo(b.bounds.top);
+        return dy != 0 ? dy : a.bounds.left.compareTo(b.bounds.left);
+      });
+      ordered.addAll(col);
+    }
+    return ordered;
   }
 
   /// Parses a plain text file natively

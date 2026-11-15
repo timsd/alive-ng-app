@@ -321,6 +321,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
   bool _isFeatured = false;
   Uint8List? _selectedPdfBytes;
   String? _selectedPdfName;
+  ExtractedTractArticle? _cachedExtractedArticle;
   Uint8List? _selectedCoverImageBytes;
   String? _selectedCoverImageName;
   // Additional lesson cover images (multiple)
@@ -912,6 +913,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
 
     if (result != null && result.files.single.bytes != null) {
       final bytes = result.files.single.bytes!;
+      final fileName = result.files.single.name;
       int detectedPages = 6;
       try {
         final pdfDoc = PdfDocument(inputBytes: bytes);
@@ -921,11 +923,55 @@ class _TractFormDialogState extends State<_TractFormDialog> {
         debugPrint('Could not auto-detect PDF page count: $e');
       }
 
+      ExtractedTractArticle? extracted;
+      try {
+        extracted = await PdfExtractorService().extractAndFormatArticle(
+          bytes,
+          fileName,
+          fallbackTitle: _titleController.text.trim().isNotEmpty
+              ? _titleController.text.trim()
+              : null,
+        );
+      } catch (e) {
+        debugPrint('Auto-extract preview failed: $e');
+      }
+
+      if (!mounted) return;
       setState(() {
         _selectedPdfBytes = bytes;
-        _selectedPdfName = result.files.single.name;
+        _selectedPdfName = fileName;
+        _cachedExtractedArticle = extracted;
         _pagesController.text = detectedPages.toString();
+
+        if (extracted != null) {
+          if (_titleController.text.trim().isEmpty &&
+              extracted.title.trim().isNotEmpty) {
+            _titleController.text = extracted.title.trim();
+          }
+          if (_descriptionController.text.trim().isEmpty) {
+            final summary = extracted.introSummary?.trim() ?? '';
+            if (summary.isNotEmpty) {
+              _descriptionController.text = summary;
+            } else if (extracted.heroVerse != null &&
+                extracted.heroVerse!.isNotEmpty) {
+              _descriptionController.text =
+                  '"${extracted.heroVerse}" — ${extracted.heroVerseRef ?? ""}';
+            }
+          }
+        }
       });
+
+      if (extracted != null && extracted.interactiveSections.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Extracted ${extracted.interactiveSections.length} interactive study sections from $fileName.',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -1085,11 +1131,12 @@ class _TractFormDialogState extends State<_TractFormDialog> {
         String? extractedBody;
         if (_selectedPdfBytes != null && _selectedPdfName != null) {
           try {
-            final article = await PdfExtractorService().extractAndFormatArticle(
-              _selectedPdfBytes!,
-              _selectedPdfName!,
-              fallbackTitle: tract.title,
-            );
+            final article = _cachedExtractedArticle ??
+                await PdfExtractorService().extractAndFormatArticle(
+                  _selectedPdfBytes!,
+                  _selectedPdfName!,
+                  fallbackTitle: tract.title,
+                );
             extractedBody = article.fullFormattedBody.trim();
             if (extractedBody.isNotEmpty) {
               final extractedQuestions = article.interactiveSections
