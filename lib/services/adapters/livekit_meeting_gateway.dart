@@ -11,7 +11,6 @@ import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/enums.dart' as appwrite_enums;
-import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as lk;
@@ -21,6 +20,15 @@ import '../../main.dart';
 import '../../models/meeting_models.dart';
 import '../ports/meeting_gateway.dart';
 import '../role_access_service.dart';
+
+extension _FirstWhereOrNull<T> on Iterable<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    for (final item in this) {
+      if (test(item)) return item;
+    }
+    return null;
+  }
+}
 
 /// Appwrite Function ID for the LiveKit broadcast backend.
 const String _broadcastFunctionId = 'start_livekit_broadcast';
