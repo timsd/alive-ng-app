@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../widgets/modern_dropdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -40,19 +41,27 @@ class _InteractiveLessonReaderScreenState
   final Map<String, TextEditingController> _controllers = {};
   final Map<String, bool> _prophecyChecked = {};
   final Map<int, bool> _messianicStudied = {};
+  final Map<int, bool> _tipChecked = {};
   List<ExtractedLessonSection> _dynamicSections = [];
 
   bool get _isLesson1 =>
       widget.lessonId == 'lesson_something_we_can_trust' ||
       widget.title.toLowerCase().contains('something we can trust');
 
+  bool get _isLesson2 =>
+      widget.lessonId.contains('1794719347722') ||
+      widget.title.toLowerCase().contains('searching the scriptures');
+
   String get _storagePrefix => _isLesson1
       ? 'interactive_lesson_1_'
-      : 'interactive_lesson_${widget.lessonId}_';
+      : (_isLesson2
+          ? 'interactive_lesson_2_'
+          : 'interactive_lesson_${widget.lessonId}_');
 
   bool? _haveBible;
   bool? _studyBible;
   bool? _believeBible;
+  bool? _dedicateDailyStudy;
   bool _commitmentPrayer = false;
 
   final TextEditingController _nameController = TextEditingController();
@@ -86,21 +95,51 @@ class _InteractiveLessonReaderScreenState
       _controllers['q8_a'] = TextEditingController();
       _controllers['q8_b'] = TextEditingController();
       _controllers['q8_c'] = TextEditingController();
+    } else if (_isLesson2) {
+      _dynamicSections = _buildLesson2Sections();
+      for (final sec in _dynamicSections) {
+        if (sec.hasInputTarget) {
+          _controllers['q${sec.number}'] = TextEditingController();
+        }
+      }
     } else {
-      final rawContent = widget.lessonData?['content']?.toString() ??
-          InteractiveLessonsService.instance.lessons
-              .where((l) => l.id == widget.lessonId)
-              .map((l) => l.content)
-              .firstOrNull ??
-          widget.lessonData?['description']?.toString() ??
-          '';
-      final seed = widget.title.codeUnits
-          .fold<int>(0, (prev, elem) => prev + elem);
-      _dynamicSections = PdfExtractorService.parseInteractiveSections(
-        rawContent,
-        fallbackTitle: widget.title,
-        basePaletteIndex: seed,
-      );
+      final metadata = widget.lessonData?['metadata'];
+      final rawInteractive = metadata is Map
+          ? metadata['interactive_sections']
+          : null;
+      if (rawInteractive != null) {
+        try {
+          final decoded = rawInteractive is String
+              ? jsonDecode(rawInteractive)
+              : rawInteractive;
+          if (decoded is List) {
+            _dynamicSections = decoded
+                .whereType<Map>()
+                .map((m) => ExtractedLessonSection.fromJson(
+                    Map<String, dynamic>.from(m)))
+                .toList();
+          }
+        } catch (e) {
+          debugPrint('Error parsing interactive_sections metadata: $e');
+        }
+      }
+
+      if (_dynamicSections.isEmpty) {
+        final rawContent = widget.lessonData?['content']?.toString() ??
+            InteractiveLessonsService.instance.lessons
+                .where((l) => l.id == widget.lessonId)
+                .map((l) => l.content)
+                .firstOrNull ??
+            widget.lessonData?['description']?.toString() ??
+            '';
+        final seed = widget.title.codeUnits
+            .fold<int>(0, (prev, elem) => prev + elem);
+        _dynamicSections = PdfExtractorService.parseInteractiveSections(
+          rawContent,
+          fallbackTitle: widget.title,
+          basePaletteIndex: seed,
+        );
+      }
       for (final sec in _dynamicSections) {
         if (sec.hasInputTarget) {
           _controllers['q${sec.number}'] = TextEditingController();
@@ -148,6 +187,14 @@ class _InteractiveLessonReaderScreenState
       }
       if (prefs.containsKey('${prefix}believeBible')) {
         _believeBible = prefs.getBool('${prefix}believeBible');
+      }
+      if (prefs.containsKey('${prefix}dedicateDailyStudy')) {
+        _dedicateDailyStudy = prefs.getBool('${prefix}dedicateDailyStudy');
+      }
+      for (int i = 0; i < 4; i++) {
+        if (prefs.containsKey('${prefix}tip_$i')) {
+          _tipChecked[i] = prefs.getBool('${prefix}tip_$i') ?? false;
+        }
       }
       _commitmentPrayer = prefs.getBool('${prefix}commitmentPrayer') ?? false;
       _addressController.text = prefs.getString('${prefix}address') ?? '';
@@ -295,6 +342,12 @@ class _InteractiveLessonReaderScreenState
     }
     if (_believeBible != null) {
       await prefs.setBool('${prefix}believeBible', _believeBible!);
+    }
+    if (_dedicateDailyStudy != null) {
+      await prefs.setBool('${prefix}dedicateDailyStudy', _dedicateDailyStudy!);
+    }
+    for (final entry in _tipChecked.entries) {
+      await prefs.setBool('${prefix}tip_${entry.key}', entry.value);
     }
     await prefs.setBool('${prefix}commitmentPrayer', _commitmentPrayer);
 
@@ -528,6 +581,8 @@ class _InteractiveLessonReaderScreenState
         _haveBible = null;
         _studyBible = null;
         _believeBible = null;
+        _dedicateDailyStudy = null;
+        _tipChecked.clear();
         _commitmentPrayer = false;
         _selectedDiscipleshipLevel = DiscipleshipLevel.prospect;
         _showSavedNotification = false;
@@ -547,19 +602,25 @@ class _InteractiveLessonReaderScreenState
   }
 
   void _calculateProgress() {
-    int totalItems = _controllers.length + 4; // text fields + 3 toggles + prayer
+    int totalItems = _isLesson2
+        ? _controllers.length + 2
+        : _controllers.length + 4; // text fields + decision toggles + prayer
     int filled = 0;
 
     for (var c in _controllers.values) {
       if (c.text.trim().isNotEmpty) filled++;
     }
-    if (_haveBible != null) filled++;
-    if (_studyBible != null) filled++;
-    if (_believeBible != null) filled++;
+    if (_isLesson2) {
+      if (_dedicateDailyStudy != null) filled++;
+    } else {
+      if (_haveBible != null) filled++;
+      if (_studyBible != null) filled++;
+      if (_believeBible != null) filled++;
+    }
     if (_commitmentPrayer) filled++;
 
     setState(() {
-      _progress = (filled / totalItems).clamp(0.0, 1.0);
+      _progress = totalItems > 0 ? (filled / totalItems).clamp(0.0, 1.0) : 0.0;
     });
   }
 
@@ -593,7 +654,9 @@ class _InteractiveLessonReaderScreenState
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: _isLesson1 ? 'What The Bible Says: Lesson 1' : widget.title,
+        title: _isLesson1
+            ? 'What The Bible Says: Lesson 1'
+            : (_isLesson2 ? 'What The Bible Says: Lesson 2' : widget.title),
         showBackButton: true,
       ),
       body: Column(
@@ -805,7 +868,7 @@ class _InteractiveLessonReaderScreenState
   }
 
   Widget _buildHeroBanner(bool isDark) {
-    final heroPalette = _isLesson1
+    final heroPalette = _isLesson1 || _isLesson2
         ? LessonColorPalette.brandPalettes.first
         : LessonColorPalette.byId(
             _dynamicSections.firstOrNull?.paletteId,
@@ -816,20 +879,25 @@ class _InteractiveLessonReaderScreenState
                 widget.lessonData?['imageUrl'])
             ?.toString() ??
         (_isLesson1 ? 'assets/images/series/what_the_bible_says_lesson_1.jpg' : '');
-    final categoryLabel =
-        (widget.lessonData?['category']?.toString() ?? 'ALIVE NIGERIA SERIES')
+    final categoryLabel = _isLesson2
+        ? 'INTERACTIVE SCRIPTURE TRACT GUIDE'
+        : (widget.lessonData?['category']?.toString() ?? 'ALIVE NIGERIA SERIES')
             .toUpperCase();
     final heroVerse = _isLesson1
         ? 'Psalms 119:105'
-        : (_dynamicSections
-                .expand((s) => s.scriptureReferences)
-                .firstOrNull ??
-            '2 Timothy 3:16');
+        : (_isLesson2
+            ? 'John 5:39'
+            : (_dynamicSections
+                    .expand((s) => s.scriptureReferences)
+                    .firstOrNull ??
+                '2 Timothy 3:16'));
     final introDescription = _isLesson1
         ? 'In these morally challenged times when billions are embezzled through corporate fraud; when trusted spiritual leaders prove false; when lying in politics seems to be the norm... is there anything left you can trust?\n\nYes! You can fully trust the Bible! Just look at the evidence:'
-        : (widget.lessonData?['description']?.toString().trim().isNotEmpty == true
-            ? widget.lessonData!['description'].toString()
-            : 'Explore God\'s Word interactively through scripture references, personal reflection prompts, and practical discipleship commitment.');
+        : (_isLesson2
+            ? 'Searching the scripture is a vital aspect of Christian living. It involves diligently studying and examining the Bible to gain a deeper understanding of God\'s word, His character, and His plans for humanity.'
+            : (widget.lessonData?['description']?.toString().trim().isNotEmpty == true
+                ? widget.lessonData!['description'].toString()
+                : 'Explore God\'s Word interactively through scripture references, personal reflection prompts, and practical discipleship commitment.'));
 
     return Container(
       decoration: BoxDecoration(
@@ -876,13 +944,29 @@ class _InteractiveLessonReaderScreenState
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      _isLesson1 ? 'Something We Can Trust' : widget.title,
+                      _isLesson1
+                          ? 'Something We Can Trust'
+                          : (_isLesson2
+                              ? 'Searching The Scriptures!'
+                              : widget.title),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if (_isLesson2) ...[
+                      const SizedBox(height: 6),
+                      const Text(
+                        '"Search the Scriptures, for in them ye think ye have eternal life; and they are they which testify of Me."',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12.5,
+                          fontStyle: FontStyle.italic,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     _buildScriptureChip(
                       heroVerse,
@@ -926,24 +1010,396 @@ class _InteractiveLessonReaderScreenState
             ],
           ),
           const SizedBox(height: 16),
+          if (_isLesson2) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.search_rounded,
+                      color: Color(heroPalette.accentHex), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Searching Daily',
+                          style: TextStyle(
+                            color: Color(heroPalette.accentHex),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        const Text(
+                          '"…searched the Scriptures daily, whether those things were so." — Acts 17:11',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.5,
+                            fontStyle: FontStyle.italic,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isDark ? Colors.white10 : Color(heroPalette.lightTintHex),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(
-              introDescription,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.45,
-                color: isDark ? Colors.white : const Color(0xFF1E293B),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_isLesson2) ...[
+                  Row(
+                    children: [
+                      Icon(Icons.menu_book_rounded,
+                          size: 16,
+                          color: isDark
+                              ? Color(heroPalette.accentHex)
+                              : Color(heroPalette.primaryHex)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Why Search the Scriptures?',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? Colors.white
+                              : Color(heroPalette.primaryHex),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                ],
+                Text(
+                  introDescription,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  ),
+                ),
+                if (_isLesson2) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF14532D).withValues(alpha: 0.4)
+                          : const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF16A34A).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Text(
+                      'The Bible is an incredible resource, offering guidance, wisdom, comfort, and instruction for everyday life. Through Bible study, we deepen our relationship with God.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? Colors.white : const Color(0xFF14532D),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  static const Map<int, String> _lesson2Placeholders = {
+    1: "Write what you learned from Jesus' words in John 5:39...",
+    2: "How did Abraham's faith point to the gospel?",
+    3: "Why did the word not profit those who heard it?",
+    4: "What does Moses' choice teach you about true riches?",
+    5: "Where do you see Christ in the Old Testament story?",
+    6: "Is Christ the cornerstone of your faith? Write how.",
+    7: "How eagerly do you search the Scriptures?",
+    8: "Who guides you as you study God's Word?",
+    9: "Try it: pick a verse and find another that explains it.",
+    10: "What does it mean to be made wise unto salvation?",
+    11: "How can you search the Scriptures daily like the Bereans?",
+    12: "What does living by every word of God look like for you?",
+    13: "How will you show reverence for God's Word this week?",
+  };
+
+  List<ExtractedLessonSection> _buildLesson2Sections() {
+    String pal(int idx) =>
+        LessonColorPalette.brandPalettes[idx % LessonColorPalette.brandPalettes.length].id;
+
+    ExtractedLessonSection makeSec({
+      required int number,
+      required String title,
+      String bodyText = '',
+      List<String> scriptureReferences = const [],
+      List<Map<String, String>> verseQuotes = const [],
+      List<Map<String, String>> steps = const [],
+      String? highlightNote,
+      bool isQuestion = true,
+      bool hasInputTarget = true,
+      String reflectionPrompt = 'Your note:',
+      required int paletteIndex,
+    }) {
+      return ExtractedLessonSection(
+        number: number,
+        title: title,
+        bodyText: bodyText,
+        scriptureReferences: scriptureReferences,
+        verseQuotes: verseQuotes,
+        steps: steps,
+        highlightNote: highlightNote,
+        isQuestion: isQuestion,
+        hasInputTarget: hasInputTarget,
+        reflectionPrompt: reflectionPrompt,
+        paletteId: pal(paletteIndex),
+      );
+    }
+
+    return [
+      makeSec(
+        number: 1,
+        title: 'What did Christ say to the people of His day concerning the Scriptures?',
+        bodyText:
+            'When this was spoken, not a word of the New Testament had been written. It was to the Old Testament that the Jews looked as their guide to eternal life; and although they would not accept Christ, He said that these very books which they esteemed so highly, testified of Him. If the Old Testament points to Christ, it is worthy …',
+        scriptureReferences: const ['John 5:39'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"Search the Scriptures, for in them ye think ye have eternal life; and they are they which testify of Me."',
+            'reference': 'John 5:39',
+          },
+        ],
+        reflectionPrompt:
+            'What does it mean to you that the Old Testament testifies of Christ?',
+        paletteIndex: 0,
+      ),
+      makeSec(
+        number: 2,
+        title:
+            'Do the Scriptures furnish positive evidence that the gospel was known in the patriarchal age?',
+        bodyText:
+            'It was through gospel faith that Abraham rejoiced to see the day of Christ (John 8:56). So with all the faithful who lived in the patriarchal age. All these had a practical knowledge of the gospel, as appears from their godly lives and sacrificial offerings.',
+        scriptureReferences: const ['Galatians 3:8', 'John 8:56'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"And the Scripture, foreseeing that God would justify the heathen through faith, preached before the gospel unto Abraham."',
+            'reference': 'Galatians 3:8',
+          },
+        ],
+        paletteIndex: 1,
+      ),
+      makeSec(
+        number: 3,
+        title:
+            'Does Holy Writ contain unmistakable evidence that the Hebrews were taught the gospel under the former dispensation?',
+        bodyText:
+            'The persons here referred to by "them" are the Israelites when on their journey from Egypt to the promised land, as will be seen by the Scripture connection. Paul says the gospel was preached unto us, as well as unto them, putting "them" ahead, and letting "us" have the gospel afterward.',
+        scriptureReferences: const ['Hebrews 4:2'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"For unto us was the gospel preached, as well as unto them; but the word preached did not profit them, not being mixed with faith in them that heard it,"',
+            'reference': 'Hebrews 4:2',
+          },
+        ],
+        paletteIndex: 2,
+      ),
+      makeSec(
+        number: 4,
+        title: 'Why did Moses give up the riches of Egypt?',
+        bodyText:
+            'People in that age, even as now, were influenced by the riches of Christ to give up the world.',
+        scriptureReferences: const ['Hebrews 11:26'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"Esteeming the reproach of Christ greater riches than the treasures in Egypt."',
+            'reference': 'Hebrews 11:26',
+          },
+        ],
+        paletteIndex: 3,
+      ),
+      makeSec(
+        number: 5,
+        title:
+            'Whence came the spiritual meat and drink of the Israelites while in the wilderness?',
+        scriptureReferences: const ['1 Corinthians 10:2-4'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"And were all baptized unto Moses in the cloud and in the sea; and did all eat the same spiritual meat; and did all drink the same spiritual drink; for they drank of that spiritual Rock that followed them: and that Rock was Christ."',
+            'reference': '1 Corinthians 10:2-4',
+          },
+        ],
+        paletteIndex: 4,
+      ),
+      makeSec(
+        number: 6,
+        title:
+            'What was the chief corner-stone of the faith of both apostles and prophets?',
+        scriptureReferences: const ['Ephesians 2:20'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"And are built upon the foundation of the apostles and prophets, Jesus Christ Himself being the chief cornerstone."',
+            'reference': 'Ephesians 2:20',
+          },
+        ],
+        highlightNote:
+            'The Bible, from Genesis to Revelation, is a unified narrative that reveals the person, work, and glory of Jesus Christ. Jesus is the central theme, the thread that weaves through every book, chapter, and verse of scripture.',
+        paletteIndex: 5,
+      ),
+      makeSec(
+        number: 7,
+        title:
+            'What part of the Scriptures did Philip hear a certain eunuch reading?',
+        bodyText:
+            'Before Jesus\' incarnation, the people of old searched the scriptures with great diligence and eagerness, seeking evidence of the Messiah who was to come. They understood that the Scriptures were the primary source of knowledge about God\'s plan of salvation and the coming Messiah.\n\nThe Bible (Old and New Testament) contained promises and prophecies about a future Redeemer who would save God\'s people from their sins. The people of old yearned for deliverance from their spiritual and physical bondage, and they saw the scriptures as the key to understanding God\'s plan for their redemption.',
+        scriptureReferences: const ['Acts 8:30'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"And Philip ran thither to him, and heard him read the prophet Esaias, and said, Understandest thou what thou readest?"',
+            'reference': 'Acts 8:30',
+          },
+        ],
+        paletteIndex: 0,
+      ),
+      makeSec(
+        number: 8,
+        title:
+            'When asked if he understood what he was reading, what reply did the eunuch make?',
+        scriptureReferences: const ['Acts 8:31'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"And he said, How can I, except some man should guide me? And he desired Philip that he would come up and sit with him."',
+            'reference': 'Acts 8:31',
+          },
+        ],
+        paletteIndex: 1,
+      ),
+      makeSec(
+        number: 9,
+        title: 'What did Philip then do?',
+        bodyText:
+            'Comparing scripture with scripture is a powerful tool for understanding the Bible and its teachings. This pattern helps to clarify and deepen our understanding of biblical teachings, concepts and themes.',
+        scriptureReferences: const ['Acts 8:35'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"Then Philip opened his mouth, and began at the same scripture, and preached unto him Jesus."',
+            'reference': 'Acts 8:35',
+          },
+        ],
+        paletteIndex: 2,
+      ),
+      makeSec(
+        number: 10,
+        title: 'What are the Scriptures able to do?',
+        scriptureReferences: const ['2 Timothy 3:15'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"Hast thou not known the Holy Scriptures, which are able to make thee wise unto salvation through faith which is in Christ Jesus."',
+            'reference': '2 Timothy 3:15',
+          },
+        ],
+        paletteIndex: 3,
+      ),
+      makeSec(
+        number: 11,
+        title:
+            'What was said of the Bereans because they searched the Scriptures daily?',
+        scriptureReferences: const ['Acts 17:11'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"These were more noble than those in Thessalonica, in that they received the word with all readiness of mind, and searched the Scriptures daily, whether those things were so."',
+            'reference': 'Acts 17:11',
+          },
+        ],
+        paletteIndex: 4,
+      ),
+      makeSec(
+        number: 12,
+        title: 'By what is man to live?',
+        scriptureReferences: const ['Matthew 4:4'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"Man shall not live by bread alone, but by every word that proceedeth out of the mouth of God."',
+            'reference': 'Matthew 4:4',
+          },
+        ],
+        paletteIndex: 5,
+      ),
+      makeSec(
+        number: 13,
+        title: 'How greatly has God magnified His word?',
+        bodyText:
+            'God holds His word in higher esteem than His own name, and He takes pleasure when we treat the Bible with the same reverence. To maintain a thriving Christian life, we must prioritize a consistent, prayerful study of scripture. The word of God is our spiritual sustenance, providing the nourishment we need to grow in our faith and deepen our relationship with Him.',
+        scriptureReferences: const ['Psalms 138:2'],
+        verseQuotes: const [
+          {
+            'quote':
+                '"I will worship toward Thy holy temple, and praise Thy name for Thy lovingkindness and for Thy truth; for Thou hast magnified Thy word above all Thy name."',
+            'reference': 'Psalms 138:2',
+          },
+        ],
+        paletteIndex: 0,
+      ),
+      makeSec(
+        number: 14,
+        title: 'Practical Tips for Prayerful Bible Study',
+        steps: const [
+          {
+            'title': 'Start with prayer:',
+            'text':
+                'Begin your Bible study with prayer, asking God to guide, illuminate, and apply His Word to your life.',
+          },
+          {
+            'title': 'Seek the Holy Spirit\'s presence:',
+            'text':
+                'Invite the Holy Spirit to be present, teaching, guiding, and applying God\'s Word to your life.',
+          },
+          {
+            'title': 'Read with reverence and expectation:',
+            'text':
+                'Approach God\'s Word with reverence, expectation, and a willingness to learn and obey.',
+          },
+          {
+            'title': 'Reflect and respond:',
+            'text':
+                'Take time to reflect on what you\'ve read, asking God to help you …',
+          },
+        ],
+        isQuestion: false,
+        hasInputTarget: false,
+        reflectionPrompt: '',
+        paletteIndex: 1,
+      ),
+    ];
   }
 
   List<Widget> _buildDynamicExtractedSections(bool isDark) {
@@ -1041,6 +1497,18 @@ class _InteractiveLessonReaderScreenState
             ],
             if (sec.steps.isNotEmpty) ...[
               const SizedBox(height: 10),
+              if (!sec.hasInputTarget)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    'Tick each one you will practise.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(palette.primaryHex),
+                    ),
+                  ),
+                ),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -1057,47 +1525,76 @@ class _InteractiveLessonReaderScreenState
                   children: [
                     for (int sIdx = 0; sIdx < sec.steps.length; sIdx++) ...[
                       if (sIdx > 0) const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Color(palette.primaryHex)
-                                  .withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '${sIdx + 1}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Color(palette.primaryHex),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  height: 1.4,
-                                  color: isDark ? Colors.white70 : Colors.black87,
+                      InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: !sec.hasInputTarget
+                            ? () {
+                                setState(() {
+                                  _tipChecked[sIdx] = !(_tipChecked[sIdx] ?? false);
+                                });
+                              }
+                            : null,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!sec.hasInputTarget) ...[
+                              SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: Checkbox(
+                                  value: _tipChecked[sIdx] ?? false,
+                                  activeColor: Color(palette.primaryHex),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      _tipChecked[sIdx] = v ?? false;
+                                    });
+                                  },
                                 ),
-                                children: [
-                                  TextSpan(
-                                    text: '${sec.steps[sIdx]['title'] ?? ''} ',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(width: 8),
+                            ] else ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Color(palette.primaryHex)
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${sIdx + 1}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(palette.primaryHex),
                                   ),
-                                  TextSpan(text: sec.steps[sIdx]['text'] ?? ''),
-                                ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Expanded(
+                              child: RichText(
+                                text: TextSpan(
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    height: 1.4,
+                                    color: isDark ? Colors.white70 : Colors.black87,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: '${sec.steps[sIdx]['title'] ?? ''} ',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    TextSpan(text: sec.steps[sIdx]['text'] ?? ''),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ],
@@ -1120,7 +1617,10 @@ class _InteractiveLessonReaderScreenState
             if (sec.hasInputTarget)
               _buildReflectionInput(
                 label: sec.reflectionPrompt,
-                hint: 'Write your answer or personal reflection on Section ${sec.number}...',
+                hint: _isLesson2
+                    ? (_lesson2Placeholders[sec.number] ??
+                        'Write your answer or personal reflection on Section ${sec.number}...')
+                    : 'Write your answer or personal reflection on Section ${sec.number}...',
                 controller: controller,
                 isDark: isDark,
                 sectionNumber: sec.number,
@@ -1144,9 +1644,9 @@ class _InteractiveLessonReaderScreenState
     return LessonSectionCard(
       number: number,
       title: title,
-      children: children,
       isDark: isDark,
       palette: palette,
+      children: children,
     );
   }
 
@@ -1667,32 +2167,63 @@ class _InteractiveLessonReaderScreenState
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Making God\'s Word Your Foundation',
-            style: TextStyle(
+          Text(
+            _isLesson2
+                ? 'Making Daily Bible Study Your Habit'
+                : 'Making God\'s Word Your Foundation',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 14),
-
-          // Three Yes/No buttons
-          _buildYesNoDecision('Do you have a Bible?', _haveBible, (v) {
-            setState(() => _haveBible = v);
-            _calculateProgress();
-          }),
-          const SizedBox(height: 8),
-          _buildYesNoDecision('Do you study the Bible?', _studyBible, (v) {
-            setState(() => _studyBible = v);
-            _calculateProgress();
-          }),
-          const SizedBox(height: 8),
-          _buildYesNoDecision('Do you believe the Bible?', _believeBible, (v) {
-            setState(() => _believeBible = v);
-            _calculateProgress();
-          }),
-          const SizedBox(height: 14),
+          if (_isLesson2) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: const Text(
+                'Jesus yearns to share His heart and plans with you through the pages of His word. He wants to impart wisdom that leads to salvation and a deeper relationship with Him. His word is the key to unlocking this wisdom.',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  height: 1.45,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _buildYesNoDecision(
+              'Will you dedicate yourself to a consistent, daily study of His word, trusting in its power to transform your life and equip you for His purpose?',
+              _dedicateDailyStudy,
+              (v) {
+                setState(() => _dedicateDailyStudy = v);
+                _calculateProgress();
+              },
+            ),
+            const SizedBox(height: 14),
+          ] else ...[
+            // Three Yes/No buttons
+            _buildYesNoDecision('Do you have a Bible?', _haveBible, (v) {
+              setState(() => _haveBible = v);
+              _calculateProgress();
+            }),
+            const SizedBox(height: 8),
+            _buildYesNoDecision('Do you study the Bible?', _studyBible, (v) {
+              setState(() => _studyBible = v);
+              _calculateProgress();
+            }),
+            const SizedBox(height: 8),
+            _buildYesNoDecision('Do you believe the Bible?', _believeBible, (v) {
+              setState(() => _believeBible = v);
+              _calculateProgress();
+            }),
+            const SizedBox(height: 14),
+          ],
 
           // Prayer commitment
           CheckboxListTile(
@@ -1704,17 +2235,19 @@ class _InteractiveLessonReaderScreenState
               setState(() => _commitmentPrayer = val ?? false);
               _calculateProgress();
             },
-            title: const Text(
-              'My Study Commitment',
-              style: TextStyle(
+            title: Text(
+              _isLesson2 ? 'My Study Commitment:' : 'My Study Commitment',
+              style: const TextStyle(
                 color: Colors.amberAccent,
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
               ),
             ),
-            subtitle: const Text(
-              'I commit to prayerful study of the Bible from today. Lord, grant me the enabling power of Your Holy Spirit.',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+            subtitle: Text(
+              _isLesson2
+                  ? 'I will begin my Bible study with prayer, asking God to guide, illuminate, and apply His Word to my life.'
+                  : 'I commit to prayerful study of the Bible from today. Lord, grant me the enabling power of Your Holy Spirit.',
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ),
           const SizedBox(height: 12),
