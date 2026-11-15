@@ -64,7 +64,6 @@ class _InteractiveLessonReaderScreenState
   List<DiscipleshipContact> _userContacts = [];
   DiscipleshipContact? _matchedContact;
   int _matchedContactStudyCount = 0;
-  bool _isNewDisciple = false;
 
   double _progress = 0.0;
   bool _showSavedNotification = false;
@@ -1802,100 +1801,9 @@ class _InteractiveLessonReaderScreenState
                   const SizedBox(height: 12),
                 ],
 
-                // Existing Disciple Selector vs New Disciple Registration
-                if (_userContacts.isNotEmpty) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ChoiceChip(
-                          label: Text(
-                            'Existing Disciple (${_userContacts.length})',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                          ),
-                          selected: !_isNewDisciple,
-                          selectedColor: const Color(0xFF15803D),
-                          backgroundColor: Colors.white10,
-                          labelStyle: TextStyle(
-                            color: !_isNewDisciple ? Colors.white : Colors.white70,
-                          ),
-                          onSelected: (_) {
-                            setState(() => _isNewDisciple = false);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Text(
-                            'New Disciple (First Reg.)',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                          ),
-                          selected: _isNewDisciple,
-                          selectedColor: Colors.amber.shade700,
-                          backgroundColor: Colors.white10,
-                          labelStyle: TextStyle(
-                            color: _isNewDisciple ? Colors.white : Colors.white70,
-                          ),
-                          onSelected: (_) {
-                            setState(() {
-                              _isNewDisciple = true;
-                              _matchedContact = null;
-                              _matchedContactStudyCount = 0;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  if (!_isNewDisciple) ...[
-                    DropdownButtonFormField<String>(
-                      initialValue: _matchedContact?.id,
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFF162E20),
-                      decoration: const InputDecoration(
-                        labelText: 'Select Existing Disciple *',
-                        labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
-                        prefixIcon: Icon(Icons.how_to_reg, color: Colors.amberAccent, size: 20),
-                        isDense: true,
-                        filled: true,
-                        fillColor: Colors.black26,
-                        border: OutlineInputBorder(),
-                      ),
-                      hint: const Text(
-                        'Tap to choose a disciple from your records',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                      items: _userContacts.map((c) {
-                        return DropdownMenuItem<String>(
-                          value: c.id,
-                          child: Text(
-                            '${c.fullName} (${_formatLevelName(c.currentLevel)})',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (selectedId) {
-                        if (selectedId == null) return;
-                        final match = _userContacts
-                            .where((c) => c.id == selectedId)
-                            .firstOrNull;
-                        if (match != null) {
-                          _selectContact(match);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                  ] else ...[
-                    _buildDiscipleNameAutocomplete(),
-                    const SizedBox(height: 10),
-                  ],
-                ] else ...[
-                  // No prior contacts yet — first registration text field
-                  _buildDiscipleNameAutocomplete(),
-                  const SizedBox(height: 10),
-                ],
+                // Name field with live suggestions from existing disciples
+                _buildDiscipleNameAutocomplete(),
+                const SizedBox(height: 10),
 
                 // Phone and Address Row
                 Row(
@@ -1995,50 +1903,34 @@ class _InteractiveLessonReaderScreenState
   }
 
   Widget _buildDiscipleNameAutocomplete() {
-    return Autocomplete<DiscipleshipContact>(
-      initialValue: TextEditingValue(text: _nameController.text),
-      displayStringForOption: (contact) => contact.fullName,
-      optionsBuilder: (TextEditingValue textEditingValue) {
-        if (textEditingValue.text.trim().isEmpty) {
-          return _userContacts;
-        }
-        final q = textEditingValue.text.trim().toLowerCase();
-        return _userContacts.where((c) {
-          return c.fullName.toLowerCase().contains(q) ||
-              (c.phone != null && c.phone!.contains(q));
-        });
-      },
-      onSelected: (contact) {
-        _selectContact(contact);
-      },
-      fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-        return TextField(
-          controller: textEditingController,
-          focusNode: focusNode,
+    final query = _nameController.text.trim().toLowerCase();
+    final matches = (query.isEmpty || _matchedContact != null)
+        ? const <DiscipleshipContact>[]
+        : _userContacts.where((c) {
+            return c.fullName.toLowerCase().contains(query) ||
+                (c.phone != null && c.phone!.contains(query));
+          }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _nameController,
           onChanged: (val) {
-            _nameController.text = val;
+            setState(() {});
             _onNameChanged(val);
           },
           decoration: InputDecoration(
             labelText: 'Disciple Name (or search existing)',
             labelStyle: const TextStyle(color: Colors.white70, fontSize: 12),
-            hintText: 'Type to search or enter new name',
+            hintText: 'Type name — existing disciples appear if matched',
             hintStyle: const TextStyle(color: Colors.white38, fontSize: 11),
             prefixIcon: const Icon(Icons.person_search, color: Colors.amberAccent, size: 20),
-            suffixIcon: _userContacts.isNotEmpty
-                ? PopupMenuButton<DiscipleshipContact>(
-                    icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
-                    tooltip: 'Choose existing disciple',
-                    onSelected: (c) {
-                      textEditingController.text = c.fullName;
-                      _selectContact(c);
-                    },
-                    itemBuilder: (ctx) => _userContacts.map((c) {
-                      return PopupMenuItem<DiscipleshipContact>(
-                        value: c,
-                        child: Text('${c.fullName} (${_formatLevelName(c.currentLevel)})'),
-                      );
-                    }).toList(),
+            suffixIcon: _nameController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.white54, size: 18),
+                    tooltip: 'Clear name',
+                    onPressed: _clearMatchedContact,
                   )
                 : null,
             isDense: true,
@@ -2047,40 +1939,49 @@ class _InteractiveLessonReaderScreenState
             border: const OutlineInputBorder(),
           ),
           style: const TextStyle(color: Colors.white, fontSize: 12),
-        );
-      },
-      optionsViewBuilder: (context, onSelected, options) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 8,
-            color: const Color(0xFF162E20),
-            borderRadius: BorderRadius.circular(8),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 320),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final contact = options.elementAt(index);
-                  return ListTile(
-                    dense: true,
-                    title: Text(contact.fullName,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                    subtitle: Text(
-                      '${_formatLevelName(contact.currentLevel)}${contact.phone != null ? ' • ${contact.phone}' : ''}',
-                      style: const TextStyle(color: Colors.white60, fontSize: 10),
-                    ),
-                    trailing: const Icon(Icons.add_task, color: Colors.greenAccent, size: 16),
-                    onTap: () => onSelected(contact),
-                  );
-                },
+        ),
+        if (matches.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 180),
+            decoration: BoxDecoration(
+              color: const Color(0xFF162E20),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4)),
+            ),
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              itemCount: matches.length,
+              separatorBuilder: (_, __) => Divider(
+                height: 1,
+                color: Colors.white.withValues(alpha: 0.08),
               ),
+              itemBuilder: (context, index) {
+                final contact = matches[index];
+                return ListTile(
+                  dense: true,
+                  visualDensity: VisualDensity.compact,
+                  title: Text(
+                    contact.fullName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${_formatLevelName(contact.currentLevel)}${contact.phone != null && contact.phone!.isNotEmpty ? ' • ${contact.phone}' : ''}',
+                    style: const TextStyle(color: Colors.white60, fontSize: 10),
+                  ),
+                  trailing: const Icon(Icons.add_task, color: Colors.greenAccent, size: 16),
+                  onTap: () => _selectContact(contact),
+                );
+              },
             ),
           ),
-        );
-      },
+        ],
+      ],
     );
   }
 
