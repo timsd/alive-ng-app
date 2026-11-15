@@ -64,6 +64,7 @@ class _InteractiveLessonReaderScreenState
   List<DiscipleshipContact> _userContacts = [];
   DiscipleshipContact? _matchedContact;
   int _matchedContactStudyCount = 0;
+  bool _isNewDisciple = false;
 
   double _progress = 0.0;
   bool _showSavedNotification = false;
@@ -1801,9 +1802,100 @@ class _InteractiveLessonReaderScreenState
                   const SizedBox(height: 12),
                 ],
 
-                // Name field with autocomplete from existing contacts
-                _buildDiscipleNameAutocomplete(),
-                const SizedBox(height: 10),
+                // Existing Disciple Selector vs New Disciple Registration
+                if (_userContacts.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: Text(
+                            'Existing Disciple (${_userContacts.length})',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                          selected: !_isNewDisciple,
+                          selectedColor: const Color(0xFF15803D),
+                          backgroundColor: Colors.white10,
+                          labelStyle: TextStyle(
+                            color: !_isNewDisciple ? Colors.white : Colors.white70,
+                          ),
+                          onSelected: (_) {
+                            setState(() => _isNewDisciple = false);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text(
+                            'New Disciple (First Reg.)',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                          selected: _isNewDisciple,
+                          selectedColor: Colors.amber.shade700,
+                          backgroundColor: Colors.white10,
+                          labelStyle: TextStyle(
+                            color: _isNewDisciple ? Colors.white : Colors.white70,
+                          ),
+                          onSelected: (_) {
+                            setState(() {
+                              _isNewDisciple = true;
+                              _matchedContact = null;
+                              _matchedContactStudyCount = 0;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (!_isNewDisciple) ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: _matchedContact?.id,
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFF162E20),
+                      decoration: const InputDecoration(
+                        labelText: 'Select Existing Disciple *',
+                        labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
+                        prefixIcon: Icon(Icons.how_to_reg, color: Colors.amberAccent, size: 20),
+                        isDense: true,
+                        filled: true,
+                        fillColor: Colors.black26,
+                        border: OutlineInputBorder(),
+                      ),
+                      hint: const Text(
+                        'Tap to choose a disciple from your records',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      items: _userContacts.map((c) {
+                        return DropdownMenuItem<String>(
+                          value: c.id,
+                          child: Text(
+                            '${c.fullName} (${_formatLevelName(c.currentLevel)})',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (selectedId) {
+                        if (selectedId == null) return;
+                        final match = _userContacts
+                            .where((c) => c.id == selectedId)
+                            .firstOrNull;
+                        if (match != null) {
+                          _selectContact(match);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ] else ...[
+                    _buildDiscipleNameAutocomplete(),
+                    const SizedBox(height: 10),
+                  ],
+                ] else ...[
+                  // No prior contacts yet — first registration text field
+                  _buildDiscipleNameAutocomplete(),
+                  const SizedBox(height: 10),
+                ],
 
                 // Phone and Address Row
                 Row(
