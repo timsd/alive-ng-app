@@ -282,45 +282,58 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final compactSignIn = !_isSignUp && context.isMobile;
             return SingleChildScrollView(
-              padding: context.responsivePadding,
+              padding: compactSignIn
+                  ? const EdgeInsets.symmetric(horizontal: 20, vertical: 8)
+                  : context.responsivePadding,
               child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                constraints: BoxConstraints(
+                  minHeight: compactSignIn
+                      ? (constraints.maxHeight - 16).clamp(0.0, double.infinity)
+                      : constraints.maxHeight,
+                ),
                 child: IntrinsicHeight(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 20.0,
-                          tablet: 30.0,
-                          desktop: 40.0,
-                        ),
+                        height: compactSignIn
+                            ? 4.0
+                            : ResponsiveUtils.getResponsiveValue(
+                                context: context,
+                                mobile: 20.0,
+                                tablet: 30.0,
+                                desktop: 40.0,
+                              ),
                       ),
 
                       // App Logo and Title
                       _buildHeader(context, translate),
 
                       SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 32.0,
-                          tablet: 40.0,
-                          desktop: 48.0,
-                        ),
+                        height: compactSignIn
+                            ? 14.0
+                            : ResponsiveUtils.getResponsiveValue(
+                                context: context,
+                                mobile: 32.0,
+                                tablet: 40.0,
+                                desktop: 48.0,
+                              ),
                       ),
 
                       // Auth Form (Inputs + Submit Button immediately below!)
                       _buildAuthForm(context, translate, signInState),
 
                       SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 24.0,
-                          tablet: 32.0,
-                          desktop: 40.0,
-                        ),
+                        height: compactSignIn
+                            ? 10.0
+                            : ResponsiveUtils.getResponsiveValue(
+                                context: context,
+                                mobile: 24.0,
+                                tablet: 32.0,
+                                desktop: 40.0,
+                              ),
                       ),
 
                       // Social Sign In Options
@@ -331,12 +344,14 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                       ),
 
                       SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 16.0,
-                          tablet: 20.0,
-                          desktop: 24.0,
-                        ),
+                        height: compactSignIn
+                            ? 8.0
+                            : ResponsiveUtils.getResponsiveValue(
+                                context: context,
+                                mobile: 16.0,
+                                tablet: 20.0,
+                                desktop: 24.0,
+                              ),
                       ),
 
                       // Biometric Authentication (auto-detected on capable phones)
@@ -349,12 +364,14 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                       _buildGuestAccessButton(context, translate, signInState),
 
                       SizedBox(
-                        height: ResponsiveUtils.getResponsiveValue(
-                          context: context,
-                          mobile: 16.0,
-                          tablet: 20.0,
-                          desktop: 24.0,
-                        ),
+                        height: compactSignIn
+                            ? 4.0
+                            : ResponsiveUtils.getResponsiveValue(
+                                context: context,
+                                mobile: 16.0,
+                                tablet: 20.0,
+                                desktop: 24.0,
+                              ),
                       ),
                     ],
                   ),
@@ -368,23 +385,28 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   }
 
   Widget _buildHeader(BuildContext context, String Function(String) translate) {
+    final compactSignIn = !_isSignUp && context.isMobile;
     return Column(
       children: [
         // Logo - simplified design like the old auth screen
         SvgPicture.asset(
           'assets/images/alive_logo.svg',
-          width: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 80.0,
-            tablet: 90.0,
-            desktop: 100.0,
-          ),
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 80.0,
-            tablet: 90.0,
-            desktop: 100.0,
-          ),
+          width: compactSignIn
+              ? 56.0
+              : ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 80.0,
+                  tablet: 90.0,
+                  desktop: 100.0,
+                ),
+          height: compactSignIn
+              ? 56.0
+              : ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 80.0,
+                  tablet: 90.0,
+                  desktop: 100.0,
+                ),
           colorFilter: ColorFilter.mode(
             Theme.of(context).colorScheme.primary,
             BlendMode.srcIn,
@@ -392,12 +414,14 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         ),
 
         SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 16.0,
-            tablet: 18.0,
-            desktop: 20.0,
-          ),
+          height: compactSignIn
+              ? 8.0
+              : ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 16.0,
+                  tablet: 18.0,
+                  desktop: 20.0,
+                ),
         ),
 
         // App Name
@@ -406,34 +430,40 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           style: Theme.of(context).textTheme.displayMedium?.copyWith(
                 color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.bold,
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 28.0,
-                  tablet: 32.0,
-                  desktop: 36.0,
-                ),
+                fontSize: compactSignIn
+                    ? 24.0
+                    : ResponsiveUtils.getResponsiveValue(
+                        context: context,
+                        mobile: 28.0,
+                        tablet: 32.0,
+                        desktop: 36.0,
+                      ),
               ),
         ),
 
         SizedBox(
-          height: ResponsiveUtils.getResponsiveValue(
-            context: context,
-            mobile: 8.0,
-            tablet: 10.0,
-            desktop: 12.0,
-          ),
+          height: compactSignIn
+              ? 2.0
+              : ResponsiveUtils.getResponsiveValue(
+                  context: context,
+                  mobile: 8.0,
+                  tablet: 10.0,
+                  desktop: 12.0,
+                ),
         ),
 
         // Welcome Message
         Text(
           translate('welcome'),
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontSize: ResponsiveUtils.getResponsiveValue(
-                  context: context,
-                  mobile: 16.0,
-                  tablet: 18.0,
-                  desktop: 20.0,
-                ),
+                fontSize: compactSignIn
+                    ? 14.0
+                    : ResponsiveUtils.getResponsiveValue(
+                        context: context,
+                        mobile: 16.0,
+                        tablet: 18.0,
+                        desktop: 20.0,
+                      ),
                 height: 1.4,
                 color: Theme.of(
                   context,
@@ -505,6 +535,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 labelText: translate('email'),
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 prefixIcon: const Icon(Icons.email_outlined),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -522,12 +555,15 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             TextFormField(
               controller: _passwordController,
               obscureText: _obscurePassword,
               decoration: InputDecoration(
                 labelText: translate('password'),
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -549,9 +585,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 2),
             _buildForgotPasswordButton(context, translate),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
             ElevatedButton.icon(
               onPressed: _isLoading || signInState.isLoading
                   ? null
@@ -575,7 +611,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 13),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -1301,9 +1337,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         SizedBox(
           height: ResponsiveUtils.getResponsiveValue(
             context: context,
-            mobile: 20.0,
-            tablet: 24.0,
-            desktop: 28.0,
+            mobile: 10.0,
+            tablet: 20.0,
+            desktop: 24.0,
           ),
         ),
 
@@ -1353,9 +1389,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
               padding: EdgeInsets.symmetric(
                 vertical: ResponsiveUtils.getResponsiveValue(
                   context: context,
-                  mobile: 16.0,
-                  tablet: 18.0,
-                  desktop: 20.0,
+                  mobile: 12.0,
+                  tablet: 16.0,
+                  desktop: 18.0,
                 ),
               ),
               side: BorderSide(color: Theme.of(context).colorScheme.outline),
@@ -1372,59 +1408,28 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
   ) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     return Padding(
-      padding: EdgeInsets.only(
-        top: ResponsiveUtils.getResponsiveValue(
-          context: context,
-          mobile: 16.0,
-          tablet: 20.0,
-          desktop: 24.0,
-        ),
-      ),
+      padding: const EdgeInsets.only(top: 6.0),
       child: Center(
-        child: InkWell(
-          onTap: _isLoading ? null : _authenticateWithBiometrics,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: primaryColor.withValues(alpha: 0.35),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.fingerprint_rounded,
-                    size: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 32.0,
-                      tablet: 36.0,
-                      desktop: 40.0,
-                    ),
-                    color: primaryColor,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  translate('use_biometric_auth'),
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                      context: context,
-                      mobile: 14.0,
-                      tablet: 15.0,
-                      desktop: 16.0,
-                    ),
-                    fontWeight: FontWeight.w600,
-                    color: primaryColor,
-                  ),
-                ),
-              ],
+        child: OutlinedButton.icon(
+          onPressed: _isLoading ? null : _authenticateWithBiometrics,
+          icon: Icon(
+            Icons.fingerprint_rounded,
+            size: 22,
+            color: primaryColor,
+          ),
+          label: Text(
+            translate('use_biometric_auth'),
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: primaryColor,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            side: BorderSide(color: primaryColor.withValues(alpha: 0.35)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
             ),
           ),
         ),
