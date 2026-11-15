@@ -26,17 +26,37 @@ import '../../services/in_app_update_service.dart';
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
+  static final ValueNotifier<int> scrollToQuickActionsTrigger =
+      ValueNotifier<int>(0);
+
+  static void requestScrollToQuickActions() {
+    scrollToQuickActionsTrigger.value++;
+  }
+
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _quickActionsKey = GlobalKey();
+  int _lastHandledScrollTrigger = 0;
+
   @override
   void initState() {
     super.initState();
+    _lastHandledScrollTrigger = HomeScreen.scrollToQuickActionsTrigger.value > 0
+        ? _lastHandledScrollTrigger
+        : 0;
+    HomeScreen.scrollToQuickActionsTrigger
+        .addListener(_onScrollToQuickActionsRequested);
     // Warm up offline Bible database as soon as user lands in the app
     unawaited(OfflineBibleService().prewarmBundle());
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (HomeScreen.scrollToQuickActionsTrigger.value >
+          _lastHandledScrollTrigger) {
+        _scrollToQuickActions();
+      }
       // Check for updates when user opens and lands on the home feed
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
@@ -49,6 +69,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           AppTourService.maybeStartTour(context);
         }
       });
+    });
+  }
+
+  @override
+  void dispose() {
+    HomeScreen.scrollToQuickActionsTrigger
+        .removeListener(_onScrollToQuickActionsRequested);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScrollToQuickActionsRequested() {
+    if (!mounted) return;
+    _scrollToQuickActions();
+  }
+
+  void _scrollToQuickActions() {
+    _lastHandledScrollTrigger = HomeScreen.scrollToQuickActionsTrigger.value;
+    Future.delayed(const Duration(milliseconds: 120), () {
+      if (!mounted) return;
+      final ctx = _quickActionsKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+          alignment: 0.04,
+        );
+      }
     });
   }
 
@@ -120,6 +169,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final roleService = RoleAccessService.instance;
 
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: ResponsiveUtils.getResponsivePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,12 +217,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           SizedBox(height: context.isMobile ? 20 : 28),
           // Quick Actions - show for all users (guests see limited set internally)
-          if (user != null && !isGuest) ...[
-            const QuickActionsGrid(),
-          ] else ...[
-            const QuickActionsGrid(),
+          KeyedSubtree(
+            key: _quickActionsKey,
+            child: const QuickActionsGrid(),
+          ),
+          if (user == null || isGuest)
             SizedBox(height: context.isMobile ? 16 : 24),
-          ],
         ],
       ),
     );

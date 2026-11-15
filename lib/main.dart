@@ -37,6 +37,7 @@ import 'services/onboarding_service.dart';
 import 'services/offline_bible_service.dart';
 import 'utils/url_strategy.dart';
 import 'screens/conference/components/meeting_floating_overlay.dart';
+import 'screens/home/home_screen.dart';
 import 'constants/chapters.dart';
 import 'services/org_structure_service.dart';
 
@@ -365,6 +366,7 @@ class MainNavigationScreen extends ConsumerWidget {
     HapticFeedback.selectionClick();
     switch (index) {
       case 0:
+        HomeScreen.requestScrollToQuickActions();
         context.go(AppConstants.homeRoute);
         break;
       case 1:
