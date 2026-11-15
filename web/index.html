@@ -46,6 +46,14 @@
   </script>
 
   <title>ALIVE Nigeria</title>
+  <style>
+    /* Keep reCAPTCHA Enterprise active in invisible background without blocking Flutter Web UI text */
+    .grecaptcha-badge {
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+  </style>
   <link rel="manifest" href="manifest.json">
   <link rel="preload" as="script" href="flutter_bootstrap.js">
   <!-- Cache-busting: forces browsers to fetch fresh assets after each deploy -->
