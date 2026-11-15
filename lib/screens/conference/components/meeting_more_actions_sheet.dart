@@ -9,6 +9,7 @@ class MeetingMoreActionsSheet extends StatelessWidget {
   final MeetingGateway gateway;
   final bool isLeader;
   final bool isBroadcasting;
+  final String streamingPlatforms;
   final bool isGalleryView;
   final bool isScribeRecording;
   final VoidCallback? onToggleScribe;
@@ -29,6 +30,7 @@ class MeetingMoreActionsSheet extends StatelessWidget {
     required this.gateway,
     required this.isLeader,
     required this.isBroadcasting,
+    this.streamingPlatforms = 'youtube',
     this.isGalleryView = false,
     this.isScribeRecording = false,
     this.onToggleScribe,
@@ -50,6 +52,7 @@ class MeetingMoreActionsSheet extends StatelessWidget {
     required MeetingGateway gateway,
     required bool isLeader,
     required bool isBroadcasting,
+    String streamingPlatforms = 'youtube',
     bool isGalleryView = false,
     bool isScribeRecording = false,
     VoidCallback? onToggleScribe,
@@ -76,6 +79,7 @@ class MeetingMoreActionsSheet extends StatelessWidget {
         gateway: gateway,
         isLeader: isLeader,
         isBroadcasting: isBroadcasting,
+        streamingPlatforms: streamingPlatforms,
         isGalleryView: isGalleryView,
         isScribeRecording: isScribeRecording,
         onToggleScribe: onToggleScribe,
@@ -339,23 +343,32 @@ class MeetingMoreActionsSheet extends StatelessWidget {
                       onToggleWaitingRoom(!session.isWaitingRoomEnabled);
                     },
                   ),
-                  ListTile(
-                    leading: Icon(
-                      isBroadcasting ? Icons.stop_rounded : Icons.live_tv_rounded,
-                      color: isBroadcasting ? Colors.red : Colors.blue,
-                    ),
-                    title: Text(isBroadcasting
-                        ? 'Stop YouTube Live Broadcast'
-                        : 'Go Live (Broadcast to YouTube)'),
-                    subtitle: Text(
-                      'Stream meeting output',
-                      style: subtitleStyle,
-                    ),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      onToggleBroadcast();
-                    },
-                  ),
+                  Builder(builder: (context) {
+                    final mode = streamingPlatforms.trim().toLowerCase();
+                    final platformLabel = switch (mode) {
+                      'facebook' => 'Facebook',
+                      'both' => 'YouTube & Facebook',
+                      _ => 'YouTube',
+                    };
+                    final broadcastTitle = isBroadcasting
+                        ? 'Stop $platformLabel Live Broadcast'
+                        : 'Go Live (Broadcast to $platformLabel)';
+                    final broadcastSubtitle = mode == 'both'
+                        ? 'Stream meeting output simultaneously to YouTube & Facebook'
+                        : 'Stream meeting output to $platformLabel Live';
+                    return ListTile(
+                      leading: Icon(
+                        isBroadcasting ? Icons.stop_rounded : Icons.live_tv_rounded,
+                        color: isBroadcasting ? Colors.red : Colors.blue,
+                      ),
+                      title: Text(broadcastTitle),
+                      subtitle: Text(broadcastSubtitle, style: subtitleStyle),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        onToggleBroadcast();
+                      },
+                    );
+                  }),
                   ListTile(
                     leading: const Icon(Icons.power_settings_new_rounded, color: Colors.red),
                     title: const Text('End Meeting for All',

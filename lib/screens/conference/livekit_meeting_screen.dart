@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:appwrite/appwrite.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,8 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../config/appwrite_backend_config.dart';
 import '../../config/meeting_links_config.dart';
 import '../../constants/chapters.dart';
+import '../../main.dart';
 import '../../models/chat_models.dart';
 import '../../models/meeting_models.dart';
 import '../../providers/appwrite_auth_provider.dart';
@@ -61,6 +64,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   bool _isLoadingChannels = false;
   bool _isJoining = false;
   bool _isBroadcasting = false;
+  String _streamingPlatforms = 'youtube';
   bool _notifyMembers = true;
   String _targetAudience = 'general';
   String _selectedTargetChapter = ChapterConstants.availableChapters.first;
@@ -104,6 +108,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     }
     _roomController = TextEditingController(text: _initialRoomName());
     _loadAvailableChannels();
+    _loadStreamingPlatformSetting();
     // Ensure meeting overlay is dismissed when opening full meeting screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(isMeetingMinimizedProvider.notifier).state = false;
@@ -1717,18 +1722,21 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     );
   }
 
-  void _showMeetingMoreSheet(
+  Future<void> _showMeetingMoreSheet(
     BuildContext context,
     MeetingSession session,
     MeetingGateway gateway,
     bool isLeader,
-  ) {
+  ) async {
+    await _loadStreamingPlatformSetting();
+    if (!context.mounted) return;
     MeetingMoreActionsSheet.show(
       context: context,
       session: session,
       gateway: gateway,
       isLeader: isLeader,
       isBroadcasting: _isBroadcasting,
+      streamingPlatforms: _streamingPlatforms,
       isGalleryView: _isGalleryView,
       isScribeRecording: _isScribeRecording,
       onToggleScribe: _toggleScribeRecording,
@@ -2212,16 +2220,52 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
 
 
+  Future<void> _loadStreamingPlatformSetting() async {
+    try {
+      final res = await TablesDB(appwriteClient).listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
+        queries: [
+          Query.equal('setting_key', 'streaming_platforms'),
+          Query.limit(1),
+        ],
+      );
+      if (res.rows.isNotEmpty) {
+        final raw = res.rows.first.data['setting_value']
+                ?.toString()
+                .trim()
+                .toLowerCase() ??
+            'youtube';
+        if (raw == 'youtube' || raw == 'facebook' || raw == 'both') {
+          if (mounted && _streamingPlatforms != raw) {
+            setState(() => _streamingPlatforms = raw);
+          } else {
+            _streamingPlatforms = raw;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> _startBroadcast(MeetingGateway gateway) async {
     final meetingType = widget.meetingType?.name ?? 'general';
+    await _loadStreamingPlatformSetting();
     try {
-      final egressId = await gateway.startBroadcast(meetingType: meetingType);
+      final egressId = await gateway.startBroadcast(
+        meetingType: meetingType,
+        platforms: _streamingPlatforms,
+      );
       if (!mounted) return;
       setState(() {
         _isBroadcasting = true;
         _activeEgressId = egressId;
       });
-      _showMessage('Live stream started');
+      final platformLabel = switch (_streamingPlatforms) {
+        'facebook' => 'Facebook',
+        'both' => 'YouTube & Facebook',
+        _ => 'YouTube',
+      };
+      _showMessage('Live stream started on $platformLabel');
     } catch (e) {
       final friendly = ErrorHandler.getUserFriendlyMessage(
         e,

@@ -203,7 +203,7 @@ abstract class MeetingGateway {
   ///
   /// [meetingType] selects the broadcast room policy (e.g. 'general', 'leadership').
   /// Returns the egress ID on success.
-  Future<String> startBroadcast({required String meetingType});
+  Future<String> startBroadcast({required String meetingType, String? platforms});
 
   /// Stops an active broadcast.
   ///

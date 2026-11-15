@@ -47,6 +47,8 @@ class AppwriteBackendConfig {
   static const String systemExportsBucketId = 'system_exports';
   static const String appReleasesBucketId = 'app_releases';
   static const String createLiveKitTokenFunctionId = '6a08e9010035dc8c1e51';
+  static const String startLiveKitBroadcastFunctionId =
+      'start_livekit_broadcast';
   static const String paystackPaymentsFunctionId = 'paystack_payments';
   static const String paystackWebhookFunctionId = 'paystack_webhook';
   static const String sendEmailFunctionId = 'send_email';
