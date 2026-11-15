@@ -88,6 +88,22 @@ class NotificationService {
         }
       });
 
+      // Ensure Android's default FCM notification channel exists with high importance
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        final androidPlugin = _localNotifications
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>();
+        await androidPlugin?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'alive_ng_notifications',
+            'ALIVE Nigeria Notifications',
+            description: 'Ministry updates, broadcasts, and ALIVE Meet alerts',
+            importance: Importance.high,
+            playSound: true,
+          ),
+        );
+      }
+
       // Request notification permissions
       await _requestPermissions();
 
@@ -280,11 +296,13 @@ class NotificationService {
     required String title,
     required String body,
     String? payload,
-    String channelId = 'default',
+    String channelId = 'alive_ng_notifications',
     bool playSound = true,
   }) async {
     final effectiveChannelId = playSound ? channelId : '${channelId}_silent';
-    final effectiveChannelName = playSound ? 'Default' : 'Default (Silent)';
+    final effectiveChannelName = playSound
+        ? 'ALIVE Nigeria Notifications'
+        : 'ALIVE Nigeria Notifications (Silent)';
 
     final androidDetails = AndroidNotificationDetails(
       effectiveChannelId,
@@ -461,9 +479,9 @@ class NotificationService {
     Map<String, dynamic>? payload,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'default',
-      'Default',
-      channelDescription: 'Default notification channel',
+      'alive_ng_notifications',
+      'ALIVE Nigeria Notifications',
+      channelDescription: 'Ministry updates, broadcasts, and ALIVE Meet alerts',
       icon: 'ic_notification',
       color: Color(0xFF0F9A07),
       importance: Importance.high,
