@@ -1228,7 +1228,7 @@ class OfflineBibleService {
     if (_hasPrewarmed) return;
     _hasPrewarmed = true;
     try {
-      final db = await _dbHelper.database;
+      await _dbHelper.database;
       // Pre-warm version codes
       await _dbHelper.getLoadedVersionCodes();
       // Pre-cache primary book in background to initialize SQLite caches

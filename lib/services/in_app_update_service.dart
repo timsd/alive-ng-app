@@ -120,7 +120,7 @@ class InAppUpdateService {
       }
 
       // 2. Fallback: Appwrite-managed remote version check
-      if (!googlePlayHandled) {
+      if (!googlePlayHandled && context != null && context.mounted) {
         await _checkRemoteAppUpdate(context, manual);
       }
     } finally {

@@ -217,52 +217,6 @@ class AdminNotificationService {
     return buffer.toString();
   }
 
-  /// Build informational email body for auto-approved regular members and guests
-  String _buildNewMemberInfoEmailBody(UserProfile userProfile) {
-    final buffer = StringBuffer();
-
-    buffer.writeln('A new member has joined the ALIVE Nigeria App community!');
-    buffer.writeln('');
-    buffer.writeln('Member Details:');
-    buffer.writeln('==============');
-    buffer.writeln('Full Name: ${userProfile.fullName ?? 'Not provided'}');
-    buffer.writeln('Email: ${userProfile.email ?? 'Not provided'}');
-    buffer.writeln('Phone: ${userProfile.phoneNumber ?? 'Not provided'}');
-    buffer.writeln('Role: ${userProfile.role}');
-    buffer.writeln('Account Status: Active (Auto-approved)');
-    buffer.writeln('');
-
-    if (userProfile.localChapter != null) {
-      buffer.writeln('Local Chapter: ${userProfile.localChapter}');
-    }
-    if (userProfile.localChurch != null) {
-      buffer.writeln('Local Church: ${userProfile.localChurch}');
-    }
-
-    buffer.writeln('');
-    if (userProfile.commitmentType != null && userProfile.commitmentType != 'none') {
-      buffer.writeln('Commitment Information:');
-      buffer.writeln('======================');
-      buffer.writeln('Type: ${userProfile.commitmentType}');
-      if (userProfile.financialCommitment != null) {
-        buffer.writeln('Financial: ₦${userProfile.financialCommitment}');
-      }
-      if (userProfile.availabilityCommitment != null) {
-        buffer.writeln('Availability: ${userProfile.availabilityCommitment}');
-      }
-      buffer.writeln('');
-    }
-
-    buffer.writeln(
-        'Registration Date: ${userProfile.createdAt.toIso8601String()}');
-    buffer.writeln('');
-    buffer.writeln(
-        'No approval action is required for this member. To view or manage members, visit the Admin Dashboard:');
-    buffer.writeln('https://app.alivenigeria.org/admin');
-
-    return buffer.toString();
-  }
-
   /// Send email notification using available email service
   Future<bool> _sendEmailNotification({
     required String to,

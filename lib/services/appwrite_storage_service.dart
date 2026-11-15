@@ -184,7 +184,6 @@ class AppwriteStorageService {
           '$bucketId/files/$resolvedId/view'
           '?project=${AppwriteBackendConfig.projectId}';
     } catch (e) {
-      final eStr = e.toString().toLowerCase();
       // If direct chunkedUpload threw because permissions caused rejection, retry without permissions
       if (permissions != null && permissions.isNotEmpty) {
         try {

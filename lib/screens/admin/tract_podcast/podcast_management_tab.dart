@@ -12,6 +12,7 @@ import '../podcast_episode_form_dialog.dart' show PodcastEpisodeFormDialog;
 import 'tract_podcast_shared.dart';
 
 class PodcastManagementTab extends StatefulWidget {
+  const PodcastManagementTab({super.key});
   @override
   State<PodcastManagementTab> createState() => _PodcastManagementTabState();
 }

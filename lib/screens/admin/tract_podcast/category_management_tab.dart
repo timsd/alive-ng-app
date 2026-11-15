@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../services/file_picker_facade.dart';
 import '../../../utils/error_handler.dart';
 import '../../../services/appwrite_admin_content_service.dart';
-import '../../../services/appwrite_storage_compat_service.dart';
-import '../../../widgets/custom_image.dart';
 import 'tract_podcast_shared.dart';
 
 class CategoryManagementTab extends StatefulWidget {
+  const CategoryManagementTab({super.key});
   @override
   State<CategoryManagementTab> createState() => _CategoryManagementTabState();
 }

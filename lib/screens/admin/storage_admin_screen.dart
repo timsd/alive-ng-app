@@ -491,7 +491,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
                 final resolved = _resolveBucket(bucket);
                 final url = fileId != null && fileId.isNotEmpty
                     ? AppwriteStorageCompatService.appwriteFileUrl(resolved, fileId)
-                    : await _storageService.getDownloadUrl('$resolved/$name');
+                    : _storageService.getDownloadUrl('$resolved/$name');
                 if (await canLaunchUrl(Uri.parse(url))) {
                   await launchUrl(Uri.parse(url),
                       mode: LaunchMode.externalApplication);
@@ -595,7 +595,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
       final resolved = _resolveBucket(bucket);
       final url = fileId != null && fileId.isNotEmpty
           ? AppwriteStorageCompatService.appwriteFileUrl(resolved, fileId)
-          : await _storageService.getDownloadUrl('$resolved/$fileName');
+          : _storageService.getDownloadUrl('$resolved/$fileName');
       await Clipboard.setData(ClipboardData(text: url));
       ToastUtils.showSuccess('URL copied to clipboard');
     } catch (e) {

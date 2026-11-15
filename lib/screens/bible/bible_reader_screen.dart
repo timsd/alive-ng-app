@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/bible_source.dart';
 import '../../models/bible_models.dart' as models;
@@ -66,13 +65,11 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   List<String> _versionsForLanguage = [];
 
   // My Study State (Notes, Highlights, Bookmarks)
-  int _studySubTabIndex = 0; // 0 = Notes, 1 = Highlights, 2 = Bookmarks
   List<Map<String, dynamic>> _userNotes = [];
   List<Map<String, dynamic>> _userHighlights = [];
   List<Map<String, dynamic>> _userBookmarks = [];
   bool _isLoadingStudy = false;
   final TextEditingController _studySearchController = TextEditingController();
-  String _studySearchQuery = '';
 
   final OfflineBibleService _offlineBible = OfflineBibleService();
   String _selectedLanguage = 'English';

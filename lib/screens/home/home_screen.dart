@@ -90,7 +90,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     Future.delayed(const Duration(milliseconds: 120), () {
       if (!mounted) return;
       final ctx = _quickActionsKey.currentContext;
-      if (ctx != null) {
+      if (ctx != null && ctx.mounted) {
         Scrollable.ensureVisible(
           ctx,
           duration: const Duration(milliseconds: 420),

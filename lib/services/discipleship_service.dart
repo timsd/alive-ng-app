@@ -635,7 +635,7 @@ class DiscipleshipService {
             if (updatedRequest.dateAnswered != null) {
               generalData['answered_at'] = _iso(updatedRequest.dateAnswered!);
             }
-            final document = await _tables.updateRow(
+            await _tables.updateRow(
               databaseId: AppwriteBackendConfig.databaseId,
               tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
               rowId: rowId,

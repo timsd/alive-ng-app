@@ -56,7 +56,7 @@ class OathScreen extends ConsumerWidget {
                   ),
                   alignment: Alignment.center,
                   child: FaIcon(
-                    FontAwesomeIcons.handshakeSimple,
+                    FontAwesomeIcons.handshake,
                     size: 52,
                     color: theme.colorScheme.primary,
                   ),

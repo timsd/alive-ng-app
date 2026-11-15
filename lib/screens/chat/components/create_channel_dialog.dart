@@ -3,8 +3,6 @@ import '../../../widgets/modern_dropdown.dart';
 
 import '../../../config/appwrite_backend_config.dart';
 import '../../../models/chat_models.dart';
-import '../../../services/appwrite_auth_service.dart';
-import '../../../services/appwrite_chat_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/chat_service.dart';
 import '../../../services/role_access_service.dart';

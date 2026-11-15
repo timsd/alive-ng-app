@@ -92,7 +92,7 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
   Future<void> _loadSavedPosition() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getInt('video_resume_${_videoKey}') ?? 0;
+      final saved = prefs.getInt('video_resume_$_videoKey') ?? 0;
       if (saved > 5 && saved < (_totalSeconds - 10)) {
         if (mounted) {
           setState(() {
@@ -128,7 +128,7 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
   void _saveCurrentPosition() {
     if (_currentSeconds > 5 && _currentSeconds < (_totalSeconds - 5)) {
       SharedPreferences.getInstance().then((prefs) {
-        prefs.setInt('video_resume_${_videoKey}', _currentSeconds.toInt());
+        prefs.setInt('video_resume_$_videoKey', _currentSeconds.toInt());
       }).catchError((_) {});
     }
   }

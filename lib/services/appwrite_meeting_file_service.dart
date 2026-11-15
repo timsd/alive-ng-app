@@ -18,7 +18,6 @@ class AppwriteMeetingFileService {
   AppwriteMeetingFileService._();
 
   final TablesDB _tables = TablesDB(appwriteClient);
-  final Databases _databases = Databases(appwriteClient);
   final Storage _storage = Storage(appwriteClient);
   final Logger _logger = Logger('AppwriteMeetingFileService');
   static const String _localMeetingFilesKey = 'local_meeting_files_cache_v1';
@@ -36,22 +35,7 @@ class AppwriteMeetingFileService {
       ).timeout(const Duration(seconds: 6));
       results = snapshot.rows.map(_rowData).toList();
     } catch (e) {
-      _logger.warning('TablesDB listRows failed: $e, trying Databases.listDocuments...');
-      try {
-        final docSnapshot = await _databases.listDocuments(
-          databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.meetingFilesCollectionId,
-          queries: [
-            Query.orderDesc('created_at'),
-            Query.limit(100),
-          ],
-        ).timeout(const Duration(seconds: 6));
-        results = docSnapshot.documents
-            .map((doc) => {'id': doc.$id, ...doc.data})
-            .toList();
-      } catch (dbErr) {
-        _logger.warning('Cloud meeting files unavailable: $dbErr');
-      }
+      _logger.warning('Cloud meeting files unavailable: $e');
     }
 
     // Merge with local offline meeting files (dedupe by row id, storage
@@ -293,17 +277,7 @@ class AppwriteMeetingFileService {
           data: rowData,
         );
       } catch (tableErr) {
-        _logger.warning('TablesDB createRow note: $tableErr. Trying Databases.createDocument...');
-        try {
-          await _databases.createDocument(
-            databaseId: AppwriteBackendConfig.databaseId,
-            collectionId: AppwriteBackendConfig.meetingFilesCollectionId,
-            documentId: ID.unique(),
-            data: rowData,
-          );
-        } catch (dbErr) {
-          _logger.warning('Databases createDocument note: $dbErr. Saved to local meeting files.');
-        }
+        _logger.warning('TablesDB createRow note: $tableErr. Saved to local meeting files.');
       }
     } catch (e) {
       _logger.error('Error uploading meeting file: $e');

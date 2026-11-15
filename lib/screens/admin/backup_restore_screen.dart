@@ -139,6 +139,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
       if (result == null || result.files.isEmpty || result.files.single.bytes == null) {
         return;
       }
+      if (!mounted) return;
 
       final file = result.files.single;
       final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());

@@ -197,8 +197,10 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
               controller: _pdfController,
               params: PdfViewerParams(
                 backgroundColor: theme.scaffoldBackgroundColor,
-                maxScale: 6.0,
-                minScale: 0.5,
+                sizeDelegateProvider: PdfViewerSizeDelegateProviderLegacy(
+                  maxScale: 6.0,
+                  minScale: 0.5,
+                ),
                 margin: 8.0,
                 onViewerReady: (document, controller) {
                   if (mounted) {

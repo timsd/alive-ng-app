@@ -891,7 +891,7 @@ class AliveScribeService {
       for (final p in _transcript) {
         final time = DateFormat('HH:mm:ss').format(p.timestamp);
         buffer.writeln('**[$time] ${p.speakerName} (${p.speakerRole}):**');
-        buffer.writeln('${p.text}');
+        buffer.writeln(p.text);
         buffer.writeln();
       }
     }

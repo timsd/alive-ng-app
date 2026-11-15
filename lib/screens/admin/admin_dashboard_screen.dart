@@ -28,10 +28,7 @@ import 'system_logs_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
 import '../../services/monthly_reminder_setting_service.dart';
 import '../../utils/responsive_utils.dart';
-import '../../models/discipleship_models.dart';
-import '../../services/discipleship_service.dart';
 import '../../widgets/shimmer_loading.dart';
-import 'package:intl/intl.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
@@ -98,7 +95,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   int _totalUsers = 0;
   int _totalChapters = 0;
   int _activeReports = 0;
-  int _archivedUsers = 0;
   int _totalPodcasts = 0;
   int _dailyUsers = 0;
   int _totalPrayerRequests = 0;
@@ -281,7 +277,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       if (!mounted) return;
       setState(() {
         _totalUsers = activeUsers;
-        _archivedUsers = archivedUsers;
         _activeReports = totalReports;
         _totalChapters = totalChapters;
         _totalPodcasts = podcasts.length;
@@ -1500,13 +1495,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   // Discipleship Operations Hub (Modern Segmented Sheet / Dialog)
   void _showOfficerRoutingDialog() {
     showDiscipleshipOperationsModal(context, initialTab: 0);
-  }
-
-
-
-  // Disciple Deletion Requests Approval Queue
-  void _showDeletionRequestsDialog() {
-    showDiscipleshipOperationsModal(context, initialTab: 1);
   }
 }
 

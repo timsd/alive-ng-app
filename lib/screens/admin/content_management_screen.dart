@@ -10,7 +10,6 @@ import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
-import '../../utils/layout_fix_utils.dart';
 import '../../utils/project_sync_bridge.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/interactive_lessons_service.dart';
@@ -43,43 +42,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       DefaultContentData.defaultContentPages;
   static List<Map<String, dynamic>> get _defaultProjects =>
       DefaultContentData.defaultProjects;
-
-  Widget _buildSectionHeader(
-      BuildContext context, String title, Widget action) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 460;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: LayoutFixUtils.safeText(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                          ),
-                    ),
-                  ),
-                  if (!isNarrow) action,
-                ],
-              ),
-              if (isNarrow) ...[
-                const SizedBox(height: 10),
-                action,
-              ],
-            ],
-          );
-        },
-      ),
-    );
-  }
 
   @override
   void initState() {
@@ -364,22 +326,6 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         return _buildContentPageCard(page);
       },
     );
-  }
-
-  void _editOnboardingPage() {
-    try {
-      final page = _contentPages.firstWhere(
-        (p) => (p['slug'] as String?) == 'onboarding',
-        orElse: () => {},
-      );
-      if (page.isNotEmpty) {
-        _showContentPageDialog(page: page);
-      } else {
-        _showContentPageDialog();
-      }
-    } catch (_) {
-      _showContentPageDialog();
-    }
   }
 
   Widget _buildContentPageCard(Map<String, dynamic> page) {

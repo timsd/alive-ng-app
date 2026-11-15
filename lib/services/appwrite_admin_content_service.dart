@@ -11,7 +11,6 @@ class AppwriteAdminContentService {
       AppwriteAdminContentService._();
 
   final TablesDB _tables = TablesDB(appwriteClient);
-  final Databases _databases = Databases(appwriteClient);
 
   Future<List<Map<String, dynamic>>> listCollection(
     String collection, {
@@ -116,28 +115,14 @@ class AppwriteAdminContentService {
         rowId: rowId,
       );
     } catch (_) {
-      try {
-        await _databases.deleteDocument(
+      if (rowId != documentId) {
+        await _tables.deleteRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: collectionId,
-          documentId: rowId,
+          tableId: collectionId,
+          rowId: documentId,
         );
-      } catch (_) {
-        if (rowId != documentId) {
-          try {
-            await _tables.deleteRow(
-              databaseId: AppwriteBackendConfig.databaseId,
-              tableId: collectionId,
-              rowId: documentId,
-            );
-          } catch (_) {
-            await _databases.deleteDocument(
-              databaseId: AppwriteBackendConfig.databaseId,
-              collectionId: collectionId,
-              documentId: documentId,
-            );
-          }
-        }
+      } else {
+        rethrow;
       }
     }
   }

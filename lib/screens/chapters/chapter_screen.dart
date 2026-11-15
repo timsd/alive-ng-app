@@ -1638,8 +1638,8 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
                 : (_currentUserProfile != null &&
                         !_currentUserProfile!.isChapterApproved &&
                         (_currentUserProfile!.localChapter?.toLowerCase() ==
-                                targetChapter!.name.toLowerCase() ||
-                            _currentUserProfile!.chapterId == targetChapter!.id))
+                                targetChapter.name.toLowerCase() ||
+                            _currentUserProfile!.chapterId == targetChapter.id))
                     ? Chip(
                         avatar: Icon(
                           Icons.hourglass_top_rounded,

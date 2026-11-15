@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'dart:html' as html;
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 
 class FlutterTts {
   String _language = 'en-US';
@@ -43,28 +44,25 @@ class FlutterTts {
   }
 
   Future<dynamic> get getVoices async {
-    final synth = html.window.speechSynthesis;
-    if (synth == null) return <dynamic>[];
-    return synth.getVoices().map((v) => {
+    final synth = web.window.speechSynthesis;
+    return synth.getVoices().toDart.map((v) => {
       'name': v.name,
       'locale': v.lang,
     }).toList();
   }
 
   Future<dynamic> get getLanguages async {
-    final synth = html.window.speechSynthesis;
-    if (synth == null) return <String>['en-US'];
-    final langs = synth.getVoices().map((v) => v.lang).whereType<String>().toSet().toList();
+    final synth = web.window.speechSynthesis;
+    final langs = synth.getVoices().toDart.map((v) => v.lang).where((l) => l.isNotEmpty).toSet().toList();
     if (langs.isEmpty) return <String>['en-US', 'en-GB'];
     return langs;
   }
 
   Future<dynamic> isLanguageAvailable(String language) async {
-    final synth = html.window.speechSynthesis;
-    if (synth == null) return false;
-    final voices = synth.getVoices();
+    final synth = web.window.speechSynthesis;
+    final voices = synth.getVoices().toDart;
     return voices.any((v) {
-      final lang = v.lang?.toLowerCase() ?? '';
+      final lang = v.lang.toLowerCase();
       return lang == language.toLowerCase() || lang.startsWith(language.toLowerCase());
     });
   }
@@ -86,31 +84,27 @@ class FlutterTts {
   }
 
   Future<dynamic> speak(String text) async {
-    final synth = html.window.speechSynthesis;
-    if (synth == null) {
-      _completionHandler?.call();
-      return 0;
-    }
+    final synth = web.window.speechSynthesis;
 
     try {
       synth.cancel(); // Stop any pending or ongoing speech
-      final utterance = html.SpeechSynthesisUtterance(text);
+      final utterance = web.SpeechSynthesisUtterance(text);
       utterance.lang = _language;
       utterance.rate = _speechRate;
       utterance.volume = _volume;
       utterance.pitch = _pitch;
 
-      utterance.onStart.listen((_) {
+      utterance.onstart = ((web.Event _) {
         _startHandler?.call();
-      });
+      }).toJS;
 
-      utterance.onEnd.listen((_) {
+      utterance.onend = ((web.Event _) {
         _completionHandler?.call();
-      });
+      }).toJS;
 
-      utterance.onError.listen((e) {
+      utterance.onerror = ((web.Event e) {
         _errorHandler?.call(e);
-      });
+      }).toJS;
 
       synth.speak(utterance);
       return 1;
@@ -121,15 +115,14 @@ class FlutterTts {
   }
 
   Future<dynamic> stop() async {
-    final synth = html.window.speechSynthesis;
-    synth?.cancel();
+    web.window.speechSynthesis.cancel();
     _cancelHandler?.call();
     _completionHandler?.call();
     return 1;
   }
 
   Future<dynamic> pause() async {
-    html.window.speechSynthesis?.pause();
+    web.window.speechSynthesis.pause();
     return 1;
   }
 }

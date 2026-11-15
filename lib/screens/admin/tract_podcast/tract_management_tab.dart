@@ -11,10 +11,10 @@ import '../../../services/appwrite_admin_content_service.dart';
 import '../../../services/appwrite_storage_compat_service.dart';
 import '../../../services/pdf_extractor_service.dart';
 import '../../../services/interactive_lessons_service.dart';
-import '../../../widgets/custom_image.dart';
 import 'tract_podcast_shared.dart';
 
 class TractManagementTab extends StatefulWidget {
+  const TractManagementTab({super.key});
   @override
   State<TractManagementTab> createState() => _TractManagementTabState();
 }
@@ -165,24 +165,6 @@ class _TractManagementTabState extends State<TractManagementTab> {
         messenger.showSnackBar(
           SnackBar(
             content: Text('Tract "${result.title}" added successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    });
-  }
-
-  void _showAddStandaloneLessonDialog() {
-    final messenger = ScaffoldMessenger.of(context);
-    showDialog(
-      context: context,
-      builder: (context) => const _StandaloneLessonFormDialog(),
-    ).then((result) {
-      if (result == true) {
-        if (!mounted) return;
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Interactive Bible study lesson added successfully!'),
             backgroundColor: Colors.green,
           ),
         );

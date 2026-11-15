@@ -16,7 +16,6 @@ import '../conference/livekit_meeting_screen.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../services/channel_membership_sync_service.dart';
 import '../../services/org_structure_service.dart';
-import '../../utils/text_formatter.dart';
 import 'components/create_channel_dialog.dart';
 import 'components/manage_members_dialog.dart';
 

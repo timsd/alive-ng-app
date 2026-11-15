@@ -2,7 +2,6 @@ import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import '../../widgets/in_app_pdf_viewer.dart';
 import '../../utils/error_handler.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1067,24 +1066,6 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
           content: Text(
               'Could not share tract: ${ErrorHandler.getUserFriendlyMessage(e)}'),
         ),
-      );
-    }
-  }
-
-  void _redownloadMaterial(UserDownload download) async {
-    try {
-      final downloadUrl =
-          await DonationService().generateDownloadUrl(download.materialId);
-      if (await canLaunchUrl(Uri.parse(downloadUrl))) {
-        await launchUrl(Uri.parse(downloadUrl),
-            mode: LaunchMode.externalApplication);
-      } else {
-        throw 'Could not launch downloaded content';
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to re-download: ${ErrorHandler.getUserFriendlyMessage(e)}')),
       );
     }
   }

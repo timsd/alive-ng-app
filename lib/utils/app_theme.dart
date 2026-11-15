@@ -423,7 +423,7 @@ class AppTheme {
         // `showDragHandle: true` to `showModalBottomSheet` directly.
         showDragHandle: false,
         constraints: BoxConstraints(maxWidth: 860),
-        shape: const RoundedRectangleBorder(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           side: BorderSide.none,
         ),
@@ -799,7 +799,7 @@ class AppTheme {
         // See the light theme above for why this is false.
         showDragHandle: false,
         constraints: BoxConstraints(maxWidth: 860),
-        shape: const RoundedRectangleBorder(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           side: BorderSide.none,
         ),

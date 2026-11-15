@@ -11,7 +11,6 @@ class VideoContentService {
   VideoContentService._internal();
 
   final TablesDB _tables = TablesDB(appwriteClient);
-  final Databases _databases = Databases(appwriteClient);
   final Storage _storage = Storage(appwriteClient);
   final Logger _logger = Logger('VideoContentService');
 
@@ -50,31 +49,7 @@ class VideoContentService {
         return _cachedVideos;
       }
     } catch (e) {
-      _logger.warning('TablesDB failed listing videos: $e, trying Databases fallback');
-      try {
-        final docs = await _databases.listDocuments(
-          databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.videosCollectionId,
-          queries: [
-            Query.orderDesc('created_at'),
-            Query.limit(100),
-          ],
-        ).timeout(const Duration(seconds: 8));
-
-        final items = docs.documents.map((d) => {
-          ...Map<String, dynamic>.from(d.data),
-          'id': d.$id,
-          r'$id': d.$id,
-        }).toList();
-
-        if (items.isNotEmpty) {
-          _cachedVideos = items;
-          await _saveToLocalCache();
-          return _cachedVideos;
-        }
-      } catch (dbErr) {
-        _logger.warning('Databases listing fallback also failed: $dbErr');
-      }
+      _logger.warning('TablesDB failed listing videos: $e');
     }
 
     if (_cachedVideos.isEmpty) {
@@ -100,100 +75,52 @@ class VideoContentService {
 
     if (existingId != null && existingId.isNotEmpty) {
       // Update existing
-      try {
-        final updated = await _tables.updateRow(
-          databaseId: AppwriteBackendConfig.databaseId,
-          tableId: AppwriteBackendConfig.videosCollectionId,
-          rowId: existingId,
-          data: dataToSave,
-        );
-        final item = {
-          ...Map<String, dynamic>.from(updated.data),
-          'id': updated.$id,
-          r'$id': updated.$id,
-          if (dataToSave.containsKey('is_active')) 'is_active': dataToSave['is_active'],
-        };
-        _replaceInCache(item);
-        return item;
-      } catch (e) {
-        _logger.warning('TablesDB update failed: $e, trying Databases fallback');
-        final updatedDoc = await _databases.updateDocument(
-          databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.videosCollectionId,
-          documentId: existingId,
-          data: dataToSave,
-        );
-        final item = {
-          ...Map<String, dynamic>.from(updatedDoc.data),
-          'id': updatedDoc.$id,
-          r'$id': updatedDoc.$id,
-          if (dataToSave.containsKey('is_active')) 'is_active': dataToSave['is_active'],
-        };
-        _replaceInCache(item);
-        return item;
-      }
+      final updated = await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.videosCollectionId,
+        rowId: existingId,
+        data: dataToSave,
+      );
+      final item = {
+        ...Map<String, dynamic>.from(updated.data),
+        'id': updated.$id,
+        r'$id': updated.$id,
+        if (dataToSave.containsKey('is_active')) 'is_active': dataToSave['is_active'],
+      };
+      _replaceInCache(item);
+      return item;
     } else {
       // Create new
       dataToSave['created_at'] = now;
       final newId = ID.unique();
-      try {
-        final created = await _tables.createRow(
-          databaseId: AppwriteBackendConfig.databaseId,
-          tableId: AppwriteBackendConfig.videosCollectionId,
-          rowId: newId,
-          data: dataToSave,
-          permissions: [
-            Permission.read(Role.any()),
-            Permission.write(Role.users()),
-          ],
-        );
-        final item = {
-          ...Map<String, dynamic>.from(created.data),
-          'id': created.$id,
-          r'$id': created.$id,
-        };
-        _cachedVideos.insert(0, item);
-        await _saveToLocalCache();
-        return item;
-      } catch (e) {
-        _logger.warning('TablesDB create failed: $e, trying Databases fallback');
-        final createdDoc = await _databases.createDocument(
-          databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.videosCollectionId,
-          documentId: newId,
-          data: dataToSave,
-          permissions: [
-            Permission.read(Role.any()),
-            Permission.write(Role.users()),
-          ],
-        );
-        final item = {
-          ...Map<String, dynamic>.from(createdDoc.data),
-          'id': createdDoc.$id,
-          r'$id': createdDoc.$id,
-        };
-        _cachedVideos.insert(0, item);
-        await _saveToLocalCache();
-        return item;
-      }
+      final created = await _tables.createRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.videosCollectionId,
+        rowId: newId,
+        data: dataToSave,
+        permissions: [
+          Permission.read(Role.any()),
+          Permission.write(Role.users()),
+        ],
+      );
+      final item = {
+        ...Map<String, dynamic>.from(created.data),
+        'id': created.$id,
+        r'$id': created.$id,
+      };
+      _cachedVideos.insert(0, item);
+      await _saveToLocalCache();
+      return item;
     }
   }
 
   Future<bool> deleteVideo(String videoId) async {
     try {
-      try {
-        await _tables.deleteRow(
-          databaseId: AppwriteBackendConfig.databaseId,
-          tableId: AppwriteBackendConfig.videosCollectionId,
-          rowId: videoId,
-        );
-      } catch (_) {
-        await _databases.deleteDocument(
-          databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.videosCollectionId,
-          documentId: videoId,
-        );
-      }
+      await _tables.deleteRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.videosCollectionId,
+        rowId: videoId,
+      );
       _cachedVideos.removeWhere((v) => (v['id'] == videoId || v[r'$id'] == videoId));
       await _saveToLocalCache();
       return true;

@@ -12,7 +12,6 @@ import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as lk;
@@ -411,7 +410,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       ..on<lk.RoomConnectedEvent>((_) async {
         try {
           await room.startAudio();
-          await room.setSpeakerOn(true);
+          await lk.AudioManager.instance.setSpeakerOutputPreferred(true);
         } catch (_) {}
         final myId = _room?.localParticipant?.identity ?? '';
         if (!_isHostOrModerator && myId.isNotEmpty) {
@@ -442,7 +441,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       ..on<lk.RoomReconnectedEvent>((_) async {
         try {
           await room.startAudio();
-          await room.setSpeakerOn(true);
+          await lk.AudioManager.instance.setSpeakerOutputPreferred(true);
         } catch (_) {}
         _syncStateFromRoom();
       })
@@ -473,7 +472,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         try {
           if (event.track is lk.AudioTrack) {
             await room.startAudio();
-            await room.setSpeakerOn(true);
+            await lk.AudioManager.instance.setSpeakerOutputPreferred(true);
           }
         } catch (_) {}
         _syncStateFromRoom();
@@ -484,7 +483,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         try {
           if (event.publication.track is lk.AudioTrack) {
             await room.startAudio();
-            await room.setSpeakerOn(true);
+            await lk.AudioManager.instance.setSpeakerOutputPreferred(true);
           }
         } catch (_) {}
         _syncStateFromRoom();
@@ -1116,7 +1115,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       // Prime audio playback & speaker routing immediately on connection
       try {
         await room.startAudio();
-        await room.setSpeakerOn(true);
+        await lk.AudioManager.instance.setSpeakerOutputPreferred(true);
       } catch (audioInitErr) {
         debugPrint('[LiveKitMeetingGateway] Audio prime note: $audioInitErr');
       }
@@ -1224,8 +1223,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         try {
           final queryPayload = utf8.encode(jsonEncode({
             'action': 'query_room_state',
-            'userId': _lastUserId ?? _room?.localParticipant?.identity ?? '',
-            'userName': _lastUserName ?? _room?.localParticipant?.name ?? '',
+            'userId': _lastUserId.isNotEmpty ? _lastUserId : (_room?.localParticipant?.identity ?? ''),
+            'userName': _lastUserName.isNotEmpty ? _lastUserName : (_room?.localParticipant?.name ?? ''),
           }));
           await _room?.localParticipant?.publishData(queryPayload, reliable: true);
         } catch (_) {}
@@ -1234,8 +1233,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           try {
             final knockPayload = utf8.encode(jsonEncode({
               'action': 'knock',
-              'userId': _lastUserId ?? _room?.localParticipant?.identity ?? '',
-              'userName': _lastUserName ?? _room?.localParticipant?.name ?? '',
+              'userId': _lastUserId.isNotEmpty ? _lastUserId : (_room?.localParticipant?.identity ?? ''),
+              'userName': _lastUserName.isNotEmpty ? _lastUserName : (_room?.localParticipant?.name ?? ''),
             }));
             await _room?.localParticipant?.publishData(knockPayload, reliable: true);
           } catch (_) {}
@@ -1283,7 +1282,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   Future<void> unlockAudio() async {
     try {
       await _room?.startAudio();
-      await _room?.setSpeakerOn(true);
+      await lk.AudioManager.instance.setSpeakerOutputPreferred(true);
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] unlockAudio error: $e');
     }
@@ -1309,7 +1308,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       // Ensure audio context is running and speakerphone routing is enabled
       try {
         await _room?.startAudio();
-        await _room?.setSpeakerOn(true);
+        await lk.AudioManager.instance.setSpeakerOutputPreferred(true);
       } catch (_) {}
 
       await participant.setMicrophoneEnabled(
