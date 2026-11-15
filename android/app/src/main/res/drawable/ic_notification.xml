@@ -1,87 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Alive notification icon, variant C: tall pixel cells that follow the logo's
+    proportions (1.05dp wide x 1.4dp tall, 1.3dp / 1.65dp pitch).
+    Use for xhdpi, xxhdpi and xxxhdpi. Fill is white because Android only
+    reads alpha; tint with setColor(0xFF0F9A07) on the notification builder.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
 
-    <!-- Row 1 (North) -->
-    <path android:fillColor="#FFFFFF" android:pathData="M8.2,2.2h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M9.9,2.4h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M11.6,2.5h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13.3,2.6h1.3v1.4h-1.3z" />
-
-    <!-- Row 2 -->
-    <path android:fillColor="#FFFFFF" android:pathData="M6.5,4.0h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M8.2,4.0h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M9.9,4.1h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M11.6,4.2h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13.3,4.3h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M15.0,4.5h1.3v1.4h-1.3z" />
-
-    <!-- Row 3 -->
-    <path android:fillColor="#FFFFFF" android:pathData="M4.8,5.8h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M6.5,5.8h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M8.2,5.8h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M9.9,5.9h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M11.6,6.0h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13.3,6.1h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M15.0,6.2h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M16.7,6.4h1.3v1.4h-1.3z" />
-
-    <!-- Row 4 (West Africa bulge + Horn) -->
-    <path android:fillColor="#FFFFFF" android:pathData="M4.8,7.6h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M6.5,7.6h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M8.2,7.6h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M9.9,7.7h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M11.6,7.8h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13.3,7.9h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M15.0,8.0h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M16.7,8.1h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M18.4,8.2h1.3v1.4h-1.3z" />
-
-    <!-- Row 5 -->
-    <path android:fillColor="#FFFFFF" android:pathData="M4.8,9.4h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M6.5,9.4h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M8.2,9.4h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M9.9,9.5h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M11.6,9.6h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13.3,9.7h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M15.0,9.8h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M16.7,9.9h1.3v1.4h-1.3z" />
-
-    <!-- Row 6 (Central transition) -->
-    <path android:fillColor="#FFFFFF" android:pathData="M8.2,11.2h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M9.9,11.3h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M11.6,11.4h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13.3,11.5h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M15.0,11.6h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M16.7,11.7h1.3v1.4h-1.3z" />
-
-    <!-- Row 7 -->
-    <path android:fillColor="#FFFFFF" android:pathData="M11.6,13.2h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13.3,13.3h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M15.0,13.4h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M16.7,13.5h1.3v1.4h-1.3z" />
-
-    <!-- Row 8 -->
-    <path android:fillColor="#FFFFFF" android:pathData="M11.6,15.0h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13.3,15.1h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M15.0,15.2h1.3v1.4h-1.3z" />
-
-    <!-- Row 9 + Madagascar -->
-    <path android:fillColor="#FFFFFF" android:pathData="M11.6,16.8h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13.3,16.9h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M15.0,17.0h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M17.4,16.5h1.2v1.5h-1.2z" />
-
-    <!-- Row 10 + Madagascar -->
-    <path android:fillColor="#FFFFFF" android:pathData="M11.6,18.6h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13.3,18.7h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M15.0,18.8h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M17.4,18.4h1.2v1.5h-1.2z" />
-
-    <!-- Row 11 (Southern tip) -->
-    <path android:fillColor="#FFFFFF" android:pathData="M12.4,20.4h1.3v1.4h-1.3z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M14.1,20.4h1.3v1.4h-1.3z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+        M7.575,2.225h1.05v1.4h-1.05z M8.875,2.225h1.05v1.4h-1.05z M10.175,2.225h1.05v1.4h-1.05z M11.475,2.225h1.05v1.4h-1.05z
+        M6.275,3.875h1.05v1.4h-1.05z M7.575,3.875h1.05v1.4h-1.05z M8.875,3.875h1.05v1.4h-1.05z M10.175,3.875h1.05v1.4h-1.05z M11.475,3.875h1.05v1.4h-1.05z M12.775,3.875h1.05v1.4h-1.05z M14.075,3.875h1.05v1.4h-1.05z
+        M4.975,5.525h1.05v1.4h-1.05z M6.275,5.525h1.05v1.4h-1.05z M7.575,5.525h1.05v1.4h-1.05z M8.875,5.525h1.05v1.4h-1.05z M10.175,5.525h1.05v1.4h-1.05z M11.475,5.525h1.05v1.4h-1.05z M12.775,5.525h1.05v1.4h-1.05z M14.075,5.525h1.05v1.4h-1.05z M15.375,5.525h1.05v1.4h-1.05z
+        M4.975,7.175h1.05v1.4h-1.05z M6.275,7.175h1.05v1.4h-1.05z M7.575,7.175h1.05v1.4h-1.05z M8.875,7.175h1.05v1.4h-1.05z M10.175,7.175h1.05v1.4h-1.05z M11.475,7.175h1.05v1.4h-1.05z M12.775,7.175h1.05v1.4h-1.05z M14.075,7.175h1.05v1.4h-1.05z M15.375,7.175h1.05v1.4h-1.05z
+        M4.975,8.825h1.05v1.4h-1.05z M6.275,8.825h1.05v1.4h-1.05z M7.575,8.825h1.05v1.4h-1.05z M8.875,8.825h1.05v1.4h-1.05z M10.175,8.825h1.05v1.4h-1.05z M11.475,8.825h1.05v1.4h-1.05z M12.775,8.825h1.05v1.4h-1.05z M15.375,8.825h1.05v1.4h-1.05z M16.675,8.825h1.05v1.4h-1.05z
+        M8.875,10.475h1.05v1.4h-1.05z M10.175,10.475h1.05v1.4h-1.05z M11.475,10.475h1.05v1.4h-1.05z M16.675,10.475h1.05v1.4h-1.05z M17.975,10.475h1.05v1.4h-1.05z
+        M11.475,12.125h1.05v1.4h-1.05z M12.775,12.125h1.05v1.4h-1.05z M15.375,12.125h1.05v1.4h-1.05z M16.675,12.125h1.05v1.4h-1.05z
+        M11.475,13.775h1.05v1.4h-1.05z M12.775,13.775h1.05v1.4h-1.05z M15.375,13.775h1.05v1.4h-1.05z
+        M11.475,15.425h1.05v1.4h-1.05z M12.775,15.425h1.05v1.4h-1.05z M15.375,15.425h1.05v1.4h-1.05z
+        M11.475,17.075h1.05v1.4h-1.05z M12.775,17.075h1.05v1.4h-1.05z M14.075,17.075h1.05v1.4h-1.05z M15.375,17.075h1.05v1.4h-1.05z M17.975,17.075h1.05v1.4h-1.05z
+        M11.475,18.725h1.05v1.4h-1.05z M12.775,18.725h1.05v1.4h-1.05z M14.075,18.725h1.05v1.4h-1.05z M15.375,18.725h1.05v1.4h-1.05z M17.975,18.725h1.05v1.4h-1.05z
+        M12.775,20.375h1.05v1.4h-1.05z M14.075,20.375h1.05v1.4h-1.05z" />
 </vector>

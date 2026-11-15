@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="notification_accent">#2FAD72</color>
-    <color name="notification_color">#2FAD72</color>
+    <color name="alive_notification_green">#0F9A07</color>
+    <color name="notification_accent">#0F9A07</color>
+    <color name="notification_color">#0F9A07</color>
 </resources>

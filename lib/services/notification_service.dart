@@ -291,7 +291,7 @@ class NotificationService {
       effectiveChannelName,
       channelDescription: 'Default notification channel',
       icon: 'ic_notification',
-      color: const Color(0xFF2FAD72),
+      color: const Color(0xFF0F9A07),
       importance: Importance.high,
       priority: Priority.high,
       playSound: playSound,
@@ -465,7 +465,7 @@ class NotificationService {
       'Default',
       channelDescription: 'Default notification channel',
       icon: 'ic_notification',
-      color: Color(0xFF2FAD72),
+      color: Color(0xFF0F9A07),
       importance: Importance.high,
       priority: Priority.high,
     );
