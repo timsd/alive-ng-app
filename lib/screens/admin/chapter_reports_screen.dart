@@ -2,17 +2,20 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../widgets/modern_dropdown.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/chapters.dart';
 import '../../models/board_models.dart';
 import '../../services/appwrite_board_service.dart';
+import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/file_picker_facade.dart';
 import '../../services/office_access_service.dart';
 import '../../services/org_structure_service.dart';
 import '../../services/role_access_service.dart';
+import '../../utils/docx_report_generator.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/custom_app_bar.dart';
 
@@ -36,6 +39,345 @@ class ChapterReportsScreen extends StatefulWidget {
     this.initialLevel = ReportingLevel.all,
     this.openSubmitOnLaunch = false,
   });
+
+  /// Shows a SnackBar with a 15-second Undo button after submitting a report.
+  static void showUndoSubmitSnackBar(
+    BuildContext hostContext, {
+    required String reportId,
+    required String message,
+    VoidCallback? onUndone,
+  }) {
+    if (!hostContext.mounted) return;
+    final messenger = ScaffoldMessenger.of(hostContext);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 15),
+        content: Text('$message (Undo within 15s)'),
+        action: SnackBarAction(
+          label: 'UNDO',
+          onPressed: () async {
+            try {
+              await AppwriteBoardService.instance.deleteBoardReport(reportId);
+              onUndone?.call();
+              ToastUtils.showSuccess('Report submission undone');
+            } catch (e) {
+              ToastUtils.showError('Could not undo submission: $e');
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Opens the Chapter Report submission dialog directly without navigating to
+  /// [ChapterReportsScreen]. Used by My Chapter so Submit/Cancel stays on My Chapter.
+  static Future<void> showChapterReportSubmitDialog(
+    BuildContext hostContext, {
+    String? initialChapter,
+    VoidCallback? onSubmitted,
+  }) async {
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
+    final attendeesController = TextEditingController();
+    final challengesController = TextEditingController();
+    String selectedChapter = (initialChapter != null &&
+            initialChapter.isNotEmpty &&
+            initialChapter != 'all' &&
+            ChapterConstants.availableChapters.contains(initialChapter))
+        ? initialChapter
+        : ChapterConstants.availableChapters.first;
+
+    final currentUserRole =
+        RoleAccessService.instance.getCurrentUserRole()?.toLowerCase() ?? '';
+    String selectedReportingArm = 'coordinator';
+    if (currentUserRole == 'field_worker') {
+      selectedReportingArm = 'field_worker';
+    } else if (currentUserRole == 'campus_missionary') {
+      selectedReportingArm = 'campus_missionary';
+    } else if (currentUserRole == 'amtc_team') {
+      selectedReportingArm = 'amtc_team';
+    }
+
+    PlatformFile? attachedFile;
+    bool isUploading = false;
+
+    await showDialog<void>(
+      context: hostContext,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.location_city_rounded,
+                  color: Color(0xFF1976D2), size: 20),
+              SizedBox(width: 8),
+              Text('Submit Chapter Report'),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ModernDropdownFormField<String>(
+                    initialValue: selectedChapter,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Chapter *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: ChapterConstants.availableChapters.map((c) {
+                      return DropdownMenuItem(value: c, child: Text(c));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedChapter = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ModernDropdownFormField<String>(
+                    value: selectedReportingArm,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Reporting Category / Destination *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'coordinator',
+                        child: Text('Chapter Member → Chapter Coordinator'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'field_worker',
+                        child: Text(
+                            'Field Workers → Director of Evangelism & Missions'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'campus_missionary',
+                        child: Text(
+                            'Campus Missionary Team → Director of Evangelism & Programming'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'amtc_team',
+                        child: Text('AMTC Team → Director of AMTC'),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedReportingArm = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Report Title *',
+                      hintText: 'e.g. Monthly Outreach & Member Discipleship',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: contentController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Activities & Impact Summary *',
+                      hintText: 'Summarize chapter activities, souls reached, etc.',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: attendeesController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Total Attendance / Active Participants',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: challengesController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Challenges & Prayer Needs (Optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (attachedFile != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Theme.of(dialogContext)
+                            .colorScheme
+                            .primaryContainer
+                            .withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.attach_file_rounded, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              attachedFile!.name,
+                              style: const TextStyle(fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 16),
+                            onPressed: () =>
+                                setDialogState(() => attachedFile = null),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.attach_file_rounded, size: 16),
+                      label: const Text(
+                        'Add Optional Attachment (Photo/Document)',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      onPressed: () async {
+                        final res = await FilePicker.platform.pickFiles(
+                          type: FileType.custom,
+                          allowedExtensions: [
+                            'pdf',
+                            'jpg',
+                            'jpeg',
+                            'png',
+                            'doc',
+                            'docx',
+                          ],
+                          withData: true,
+                        );
+                        if (res != null && res.files.isNotEmpty) {
+                          setDialogState(() => attachedFile = res.files.first);
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isUploading ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isUploading
+                  ? null
+                  : () async {
+                      if (titleController.text.trim().isEmpty ||
+                          contentController.text.trim().isEmpty) {
+                        ToastUtils.showError(
+                            'Title and activities content are required');
+                        return;
+                      }
+
+                      setDialogState(() => isUploading = true);
+                      try {
+                        final user = AuthService.instance.currentUser;
+                        final authorName = user?.name ?? 'Chapter Member';
+                        final authorId = user?.uid ?? 'unknown';
+
+                        final List<String> attachments = [];
+                        if (attachedFile != null &&
+                            attachedFile!.bytes != null) {
+                          final fileUrl = await AppwriteStorageService.instance
+                              .uploadContentFile(
+                            bytes: attachedFile!.bytes!,
+                            fileName: attachedFile!.name,
+                            contentType: attachedFile!.extension == 'pdf'
+                                ? 'application/pdf'
+                                : 'image/jpeg',
+                          );
+                          attachments.add(fileUrl);
+                        }
+
+                        final reportId = await AppwriteBoardService.instance
+                            .createBoardReport({
+                          'title': titleController.text.trim(),
+                          'content': contentController.text.trim(),
+                          'category': 'operational',
+                          'author_id': authorId,
+                          'author_name': authorName,
+                          'status': 'submitted',
+                          'attachments': attachments,
+                          'metadata': {
+                            'hierarchy_level': 'chapter',
+                            'chapter': selectedChapter,
+                            'chapter_name': selectedChapter,
+                            'reporting_arm': selectedReportingArm,
+                            'routed_to_role':
+                                selectedReportingArm == 'field_worker' ||
+                                        selectedReportingArm ==
+                                            'campus_missionary' ||
+                                        selectedReportingArm == 'amtc_team'
+                                    ? 'director'
+                                    : 'coordinator',
+                            'routed_to_name': selectedReportingArm ==
+                                    'field_worker'
+                                ? 'Director of Evangelism & Missions'
+                                : selectedReportingArm == 'campus_missionary'
+                                    ? 'Director of Evangelism & Programming'
+                                    : selectedReportingArm == 'amtc_team'
+                                        ? 'Director, ALIVE Mission Training Center (AMTC)'
+                                        : '$selectedChapter Coordinator',
+                            'attendees': attendeesController.text.trim(),
+                            'challenges': challengesController.text.trim(),
+                            if (attachedFile != null)
+                              'attachment_name': attachedFile!.name,
+                          },
+                        });
+
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                        }
+                        if (hostContext.mounted) {
+                          final dest = selectedReportingArm == 'field_worker' ||
+                                  selectedReportingArm == 'campus_missionary' ||
+                                  selectedReportingArm == 'amtc_team'
+                              ? 'assigned Director'
+                              : 'Coordinator';
+                          showUndoSubmitSnackBar(
+                            hostContext,
+                            reportId: reportId,
+                            message: 'Report submitted to $dest',
+                            onUndone: onSubmitted,
+                          );
+                          onSubmitted?.call();
+                        }
+                      } catch (e) {
+                        ToastUtils.showError('Failed to submit report: $e');
+                      } finally {
+                        if (dialogContext.mounted) {
+                          setDialogState(() => isUploading = false);
+                        }
+                      }
+                    },
+              child: isUploading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Submit Report'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   State<ChapterReportsScreen> createState() => _ChapterReportsScreenState();
@@ -65,6 +407,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
     'submitted',
     'reviewed',
     'approved',
+    'done',
     'draft',
   ];
 
@@ -119,23 +462,106 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
     } catch (_) {}
   }
 
+  bool get _isAdmin =>
+      _roleService.canAccessAdmin() || _roleService.isSuperAdmin();
+
+  bool get _isBod =>
+      _roleService.hasRole('bod') || _roleService.hasRole('trustee');
+
   bool get _isCoordinator =>
       _roleService.hasRole('coordinator') ||
       _roleService.hasRole('leader') ||
       _holdsCoordinatorOffice ||
-      _roleService.hasRole('admin');
+      _isAdmin;
 
   bool get _isDirector =>
       _roleService.hasRole('director') ||
       _roleService.hasRole('leader') ||
       _holdsDirectorOffice ||
-      _roleService.hasRole('admin');
+      _isAdmin;
 
   bool get _isPresident =>
       _roleService.hasRole('president') ||
-      _roleService.hasRole('super_admin') ||
+      _roleService.hasRole('executive') ||
       _holdsPresidentOffice ||
-      _roleService.hasRole('admin');
+      _isAdmin;
+
+  bool _canViewLevel(ReportingLevel level) {
+    if (_isAdmin) return true;
+    switch (level) {
+      case ReportingLevel.all:
+        return _isBod || _isPresident || _isDirector || _isCoordinator;
+      case ReportingLevel.board:
+        return _isBod || _isPresident;
+      case ReportingLevel.executive:
+        return _isBod || _isPresident || _isDirector;
+      case ReportingLevel.directorate:
+        return _isPresident || _isDirector || _isCoordinator;
+      case ReportingLevel.chapter:
+        return _isDirector || _isCoordinator || true;
+    }
+  }
+
+  bool _canViewReport(BoardReport report) {
+    if (_isAdmin) return true;
+    final uid = _authService.currentUser?.uid;
+    if (uid != null && uid.isNotEmpty && report.authorId == uid) {
+      return true;
+    }
+    final level = _getReportLevel(report);
+    switch (level) {
+      case 'board':
+        return _isBod || _isPresident;
+      case 'executive':
+        return _isBod || _isPresident || _isDirector;
+      case 'directorate':
+        return _isPresident || _isDirector || _isCoordinator;
+      case 'chapter':
+      default:
+        return _isDirector || _isCoordinator;
+    }
+  }
+
+  bool _canDeleteReport(BoardReport report) {
+    if (_isAdmin) return true;
+    final uid = _authService.currentUser?.uid;
+    return uid != null && uid.isNotEmpty && report.authorId == uid;
+  }
+
+  Future<void> _confirmAndDeleteReport(BoardReport report) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Report'),
+        content: Text(
+          'Are you sure you want to delete "${report.title}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _boardService.deleteBoardReport(report.id);
+      if (mounted) {
+        ToastUtils.showSuccess('Report deleted');
+        _loadReports();
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastUtils.showError('Failed to delete report: $e');
+      }
+    }
+  }
 
   Future<void> _loadReports() async {
     setState(() => _isLoading = true);
@@ -182,6 +608,8 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
 
   List<BoardReport> get _filteredReports {
     return _reports.where((report) {
+      if (!_canViewReport(report)) return false;
+
       final level = _getReportLevel(report);
 
       // Level filter
@@ -212,8 +640,9 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
   }
 
   int _countForLevel(ReportingLevel level) {
-    if (level == ReportingLevel.all) return _reports.length;
-    return _reports.where((r) => _getReportLevel(r) == level.name.toLowerCase()).length;
+    final visible = _reports.where(_canViewReport);
+    if (level == ReportingLevel.all) return visible.length;
+    return visible.where((r) => _getReportLevel(r) == level.name.toLowerCase()).length;
   }
 
   @override
@@ -223,10 +652,15 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Hierarchical Reports',
+        title: 'Leadership Reports',
         showBackButton: true,
         showDonationButton: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share_rounded),
+            onPressed: _exportLeadershipReportsToDocx,
+            tooltip: 'Export Reports (.docx)',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadReports,
@@ -281,40 +715,49 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildHierarchyPill(
-              ReportingLevel.all,
-              'All',
-              Icons.layers_outlined,
-              theme.colorScheme.primary,
-            ),
-            const SizedBox(width: 8),
-            _buildHierarchyPill(
-              ReportingLevel.chapter,
-              'Chapter',
-              Icons.location_city_rounded,
-              const Color(0xFF1976D2),
-            ),
-            const SizedBox(width: 8),
-            _buildHierarchyPill(
-              ReportingLevel.directorate,
-              'Directorate',
-              Icons.account_tree_rounded,
-              const Color(0xFF7B1FA2),
-            ),
-            const SizedBox(width: 8),
-            _buildHierarchyPill(
-              ReportingLevel.executive,
-              'Executive',
-              Icons.verified_user_rounded,
-              const Color(0xFFE65100),
-            ),
-            const SizedBox(width: 8),
-            _buildHierarchyPill(
-              ReportingLevel.board,
-              'Board (BOD)',
-              Icons.gavel_rounded,
-              const Color(0xFF2E7D32),
-            ),
+            if (_canViewLevel(ReportingLevel.all)) ...[
+              _buildHierarchyPill(
+                ReportingLevel.all,
+                'All',
+                Icons.layers_outlined,
+                theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (_canViewLevel(ReportingLevel.chapter)) ...[
+              _buildHierarchyPill(
+                ReportingLevel.chapter,
+                'Chapter',
+                Icons.location_city_rounded,
+                const Color(0xFF1976D2),
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (_canViewLevel(ReportingLevel.directorate)) ...[
+              _buildHierarchyPill(
+                ReportingLevel.directorate,
+                'Directorate',
+                Icons.account_tree_rounded,
+                const Color(0xFF7B1FA2),
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (_canViewLevel(ReportingLevel.executive)) ...[
+              _buildHierarchyPill(
+                ReportingLevel.executive,
+                'Executive',
+                Icons.verified_user_rounded,
+                const Color(0xFFE65100),
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (_canViewLevel(ReportingLevel.board))
+              _buildHierarchyPill(
+                ReportingLevel.board,
+                'BOD',
+                Icons.gavel_rounded,
+                const Color(0xFF2E7D32),
+              ),
           ],
         ),
       ),
@@ -485,11 +928,11 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
               const SizedBox(width: 8),
             ],
 
-            // President / Admin: Compile Executive -> Board of Directors (BOD)
+            // President / Admin: Compile Executive -> BOD
             if (_isPresident) ...[
               OutlinedButton.icon(
                 icon: const Icon(Icons.account_balance_rounded, size: 16),
-                label: const Text('Compile for Board (BOD)', style: TextStyle(fontSize: 12)),
+                label: const Text('Compile for BOD', style: TextStyle(fontSize: 12)),
                 onPressed: () => _showCompilePresidentDialog(),
                 style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
@@ -523,7 +966,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
       case 'board':
         levelColor = const Color(0xFF2E7D32);
         levelIcon = Icons.gavel_rounded;
-        levelTitle = 'Board Report';
+        levelTitle = 'BOD Report';
         break;
       case 'executive':
         levelColor = const Color(0xFFE65100);
@@ -604,6 +1047,17 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                   ),
                   const Spacer(),
                   _buildStatusBadge(report.status),
+                  if (_canDeleteReport(report)) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                      onPressed: () => _confirmAndDeleteReport(report),
+                      tooltip: 'Delete Report',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 8),
@@ -751,6 +1205,9 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
   Widget _buildStatusBadge(String status) {
     Color color;
     switch (status.toLowerCase()) {
+      case 'done':
+        color = Colors.teal;
+        break;
       case 'approved':
         color = Colors.green;
         break;
@@ -789,7 +1246,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.assessment_outlined, size: 56, color: colorScheme.outline),
+          Icon(Icons.assessment_outlined, size: 56, color: colorScheme.onSurfaceVariant),
           const SizedBox(height: 14),
           Text(
             'No reports found in this section',
@@ -801,7 +1258,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
           Text(
             'Use the buttons above to submit or compile reports',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.outline,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -991,7 +1448,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                           attachments.add(fileUrl);
                         }
 
-                        await _boardService.addBoardReport({
+                        final reportId = await _boardService.createBoardReport({
                           'title': titleController.text.trim(),
                           'content': contentController.text.trim(),
                           'category': 'operational',
@@ -1029,7 +1486,14 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                                   selectedReportingArm == 'amtc_team'
                               ? 'assigned Director'
                               : 'Coordinator';
-                          ToastUtils.showSuccess('Report submitted to $dest');
+                          if (mounted) {
+                            ChapterReportsScreen.showUndoSubmitSnackBar(
+                              this.context,
+                              reportId: reportId,
+                              message: 'Report submitted to $dest',
+                              onUndone: _loadReports,
+                            );
+                          }
                           _loadReports();
                         }
                       } catch (e) {
@@ -1210,7 +1674,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                           attachments.add(fileUrl);
                         }
 
-                        await _boardService.addBoardReport({
+                        final reportId = await _boardService.createBoardReport({
                           'title': titleController.text.trim(),
                           'content': summaryController.text.trim(),
                           'category': 'directorate',
@@ -1231,7 +1695,14 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
 
                         if (context.mounted) {
                           Navigator.pop(context);
-                          ToastUtils.showSuccess('Report compiled and escalated to Director');
+                          if (mounted) {
+                            ChapterReportsScreen.showUndoSubmitSnackBar(
+                              this.context,
+                              reportId: reportId,
+                              message: 'Report compiled and escalated to Director',
+                              onUndone: _loadReports,
+                            );
+                          }
                           _loadReports();
                         }
                       } catch (e) {
@@ -1343,7 +1814,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                           attachments.add(fileUrl);
                         }
 
-                        await _boardService.addBoardReport({
+                        final reportId = await _boardService.createBoardReport({
                           'title': titleController.text.trim(),
                           'content': summaryController.text.trim(),
                           'category': 'executive',
@@ -1363,7 +1834,14 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
 
                         if (context.mounted) {
                           Navigator.pop(context);
-                          ToastUtils.showSuccess('Report submitted to Executive President');
+                          if (mounted) {
+                            ChapterReportsScreen.showUndoSubmitSnackBar(
+                              this.context,
+                              reportId: reportId,
+                              message: 'Report submitted to Executive President',
+                              onUndone: _loadReports,
+                            );
+                          }
                           _loadReports();
                         }
                       } catch (e) {
@@ -1475,7 +1953,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
                           attachments.add(fileUrl);
                         }
 
-                        await _boardService.addBoardReport({
+                        final reportId = await _boardService.createBoardReport({
                           'title': titleController.text.trim(),
                           'content': summaryController.text.trim(),
                           'category': 'board',
@@ -1495,7 +1973,14 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
 
                         if (context.mounted) {
                           Navigator.pop(context);
-                          ToastUtils.showSuccess('Report presented to Board of Directors');
+                          if (mounted) {
+                            ChapterReportsScreen.showUndoSubmitSnackBar(
+                              this.context,
+                              reportId: reportId,
+                              message: 'Report presented to Board of Directors',
+                              onUndone: _loadReports,
+                            );
+                          }
                           _loadReports();
                         }
                       } catch (e) {
@@ -1653,6 +2138,24 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
           ),
         ),
         actions: [
+          if (_canDeleteReport(report))
+            TextButton.icon(
+              icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
+              label: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onPressed: () {
+                Navigator.pop(context);
+                _confirmAndDeleteReport(report);
+              },
+            ),
+          if (report.status.toLowerCase() != 'done')
+            TextButton.icon(
+              icon: const Icon(Icons.task_alt_rounded, size: 16, color: Colors.teal),
+              label: const Text('Mark Done', style: TextStyle(color: Colors.teal)),
+              onPressed: () {
+                Navigator.pop(context);
+                _markLeadershipReportsDoneAndArchive([report]);
+              },
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
@@ -1702,6 +2205,153 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _exportLeadershipReportsToDocx() async {
+    final exportableReports = _filteredReports
+        .where((r) => r.status.toLowerCase() != 'done')
+        .toList();
+    if (exportableReports.isEmpty) {
+      ToastUtils.showInfo(
+        'All visible reports have already been marked done.',
+      );
+      return;
+    }
+
+    final user = _authService.currentUser;
+    final exportedBy = user?.displayName ?? user?.email ?? 'Leadership Officer';
+    final sectionTitle =
+        '${_selectedLevel.name.toUpperCase()} (${_selectedChapter == 'all' ? 'All Chapters' : _selectedChapter})';
+    final now = DateTime.now();
+    final cleanLevel = _selectedLevel.name.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+    final fileName =
+        'leadership_reports_${cleanLevel}_${DateFormat('yyyyMMdd_HHmm').format(now)}.docx';
+
+    final docxBytes = DocxReportGenerator.generateLeadershipReportsDocx(
+      sectionTitle: sectionTitle,
+      exportedBy: exportedBy,
+      reports: exportableReports,
+      generatedAt: now,
+    );
+
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text:
+              'ALIVE Nigeria Leadership Reports - $sectionTitle (${exportableReports.length} report(s))',
+          files: [
+            XFile.fromData(
+              docxBytes,
+              name: fileName,
+              mimeType: DocxReportGenerator.docxMimeType,
+            ),
+          ],
+          subject: 'ALIVE Nigeria Leadership Reports - $sectionTitle',
+        ),
+      );
+
+      if (!mounted) return;
+      final markDone = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Mark Exported Reports as Done?'),
+          content: Text(
+            'Would you like to mark these ${exportableReports.length} exported report(s) as Done and archive this .docx file to Board Documents (Leadership Reports)?\n\nMarked reports will be excluded from your next export.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Keep Open'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              icon: const Icon(Icons.task_alt_rounded, size: 18),
+              label: const Text('Mark Done & Save'),
+            ),
+          ],
+        ),
+      );
+
+      if (markDone == true && mounted) {
+        await _markLeadershipReportsDoneAndArchive(
+          exportableReports,
+          prebuiltBytes: docxBytes,
+          prebuiltFileName: fileName,
+        );
+      }
+    } catch (e) {
+      ToastUtils.showError('Export failed: $e');
+    }
+  }
+
+  Future<void> _markLeadershipReportsDoneAndArchive(
+    List<BoardReport> targetReports, {
+    Uint8List? prebuiltBytes,
+    String? prebuiltFileName,
+  }) async {
+    if (targetReports.isEmpty) return;
+
+    final user = _authService.currentUser;
+    final exportedBy = user?.displayName ?? user?.email ?? 'Leadership Officer';
+    final sectionTitle =
+        '${_selectedLevel.name.toUpperCase()} (${_selectedChapter == 'all' ? 'All Chapters' : _selectedChapter})';
+    final now = DateTime.now();
+    final cleanLevel = _selectedLevel.name.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+    final fileName = prebuiltFileName ??
+        'leadership_reports_${cleanLevel}_${DateFormat('yyyyMMdd_HHmm').format(now)}.docx';
+
+    final bytes = prebuiltBytes ??
+        DocxReportGenerator.generateLeadershipReportsDocx(
+          sectionTitle: sectionTitle,
+          exportedBy: exportedBy,
+          reports: targetReports,
+          generatedAt: now,
+        );
+
+    try {
+      ToastUtils.showInfo('Archiving leadership report .docx & marking done...');
+      final fileUrl = await AppwriteStorageCompatService().uploadBoardDocument(
+        bytes,
+        fileName,
+        DocxReportGenerator.docxMimeType,
+      );
+      if (fileUrl == null || fileUrl.isEmpty) {
+        throw 'Failed to upload report document to storage.';
+      }
+
+      final titleLabel = targetReports.length == 1
+          ? targetReports.first.title
+          : '$sectionTitle — ${targetReports.length} Reports (${DateFormat.yMMMd().format(now)})';
+
+      final boardDoc = BoardDocument(
+        id: 'lrep_${now.millisecondsSinceEpoch}',
+        title: titleLabel,
+        description:
+            'Archived Leadership Report(s) from $sectionTitle handled by $exportedBy.',
+        fileName: fileName,
+        fileUrl: fileUrl,
+        fileType: 'docx',
+        fileSize: bytes.length,
+        uploadedBy: exportedBy,
+        uploaderId: user?.uid ?? '',
+        uploadedAt: now,
+        category: 'leadership_reports',
+        accessLevel: 'board_only',
+        tags: ['leadership_report', _selectedLevel.name],
+      );
+
+      await _boardService.addBoardDocument(boardDoc.toJson());
+      for (final r in targetReports) {
+        await _boardService.updateBoardReportStatus(r.id, 'done');
+      }
+
+      await _loadReports();
+      ToastUtils.showSuccess(
+        'Marked ${targetReports.length} report(s) as Done and saved to Board Documents → Leadership Reports.',
+      );
+    } catch (e) {
+      ToastUtils.showError('Failed to mark done: $e');
+    }
   }
 
   // Helper: Attachment Picker UI

@@ -444,7 +444,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
-                    ?.copyWith(color: Theme.of(context).colorScheme.outline),
+                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
           ],
         ),
@@ -479,8 +479,10 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
             Icon(
               Icons.people_outline,
               size: 64,
-              color:
-                  Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurfaceVariant
+                  .withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -488,7 +490,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
-                  ?.copyWith(color: Theme.of(context).colorScheme.outline),
+                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
         ),

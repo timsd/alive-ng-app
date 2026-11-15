@@ -827,10 +827,20 @@ class DonationService {
         'amount': amount,
         'amount_minor': (amount * 100).round(),
         if (currency.toUpperCase() == 'NGN') 'amount_ngn': amount,
+        if (donation?.metadata?['purpose_id'] != null)
+          'purpose_id': donation!.metadata!['purpose_id'],
         if (donation?.metadata?['project_title'] != null)
           'project_title': donation!.metadata!['project_title'],
         if (donation?.metadata?['project_id'] != null)
           'project_id': donation!.metadata!['project_id'],
+        if (donation?.metadata?['fund_designation'] != null)
+          'fund_designation': donation!.metadata!['fund_designation'],
+        if (donation?.metadata?['fund_designations'] != null)
+          'fund_designations': donation!.metadata!['fund_designations'],
+        if (donation?.metadata?['split_count'] != null)
+          'split_count': donation!.metadata!['split_count'],
+        if (donation?.metadata?['split_percent'] != null)
+          'split_percent': donation!.metadata!['split_percent'],
         'currency': currency,
         'recurring': isRecurringMonthly,
         if (donation?.materialId != null) 'material_id': donation!.materialId,

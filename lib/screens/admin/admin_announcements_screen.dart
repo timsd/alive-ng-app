@@ -187,7 +187,7 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.campaign_outlined,
-                                size: 64, color: colorScheme.outline),
+                                size: 64, color: colorScheme.onSurfaceVariant),
                             const SizedBox(height: 16),
                             Text(
                               'No broadcasts found',

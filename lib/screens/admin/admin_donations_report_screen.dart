@@ -92,6 +92,35 @@ class _AdminDonationsReportContentState
     }
   }
 
+  Future<void> _syncFromPaystack() async {
+    setState(() => _isLoading = true);
+    try {
+      final result = await AppwriteAdminExportService.instance
+          .syncLivePaystackTransactions();
+      await _loadDonations();
+      if (mounted) {
+        final synced = result['synced'] ?? 0;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Synced $synced live transactions from Paystack.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Paystack sync failed: ${ErrorHandler.getUserFriendlyMessage(e)}',
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   void _applyFilters() {
     final query = _searchQuery.trim().toLowerCase();
     final now = DateTime.now();
@@ -195,6 +224,7 @@ class _AdminDonationsReportContentState
         startDate: _datePreset == 'custom' ? _customStartDate : null,
         endDate: _datePreset == 'custom' ? _customEndDate : null,
         status: _statusFilter == 'all' ? null : _statusFilter,
+        modeFilter: _modeFilter,
       );
 
       final content = result['content'] as String? ?? '';
@@ -236,7 +266,7 @@ class _AdminDonationsReportContentState
                     'Total USD: ${_usdFormat.format(result['summary']?['total_usd'] ?? _totalUsd)}'),
               const SizedBox(height: 14),
               Text(
-                'You can instantly save or share the statement file, copy it to clipboard, or download directly.',
+                'You can share the statement file or download it directly.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -249,21 +279,9 @@ class _AdminDonationsReportContentState
               child: const Text('Close'),
             ),
             if (content.isNotEmpty)
-              OutlinedButton.icon(
-                icon: const Icon(Icons.copy_rounded, size: 16),
-                label: const Text('Copy'),
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: content));
-                  if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Statement copied to clipboard!')),
-                  );
-                },
-              ),
-            if (content.isNotEmpty)
               FilledButton.icon(
                 icon: const Icon(Icons.share_rounded, size: 16),
-                label: const Text('Save / Share File'),
+                label: const Text('Share'),
                 onPressed: () async {
                   final fileName =
                       'alive_financial_statement_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.$format';
@@ -286,7 +304,7 @@ class _AdminDonationsReportContentState
             if (downloadUrl != null)
               TextButton.icon(
                 icon: const Icon(Icons.download, size: 16),
-                label: const Text('Link'),
+                label: const Text('Download'),
                 onPressed: () async {
                   final uri = Uri.parse(downloadUrl);
                   if (await canLaunchUrl(uri)) {
@@ -322,6 +340,11 @@ class _AdminDonationsReportContentState
         showBackButton: true,
         showDonationButton: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.sync_rounded),
+            tooltip: 'Sync Live Paystack Records',
+            onPressed: _isLoading ? null : _syncFromPaystack,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -19,6 +20,7 @@ import '../../services/appwrite_profile_service.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_auth_service.dart';
+import '../../services/birthday_greeting_service.dart';
 import '../../services/platform/app_store_helper.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/toast_utils.dart';
@@ -215,7 +217,13 @@ class ProfileScreen extends ConsumerWidget {
                             isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
-                    subtitle: Text(_getNativeLanguageName(language.code)),
+                    subtitle: Text(
+                      _getNativeLanguageName(language.code),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
                     trailing: isSelected
                         ? Icon(Icons.check_circle_rounded,
                             color: theme.colorScheme.primary)
@@ -307,6 +315,13 @@ class ProfileScreen extends ConsumerWidget {
     final effectiveApproval = isSuperAdmin || effectiveRole == 'admin'
         ? 'approved'
         : profile.approvalStatus;
+    final isBirthday =
+        BirthdayGreetingService.isBirthdayToday(profile.dateOfBirth);
+    if (isBirthday) {
+      BirthdayGreetingService.maybeNotifyBirthdayToday(profile);
+    }
+    final birthdayGreeting =
+        isBirthday ? BirthdayGreetingService.generateForUser(profile) : null;
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -325,6 +340,10 @@ class ProfileScreen extends ConsumerWidget {
             effectiveApproval: effectiveApproval,
             onEditProfile: () => _navigateToEditProfile(context, ref, profile),
           ),
+          if (birthdayGreeting != null) ...[
+            const SizedBox(height: 16),
+            _BirthdayGreetingCard(greeting: birthdayGreeting),
+          ],
           const SizedBox(height: 20),
 
           // ── Personal & Ministry Info ──
@@ -336,6 +355,13 @@ class ProfileScreen extends ConsumerWidget {
                   'Email', profile.email ?? 'Not set', Icons.email_rounded),
               _InfoItem('Phone', profile.phoneNumber ?? 'Not set',
                   Icons.phone_rounded),
+              _InfoItem(
+                'Birthday',
+                profile.dateOfBirth != null
+                    ? DateFormat('MMMM d').format(profile.dateOfBirth!)
+                    : 'Not set',
+                Icons.cake_rounded,
+              ),
               _InfoItem('Location', profile.location ?? 'Not set',
                   Icons.location_on_rounded),
               _InfoItem('Local Church', profile.localChurch ?? 'Not set',
@@ -1658,6 +1684,100 @@ class _ActionTile extends StatelessWidget {
               ? theme.colorScheme.error
               : theme.colorScheme.onSurface.withValues(alpha: 0.3)),
       onTap: onTap,
+    );
+  }
+}
+
+class _BirthdayGreetingCard extends StatelessWidget {
+  const _BirthdayGreetingCard({required this.greeting});
+
+  final BirthdayGreeting greeting;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [
+                  theme.colorScheme.primary.withValues(alpha: 0.22),
+                  theme.colorScheme.secondary.withValues(alpha: 0.14),
+                ]
+              : [
+                  theme.colorScheme.primary.withValues(alpha: 0.10),
+                  theme.colorScheme.secondary.withValues(alpha: 0.08),
+                ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.cake_rounded,
+                color: theme.colorScheme.primary,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  greeting.title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            greeting.message,
+            style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '"${greeting.scriptureText}"',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontStyle: FontStyle.italic,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '— ${greeting.scriptureRef}',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

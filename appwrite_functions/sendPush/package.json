@@ -1,0 +1,10 @@
+{
+  "name": "send-push",
+  "version": "1.0.0",
+  "description": "Dispatches Appwrite Messaging push notifications for ALIVE Nigeria admin broadcasts",
+  "type": "module",
+  "main": "src/main.js",
+  "dependencies": {
+    "node-appwrite": "^14.1.0"
+  }
+}

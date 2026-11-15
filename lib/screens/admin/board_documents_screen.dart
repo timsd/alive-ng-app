@@ -34,6 +34,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     'policy',
     'financial',
     'meeting_minutes',
+    'discipleship_reports',
+    'leadership_reports',
     'strategic',
     'legal'
   ];
@@ -315,7 +317,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                               style: TextStyle(
                                 fontSize: ResponsiveUtils.getResponsiveFontSize(
                                     context, 18),
-                                color: Theme.of(context).colorScheme.outline,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -366,7 +368,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         break;
       default:
         fileIcon = Icons.insert_drive_file;
-        fileIconColor = Theme.of(context).colorScheme.outline;
+        fileIconColor = Theme.of(context).colorScheme.onSurfaceVariant;
     }
 
     Color accessLevelColor;
@@ -384,7 +386,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         accessLevelColor = Theme.of(context).colorScheme.error;
         break;
       default:
-        accessLevelColor = Theme.of(context).colorScheme.outline;
+        accessLevelColor = Theme.of(context).colorScheme.onSurfaceVariant;
     }
 
     return Card(
@@ -818,7 +820,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     style: TextStyle(
                       color: selectedFile != null
                           ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.outline,
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   trailing: const Icon(Icons.attach_file),

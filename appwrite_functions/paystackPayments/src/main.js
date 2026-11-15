@@ -206,7 +206,7 @@ async function getPaystackConfigKeys(log, options = {}) {
         .setKey(apiKey);
       const databases = new Databases(client);
       const res = await databases.listDocuments(databaseId, appSettingsCollectionId, [
-        Query.limit(50),
+        Query.limit(200),
       ]);
       for (const doc of (res?.documents || [])) {
         const k = doc.key || doc.setting_key;
@@ -317,6 +317,7 @@ export default async ({ req, res, log, error }) => {
         source,
         pair: 'USD_NGN',
         live: source !== 'fallback',
+        test_mode: paystackConfig.testMode,
         paystack_public_key: publicKey,
         updated_at: new Date().toISOString(),
       });
@@ -371,6 +372,40 @@ export default async ({ req, res, log, error }) => {
         paid_at: pData.paid_at,
         customer: pData.customer,
         metadata: pData.metadata,
+      });
+    }
+
+    // ── Admin sync: pull live Paystack transactions directly into payment_logs ──
+    if (action === 'sync_transactions') {
+      const perPage = Math.min(Math.max(Number(body.per_page || 100), 1), 100);
+      const listRes = await fetch(
+        `https://api.paystack.co/transaction?status=success&perPage=${perPage}`,
+        {
+          headers: {
+            Authorization: `Bearer ${secret}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      const listData = await listRes.json();
+      if (!listRes.ok || !listData.status) {
+        return res.json(
+          { error: listData.message || 'Could not fetch Paystack transactions' },
+          502,
+        );
+      }
+      const rows = Array.isArray(listData.data) ? listData.data : [];
+      let synced = 0;
+      for (const tx of rows) {
+        if (tx && tx.status === 'success' && tx.reference) {
+          await handleVerifiedPayment(tx, log);
+          synced++;
+        }
+      }
+      return res.json({
+        success: true,
+        synced,
+        total_fetched: rows.length,
       });
     }
 
@@ -690,13 +725,14 @@ export default async ({ req, res, log, error }) => {
     });
     let json = await paystackResponse.json();
 
-    // ── Invalid key recovery ────────────────────────────────────────────────
-    // If the active secret key (e.g. test key when sandbox mode was toggled) is
-    // rejected by Paystack with "Invalid key" / 401, seamlessly fall back to any
-    // other valid secret key configured in the function environment.
+    // ── Invalid key recovery (same mode only) ───────────────────────────────
+    // Never silently fall back from Live mode to a Test key (or vice versa),
+    // so Live mode never disguises an invalid sk_live_ key as a test checkout.
+    const sameModePrefix = paystackConfig.testMode ? 'sk_test_' : 'sk_live_';
+    const sameModeCandidates = candidateKeys.filter((k) => k !== secret && k.startsWith(sameModePrefix));
     if (!json?.status && (json?.message?.toLowerCase().includes('key') || paystackResponse.status === 401)) {
-      for (const altKey of candidateKeys.filter((k) => k !== secret)) {
-        log(`Paystack init returned "${json?.message}". Retrying with fallback key ${altKey.substring(0, 10)}...`);
+      for (const altKey of sameModeCandidates) {
+        log(`Paystack init returned "${json?.message}". Retrying with same-mode fallback key ${altKey.substring(0, 10)}...`);
         const retryRes = await fetch('https://api.paystack.co/transaction/initialize', {
           method: 'POST',
           headers: {
@@ -716,6 +752,16 @@ export default async ({ req, res, log, error }) => {
           break;
         }
       }
+    }
+
+    if (!json?.status && (json?.message?.toLowerCase().includes('key') || paystackResponse.status === 401)) {
+      const modeLabel = paystackConfig.testMode ? 'Test' : 'Live';
+      const settingKey = paystackConfig.testMode ? 'paystack_test_secret_key' : 'paystack_live_secret_key';
+      error(`Paystack ${modeLabel} secret key rejected: ${json?.message || paystackResponse.status}`);
+      return res.json({
+        error: `Paystack ${modeLabel} Secret Key was rejected by Paystack ("${json?.message || 'Invalid key'}"). Please update ${settingKey} in App Settings.`,
+        test_mode: paystackConfig.testMode,
+      }, 400);
     }
 
     // ── Channel rejection recovery ──────────────────────────────────────────
@@ -1079,6 +1125,16 @@ async function resolveDonationPurpose({ databases, projectsCollectionId, metadat
     } catch (_) {
       // A missing project must never block the receipt.
     }
+    const KNOWN_WEB_PROJECTS = {
+      general_mission_fund: 'General Mission Fund',
+      impact_hub_center: 'Impact Hub Center',
+      vehicle_purchase: 'Mission Vehicle Purchase',
+      media_studio_setup: 'Media Studio Setup',
+      youth_discipleship: 'Youth Discipleship & Campus Ministry',
+      tract_printing: 'Bibles, Books & Tract Printing',
+    };
+    const knownTitle = KNOWN_WEB_PROJECTS[projectId.toLowerCase()];
+    if (knownTitle) return knownTitle;
   }
 
   // 4. Otherwise fall back to the donation category the donor chose.
@@ -1183,8 +1239,28 @@ async function handleVerifiedPayment(paystackData, log) {
     const amountKobo = Number(paystackData.amount || 0);
     const amount = amountKobo / 100;
     const customerEmail = paystackData.customer?.email || paystackData.metadata?.donor_email || paystackData.metadata?.email || '';
-    const donorName = paystackData.metadata?.donor_name || paystackData.customer?.first_name || 'Donor';
-    const isTestPayment = (process.env.PAYSTACK_SECRET_KEY || '').startsWith('sk_test_') || paystackData.domain === 'test';
+    const customerFullName = [paystackData.customer?.first_name, paystackData.customer?.last_name]
+      .filter((v) => typeof v === 'string' && v.trim().length > 0)
+      .join(' ')
+      .trim();
+    const customFieldName = Array.isArray(paystackData.metadata?.custom_fields)
+      ? (paystackData.metadata.custom_fields.find((f) =>
+          String(f?.display_name || f?.variable_name || '').toLowerCase().includes('name') &&
+          String(f?.value || '').trim().length > 0
+        )?.value || '').trim()
+      : '';
+    const donorName =
+      paystackData.metadata?.donor_name ||
+      paystackData.metadata?.customer_name ||
+      paystackData.metadata?.full_name ||
+      paystackData.metadata?.name ||
+      customFieldName ||
+      customerFullName ||
+      customerEmail ||
+      '';
+    const isTestPayment = paystackData.domain
+      ? paystackData.domain === 'test'
+      : (process.env.PAYSTACK_SECRET_KEY || '').startsWith('sk_test_');
     const metadata = {
       ...(paystackData.metadata || {}),
       processor: 'paystack',
@@ -1218,7 +1294,14 @@ async function handleVerifiedPayment(paystackData, log) {
         transaction_id: String(paystackData.id || ''),
         purpose,
         project_title: purpose,
-        completed_at: new Date().toISOString(),
+        amount_kobo: Math.round(amountKobo),
+        amount,
+        currency: paystackData.currency || 'NGN',
+        user_name: donorName,
+        user_email: customerEmail,
+        email: customerEmail,
+        is_test: isTestPayment,
+        completed_at: paystackData.paid_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: JSON.stringify(metadata),
       });
@@ -1332,12 +1415,17 @@ async function handleVerifiedPayment(paystackData, log) {
         // Purpose and donor name can originate from metadata, so both are
         // escaped before going into the HTML body.
         const safePurpose = escapeHtml(purpose);
-        const safeDonorName = escapeHtml(donorName);
+        const displayDonor = donorName || customerEmail;
+        const safeDonorName = escapeHtml(displayDonor);
+        const safeDonorEmail = escapeHtml(customerEmail);
         const safeReference = escapeHtml(reference);
         const isRecurring = Boolean(metadata?.recurring);
+        const emailRow = safeDonorEmail
+          ? `<tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Donor Email</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safeDonorEmail}</td></tr>`
+          : '';
         const purposeRow = `<tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Purpose</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safePurpose}</td></tr>`;
         const typeRow = `<tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Type</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${isRecurring ? 'Monthly recurring gift' : 'One-time gift'}</td></tr>`;
-        const receiptHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Donation Receipt - ALIVE Nigeria</title></head><body style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:20px;color:#1a202c;"><div style="text-align:center;border-bottom:3px solid #1a365d;padding-bottom:20px;margin-bottom:20px;"><img src="${ALIVE_LOGO_URL}" alt="ALIVE Nigeria" width="88" height="88" style="display:block;margin:0 auto 12px;border:0;outline:none;" /><h1 style="color:#1a365d;margin:0;">ALIVE Nigeria</h1><p style="color:#666;margin:4px 0;">Official Donation Receipt</p></div><div style="padding:10px 0;"><p>Dear ${safeDonorName},</p><p>Thank you for your generous donation to ALIVE Nigeria. Your support empowers our work across Nigeria.</p><p style="color:#4a5568;">Your gift of <strong>${escapeHtml(currency)} ${escapeHtml(formattedAmount)}</strong> was designated to <strong>${safePurpose}</strong>.</p><table style="width:100%;border-collapse:collapse;margin:20px 0;"><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Donor Name</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safeDonorName}</td></tr>${typeRow}${purposeRow}<tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Amount</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(currency)} ${escapeHtml(formattedAmount)}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Reference</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safeReference}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Date</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(dateStr)}</td></tr></table><p style="color:#4a5568;font-size:14px;">Please retain this receipt for your records. Contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a> for any inquiries.</p></div><div style="text-align:center;border-top:1px solid #e2e8f0;padding-top:20px;color:#999;font-size:12px;"><p>ALIVE Nigeria &mdash; Thank you for your generosity.</p></div></body></html>`;
+        const receiptHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Donation Receipt - ALIVE Nigeria</title></head><body style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:20px;color:#1a202c;"><div style="text-align:center;border-bottom:3px solid #1a365d;padding-bottom:20px;margin-bottom:20px;"><img src="${ALIVE_LOGO_URL}" alt="ALIVE Nigeria" width="88" height="88" style="display:block;margin:0 auto 12px;border:0;outline:none;" /><h1 style="color:#1a365d;margin:0;">ALIVE Nigeria</h1><p style="color:#666;margin:4px 0;">Official Donation Receipt</p></div><div style="padding:10px 0;"><p>Dear ${safeDonorName},</p><p>Thank you for your generous donation to ALIVE Nigeria. Your support empowers our work across Nigeria.</p><p style="color:#4a5568;">Your gift of <strong>${escapeHtml(currency)} ${escapeHtml(formattedAmount)}</strong> was designated to <strong>${safePurpose}</strong>.</p><table style="width:100%;border-collapse:collapse;margin:20px 0;"><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Donor Name</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safeDonorName}</td></tr>${emailRow}${typeRow}${purposeRow}<tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Amount</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(currency)} ${escapeHtml(formattedAmount)}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Reference</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${safeReference}</td></tr><tr><td style="padding:10px;border:1px solid #e2e8f0;background:#f7fafc;"><strong>Date</strong></td><td style="padding:10px;border:1px solid #e2e8f0;">${escapeHtml(dateStr)}</td></tr></table><p style="color:#4a5568;font-size:14px;">Please retain this receipt for your records. Contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a> for any inquiries.</p></div><div style="text-align:center;border-top:1px solid #e2e8f0;padding-top:20px;color:#999;font-size:12px;"><p>ALIVE Nigeria &mdash; Thank you for your generosity.</p></div></body></html>`;
 
         // Receipts always come from the dedicated receipts@ identity so a
         // donor can distinguish a financial document from ministry mail.

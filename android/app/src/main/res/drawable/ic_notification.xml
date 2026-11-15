@@ -3,7 +3,12 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+  <!-- Stylized ALIVE 'A' emblem with inner flame/crossbar -->
   <path
       android:fillColor="@android:color/white"
-      android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM13,17h-2v-6h2v6zM13,9h-2L11,7h2v2z"/>
+      android:pathData="M12,2L3.5,21h3.6l1.9,-4.5h6l1.9,4.5h3.6L12,2zM10.1,13.8L12,9.1l1.9,4.7H10.1z"/>
+  <!-- Small inner accent dot/flame at apex -->
+  <path
+      android:fillColor="@android:color/white"
+      android:pathData="M12,15.5c-0.8,0 -1.4,0.6 -1.4,1.4c0,0.8 0.6,1.4 1.4,1.4s1.4,-0.6 1.4,-1.4C13.4,16.1 12.8,15.5 12,15.5z"/>
 </vector>

@@ -25,6 +25,25 @@ class AppwriteBoardService {
     return true;
   }
 
+  Future<String> createBoardReport(Map<String, dynamic> reportData) async {
+    return _create(AppwriteBackendConfig.boardReportsCollectionId, reportData);
+  }
+
+  Future<bool> deleteBoardReport(String reportId) async {
+    try {
+      await _tables.deleteRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.boardReportsCollectionId,
+        rowId: AppwriteIdUtils.toValidUid(reportId),
+      );
+      return true;
+    } catch (e) {
+      _logger.error('Failed to delete board report', e);
+      throw DatabaseException('Failed to delete board report',
+          originalError: e);
+    }
+  }
+
   Future<bool> updateBoardReportStatus(String reportId, String status) async {
     await _tables.updateRow(
       databaseId: AppwriteBackendConfig.databaseId,

@@ -5,6 +5,7 @@ import 'package:appwrite/appwrite.dart' hide Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'providers/theme_provider.dart';
+import 'screens/conference/components/meeting_pip_overlay.dart';
 import 'widgets/biometric_lock_overlay.dart';
 import 'utils/app_router.dart';
 import 'utils/app_theme.dart';
@@ -227,6 +228,7 @@ class _AliveAppState extends ConsumerState<AliveApp>
           children: [
             child ?? const SizedBox.shrink(),
             const MeetingFloatingOverlay(),
+            const MeetingPipOverlay(),
             const BiometricLockOverlay(),
           ],
         );
@@ -533,34 +535,9 @@ class MainNavigationScreen extends ConsumerWidget {
               final items = <Map<String, dynamic>>[
                 if (canAccessRoleGated) ...[
                   {
-                    'icon': Icons.medical_services_rounded,
-                    'label': 'Health+',
-                    'route': AppConstants.enhancedHealthRoute
-                  },
-                  {
-                    'icon': Icons.wb_sunny_rounded,
-                    'label': 'daily',
-                    'route': AppConstants.dailyRoute
-                  },
-                  {
-                    'icon': Icons.explore_rounded,
-                    'label': 'missions',
-                    'route': AppConstants.missionsRoute
-                  },
-                  {
                     'icon': Icons.newspaper_rounded,
                     'label': 'news_feed',
                     'route': AppConstants.eventsRoute
-                  },
-                  {
-                    'icon': Icons.sports_esports_rounded,
-                    'label': 'bible_game',
-                    'route': AppConstants.bibleGameRoute
-                  },
-                  {
-                    'icon': Icons.forum_rounded,
-                    'label': 'chat',
-                    'route': AppConstants.chatRoute
                   },
                   {
                     'icon': Icons.groups_rounded,
@@ -580,23 +557,29 @@ class MainNavigationScreen extends ConsumerWidget {
                     'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee']
                   },
                   {
-                    'icon': Icons.people_alt_rounded,
-                    'label': 'discipleship',
-                    'route': AppConstants.discipleshipTrackerRoute,
-                  },
-                  {
                     'icon': Icons.edit_note_rounded,
                     'label': 'scribe',
                     'customLabel': 'ALIVE Scribe',
                     'route': AppConstants.scribeRoute,
                     'allowedRoles': ['admin', 'super_admin', 'bod', 'trustee', 'director', 'coordinator']
                   },
+                  {
+                    'icon': Icons.account_tree_rounded,
+                    'label': 'leadership_reports',
+                    'customLabel': 'Leadership Reports',
+                    'route': AppConstants.leadershipReportsRoute,
+                    'allowedRoles': [
+                      'admin',
+                      'super_admin',
+                      'bod',
+                      'trustee',
+                      'president',
+                      'executive',
+                      'director',
+                      'coordinator',
+                    ]
+                  },
                 ],
-                {
-                  'icon': Icons.menu_book_rounded,
-                  'label': 'bible',
-                  'route': AppConstants.bibleRoute,
-                },
                 {
                   'icon': Icons.account_circle_rounded,
                   'label': 'profile',
@@ -609,21 +592,6 @@ class MainNavigationScreen extends ConsumerWidget {
                   'adminOnly': true,
                 },
                 {
-                  'icon': Icons.auto_stories_rounded,
-                  'label': 'kids_stories',
-                  'route': AppConstants.kidsStoriesRoute
-                },
-                {
-                  'icon': Icons.local_library_rounded,
-                  'label': 'library',
-                  'route': AppConstants.libraryRoute
-                },
-                {
-                  'icon': Icons.podcasts_rounded,
-                  'label': 'podcasts',
-                  'route': AppConstants.podcastsRoute
-                },
-                {
                   'icon': Icons.school_rounded,
                   'label': 'lessons',
                   'route': AppConstants.interactiveLessonsRoute
@@ -632,16 +600,6 @@ class MainNavigationScreen extends ConsumerWidget {
                   'icon': Icons.library_books_rounded,
                   'label': 'tracts',
                   'route': AppConstants.tractsRoute
-                },
-                {
-                  'icon': Icons.record_voice_over_rounded,
-                  'label': 'testimonies',
-                  'route': AppConstants.testimoniesRoute
-                },
-                {
-                  'icon': Icons.child_care_rounded,
-                  'label': 'kids_mission',
-                  'route': AppConstants.kidsMissionRoute
                 },
                 {
                   'icon': Icons.help_outline_rounded,
@@ -707,7 +665,10 @@ class MainNavigationScreen extends ConsumerWidget {
                         .map((e) => e.toString().toLowerCase())
                         .toList();
                     final normalizedRole = userRole?.toLowerCase();
-                    if (normalizedRole == null || !allowed.contains(normalizedRole)) {
+                    if (normalizedRole == null ||
+                        !allowed.any((a) =>
+                            normalizedRole == a ||
+                            normalizedRole.contains(a))) {
                       return false;
                     }
                   }

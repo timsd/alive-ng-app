@@ -902,6 +902,47 @@ class DiscipleshipService {
     }
   }
 
+  Future<bool> deleteReport(String reportId) async {
+    try {
+      await _tables.deleteRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: _reportsCollection,
+        rowId: AppwriteIdUtils.toValidUid(reportId),
+      );
+      return true;
+    } catch (e) {
+      _logger.error('Failed to delete discipleship report', e);
+      throw DatabaseException('Failed to delete discipleship report',
+          originalError: e);
+    }
+  }
+
+  /// Marks a discipleship report as `'done'` so subsequent exports exclude it.
+  Future<DiscipleshipReport> markReportDone(String reportId) async {
+    try {
+      final document = await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: _reportsCollection,
+        rowId: AppwriteIdUtils.toValidUid(reportId),
+        data: {
+          'status': 'done',
+        },
+      );
+      return _reportFromDocument(document);
+    } catch (e) {
+      _logger.error('Failed to mark discipleship report as done', e);
+      throw DatabaseException('Failed to mark discipleship report as done',
+          originalError: e);
+    }
+  }
+
+  /// Marks multiple discipleship reports as `'done'`.
+  Future<void> markReportsDone(List<String> reportIds) async {
+    for (final id in reportIds) {
+      await markReportDone(id);
+    }
+  }
+
   Future<List<DiscipleshipReport>> getReportsForOfficer({
     required String officerId,
     String? officeTitle,

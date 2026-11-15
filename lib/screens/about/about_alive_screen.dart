@@ -53,7 +53,6 @@ class AboutAliveScreen extends ConsumerWidget {
               children: [
                 _AliveHeroCard(
                   title: 'ALIVE Nigeria',
-                  subtitle: t('app_tagline'),
                   description:
                       'A.L.I.V.E is an acronym for Africans Living In View of Eternity. ALIVE-Nigeria is the Nigerian chapter of this movement, committed to a Bible-based, youth-led revival across Africa.',
                 ),
@@ -483,12 +482,10 @@ class AboutAliveScreen extends ConsumerWidget {
 class _AliveHeroCard extends StatelessWidget {
   const _AliveHeroCard({
     required this.title,
-    required this.subtitle,
     required this.description,
   });
 
   final String title;
-  final String subtitle;
   final String description;
 
   @override
@@ -538,38 +535,37 @@ class _AliveHeroCard extends StatelessWidget {
           final intro = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 78,
-                height: 78,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.getPrimaryGradient(context),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: SvgPicture.asset(
-                  'assets/images/alive_logo.svg',
-                  colorFilter: ColorFilter.mode(
-                    colorScheme.onPrimary,
-                    BlendMode.srcIn,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.getPrimaryGradient(context),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.all(11),
+                    child: SvgPicture.asset(
+                      'assets/images/alive_logo.svg',
+                      colorFilter: ColorFilter.mode(
+                        colorScheme.onPrimary,
+                        BlendMode.srcIn,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                subtitle,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               Text(
                 description,
                 style: theme.textTheme.bodyLarge?.copyWith(

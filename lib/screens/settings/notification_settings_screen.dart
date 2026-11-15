@@ -3,6 +3,7 @@ import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/notification_settings.dart';
 import '../../providers/achievement_provider.dart';
+import '../../services/notification_service.dart' hide NotificationSettings;
 import '../../services/notification_settings_service.dart';
 import '../../services/monthly_reminder_setting_service.dart';
 import '../../services/reminder_service.dart';
@@ -193,8 +194,52 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
     }
   }
 
+  TextStyle? _subtitleStyle(BuildContext context) =>
+      Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.5),
+          );
+
+  Future<void> _sendTestNotification() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await NotificationService.instance.initialize();
+      await _syncReminderSchedules(_settings);
+      await NotificationService.instance.showNotification(
+        id: DateTime.now().millisecondsSinceEpoch % 100000,
+        title: 'ALIVE Nigeria Test Notification',
+        body: _settings.soundEnabled
+            ? 'Push & sound notifications are active on this device.'
+            : 'Push notifications are active (sound muted in settings).',
+        playSound: _settings.soundEnabled,
+      );
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            _settings.soundEnabled
+                ? 'Test notification sent with sound'
+                : 'Test notification sent (muted)',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not send test notification: ${ErrorHandler.getUserFriendlyMessage(e)}',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final subtitleStyle = _subtitleStyle(context);
     return Scaffold(
       appBar: const CustomAppBar(
         title: 'Notification Settings',
@@ -230,7 +275,10 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                           const SizedBox(height: 16),
                           SwitchListTile(
                             title: const Text('Enable Push Notifications'),
-                            subtitle: const Text('Receive reminders and ministry updates on this device'),
+                            subtitle: Text(
+                              'Receive reminders and ministry updates on this device',
+                              style: subtitleStyle,
+                            ),
                             value: _settings.pushNotificationsEnabled,
                             onChanged: _isSaving ? null : (value) async {
                               final messenger = ScaffoldMessenger.of(context);
@@ -280,7 +328,10 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                           ListTile(
                             leading: const Icon(Icons.wb_sunny_outlined),
                             title: const Text('Morning Reminder Time'),
-                            subtitle: Text('${_settings.morningReminderTime} (Daily Verse, Study & Missions)'),
+                            subtitle: Text(
+                              '${_settings.morningReminderTime} (Daily Verse, Study & Missions)',
+                              style: subtitleStyle,
+                            ),
                             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                             onTap: _isSaving
                                 ? null
@@ -301,7 +352,10 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                           ListTile(
                             leading: const Icon(Icons.nights_stay_outlined),
                             title: const Text('Evening Reminder Time'),
-                            subtitle: Text('${_settings.eveningReminderTime} (Prayer & Health Check-in)'),
+                            subtitle: Text(
+                              '${_settings.eveningReminderTime} (Prayer & Health Check-in)',
+                              style: subtitleStyle,
+                            ),
                             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                             onTap: _isSaving
                                 ? null
@@ -324,7 +378,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                           SwitchListTile(
                             secondary: const Icon(Icons.book),
                             title: const Text('Daily Verse Reminder'),
-                            subtitle: const Text('Get daily Bible verses'),
+                            subtitle: Text('Get daily Bible verses', style: subtitleStyle),
                             value: _settings.dailyVerseReminder,
                             onChanged: _isSaving ? null : (value) async {
                               await _updateSetting(_settings.copyWith(dailyVerseReminder: value));
@@ -335,7 +389,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                           SwitchListTile(
                             secondary: const Icon(Icons.favorite),
                             title: const Text('Prayer Reminder'),
-                            subtitle: const Text('Daily prayer reminders'),
+                            subtitle: Text('Daily prayer reminders', style: subtitleStyle),
                             value: _settings.prayerReminder,
                             onChanged: _isSaving ? null : (value) async {
                               await _updateSetting(_settings.copyWith(prayerReminder: value));
@@ -346,7 +400,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                           SwitchListTile(
                             secondary: const Icon(Icons.health_and_safety),
                             title: const Text('Health Tracking'),
-                            subtitle: const Text('Health and wellness reminders'),
+                            subtitle: Text('Health and wellness reminders', style: subtitleStyle),
                             value: _settings.healthTrackingReminder,
                             onChanged: _isSaving ? null : (value) async {
                               await _updateSetting(_settings.copyWith(healthTrackingReminder: value));
@@ -357,7 +411,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                           SwitchListTile(
                             secondary: const Icon(Icons.school),
                             title: const Text('Study Reminder'),
-                            subtitle: const Text('Bible study reminders'),
+                            subtitle: Text('Bible study reminders', style: subtitleStyle),
                             value: _settings.studyReminder,
                             onChanged: _isSaving ? null : (value) async {
                               await _updateSetting(_settings.copyWith(studyReminder: value));
@@ -368,7 +422,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                           SwitchListTile(
                             secondary: const Icon(Icons.public),
                             title: const Text('Mission Reminder'),
-                            subtitle: const Text('Mission and outreach reminders'),
+                            subtitle: Text('Mission and outreach reminders', style: subtitleStyle),
                             value: _settings.missionReminder,
                             onChanged: _isSaving ? null : (value) async {
                               await _updateSetting(_settings.copyWith(missionReminder: value));
@@ -393,9 +447,11 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                               _monthlyToggleVisible
                                   ? 'Reminder on the 1st of each month — turn off to opt out'
                                   : 'This reminder is managed by the ministry admin.',
-                              style: TextStyle(
-                                color: _monthlyToggleVisible ? null : Theme.of(context).disabledColor,
-                              ),
+                              style: _monthlyToggleVisible
+                                  ? subtitleStyle
+                                  : subtitleStyle?.copyWith(
+                                      color: Theme.of(context).disabledColor,
+                                    ),
                             ),
                             value: _monthlyToggleVisible ? !_monthlyOptedOut : true,
                             onChanged: _monthlyToggleVisible
@@ -447,11 +503,22 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                           SwitchListTile(
                             secondary: const Icon(Icons.volume_up),
                             title: const Text('Notification Sound'),
-                            subtitle: const Text('Play sound with notifications'),
+                            subtitle: Text('Play sound with notifications', style: subtitleStyle),
                             value: _settings.soundEnabled,
                             onChanged: _isSaving ? null : (value) async {
                               await _updateSetting(_settings.copyWith(soundEnabled: value));
                             },
+                          ),
+                          const Divider(),
+                          ListTile(
+                            leading: const Icon(Icons.notifications_active_outlined),
+                            title: const Text('Send Test Notification'),
+                            subtitle: Text(
+                              'Verify local, reminder, and sound delivery on this device',
+                              style: subtitleStyle,
+                            ),
+                            trailing: const Icon(Icons.send_rounded, size: 18),
+                            onTap: _isSaving ? null : _sendTestNotification,
                           ),
                         ],
                       ),
@@ -480,7 +547,7 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                                   return SwitchListTile(
                                     secondary: const Icon(Icons.emoji_events),
                                     title: const Text('Show Achievement Badge'),
-                                    subtitle: const Text('Display achievement progress on Home screen'),
+                                    subtitle: Text('Display achievement progress on Home screen', style: subtitleStyle),
                                     value: showBadge,
                                     onChanged: (value) async {
                                       await ref.read(showAchievementBadgeProvider.notifier).setShowBadge(value);

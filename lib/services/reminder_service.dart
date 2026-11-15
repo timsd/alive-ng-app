@@ -224,8 +224,8 @@ class ReminderService {
 
     final AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'reminder_channel',
-      'Reminders',
+      soundEnabled ? 'reminder_channel' : 'reminder_channel_silent',
+      soundEnabled ? 'Reminders' : 'Reminders (Silent)',
       channelDescription: 'Daily reminders for ALIVE Nigeria app',
       importance: Importance.high,
       priority: Priority.high,
@@ -303,8 +303,8 @@ class ReminderService {
 
     final AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'reminder_channel',
-      'Reminders',
+      soundEnabled ? 'reminder_channel' : 'reminder_channel_silent',
+      soundEnabled ? 'Reminders' : 'Reminders (Silent)',
       channelDescription: 'Daily reminders for ALIVE Nigeria app',
       importance: Importance.high,
       priority: Priority.high,

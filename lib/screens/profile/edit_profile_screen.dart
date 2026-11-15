@@ -8,6 +8,7 @@ import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/file_picker_facade.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/image_compression_utils.dart';
 import '../../models/app_models.dart';
@@ -55,6 +56,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   late String _commitmentType;
   late String _maritalStatus;
+  DateTime? _dateOfBirth;
   bool _isLoading = false;
   int _currentPage = 0;
   bool _hasChanges = false;
@@ -90,6 +92,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         TextEditingController(text: widget.userProfile.localChapter ?? '');
 
     _commitmentType = widget.userProfile.commitmentType ?? 'both';
+    _dateOfBirth = widget.userProfile.dateOfBirth;
     _maritalStatus =
         (widget.userProfile.maritalStatus ?? 'single').toLowerCase();
     if (_maritalStatus != 'married') _maritalStatus = 'single';
@@ -193,6 +196,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       final updatedProfile = widget.userProfile.copyWith(
         fullName: field(_fullNameController),
         phoneNumber: field(_phoneController),
+        dateOfBirth: _dateOfBirth,
         location: field(_locationController),
         localChurch: field(_localChurchController),
         occupation: field(_occupationController),
@@ -208,10 +212,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
       // Save updated profile to database via AppwriteProfileService
       final profileService = ref.read(appwriteProfileServiceProvider);
+      final profileData = profileService.userProfileToAppwriteData(updatedProfile);
+      profileData['date_of_birth'] = _dateOfBirth?.toUtc().toIso8601String();
       await profileService.updateUserProfile(
         userId: updatedProfile.id,
         fullName: updatedProfile.fullName,
-        profileData: profileService.userProfileToAppwriteData(updatedProfile),
+        profileData: profileData,
       );
 
       // Keep reactive avatar state and role cache in sync
@@ -325,24 +331,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         appBar: CustomAppBar(
           title: 'Edit Profile',
           showBackButton: true,
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _isLoading ? null : _saveProfile,
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          icon: _isLoading
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  ),
-                )
-              : const Icon(Icons.save),
-          label: Text(_hasChanges ? 'Save Changes' : 'Done'),
         ),
         body: Form(
           key: _formKey,
@@ -554,6 +542,58 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               }
             },
           ),
+          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+          InkWell(
+            borderRadius: BorderRadius.circular(4),
+            onTap: () async {
+              final now = DateTime.now();
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _dateOfBirth ?? DateTime(now.year - 25, now.month, now.day),
+                firstDate: DateTime(1920),
+                lastDate: now,
+                helpText: 'Select Birthday (Optional)',
+              );
+              if (picked != null) {
+                setState(() {
+                  _dateOfBirth = picked;
+                  _hasChanges = true;
+                });
+              }
+            },
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: 'Birthday (Optional)',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.cake_outlined),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                helperText: 'Receive a personalized birthday greeting & Bible promise each year.',
+                suffixIcon: _dateOfBirth != null
+                    ? IconButton(
+                        tooltip: 'Clear birthday',
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() {
+                            _dateOfBirth = null;
+                            _hasChanges = true;
+                          });
+                        },
+                      )
+                    : const Icon(Icons.calendar_today_outlined, size: 18),
+              ),
+              child: Text(
+                _dateOfBirth != null
+                    ? DateFormat('MMMM d, yyyy').format(_dateOfBirth!)
+                    : 'Not set',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: _dateOfBirth != null
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -682,32 +722,57 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
           LayoutFixUtils.safeColumn(
             children: [
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment<String>(
-                    value: 'financial',
-                    label: Text('Financial Support'),
-                    icon: Icon(Icons.payments),
-                  ),
-                  ButtonSegment<String>(
-                    value: 'active_availability',
-                    label: Text('Active Availability'),
-                    icon: Icon(Icons.volunteer_activism),
-                  ),
-                  ButtonSegment<String>(
-                    value: 'both',
-                    label: Text('Both'),
-                    icon: Icon(Icons.handshake),
-                  ),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final option in const [
+                    (
+                      value: 'financial',
+                      label: 'Financial Support',
+                      icon: Icons.payments_outlined,
+                    ),
+                    (
+                      value: 'active_availability',
+                      label: 'Active Availability',
+                      icon: Icons.volunteer_activism_outlined,
+                    ),
+                    (
+                      value: 'both',
+                      label: 'Both',
+                      icon: Icons.handshake_outlined,
+                    ),
+                  ])
+                    ChoiceChip(
+                      selected: _commitmentType == option.value,
+                      showCheckmark: false,
+                      avatar: Icon(
+                        option.icon,
+                        size: 18,
+                        color: _commitmentType == option.value
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.primary,
+                      ),
+                      label: Text(option.label),
+                      selectedColor: Theme.of(context).colorScheme.primary,
+                      labelStyle: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: _commitmentType == option.value
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      onSelected: (_) {
+                        setState(() {
+                          _commitmentType = option.value;
+                          _onFieldChanged();
+                        });
+                      },
+                    ),
                 ],
-                selected: <String>{_commitmentType},
-                onSelectionChanged: (newSelection) {
-                  setState(() {
-                    _commitmentType = newSelection.first;
-                    _onFieldChanged();
-                  });
-                },
-                showSelectedIcon: false,
               ),
               SizedBox(
                   height: ResponsiveUtils.getResponsiveSpacing(context, 12)),

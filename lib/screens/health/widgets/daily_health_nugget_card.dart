@@ -86,11 +86,12 @@ class _DailyHealthNuggetCardState extends State<DailyHealthNuggetCard> {
 
   void _shareNugget(HealthNugget nugget) {
     final text =
-        'ALIVE Nigeria Daily Health Nugget (${nugget.category})\n\n'
-        '"${nugget.title}"\n'
+        '*ALIVE Nigeria Daily Health Nugget* _(${nugget.category})_\n\n'
+        '*"${nugget.title}"*\n'
         '${nugget.nugget}\n\n'
-        'Source: ${nugget.speaker} (${nugget.scripture})\n\n'
-        'Read more on ALIVE Nigeria: https://app.alivenigeria.org/health';
+        '_Source: ${nugget.speaker} (${nugget.scripture})_\n\n'
+        'Read more on ALIVE Nigeria:\n'
+        'https://app.alivenigeria.org/health';
     SharePlus.instance.share(
       ShareParams(
         text: text,

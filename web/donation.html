@@ -1130,6 +1130,12 @@
                     donor_name: name,
                     donor_email: email,
                     project_id: (projectSelectEl ? projectSelectEl.value : projectId) || 'general_mission_fund',
+                    project_title: (projectSelectEl && projectSelectEl.selectedIndex >= 0)
+                      ? projectSelectEl.options[projectSelectEl.selectedIndex].text.trim()
+                      : (project && project.title ? project.title : 'General Mission Fund'),
+                    mission_purpose: (projectSelectEl && projectSelectEl.selectedIndex >= 0)
+                      ? projectSelectEl.options[projectSelectEl.selectedIndex].text.trim()
+                      : (project && project.title ? project.title : 'General Mission Fund'),
                     donation_type: 'generalSupport',
                     source: 'web_donation_page',
                     currency: selectedCurrency,

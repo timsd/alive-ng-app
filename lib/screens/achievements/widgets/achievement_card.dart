@@ -156,7 +156,7 @@ class AchievementCard extends StatelessWidget {
         Text(
           achievement.description,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ),
         if (!isEarned && progress != null) ...[

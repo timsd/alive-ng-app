@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../widgets/modern_dropdown.dart';
 import '../../services/appwrite_facade.dart';
+import '../../services/appwrite_push_service.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../widgets/role_guard.dart';
@@ -30,9 +31,13 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
   late TextEditingController _messageController;
   late TextEditingController _actionUrlController;
   late TextEditingController _actionTextController;
+  late TextEditingController _customPushRouteController;
 
   bool _isLoading = false;
   bool _isActive = true;
+  bool _sendPushBroadcast = false;
+  String _pushTopic = 'all_users';
+  String _pushRoute = '/home';
   String _priority = 'medium';
   String _type = 'general';
   String _targetAudience = 'all';
@@ -73,6 +78,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
     _messageController = TextEditingController();
     _actionUrlController = TextEditingController();
     _actionTextController = TextEditingController();
+    _customPushRouteController = TextEditingController();
   }
 
   void _loadAnnouncementData() {
@@ -107,6 +113,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
     _messageController.dispose();
     _actionUrlController.dispose();
     _actionTextController.dispose();
+    _customPushRouteController.dispose();
     super.dispose();
   }
 
@@ -479,6 +486,165 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                         ),
                       ),
 
+                      const SizedBox(height: 24),
+
+                      // Push Notification Broadcast
+                      Card(
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outlineVariant,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                secondary:
+                                    const Icon(Icons.notifications_active),
+                                title:
+                                    const Text('Also Send Push Broadcast'),
+                                subtitle: const Text(
+                                  'Send a mobile push notification when saved',
+                                ),
+                                value: _sendPushBroadcast,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _sendPushBroadcast = value;
+                                  });
+                                },
+                              ),
+                              if (_sendPushBroadcast) ...[
+                                const SizedBox(height: 12),
+                                ModernDropdownFormField<String>(
+                                  initialValue: _pushTopic,
+                                  borderRadius: BorderRadius.circular(12),
+                                  dropdownColor: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
+                                  icon: const Icon(Icons.arrow_drop_down_rounded),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Push Audience Topic',
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.campaign_outlined),
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'all_users',
+                                      child: Text('All App Users (all_users)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'admins',
+                                      child: Text('Admins Only (admins)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'approvals',
+                                      child: Text('Approvals Team (approvals)'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() => _pushTopic = value);
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                ModernDropdownFormField<String>(
+                                  initialValue: _pushRoute,
+                                  borderRadius: BorderRadius.circular(12),
+                                  dropdownColor: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
+                                  icon: const Icon(Icons.arrow_drop_down_rounded),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Target Screen / Route on Tap',
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.route_outlined),
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: '/home',
+                                      child: Text('Home Dashboard (/home)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: '/daily',
+                                      child: Text(
+                                        'Daily Verse & Devotion (/daily)',
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: '/prayer-requests',
+                                      child: Text(
+                                        'Prayer Requests (/prayer-requests)',
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: '/study',
+                                      child: Text('Bible Study (/study)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: '/health',
+                                      child: Text('Health & Wellness (/health)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: '/missions',
+                                      child: Text(
+                                        'Missions & Outreach (/missions)',
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: '/events',
+                                      child: Text('Events & Calendar (/events)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: '/donate',
+                                      child: Text('Donate / Support (/donate)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'custom',
+                                      child: Text('Custom Route...'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() => _pushRoute = value);
+                                    }
+                                  },
+                                ),
+                                if (_pushRoute == 'custom') ...[
+                                  const SizedBox(height: 12),
+                                  TextFormField(
+                                    controller: _customPushRouteController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Custom Route Path',
+                                      hintText: '/missions',
+                                      border: OutlineInputBorder(),
+                                      prefixIcon: Icon(Icons.alt_route),
+                                    ),
+                                    validator: (value) {
+                                      if (_sendPushBroadcast &&
+                                          _pushRoute == 'custom') {
+                                        final v = value?.trim() ?? '';
+                                        if (v.isEmpty || !v.startsWith('/')) {
+                                          return 'Enter a valid route starting with /';
+                                        }
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ],
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+
                       const SizedBox(height: 32),
 
                       // Action Buttons
@@ -543,9 +709,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
       case 'medium':
         return Theme.of(context).colorScheme.primary;
       case 'low':
-        return Theme.of(context).colorScheme.outline;
+        return Theme.of(context).colorScheme.onSurfaceVariant;
       default:
-        return Theme.of(context).colorScheme.outline;
+        return Theme.of(context).colorScheme.onSurfaceVariant;
     }
   }
 
@@ -685,10 +851,33 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
         }
       }
 
+      String? pushNotice;
+      if (_sendPushBroadcast && _isActive) {
+        final resolvedRoute = _pushRoute == 'custom'
+            ? _customPushRouteController.text.trim()
+            : _pushRoute;
+        try {
+          await AppwritePushService.instance.sendPushBroadcast(
+            title: _titleController.text.trim(),
+            body: rawContent,
+            topics: [_pushTopic],
+            route: resolvedRoute,
+            type: _type == 'prayer_request' ? 'prayer_request' : 'announcement',
+            priority:
+                (_priority == 'high' || _priority == 'urgent') ? 'high' : 'normal',
+          );
+          pushNotice = ' & push broadcast sent';
+        } catch (pushErr) {
+          ToastUtils.showWarning(
+            'Broadcast saved, but push notification failed: $pushErr',
+          );
+        }
+      }
+
       ToastUtils.showSuccess(
         widget.announcement == null
-            ? 'Announcement created successfully'
-            : 'Announcement updated successfully',
+            ? 'Announcement created successfully${pushNotice ?? ''}'
+            : 'Announcement updated successfully${pushNotice ?? ''}',
       );
 
       if (mounted) {

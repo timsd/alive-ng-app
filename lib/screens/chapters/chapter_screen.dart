@@ -4,9 +4,11 @@ import '../../utils/error_handler.dart';
 import 'package:appwrite/appwrite.dart';
 import '../../models/app_models.dart';
 import '../../models/chapter_models.dart';
+import '../../services/admin_notification_service.dart';
 import '../../services/appwrite_profile_service.dart';
 import '../../services/chapter_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/appwrite_id_utils.dart';
 import '../../main.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -85,14 +87,9 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       defaultChapter = _currentUserProfile!.chapterId;
     }
 
-    Navigator.push(
+    ChapterReportsScreen.showChapterReportSubmitDialog(
       context,
-      MaterialPageRoute(
-        builder: (context) => ChapterReportsScreen(
-          initialChapter: defaultChapter,
-          openSubmitOnLaunch: true,
-        ),
-      ),
+      initialChapter: defaultChapter,
     );
   }
 
@@ -187,51 +184,182 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       }
     });
 
+    final isFrontDoorLocked = !_isLoading &&
+        _currentUserId != null &&
+        !_isUserChapterApproved &&
+        !_canSubmitReport;
+
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Chapters',
         showBackButton: true,
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: const [
-            Tab(text: 'Overview'),
-            Tab(text: 'Browse'),
-            Tab(text: 'My Chapters'),
-            Tab(text: 'Activities'),
-            Tab(text: 'Tasks'),
-          ],
-        ),
+        bottom: isFrontDoorLocked
+            ? null
+            : TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: const [
+                  Tab(text: 'Overview'),
+                  Tab(text: 'Browse'),
+                  Tab(text: 'My Chapters'),
+                  Tab(text: 'Activities'),
+                  Tab(text: 'Tasks'),
+                ],
+              ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOverviewTab(),
-                _buildBrowseTab(),
-                _currentUserId == null
-                    ? _buildSignedOutState(
-                        customMessage:
-                            'Sign in to view your chapter memberships, leadership roles, and connect with your team.',
-                      )
-                    : _buildMyChaptersTab(),
-                _currentUserId == null
-                    ? _buildSignedOutState(
-                        customMessage:
-                            'Sign in to view and register for chapter events and mission outreach activities.',
-                      )
-                    : _buildActivitiesTab(),
-                _currentUserId == null
-                    ? _buildSignedOutState(
-                        customMessage:
-                            'Sign in to view, update, and manage your assigned chapter tasks and responsibilities.',
-                      )
-                    : _buildTasksTab(),
-              ],
+          : isFrontDoorLocked
+              ? _buildChapterFrontDoorGate()
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildOverviewTab(),
+                    _buildBrowseTab(),
+                    _currentUserId == null
+                        ? _buildSignedOutState(
+                            customMessage:
+                                'Sign in to view your chapter memberships, leadership roles, and connect with your team.',
+                          )
+                        : _buildMyChaptersTab(),
+                    _currentUserId == null
+                        ? _buildSignedOutState(
+                            customMessage:
+                                'Sign in to view and register for chapter events and mission outreach activities.',
+                          )
+                        : _buildActivitiesTab(),
+                    _currentUserId == null
+                        ? _buildSignedOutState(
+                            customMessage:
+                                'Sign in to view, update, and manage your assigned chapter tasks and responsibilities.',
+                          )
+                        : _buildTasksTab(),
+                  ],
+                ),
+      floatingActionButton:
+          isFrontDoorLocked ? null : _buildFloatingActionButton(),
+    );
+  }
+
+  Widget _buildChapterFrontDoorGate() {
+    final theme = Theme.of(context);
+    final profile = _currentUserProfile;
+    final status = (profile?.chapterApprovalStatus ?? '').toLowerCase();
+    final isRejected = status == 'rejected';
+    final requestedChapter = (profile?.localChapter?.trim().isNotEmpty == true)
+        ? profile!.localChapter!.trim()
+        : null;
+    final isPending = !isRejected &&
+        (status == 'pending' ||
+            (requestedChapter != null && requestedChapter.isNotEmpty));
+
+    final IconData icon;
+    final Color accentColor;
+    final String title;
+    final String message;
+
+    if (isRejected) {
+      icon = Icons.block_rounded;
+      accentColor = theme.colorScheme.error;
+      title = 'Chapter Access Declined';
+      message = requestedChapter != null
+          ? 'Your request to join "$requestedChapter" was not approved. You can request to join another chapter or contact an administrator.'
+          : 'Your chapter membership request was declined. You can apply to a chapter below.';
+    } else if (isPending) {
+      icon = Icons.lock_clock_rounded;
+      accentColor = Colors.amber.shade700;
+      title = 'Awaiting Chapter Approval';
+      message = requestedChapter != null
+          ? 'Your request for "$requestedChapter" has been sent to the Admin and Chapter Coordinator. Once approved, full chapter access will unlock here.'
+          : 'Your chapter membership is awaiting Admin and Chapter Coordinator approval. Once approved, full chapter access will unlock here.';
+    } else {
+      icon = Icons.door_front_door_outlined;
+      accentColor = theme.colorScheme.primary;
+      title = 'Join a Chapter to Enter';
+      message =
+          'Select your local chapter to request membership. Once approved by leadership, you will have full access to chapter activities, tasks, and fellowship.';
+    }
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(color: accentColor.withValues(alpha: 0.4)),
             ),
-      floatingActionButton: _buildFloatingActionButton(),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 44, color: accentColor),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (requestedChapter != null) ...[
+                    const SizedBox(height: 8),
+                    Chip(
+                      avatar: Icon(Icons.location_city_rounded,
+                          size: 16, color: accentColor),
+                      label: Text(requestedChapter),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Text(
+                    message,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _showJoinChapterDialog,
+                        icon: Icon(isPending
+                            ? Icons.swap_horiz_rounded
+                            : Icons.group_add_rounded),
+                        label: Text(isPending
+                            ? 'Change Chapter'
+                            : isRejected
+                                ? 'Re-apply to Chapter'
+                                : 'Join a Chapter'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _loadData,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Refresh Status'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -876,16 +1004,32 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       );
     }
 
-    if (_userActivities.isEmpty) {
-      return const Center(child: Text('No activities found'));
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _userActivities.length,
-      itemBuilder: (context, index) {
-        return _buildActivityCard(_userActivities[index]);
-      },
+    return Column(
+      children: [
+        if (_canSubmitReport)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _showCreateActivityDialog,
+                icon: const Icon(Icons.event_available_rounded),
+                label: const Text('Create Chapter Activity'),
+              ),
+            ),
+          ),
+        Expanded(
+          child: _userActivities.isEmpty
+              ? const Center(child: Text('No activities found'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _userActivities.length,
+                  itemBuilder: (context, index) {
+                    return _buildActivityCard(_userActivities[index]);
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -915,16 +1059,437 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       );
     }
 
-    if (_userTasks.isEmpty) {
-      return const Center(child: Text('No tasks found'));
-    }
+    return Column(
+      children: [
+        if (_canSubmitReport)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _showAssignTaskDialog,
+                icon: const Icon(Icons.add_task_rounded),
+                label: const Text('Assign Task to Chapter Member'),
+              ),
+            ),
+          ),
+        Expanded(
+          child: _userTasks.isEmpty
+              ? const Center(child: Text('No tasks found'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _userTasks.length,
+                  itemBuilder: (context, index) {
+                    return _buildTaskCard(_userTasks[index]);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _userTasks.length,
-      itemBuilder: (context, index) {
-        return _buildTaskCard(_userTasks[index]);
-      },
+  Future<void> _showCreateActivityDialog() async {
+    if (_chapters.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No chapters available yet.')),
+      );
+      return;
+    }
+    String selectedChapterId = _userMemberships.isNotEmpty
+        ? _userMemberships.first.chapterId
+        : _chapters.first.id;
+    if (!_chapters.any((c) => c.id == selectedChapterId)) {
+      selectedChapterId = _chapters.first.id;
+    }
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    final locationController = TextEditingController();
+    ActivityType selectedType = ActivityType.evangelism;
+    DateTime scheduledAt = DateTime.now().add(const Duration(days: 2));
+    bool isSaving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: const Text('Create Chapter Activity'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ModernDropdownFormField<String>(
+                    value: selectedChapterId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Chapter *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _chapters
+                        .map((c) => DropdownMenuItem(
+                              value: c.id,
+                              child: Text(c.name, overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedChapterId = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ModernDropdownFormField<ActivityType>(
+                    value: selectedType,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Activity Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: ActivityType.values
+                        .map((t) => DropdownMenuItem(
+                              value: t,
+                              child: Text(t.name.toUpperCase()),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedType = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Activity Title *',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: locationController,
+                    decoration: const InputDecoration(
+                      labelText: 'Location (Optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_today_rounded),
+                    title: const Text('Scheduled Date'),
+                    subtitle: Text(DateFormat.yMMMd().format(scheduledAt)),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: dialogCtx,
+                        initialDate: scheduledAt,
+                        firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => scheduledAt = picked);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (titleController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Title is required')),
+                        );
+                        return;
+                      }
+                      setDialogState(() => isSaving = true);
+                      try {
+                        final now = DateTime.now();
+                        await _chapterService.createActivity(
+                          ChapterActivity(
+                            id: AppwriteIdUtils.uniqueId(),
+                            chapterId: selectedChapterId,
+                            title: titleController.text.trim(),
+                            description: descController.text.trim(),
+                            type: selectedType,
+                            status: ActivityStatus.planned,
+                            scheduledAt: scheduledAt,
+                            location: locationController.text.trim().isEmpty
+                                ? null
+                                : locationController.text.trim(),
+                            assignedMemberIds: const [],
+                            resources: const {},
+                            results: const {},
+                            createdBy: _currentUserId ?? 'coordinator',
+                            createdAt: now,
+                            updatedAt: now,
+                          ),
+                        );
+                        if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                        await _loadData();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Chapter activity created!'),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Failed: ${ErrorHandler.getUserFriendlyMessage(e)}',
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAssignTaskDialog() async {
+    if (_chapters.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No chapters available yet.')),
+      );
+      return;
+    }
+    String selectedChapterId = _userMemberships.isNotEmpty
+        ? _userMemberships.first.chapterId
+        : _chapters.first.id;
+    if (!_chapters.any((c) => c.id == selectedChapterId)) {
+      selectedChapterId = _chapters.first.id;
+    }
+    List<ChapterMember> members =
+        await _chapterService.getChapterMembers(selectedChapterId);
+    if (!mounted) return;
+
+    String selectedAssignee =
+        members.isNotEmpty ? members.first.userId : (_currentUserId ?? 'all');
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    int priority = 3;
+    DateTime dueDate = DateTime.now().add(const Duration(days: 7));
+    bool isSaving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: const Text('Assign Task to Member'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ModernDropdownFormField<String>(
+                    value: selectedChapterId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Chapter *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _chapters
+                        .map((c) => DropdownMenuItem(
+                              value: c.id,
+                              child: Text(c.name, overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
+                    onChanged: (val) async {
+                      if (val != null) {
+                        final updatedMembers =
+                            await _chapterService.getChapterMembers(val);
+                        setDialogState(() {
+                          selectedChapterId = val;
+                          members = updatedMembers;
+                          selectedAssignee = members.isNotEmpty
+                              ? members.first.userId
+                              : (_currentUserId ?? 'all');
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ModernDropdownFormField<String>(
+                    value: selectedAssignee,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Assign To *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      ...members.map((m) => DropdownMenuItem(
+                            value: m.userId,
+                            child: Text(
+                              'Member (${m.role.name}) — ${m.userId.substring(0, m.userId.length > 8 ? 8 : m.userId.length)}',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )),
+                      if (members.isEmpty)
+                        DropdownMenuItem(
+                          value: _currentUserId ?? 'all',
+                          child: const Text('Myself / Chapter Team'),
+                        ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedAssignee = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Task Title *',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Instructions / Details',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ModernDropdownFormField<int>(
+                    value: priority,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Priority',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 1, child: Text('Low (1)')),
+                      DropdownMenuItem(value: 3, child: Text('Medium (3)')),
+                      DropdownMenuItem(value: 5, child: Text('High (5)')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => priority = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.event_rounded),
+                    title: const Text('Due Date'),
+                    subtitle: Text(DateFormat.yMMMd().format(dueDate)),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: dialogCtx,
+                        initialDate: dueDate,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => dueDate = picked);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (titleController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Task title is required')),
+                        );
+                        return;
+                      }
+                      setDialogState(() => isSaving = true);
+                      try {
+                        final now = DateTime.now();
+                        await _chapterService.createTask(
+                          ChapterTask(
+                            id: AppwriteIdUtils.uniqueId(),
+                            chapterId: selectedChapterId,
+                            title: titleController.text.trim(),
+                            description: descController.text.trim(),
+                            assignedTo: selectedAssignee,
+                            assignedBy: _currentUserId ?? 'coordinator',
+                            dueDate: dueDate,
+                            status: ActivityStatus.planned,
+                            priority: priority,
+                            tags: const [],
+                            metadata: const {},
+                            createdAt: now,
+                            updatedAt: now,
+                          ),
+                        );
+                        if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                        await _loadData();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Task assigned!')),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Failed: ${ErrorHandler.getUserFriendlyMessage(e)}',
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Assign Task'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1417,6 +1982,18 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
       } catch (e) {
         debugPrint('Profile update note: $e');
       }
+
+      // Notify Admin & Chapter Coordinator of the join request (best-effort)
+      try {
+        final user = _authService.currentUser;
+        await AdminNotificationService.instance.notifyAdminOfChapterJoinRequest(
+          userId: _currentUserId!,
+          userName: _currentUserProfile?.fullName ?? user?.name ?? 'Member',
+          userEmail: _currentUserProfile?.email ?? user?.email ?? '',
+          chapterName: targetChapter.name,
+          source: 'chapter_join',
+        );
+      } catch (_) {}
 
       await _loadData();
 

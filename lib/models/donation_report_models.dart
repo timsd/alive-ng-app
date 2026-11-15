@@ -33,48 +33,91 @@ class DonationReportEntry {
     }
 
     // --- Resolve donor name ---
-    // Check explicit top-level fields first
-    var resolvedDonorName =
-        firstText(['user_name', 'donor_name', 'name']);
+    bool isPlaceholderName(String? val) {
+      if (val == null || val.trim().isEmpty) return true;
+      final lower = val.trim().toLowerCase();
+      return lower == 'anonymous donor' || lower == 'anonymous';
+    }
 
-    // If empty or still 'Anonymous', try embedded metadata (Paystack payload)
-    if (resolvedDonorName.isEmpty || resolvedDonorName == 'Anonymous Donor') {
-      final meta = _parseMetadata(json['metadata']);
-      if (meta != null) {
-        for (final key in ['donor_name', 'customer_name', 'name']) {
-          final val = meta[key]?.toString().trim();
-          if (val != null && val.isNotEmpty && val != 'Anonymous Donor') {
-            resolvedDonorName = val;
-            break;
+    var resolvedDonorName =
+        firstText(['user_name', 'donor_name', 'name', 'customer_name', 'full_name']);
+
+    final parsedMeta = _parseMetadata(json['metadata']);
+
+    // If empty or placeholder, try embedded metadata (Paystack payload)
+    if (isPlaceholderName(resolvedDonorName) && parsedMeta != null) {
+      for (final key in ['donor_name', 'customer_name', 'full_name', 'name']) {
+        final val = parsedMeta[key]?.toString().trim();
+        if (!isPlaceholderName(val)) {
+          resolvedDonorName = val!;
+          break;
+        }
+      }
+      if (isPlaceholderName(resolvedDonorName) &&
+          parsedMeta['custom_fields'] is List) {
+        for (final field in parsedMeta['custom_fields'] as List) {
+          if (field is Map) {
+            final label = (field['display_name'] ?? field['variable_name'] ?? '')
+                .toString()
+                .toLowerCase();
+            final val = field['value']?.toString().trim();
+            if (label.contains('name') && !isPlaceholderName(val)) {
+              resolvedDonorName = val!;
+              break;
+            }
           }
         }
       }
     }
 
-    // Last resort: derive from email
-    if (resolvedDonorName.isEmpty || resolvedDonorName == 'Anonymous Donor') {
-      final email = firstText(['user_email', 'donor_email', 'email']);
-      if (email.isNotEmpty && email.contains('@')) {
-        resolvedDonorName = email.split('@').first;
+    var resolvedEmail = firstText(['user_email', 'donor_email', 'email']);
+    if (resolvedEmail.isEmpty && parsedMeta != null) {
+      for (final key in ['donor_email', 'user_email', 'customer_email', 'email']) {
+        final val = parsedMeta[key]?.toString().trim();
+        if (val != null && val.isNotEmpty) {
+          resolvedEmail = val;
+          break;
+        }
       }
     }
 
-    if (resolvedDonorName.isEmpty) {
-      resolvedDonorName = 'Anonymous Donor';
+    // Last resort: use donor email so the donor is always identifiable
+    if (isPlaceholderName(resolvedDonorName)) {
+      resolvedDonorName = resolvedEmail;
     }
 
     // --- Resolve purpose / category ---
-    var resolvedPurpose = firstText(
-        ['material_title', 'mission_purpose', 'purpose']);
+    String resolvedPurpose = '';
+    final rawSplit = parsedMeta?['fund_designations'];
+    if (rawSplit is List) {
+      final split = rawSplit
+          .map((e) => e?.toString().trim() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (split.length > 1) {
+        resolvedPurpose = 'Split donation: ${split.join(', ')}';
+      } else if (split.length == 1) {
+        resolvedPurpose = split.first;
+      }
+    }
+    if (resolvedPurpose.isEmpty) {
+      final designation = parsedMeta?['fund_designation']?.toString().trim();
+      if (designation != null &&
+          designation.isNotEmpty &&
+          !RegExp(r'^split:', caseSensitive: false).hasMatch(designation)) {
+        resolvedPurpose = designation;
+      }
+    }
+    if (resolvedPurpose.isEmpty) {
+      resolvedPurpose =
+          firstText(['material_title', 'mission_purpose', 'purpose']);
+    }
 
     // Check metadata for project_title if no explicit purpose found
-    if (resolvedPurpose.isEmpty) {
-      final meta = _parseMetadata(json['metadata']);
-      if (meta != null) {
-        final metaTitle = meta['project_title']?.toString().trim();
-        if (metaTitle != null && metaTitle.isNotEmpty) {
-          resolvedPurpose = metaTitle;
-        }
+    if (resolvedPurpose.isEmpty && parsedMeta != null) {
+      final metaTitle = parsedMeta['project_title']?.toString().trim();
+      if (metaTitle != null && metaTitle.isNotEmpty) {
+        resolvedPurpose = metaTitle;
       }
     }
 
@@ -83,24 +126,42 @@ class DonationReportEntry {
       resolvedPurpose = firstText(['project_title']);
     }
 
+    // Fall back to known web/app project_id labels (e.g. youth_discipleship, tract_printing)
+    if (resolvedPurpose.isEmpty) {
+      const knownProjectTitles = <String, String>{
+        'general_mission_fund': 'General Mission Fund',
+        'impact_hub_center': 'Impact Hub Center',
+        'vehicle_purchase': 'Mission Vehicle Purchase',
+        'media_studio_setup': 'Media Studio Setup',
+        'youth_discipleship': 'Youth Discipleship & Campus Ministry',
+        'tract_printing': 'Bibles, Books & Tract Printing',
+      };
+      final rawProjectId =
+          (parsedMeta?['project_id']?.toString().trim().isNotEmpty == true
+                  ? parsedMeta!['project_id'].toString().trim()
+                  : firstText(['project_id']))
+              .toLowerCase();
+      if (knownProjectTitles.containsKey(rawProjectId)) {
+        resolvedPurpose = knownProjectTitles[rawProjectId]!;
+      }
+    }
+
     if (resolvedPurpose.isEmpty) {
       resolvedPurpose = 'General';
     }
 
-    final parsedMeta = _parseMetadata(json['metadata']);
     final isTestTransaction = json['is_test'] == true ||
         json['is_test'] == 'true' ||
         json['mode'] == 'test' ||
         parsedMeta?['is_test'] == true ||
         parsedMeta?['is_test'] == 'true' ||
         parsedMeta?['domain'] == 'test' ||
-        firstText(['reference']).toLowerCase().startsWith('test_') ||
-        firstText(['reference']).toLowerCase().startsWith('t_');
+        firstText(['reference']).toLowerCase().startsWith('test_');
 
     return DonationReportEntry(
       reference: firstText(['reference', 'transaction_id', r'$id', 'id']),
       donorName: resolvedDonorName,
-      donorEmail: firstText(['user_email', 'donor_email', 'email']),
+      donorEmail: resolvedEmail,
       purpose: resolvedPurpose,
       amount: num.tryParse(json['amount']?.toString() ?? json['donation_amount']?.toString() ?? '')?.toDouble() ?? 0,
       currency: firstText(['currency'], 'NGN').toUpperCase(),

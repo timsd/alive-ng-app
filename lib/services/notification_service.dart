@@ -281,22 +281,27 @@ class NotificationService {
     required String body,
     String? payload,
     String channelId = 'default',
+    bool playSound = true,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
-      'default',
-      'Default',
+    final effectiveChannelId = playSound ? channelId : '${channelId}_silent';
+    final effectiveChannelName = playSound ? 'Default' : 'Default (Silent)';
+
+    final androidDetails = AndroidNotificationDetails(
+      effectiveChannelId,
+      effectiveChannelName,
       channelDescription: 'Default notification channel',
       importance: Importance.high,
       priority: Priority.high,
+      playSound: playSound,
     );
 
-    const iosDetails = DarwinNotificationDetails(
+    final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
-      presentSound: true,
+      presentSound: playSound,
     );
 
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -338,15 +343,10 @@ class NotificationService {
       try {
         // Parse the payload as JSON if it contains structured data
         if (payload.startsWith('{')) {
-          final data = Map<String, dynamic>.from(
-              payload.split(',').fold<Map<String, String>>({}, (map, item) {
-            final parts = item.replaceAll(RegExp(r'[{}]'), '').split(':');
-            if (parts.length == 2) {
-              map[parts[0].trim()] = parts[1].trim();
-            }
-            return map;
-          }));
-          _navigateFromNotification(data);
+          final decoded = jsonDecode(payload);
+          if (decoded is Map) {
+            handleMessageOpenedApp(Map<String, dynamic>.from(decoded));
+          }
         } else {
           // Handle simple string payload
           _logger.info('Simple payload received: $payload');

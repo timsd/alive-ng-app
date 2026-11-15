@@ -180,7 +180,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             Icon(
               Icons.event_busy,
               size: context.responsiveIconSize(64),
-              color: Theme.of(context).colorScheme.outline,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 16),
             Text(
@@ -213,7 +213,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             Icon(
               Icons.campaign_outlined,
               size: context.responsiveIconSize(64),
-              color: Theme.of(context).colorScheme.outline,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 16),
             Text(
@@ -297,7 +297,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   Icon(
                     Icons.location_on,
                     size: context.responsiveIconSize(16),
-                    color: Theme.of(context).colorScheme.outline,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 4),
                   Text(

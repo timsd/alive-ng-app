@@ -58,12 +58,11 @@ class AboutAppScreen extends ConsumerWidget {
               children: [
                 _HeroCard(
                   title: 'ALIVE Nigeria App',
-                  subtitle: 'Bible study, prayer, and ministry community',
                   description:
                       'ALIVE Nigeria brings Bible study, prayer, resources, testimonies, podcasts, events, and discipleship tools into one clear experience for the ministry community.',
                   chips: const [
                     'Daily verse',
-                    'Prayer support',
+                    'Prayer',
                     'Study tools',
                     'Resources',
                   ],
@@ -150,7 +149,7 @@ class AboutAppScreen extends ConsumerWidget {
                       icon: Icons.event_available_rounded,
                       title: 'Stay connected',
                       description:
-                          'Find conference access, chapter resources, support tools, and the latest ministry touchpoints in one place.',
+                          'Chat, join active discussion and community channels, conference call, chapter resources, and the latest ministry touchpoints in one place.',
                     ),
                   ],
                 ),
@@ -291,14 +290,12 @@ class AboutAppScreen extends ConsumerWidget {
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
     required this.title,
-    required this.subtitle,
     required this.description,
     required this.chips,
     this.versionBuilder,
   });
 
   final String title;
-  final String subtitle;
   final String description;
   final List<String> chips;
   final Widget? versionBuilder;
@@ -369,24 +366,11 @@ class _HeroCard extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  title,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],

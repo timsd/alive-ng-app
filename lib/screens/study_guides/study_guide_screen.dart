@@ -459,7 +459,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.timeline, size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 64, tablet: 72, desktop: 80), color: Theme.of(context).colorScheme.outline),
+            Icon(Icons.timeline, size: ResponsiveUtils.getResponsiveValue(context: context, mobile: 64, tablet: 72, desktop: 80), color: Theme.of(context).colorScheme.onSurfaceVariant),
             SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 16, tablet: 20, desktop: 24)),
             Text(
               'No study progress yet',
@@ -701,7 +701,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
     
     switch (status) {
       case StudyStatus.notStarted:
-        color = Theme.of(context).colorScheme.outline;
+        color = Theme.of(context).colorScheme.onSurfaceVariant;
         text = 'Not Started';
         break;
       case StudyStatus.inProgress:

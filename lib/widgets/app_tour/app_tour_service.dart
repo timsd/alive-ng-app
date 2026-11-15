@@ -69,35 +69,33 @@ class AppTourService {
     if (!context.mounted) return;
 
     // When the user explicitly requests to replay or start the tour, ensure
-    // the app is routed to the Home screen and any active dialogs/sheets are
-    // dismissed so the tour spotlight aligns with the actual Home header and tabs.
+    // the app is routed to the Home screen and any imperative dialogs/sheets are
+    // dismissed without popping GoRouter's declarative Page routes.
     if (force) {
-      // Pop any remaining overlays (dialogs, bottom sheets) except the root.
-      // Use try/catch since the navigator state may already be clean.
       try {
         final navigator = Navigator.of(context, rootNavigator: true);
-        // Only pop if there are routes above the first one
-        navigator.popUntil((route) => route.isFirst);
+        navigator.popUntil((route) => route.isFirst || route.settings is Page);
       } catch (_) {}
 
-      // Navigate to Home if not already there
       try {
-        context.go(AppConstants.homeRoute);
+        GoRouter.of(context).go(AppConstants.homeRoute);
       } catch (_) {}
 
       // Allow Home screen and app bar to fully render before painting the tour overlay.
-      // Use a longer delay to ensure all layout passes are complete.
       await Future.delayed(const Duration(milliseconds: 500));
-      if (!context.mounted) return;
     }
+
+    final activeContext = rootNavigatorKey.currentContext ?? context;
+    if (!activeContext.mounted) return;
 
     // Wait if another modal dialog (e.g. Biometric setup or OTA prompt) is currently active
     // so the App Tour and Biometric dialog never collide on screen.
     if (!force &&
-        (isBiometricDialogActive || ModalRoute.of(context)?.isCurrent == false)) {
+        (isBiometricDialogActive || ModalRoute.of(activeContext)?.isCurrent == false)) {
       Future.delayed(const Duration(seconds: 2), () {
-        if (context.mounted) {
-          maybeStartTour(context, force: force, onComplete: onComplete);
+        final retryContext = rootNavigatorKey.currentContext ?? context;
+        if (retryContext.mounted) {
+          maybeStartTour(retryContext, force: force, onComplete: onComplete);
         }
       });
       return;
@@ -105,7 +103,6 @@ class AppTourService {
 
     _isTourActive = true;
     try {
-      final activeContext = rootNavigatorKey.currentContext ?? context;
       await showGeneralDialog(
         context: activeContext,
         barrierDismissible: false,

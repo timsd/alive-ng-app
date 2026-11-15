@@ -455,14 +455,19 @@ class _ModernDropdownFormFieldState<T> extends FormFieldState<T> {
         displayChild = selectedItem.child;
       }
     } else {
+      final hasLabel = widget.decoration?.labelText != null ||
+          widget.decoration?.label != null;
       displayChild = isEnabled
           ? (widget.hint ??
-              Text(
-                widget.decoration?.hintText ?? 'Select option',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                ),
-              ))
+              (hasLabel && widget.decoration?.hintText == null
+                  ? const SizedBox.shrink()
+                  : Text(
+                      widget.decoration?.hintText ?? 'Select option',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.7),
+                      ),
+                    )))
           : (widget.disabledHint ?? widget.hint ?? const SizedBox.shrink());
     }
 

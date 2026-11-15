@@ -317,7 +317,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
               child: Column(
                 children: [
                   Icon(Icons.search_off,
-                      size: 48, color: Theme.of(context).colorScheme.outline),
+                      size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   const SizedBox(height: 16),
                   Text(translate('no_results_found'),
                       style: Theme.of(context).textTheme.bodyLarge),
@@ -541,10 +541,23 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         icon: Icons.groups_2_rounded,
         color: const Color(0xFF4F46E5),
         steps: [
-          'Navigate to Chapters to locate and join your nearest campus or city chapter.',
-          'Participate in chapter group chats, receive official announcements, and pray together.',
+          'Navigate to Chapters to locate and join your nearest campus or city chapter (pending Admin/Coordinator approval).',
+          'Once approved, you gain full access to chapter activities, assigned tasks, group chats, and official announcements.',
           'Use role tags in discussions (@coordinator, @leadership) to direct urgent questions to officers.',
-          'Chapter leaders and administrators can access Chapter Reports and leadership archives to manage organizational duties.',
+          'Coordinators and Admins can create chapter activities and assign tasks to members directly in the Chapters screen.',
+        ],
+      ),
+      GuideItem(
+        title: 'Submitting Reports & Member Evangelism',
+        description:
+            'How to submit Chapter/Leadership reports and log personal evangelism & Bible study activities.',
+        icon: Icons.assignment_turned_in_rounded,
+        color: const Color(0xFF0EA5E9),
+        steps: [
+          'Chapter Report: Inside My Chapters, tap "Submit Report" to send an operational or outreach report to your Chapter Coordinator or assigned Director. You stay on My Chapters after submitting or cancelling, and have 15 seconds to tap UNDO if needed.',
+          'Leadership Reports (Coordinators, Directors, Executives & BOD): Open the More menu and tap "Leadership Reports" to review reports in your tier, compile upward reports, or delete/undo your own submissions.',
+          'Discipleship Tracker: Log personal evangelism contacts, Bible studies, prayer points, and spiritual growth stages (Prospect -> Contact -> Discipleship -> Baptized -> Discipler), and dispatch periodic discipleship reports with 15-second UNDO support.',
+          'Interactive Lessons: Complete structured doctrinal and devotional study guides under Study -> Interactive Lessons to track your personal study progress and earn milestones.',
         ],
       ),
     ];

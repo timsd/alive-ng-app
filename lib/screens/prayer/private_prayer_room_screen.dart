@@ -245,7 +245,7 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
             Icon(
               Icons.lock_person_outlined,
               size: 64,
-              color: theme.colorScheme.outline,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 16),
             Text(

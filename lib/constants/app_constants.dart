@@ -25,6 +25,7 @@ class AppConstants {
   static const String adminDonationsReportRoute = '/admin-donations-report';
   static const String contentManagementRoute = '/content-management';
   static const String bodRoute = '/board-of-directors';
+  static const String leadershipReportsRoute = '/leadership-reports';
   static const String userArchiveRoute = '/user-archive';
   static const String roleManagementRoute = '/role-management';
   static const String adminApprovalRoute = '/admin-approval';

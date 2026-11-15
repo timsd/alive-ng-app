@@ -617,7 +617,7 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 48),
                           child: Column(
                             children: [
-                              Icon(Icons.video_library_outlined, size: 64, color: theme.colorScheme.outline),
+                              Icon(Icons.video_library_outlined, size: 64, color: theme.colorScheme.onSurfaceVariant),
                               const SizedBox(height: 16),
                               Text(
                                 'No videos found in this category',

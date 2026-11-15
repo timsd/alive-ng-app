@@ -252,15 +252,39 @@ class AppwriteAdminExportService {
     }
   }
 
+  /// Trigger the `paystack_payments` Appwrite function to sync recent live
+  /// Paystack transactions directly into `payment_logs`.
+  Future<Map<String, dynamic>> syncLivePaystackTransactions({
+    int perPage = 100,
+  }) async {
+    final functions = Functions(appwriteClient);
+    final execution = await functions.createExecution(
+      functionId: AppwriteBackendConfig.paystackPaymentsFunctionId,
+      body: jsonEncode({
+        'action': 'sync_transactions',
+        'per_page': perPage,
+      }),
+      xasync: false,
+    );
+    final raw = execution.responseBody.trim();
+    if (raw.isEmpty) return {};
+    final decoded = jsonDecode(raw);
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    return {};
+  }
+
   /// Generate a detailed donation report (CSV or JSON) and upload to Storage
   Future<Map<String, dynamic>> exportDonationsReport({
     String format = 'csv',
     DateTime? startDate,
     DateTime? endDate,
     String? status,
+    String modeFilter = 'live',
   }) async {
     final prefix = _exportPrefix('alive-donations-report');
     final normalizedFormat = _normalizeFormat(format);
+    final normalizedMode = modeFilter.toLowerCase().trim();
 
     try {
       final queries = <String>[
@@ -280,13 +304,21 @@ class AppwriteAdminExportService {
       // Pre-load project titles so we can resolve project_id → title
       final projectTitleCache = await _loadProjectTitleCache();
 
-      // Filter by date client-side to ensure robustness across timestamp schema variations
+      // Filter by mode and date client-side to ensure robustness across schema variations
       final rows = rawRows.where((r) {
-        // Exclude sandbox / test records so production reports only reflect real donor funds
+        final meta = _parseMetadataField(r['metadata']);
+        final ref = (r['reference'] ?? '').toString().trim().toLowerCase();
         final isTest = r['is_test'] == true ||
+            r['is_test'] == 'true' ||
+            r['mode'] == 'test' ||
             r['notes']?.toString().contains('[TEST') == true ||
-            r['metadata']?.toString().contains('"is_test":true') == true;
-        if (isTest) return false;
+            meta?['is_test'] == true ||
+            meta?['is_test'] == 'true' ||
+            meta?['domain'] == 'test' ||
+            ref.startsWith('test_') ||
+            ref.startsWith('t_');
+        if (normalizedMode == 'live' && isTest) return false;
+        if (normalizedMode == 'test' && !isTest) return false;
 
         final dateStr = r['created_at'] ?? r['\$createdAt'];
         if (dateStr == null) return true;
@@ -339,6 +371,12 @@ class AppwriteAdminExportService {
         final isCredit = (rowStatus == 'success' || rowStatus == 'completed');
         final creditStr = isCredit ? amountNum.toStringAsFixed(2) : '0.00';
         final narration = 'DONATION: $purpose - $donorName';
+        final splitAllocation = _resolveSplitAllocation(
+          r,
+          amountNum: amountNum,
+          currency: currency,
+          resolvedPurpose: purpose,
+        );
 
         return {
           'Value Date': r['created_at'] ?? r[r'$createdAt'] ?? '',
@@ -354,6 +392,7 @@ class AppwriteAdminExportService {
           'Net Inflow': creditStr,
           'Status': rowStatus.toUpperCase(),
           'Purpose / Category': purpose,
+          'Split Allocation': splitAllocation,
           'Settlement Date': r['completed_at'] ?? r['created_at'] ?? r[r'$createdAt'] ?? '',
           'Notes': r['notes'] ?? r['custom_purpose'] ?? '',
         };
@@ -688,38 +727,68 @@ class AppwriteAdminExportService {
   /// Resolve the real donor name from multiple data sources.
   /// Checks explicit fields, then embedded metadata/Paystack payload.
   String _resolveDonorName(Map<String, dynamic> r) {
+    bool isPlaceholder(String? val) {
+      if (val == null || val.trim().isEmpty) return true;
+      final lower = val.trim().toLowerCase();
+      return lower == 'anonymous donor' || lower == 'anonymous';
+    }
+
     // 1. Explicit top-level donor fields
     for (final key in [
       'user_name',
       'donor_name',
       'name',
+      'customer_name',
+      'full_name',
     ]) {
       final val = r[key]?.toString().trim();
-      if (val != null && val.isNotEmpty && val != 'Anonymous Donor') {
-        return val;
+      if (!isPlaceholder(val)) {
+        return val!;
       }
     }
 
     // 2. Embedded in metadata JSON (Paystack stores donor_name here)
     final meta = _parseMetadataField(r['metadata']);
     if (meta != null) {
-      for (final key in ['donor_name', 'customer_name', 'name']) {
+      for (final key in ['donor_name', 'customer_name', 'full_name', 'name']) {
         final val = meta[key]?.toString().trim();
-        if (val != null && val.isNotEmpty && val != 'Anonymous Donor') {
-          return val;
+        if (!isPlaceholder(val)) {
+          return val!;
+        }
+      }
+      if (meta['custom_fields'] is List) {
+        for (final field in meta['custom_fields'] as List) {
+          if (field is Map) {
+            final label = (field['display_name'] ?? field['variable_name'] ?? '')
+                .toString()
+                .toLowerCase();
+            final val = field['value']?.toString().trim();
+            if (label.contains('name') && !isPlaceholder(val)) {
+              return val!;
+            }
+          }
         }
       }
     }
 
-    // 3. Derive from email if available
-    final email = (r['donor_email'] ?? r['user_email'] ?? r['email'])
+    // 3. Derive from email if available (top-level or metadata)
+    var email = (r['donor_email'] ?? r['user_email'] ?? r['email'])
         ?.toString()
         .trim();
-    if (email != null && email.isNotEmpty && email.contains('@')) {
-      return email.split('@').first;
+    if ((email == null || email.isEmpty) && meta != null) {
+      for (final key in ['donor_email', 'user_email', 'customer_email', 'email']) {
+        final val = meta[key]?.toString().trim();
+        if (val != null && val.isNotEmpty) {
+          email = val;
+          break;
+        }
+      }
+    }
+    if (email != null && email.isNotEmpty) {
+      return email;
     }
 
-    return 'Anonymous Donor';
+    return '';
   }
 
   /// Resolve donation purpose / category, mapping project IDs to real titles.
@@ -727,7 +796,28 @@ class AppwriteAdminExportService {
     Map<String, dynamic> r,
     Map<String, String> projectTitleCache,
   ) {
-    // 1. Explicit purpose fields
+    // 1. Check metadata for split fund_designations first so multi-area splits
+    //    always display all allocated funds in reports & exports.
+    final meta = _parseMetadataField(r['metadata']);
+    if (meta != null) {
+      final rawSplit = meta['fund_designations'];
+      if (rawSplit is List) {
+        final split = rawSplit
+            .map((e) => e?.toString().trim() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+        if (split.length > 1) return 'Split donation: ${split.join(', ')}';
+        if (split.length == 1) return split.first;
+      }
+      final designation = meta['fund_designation']?.toString().trim();
+      if (designation != null &&
+          designation.isNotEmpty &&
+          !RegExp(r'^split:', caseSensitive: false).hasMatch(designation)) {
+        return designation;
+      }
+    }
+
+    // 2. Explicit purpose fields
     for (final key in [
       'mission_purpose',
       'purpose',
@@ -737,8 +827,7 @@ class AppwriteAdminExportService {
       if (val != null && val.isNotEmpty) return val;
     }
 
-    // 2. Check metadata for project_title
-    final meta = _parseMetadataField(r['metadata']);
+    // 3. Check metadata for project_title / project_id
     if (meta != null) {
       final metaTitle = meta['project_title']?.toString().trim();
       if (metaTitle != null && metaTitle.isNotEmpty) return metaTitle;
@@ -751,6 +840,15 @@ class AppwriteAdminExportService {
       }
     }
 
+    const knownWebProjects = <String, String>{
+      'general_mission_fund': 'General Mission Fund',
+      'impact_hub_center': 'Impact Hub Center',
+      'vehicle_purchase': 'Mission Vehicle Purchase',
+      'media_studio_setup': 'Media Studio Setup',
+      'youth_discipleship': 'Youth Discipleship & Campus Ministry',
+      'tract_printing': 'Bibles, Books & Tract Printing',
+    };
+
     // 3. Top-level project_title / project_id
     final topTitle = r['project_title']?.toString().trim();
     if (topTitle != null && topTitle.isNotEmpty) return topTitle;
@@ -759,10 +857,46 @@ class AppwriteAdminExportService {
     if (topProjectId != null && topProjectId.isNotEmpty) {
       final resolved = projectTitleCache[topProjectId];
       if (resolved != null && resolved.isNotEmpty) return resolved;
+      final known = knownWebProjects[topProjectId.toLowerCase()];
+      if (known != null) return known;
       return topProjectId; // Return raw ID if we can't resolve
     }
 
+    final metaProjectId = meta?['project_id']?.toString().trim();
+    if (metaProjectId != null && metaProjectId.isNotEmpty) {
+      final known = knownWebProjects[metaProjectId.toLowerCase()];
+      if (known != null) return known;
+    }
+
     return 'General Donation';
+  }
+
+  /// Formats the per-fund allocation breakdown (e.g. for split donations).
+  String _resolveSplitAllocation(
+    Map<String, dynamic> r, {
+    required double amountNum,
+    required String currency,
+    required String resolvedPurpose,
+  }) {
+    final meta = _parseMetadataField(r['metadata']);
+    final rawSplit = meta?['fund_designations'];
+    if (rawSplit is List) {
+      final split = rawSplit
+          .map((e) => e?.toString().trim() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (split.length > 1) {
+        final share = amountNum / split.length;
+        final pct = (100.0 / split.length).round();
+        return split
+            .map((area) => '$area: $currency ${share.toStringAsFixed(2)} ($pct%)')
+            .join(' | ');
+      }
+      if (split.length == 1) {
+        return '${split.first}: $currency ${amountNum.toStringAsFixed(2)} (100%)';
+      }
+    }
+    return '$resolvedPurpose: $currency ${amountNum.toStringAsFixed(2)} (100%)';
   }
 
   /// Parse metadata field that could be a JSON string or a Map.

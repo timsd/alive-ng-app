@@ -220,9 +220,24 @@ export default async ({ req, res, log, error }) => {
     };
 
     if (type === 'charge.success') {
+      // Preserve any client-stored metadata (such as split fund_designations)
+      // when Paystack's webhook payload does not include all fields.
+      let mergedMetadata = { ...metadata };
+      try {
+        const existingDoc = await databases.getDocument(databaseId, donationsCollectionId, reference);
+        if (existingDoc && existingDoc.metadata) {
+          const parsedExisting = typeof existingDoc.metadata === 'string'
+            ? JSON.parse(existingDoc.metadata)
+            : existingDoc.metadata;
+          if (parsedExisting && typeof parsedExisting === 'object') {
+            mergedMetadata = { ...parsedExisting, ...metadata };
+          }
+        }
+      } catch (_) {}
+
       // Store the same purpose string the receipt shows, so the donation
       // record, the receipt and the admin export all agree.
-      const purpose = resolvePurposeFromMetadata(metadata);
+      const purpose = resolvePurposeFromMetadata(mergedMetadata);
       await updateDonation(databases, reference, {
         status: 'completed',
         transaction_id: data.id?.toString(),
@@ -230,17 +245,17 @@ export default async ({ req, res, log, error }) => {
         project_title: purpose,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        metadata: JSON.stringify(metadata),
+        metadata: JSON.stringify(mergedMetadata),
       }, data);
       // The reference and settled currency are what make the credit
       // idempotent -- the same charge can reach us from Paystack more than
       // once, and the donor's own verify call increments too.
-      await incrementProjectRaised(databases, metadata, log, reference, data?.currency);
+      await incrementProjectRaised(databases, mergedMetadata, log, reference, data?.currency);
       // Guarded so the donor's own verify call cannot send a second copy.
       if (await hasReceiptBeenSent(databases, reference)) {
         log(`Receipt already sent for ${reference}; not resending`);
       } else {
-        await sendDonationReceipt(data);
+        await sendDonationReceipt({ ...data, metadata: mergedMetadata });
         await markReceiptSent(databases, reference);
       }
     } else if (type === 'charge.failed' || type === 'charge.abandoned') {

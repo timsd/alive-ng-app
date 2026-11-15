@@ -1631,12 +1631,14 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
       try {
         final currentUid =
             ref.read(authGatewayProvider).currentUser?.uid ?? '';
+        final chosenChapter = _tojoinChapterController.text.trim();
         final newProfile = UserProfile(
           id: currentUid,
           email: _emailController.text.trim(),
           fullName: _nameController.text.trim(),
           phoneNumber: _phoneController.text.trim(),
           localChurch: _localChurchController.text.trim(),
+          localChapter: chosenChapter.isNotEmpty ? chosenChapter : null,
           commitmentType: category == 'guest' ? 'none' : _commitmentType,
           role: role,
           requestedRole: requestedRole,
@@ -1647,6 +1649,18 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         );
         await AdminNotificationService.instance
             .notifyAdminOfNewSignup(newProfile);
+        if (chosenChapter.isNotEmpty) {
+          await AdminNotificationService.instance
+              .notifyAdminOfChapterJoinRequest(
+            userId: currentUid,
+            userName: _nameController.text.trim().isNotEmpty
+                ? _nameController.text.trim()
+                : _emailController.text.trim(),
+            userEmail: _emailController.text.trim(),
+            chapterName: chosenChapter,
+            source: 'signup',
+          );
+        }
       } catch (_) {
         // Best-effort — don't fail signup
       }

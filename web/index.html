@@ -556,24 +556,88 @@
     }
 
     .project-detail {
-      padding: 16px 18px;
-      overflow-y: auto;
+      padding: 0;
+      overflow: hidden;
       min-height: 0;
       max-height: 100%;
-      padding-bottom: 12px;
-      scroll-padding-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      overscroll-behavior: contain;
+    }
+
+    .project-detail-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      padding: 18px;
+      touch-action: pan-y;
+    }
+
+    .project-detail-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .project-detail-scroll {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .project-3d-shell {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #E2E8F0;
+      background: #0F172A;
+    }
+
+    .project-3d-frame {
+      display: block;
+      width: 100%;
+      height: 280px;
+      border: 0;
+      pointer-events: none;
+    }
+
+    .project-3d-shell.interactive .project-3d-frame {
+      pointer-events: auto;
+    }
+
+    .project-3d-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #0F172A;
+      color: #F8FAFC;
+      font-size: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .project-3d-bar button,
+    .project-3d-bar a {
+      background: rgba(255, 255, 255, 0.14);
+      color: #FFFFFF;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
     }
 
     .project-actions {
-      margin-top: 10px;
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      position: sticky;
-      bottom: 0;
+      flex-shrink: 0;
       background: #ffffff;
-      padding: 8px 0 2px;
-      border-top: 1px solid #EDF2F7;
+      padding: 12px 18px;
+      border-top: 1px solid #E2E8F0;
+      box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.04);
     }
 
     .btn {
@@ -1663,6 +1727,7 @@
       function openProjectsModal() {
         const overlay = document.getElementById('projects-modal');
         overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
         if (_projects.length === 0) {
           fetchProjects().then(renderProjectsList);
         } else {
@@ -1672,6 +1737,7 @@
 
       function closeProjectsModal() {
         document.getElementById('projects-modal').style.display = 'none';
+        document.body.style.overflow = '';
       }
 
       document.getElementById('projects-close')?.addEventListener('click', closeProjectsModal);
@@ -1735,42 +1801,61 @@
         const raised = formatCurrency(raisedValue, currencyCode);
         const remaining = formatCurrency(remainingValue, currencyCode);
         const statusBadge = p.status ? `<span style="padding:4px 8px;border-radius:999px;background:#EDF2F7;color:#2D3748;font-size:12px;">${escapeHtml(p.status)}</span>` : '';
-        const image = p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.title)}" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`
-          : `<img src="https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Project image" style="width:100%;height:220px;object-fit:cover;border-radius:8px;"/>`;
+        const image = p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.title)}" style="width:100%;height:210px;object-fit:cover;border-radius:12px;touch-action:pan-y;"/>`
+          : `<img src="https://images.unsplash.com/photo-1593914370442-49d414beca24?q=80&w=1031&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Project image" style="width:100%;height:210px;object-fit:cover;border-radius:12px;touch-action:pan-y;"/>`;
         const fundImages = Array.isArray(p.fund_update_images) ? p.fund_update_images.slice(0, 10) : [];
         const fundUpdate = (p.fund_update_title || p.fund_update_text || fundImages.length) ? `
         <div style="margin-top:14px;padding:14px;border-radius:14px;background:#FFFBEB;border:1px solid #FDE68A;">
           <div style="font-size:12px;color:#92400E;font-weight:800;letter-spacing:.06em;text-transform:uppercase;">Fund update</div>
           ${p.fund_update_title ? `<div style="margin-top:6px;font-weight:800;color:#1F2937;">${escapeHtml(p.fund_update_title)}</div>` : ``}
           ${p.fund_update_text ? `<div style="margin-top:6px;color:#4B5563;line-height:1.55;">${escapeHtml(p.fund_update_text)}</div>` : ``}
-          ${fundImages.length ? `<div style="display:flex;gap:8px;overflow:auto;margin-top:10px;">${fundImages.map(url => `<img src="${escapeHtml(url)}" alt="Fund update image" style="width:96px;height:72px;object-fit:cover;border-radius:10px;flex:0 0 auto;"/>`).join('')}</div>` : ``}
+          ${fundImages.length ? `<div style="display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;touch-action:pan-x pan-y;margin-top:10px;padding-bottom:4px;">${fundImages.map(url => `<img src="${escapeHtml(url)}" alt="Fund update image" style="width:96px;height:72px;object-fit:cover;border-radius:10px;flex:0 0 auto;"/>`).join('')}</div>` : ``}
         </div>` : '';
         const adminVisible = !!window._isAdmin;
+        const heroMedia = p.id === 'impact_hub_center'
+          ? `<div class="project-3d-shell" id="project-3d-shell">
+              <iframe class="project-3d-frame" src="alive_ng_3d_viewer.html" title="Impact Hub Center 3D preview" loading="lazy"></iframe>
+              <div class="project-3d-bar">
+                <button type="button" id="toggle-3d-interact">Explore 3D</button>
+                <a href="alive_ng_3d_viewer.html" target="_blank" rel="noopener">Open Fullscreen 3D</a>
+              </div>
+            </div>`
+          : image;
         el.innerHTML = `
-        ${p.id === 'impact_hub_center' ? `<iframe src="alive_ng_3d_viewer.html" title="Impact Hub Center 3D preview" loading="lazy" style="display:block;width:100%;height:360px;border:0;border-radius:8px;"></iframe><a href="alive_ng_3d_viewer.html" target="_blank" rel="noopener">Open 3D view</a>` : image}
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
-          <div style="font-size:20px;font-weight:700;color:#2D3748">${escapeHtml(p.title)}</div>
-          ${statusBadge}
-        </div>
-        <div style="margin-top:8px;color:#4A5568">${escapeHtml(p.summary || '')}</div>
-        <div style="margin-top:14px;padding:14px;border-radius:14px;background:#F8FAFC;border:1px solid #E2E8F0;">
-          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-            <div style="color:#2D3748;font-weight:600">Goal: ${goal}</div>
-            <div style="color:#2D3748;font-weight:600">Raised: ${raised}</div>
-            <div style="color:#475569;font-weight:600">Remaining: ${remaining}</div>
+        <div class="project-detail-scroll">
+          ${heroMedia}
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;">
+            <div style="font-size:20px;font-weight:700;color:#2D3748">${escapeHtml(p.title)}</div>
+            ${statusBadge}
           </div>
-          <div style="margin-top:10px;height:8px;border-radius:999px;background:#E2E8F0;overflow:hidden;">
-            <div style="width:${percentValue}%;height:100%;background:linear-gradient(90deg,#D4AF37,#F59E0B);border-radius:999px;"></div>
+          <div style="margin-top:8px;color:#4A5568;line-height:1.5;">${escapeHtml(p.summary || '')}</div>
+          <div style="margin-top:14px;padding:14px;border-radius:14px;background:#F8FAFC;border:1px solid #E2E8F0;">
+            <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+              <div style="color:#2D3748;font-weight:600">Goal: ${goal}</div>
+              <div style="color:#2D3748;font-weight:600">Raised: ${raised}</div>
+              <div style="color:#475569;font-weight:600">Remaining: ${remaining}</div>
+            </div>
+            <div style="margin-top:10px;height:8px;border-radius:999px;background:#E2E8F0;overflow:hidden;">
+              <div style="width:${percentValue}%;height:100%;background:linear-gradient(90deg,#D4AF37,#F59E0B);border-radius:999px;"></div>
+            </div>
+            <div style="margin-top:8px;font-size:12px;color:#64748B;">${percentValue.toFixed(0)}% of target reached. Figures refresh automatically when new donations are confirmed.</div>
           </div>
-          <div style="margin-top:8px;font-size:12px;color:#64748B;">${percentValue.toFixed(0)}% of target reached. Figures refresh automatically when new donations are confirmed.</div>
+          ${p.description ? `<div style="margin-top:12px;color:#4A5568;line-height:1.55;">${escapeHtml(p.description)}</div>` : ''}
+          ${fundUpdate}
         </div>
-        ${p.description ? `<div style="margin-top:12px;color:#4A5568">${escapeHtml(p.description)}</div>` : ''}
-        ${fundUpdate}
         <div class="project-actions">
-          <button class="btn primary" id="donate-${p.id}">${escapeHtml(p.cta_label || 'Donate for this item')}</button>
-          ${adminVisible ? `<button class="btn warn" id="admin-note-${p.id}" title="Admins update projects inside the app">Admin Update</button>` : ``}
+          <button class="btn primary" style="flex:1;font-weight:700;cursor:pointer;" id="donate-${p.id}">${escapeHtml(p.cta_label || 'Donate for this item')}</button>
+          ${adminVisible ? `<button class="btn warn" style="cursor:pointer;" id="admin-note-${p.id}" title="Admins update projects inside the app">Admin Update</button>` : ``}
         </div>
       `;
+        const toggle3dBtn = document.getElementById('toggle-3d-interact');
+        const shell3d = document.getElementById('project-3d-shell');
+        if (toggle3dBtn && shell3d) {
+          toggle3dBtn.addEventListener('click', () => {
+            const active = shell3d.classList.toggle('interactive');
+            toggle3dBtn.textContent = active ? 'Lock 3D (Scroll Page)' : 'Explore 3D';
+          });
+        }
         document.getElementById(`donate-${p.id}`)?.addEventListener('click', () => {
           try { sessionStorage.setItem('selected_project_id', p.id); } catch (_) { }
           window.location.href =

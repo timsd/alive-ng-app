@@ -32,5 +32,8 @@ final meetingRoomStatusProvider = StreamProvider<RoomStatus>((ref) {
   return gateway.roomStatus;
 });
 
-/// Tracks whether an active meeting is minimized to a floating overlay.
+/// Tracks whether an active meeting is minimized to an in-app floating overlay.
 final isMeetingMinimizedProvider = StateProvider<bool>((ref) => false);
+
+/// Tracks whether the app is currently displayed in OS Picture-in-Picture mode.
+final isMeetingPipModeProvider = StateProvider<bool>((ref) => false);

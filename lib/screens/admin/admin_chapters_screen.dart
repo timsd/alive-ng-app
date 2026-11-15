@@ -138,7 +138,7 @@ class _AdminChaptersScreenState extends State<AdminChaptersScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.location_off_outlined,
-                                size: 64, color: colorScheme.outline),
+                                size: 64, color: colorScheme.onSurfaceVariant),
                             const SizedBox(height: 16),
                             Text(
                               'No chapters found',

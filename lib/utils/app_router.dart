@@ -28,6 +28,7 @@ import '../screens/admin/admin_study_guides_screen.dart';
 import '../screens/admin/tract_podcast_admin_screen.dart';
 import '../screens/admin/meeting_file_sharing_screen.dart';
 import '../screens/admin/bod_trustees_screen.dart';
+import '../screens/admin/chapter_reports_screen.dart';
 import '../screens/admin/user_archive_screen.dart';
 import '../screens/admin/role_management_screen.dart';
 import '../services/role_access_service.dart';
@@ -446,6 +447,37 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.aboutAliveRoute,
             builder: (context, state) => const AboutAliveScreen(),
+          ),
+
+          // Leadership Reports Route
+          GoRoute(
+            path: AppConstants.leadershipReportsRoute,
+            builder: (context, state) => const ChapterReportsScreen(),
+            redirect: (context, state) {
+              final roleService = RoleAccessService.instance;
+              if (!roleService.canAccessRoleGatedFeatures()) {
+                return AppConstants.homeRoute;
+              }
+              if (roleService.canAccessAdmin() || roleService.isSuperAdmin()) {
+                return null;
+              }
+              final role = (roleService.getCurrentUserRole() ?? '').toLowerCase();
+              const leadershipTokens = [
+                'coordinator',
+                'director',
+                'executive',
+                'president',
+                'bod',
+                'trustee',
+                'leader',
+              ];
+              final isAllowed = leadershipTokens.any((t) => role.contains(t));
+              return isAllowed ? null : AppConstants.homeRoute;
+            },
+          ),
+          GoRoute(
+            path: '/hierarchical-reports',
+            redirect: (context, state) => AppConstants.leadershipReportsRoute,
           ),
 
           // Admin Dashboard Route

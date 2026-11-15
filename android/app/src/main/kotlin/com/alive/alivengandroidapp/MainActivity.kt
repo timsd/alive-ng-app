@@ -3,16 +3,52 @@ package com.alive.alivengandroidapp
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.app.PictureInPictureParams
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
+import android.os.Build
 import android.util.Log
+import android.util.Rational
 import androidx.annotation.NonNull
+import androidx.annotation.RequiresApi
 
 class MainActivity: FlutterFragmentActivity() {
     private val CHANNEL = "com.alive.alivengandroidapp/native"
+    private val PIP_CHANNEL = "com.alive.alivengandroidapp/pip"
+
+    private var pipChannel: MethodChannel? = null
+    private var isInActiveMeeting: Boolean = false
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        pipChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PIP_CHANNEL).apply {
+            setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setMeetingActive" -> {
+                        val active = call.argument<Boolean>("active") ?: false
+                        isInActiveMeeting = active
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isPipSupported()) {
+                            try {
+                                setPictureInPictureParams(buildPipParams(autoEnter = active))
+                            } catch (e: Exception) {
+                                Log.w("MainActivity", "Failed to update PiP auto-enter params", e)
+                            }
+                        }
+                        result.success(true)
+                    }
+                    "enterPipMode" -> {
+                        result.success(tryEnterPipMode())
+                    }
+                    "isPipSupported" -> {
+                        result.success(isPipSupported())
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
         
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler {
             call, result ->
@@ -127,5 +163,46 @@ class MainActivity: FlutterFragmentActivity() {
         } catch (e: Exception) {
             Log.e("MainActivity", "Error sending email", e)
         }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (isInActiveMeeting && !isInPictureInPictureMode) {
+            tryEnterPipMode()
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        pipChannel?.invokeMethod("onPipModeChanged", isInPictureInPictureMode)
+    }
+
+    private fun isPipSupported(): Boolean {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+    }
+
+    private fun tryEnterPipMode(): Boolean {
+        if (!isPipSupported()) return false
+        return try {
+            enterPictureInPictureMode(buildPipParams(autoEnter = isInActiveMeeting))
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to enter Picture-in-Picture mode", e)
+            false
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun buildPipParams(autoEnter: Boolean): PictureInPictureParams {
+        val builder = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setAutoEnterEnabled(autoEnter)
+            builder.setSeamlessResizeEnabled(true)
+        }
+        return builder.build()
     }
 }

@@ -1,14 +1,17 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../../widgets/modern_dropdown.dart';
 import '../../../widgets/overview_stat_card.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../models/board_models.dart';
 import '../../../models/discipleship_models.dart';
+import '../../../services/appwrite_board_service.dart';
+import '../../../services/appwrite_storage_compat_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/discipleship_service.dart';
 import '../../../services/role_access_service.dart';
+import '../../../utils/docx_report_generator.dart';
 import '../../../utils/error_handler.dart';
 import 'discipleship_helpers.dart';
 
@@ -719,7 +722,7 @@ class _InfoRow extends StatelessWidget {
 // Modern Officer Inbox View
 // ─────────────────────────────────────────────────────────────────────────────
 
-class DiscipleshipOfficerInboxView extends StatelessWidget {
+class DiscipleshipOfficerInboxView extends StatefulWidget {
   final List<OfficerOfficeAssignment> officerAssignments;
   final OfficerOfficeAssignment? selectedOffice;
   final List<DiscipleshipReport> reports;
@@ -736,6 +739,23 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
   });
 
   @override
+  State<DiscipleshipOfficerInboxView> createState() =>
+      _DiscipleshipOfficerInboxViewState();
+}
+
+class _DiscipleshipOfficerInboxViewState
+    extends State<DiscipleshipOfficerInboxView> {
+  String? _expandedReportId;
+
+  List<OfficerOfficeAssignment> get officerAssignments =>
+      widget.officerAssignments;
+  OfficerOfficeAssignment? get selectedOffice => widget.selectedOffice;
+  List<DiscipleshipReport> get reports => widget.reports;
+  ValueChanged<OfficerOfficeAssignment?> get onOfficeChanged =>
+      widget.onOfficeChanged;
+  Future<void> Function() get onRefresh => widget.onRefresh;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -750,8 +770,9 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
     }
 
     // Count stats for summary bar
+    final done = reports.where((r) => r.status.toLowerCase() == 'done').length;
     final reviewed = reports.where((r) => r.status.toLowerCase() == 'reviewed').length;
-    final pending = reports.length - reviewed;
+    final pending = reports.length - reviewed - done;
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -765,7 +786,7 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
 
           // ── Summary bar ──
           if (reports.isNotEmpty) ...[
-            _buildSummaryBar(theme, isDark, reviewed, pending),
+            _buildSummaryBar(theme, isDark, reviewed, pending, done),
             const SizedBox(height: 14),
           ],
 
@@ -952,7 +973,7 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
   }
 
   // ─── Summary Bar ───
-  Widget _buildSummaryBar(ThemeData theme, bool isDark, int reviewed, int pending) {
+  Widget _buildSummaryBar(ThemeData theme, bool isDark, int reviewed, int pending, int done) {
     return Row(
       children: [
         Expanded(
@@ -977,10 +998,10 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _SummaryChip(
-            icon: Icons.summarize_rounded,
-            label: 'Total',
-            value: reports.length.toString(),
-            color: theme.colorScheme.primary,
+            icon: Icons.task_alt_rounded,
+            label: 'Done',
+            value: done.toString(),
+            color: Colors.teal,
             isDark: isDark,
           ),
         ),
@@ -1074,11 +1095,18 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
 
   // ─── Report Card ───
   Widget _buildReportCard(BuildContext context, DiscipleshipReport report, ThemeData theme, bool isDark) {
-    final isReviewed = report.status.toLowerCase() == 'reviewed';
+    final normalizedStatus = report.status.toLowerCase();
+    final isDone = normalizedStatus == 'done';
+    final isReviewed = normalizedStatus == 'reviewed';
     final officerName = selectedOffice?.officerName ?? report.feedbackOfficerName ?? 'Officer';
+    final isExpanded = _expandedReportId == report.id;
 
-    final statusColor = isReviewed ? Colors.green : Colors.orange;
-    final statusIcon = isReviewed ? Icons.check_circle_rounded : Icons.schedule_rounded;
+    final statusColor = isDone
+        ? Colors.teal
+        : (isReviewed ? Colors.green : Colors.orange);
+    final statusIcon = isDone
+        ? Icons.task_alt_rounded
+        : (isReviewed ? Icons.check_circle_rounded : Icons.schedule_rounded);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1086,60 +1114,83 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         color: theme.colorScheme.surfaceContainerLow,
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+          color: isExpanded
+              ? statusColor.withValues(alpha: 0.45)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card header
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: isDark ? 0.06 : 0.04),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.calendar_month_rounded, size: 16,
-                    color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '${DateFormat.yMMMd().format(report.reportPeriodStart)} – ${DateFormat.yMMMd().format(report.reportPeriodEnd)}',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+          // Card header (tap to expand/collapse; auto-hides other cards)
+          InkWell(
+            borderRadius: isExpanded
+                ? const BorderRadius.vertical(top: Radius.circular(16))
+                : BorderRadius.circular(16),
+            onTap: () {
+              setState(() {
+                _expandedReportId = isExpanded ? null : report.id;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 14, 14, 12),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: isDark ? 0.06 : 0.04),
+                borderRadius: isExpanded
+                    ? const BorderRadius.vertical(top: Radius.circular(16))
+                    : BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_month_rounded, size: 16,
+                      color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${DateFormat.yMMMd().format(report.reportPeriodStart)} – ${DateFormat.yMMMd().format(report.reportPeriodEnd)}',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: isDark ? 0.20 : 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(statusIcon, size: 12, color: statusColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        report.status.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                          color: statusColor,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: isDark ? 0.20 : 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, size: 12, color: statusColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          report.status.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            color: statusColor,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Icon(
+                    isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
             ),
           ),
 
+          if (isExpanded) ...[
           // Metrics grid
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -1239,9 +1290,23 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
           // Bottom action bar
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
               children: [
+                if (!isDone)
+                  _ModernSmallButton(
+                    icon: Icons.task_alt_rounded,
+                    label: 'Mark Done',
+                    onTap: () => _markReportsDoneAndArchive(
+                      context,
+                      selectedOffice,
+                      [report],
+                    ),
+                    color: Colors.teal,
+                    isDark: isDark,
+                  ),
                 _ModernSmallButton(
                   icon: Icons.rate_review_rounded,
                   label: report.feedback != null ? 'Add Feedback' : 'Send Feedback',
@@ -1257,6 +1322,7 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
               ],
             ),
           ),
+          ],
         ],
       ),
     );
@@ -1273,125 +1339,186 @@ class DiscipleshipOfficerInboxView extends StatelessWidget {
     OfficerOfficeAssignment? office,
     List<DiscipleshipReport> reports,
   ) async {
-    if (reports.isEmpty) return;
+    final exportableReports = reports
+        .where((r) => r.status.toLowerCase() != 'done')
+        .toList();
+    if (exportableReports.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All reports in this office have already been marked done.'),
+          ),
+        );
+      }
+      return;
+    }
 
     final officeTitle = office?.officeTitle ?? 'General Office';
     final officerName = office?.officerName ?? 'Officer';
-    final generatedDate = DateFormat('MMMM dd, yyyy HH:mm').format(DateTime.now());
-
-    int totalContacts = 0;
-    int totalActive = 0;
-    int totalNew = 0;
-    int totalBaptisms = 0;
-    int totalStudies = 0;
-    int totalInteractions = 0;
-
-    for (final r in reports) {
-      totalContacts += r.totalContacts;
-      totalActive += r.activeContacts;
-      totalNew += r.newContacts;
-      totalBaptisms += r.baptisms;
-      totalStudies += r.studySessions;
-      totalInteractions += r.interactions;
-    }
-
-    final buffer = StringBuffer();
-    buffer.writeln('======================================================================');
-    buffer.writeln('ALIVE NIGERIA EVANGELISM DEPARTMENT');
-    buffer.writeln('OFFICE REPORTS SUMMARY');
-    buffer.writeln('======================================================================');
-    buffer.writeln('Holding Office    : $officeTitle');
-    buffer.writeln('Officer In Charge : $officerName');
-    buffer.writeln('Generated Date    : $generatedDate');
-    buffer.writeln('Total Reports     : ${reports.length}');
-    buffer.writeln('');
-    buffer.writeln('----------------------------------------------------------------------');
-    buffer.writeln('EXECUTIVE SUMMARY');
-    buffer.writeln('----------------------------------------------------------------------');
-    buffer.writeln('• Total Disciples      : $totalContacts');
-    buffer.writeln('• Active Disciples     : $totalActive');
-    buffer.writeln('• New Disciples        : $totalNew');
-    buffer.writeln('• Baptisms             : $totalBaptisms');
-    buffer.writeln('• Bible Study Sessions : $totalStudies');
-    buffer.writeln('• Total Interactions   : $totalInteractions');
-    buffer.writeln('');
-    buffer.writeln('======================================================================');
-    buffer.writeln('DETAILED REPORTS BREAKDOWN');
-    buffer.writeln('======================================================================');
-
-    for (int i = 0; i < reports.length; i++) {
-      final r = reports[i];
-      final periodStart = DateFormat.yMMMd().format(r.reportPeriodStart);
-      final periodEnd = DateFormat.yMMMd().format(r.reportPeriodEnd);
-
-      buffer.writeln('');
-      buffer.writeln('----------------------------------------------------------------------');
-      buffer.writeln('REPORT #${i + 1}: $periodStart – $periodEnd [${r.status.toUpperCase()}]');
-      buffer.writeln('----------------------------------------------------------------------');
-      buffer.writeln('Metrics:');
-      buffer.writeln('  - Total Disciples      : ${r.totalContacts}');
-      buffer.writeln('  - Active Disciples     : ${r.activeContacts}');
-      buffer.writeln('  - New Disciples        : ${r.newContacts}');
-      buffer.writeln('  - Baptisms             : ${r.baptisms}');
-      buffer.writeln('  - Study Sessions       : ${r.studySessions}');
-      buffer.writeln('  - Interactions         : ${r.interactions}');
-
-      if (r.highlights != null && r.highlights!.trim().isNotEmpty) {
-        buffer.writeln('');
-        buffer.writeln('Ministry Highlights:');
-        buffer.writeln('  ${r.highlights!.trim()}');
-      }
-      if (r.challenges != null && r.challenges!.trim().isNotEmpty) {
-        buffer.writeln('');
-        buffer.writeln('Challenges & Needs:');
-        buffer.writeln('  ${r.challenges!.trim()}');
-      }
-      if (r.goals != null && r.goals!.trim().isNotEmpty) {
-        buffer.writeln('');
-        buffer.writeln('Next Goals:');
-        buffer.writeln('  ${r.goals!.trim()}');
-      }
-
-      final thread = parseDiscipleshipFeedbackThread(r.feedback ?? '', officerName);
-      if (thread.isNotEmpty) {
-        buffer.writeln('');
-        buffer.writeln('Officer Feedback & Discussion (${thread.length} entries):');
-        for (final msg in thread) {
-          final roleLabel = msg.isOfficer ? 'Officer Feedback' : 'Disciple Maker Response';
-          buffer.writeln('  • [$roleLabel: ${msg.author}${msg.date != null ? " (${msg.date})" : ""}]');
-          buffer.writeln('    ${msg.content.trim()}');
-        }
-      }
-    }
-
-    buffer.writeln('');
-    buffer.writeln('======================================================================');
-    buffer.writeln('ALIVE Nigeria Evangelism Department Report Management System');
-    buffer.writeln('Confidential Office Record • Generated on $generatedDate');
-    buffer.writeln('======================================================================');
-
+    final now = DateTime.now();
     final cleanTitle = officeTitle.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-    final fileName = 'discipleship_reports_${cleanTitle}_${DateFormat('yyyyMMdd').format(DateTime.now())}.txt';
-    final reportContent = buffer.toString();
+    final fileName =
+        'discipleship_reports_${cleanTitle}_${DateFormat('yyyyMMdd_HHmm').format(now)}.docx';
+
+    final docxBytes = DocxReportGenerator.generateDiscipleshipOfficeReport(
+      officeTitle: officeTitle,
+      officerName: officerName,
+      reports: exportableReports,
+      generatedAt: now,
+    );
 
     try {
       await SharePlus.instance.share(
         ShareParams(
-          text: reportContent,
+          text:
+              'ALIVE Nigeria Discipleship Reports - $officeTitle (${exportableReports.length} report(s))',
           files: [
             XFile.fromData(
-              Uint8List.fromList(utf8.encode(reportContent)),
+              docxBytes,
               name: fileName,
-              mimeType: 'text/plain',
+              mimeType: DocxReportGenerator.docxMimeType,
             ),
           ],
           subject: 'ALIVE Nigeria Discipleship Reports - $officeTitle',
         ),
       );
+
+      if (!context.mounted) return;
+      final markDone = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Mark Exported Reports as Done?'),
+          content: Text(
+            'Would you like to mark these ${exportableReports.length} exported report(s) as Done and archive this .docx file to Board Documents (Discipleship Reports)?\n\nMarked reports will be excluded from your next export.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Keep Open'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              icon: const Icon(Icons.task_alt_rounded, size: 18),
+              label: const Text('Mark Done & Save'),
+            ),
+          ],
+        ),
+      );
+
+      if (markDone == true && context.mounted) {
+        await _markReportsDoneAndArchive(
+          context,
+          office,
+          exportableReports,
+          prebuiltBytes: docxBytes,
+          prebuiltFileName: fileName,
+        );
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Export failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _markReportsDoneAndArchive(
+    BuildContext context,
+    OfficerOfficeAssignment? office,
+    List<DiscipleshipReport> targetReports, {
+    Uint8List? prebuiltBytes,
+    String? prebuiltFileName,
+  }) async {
+    if (targetReports.isEmpty) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final officeTitle = office?.officeTitle ?? 'General Office';
+    final officerName = office?.officerName ?? 'Officer';
+    final now = DateTime.now();
+    final cleanTitle = officeTitle.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+    final fileName = prebuiltFileName ??
+        'discipleship_reports_${cleanTitle}_${DateFormat('yyyyMMdd_HHmm').format(now)}.docx';
+
+    final bytes = prebuiltBytes ??
+        DocxReportGenerator.generateDiscipleshipOfficeReport(
+          officeTitle: officeTitle,
+          officerName: officerName,
+          reports: targetReports,
+          generatedAt: now,
+        );
+
+    try {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Archiving report document & marking done...'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      final fileUrl = await AppwriteStorageCompatService().uploadBoardDocument(
+        bytes,
+        fileName,
+        DocxReportGenerator.docxMimeType,
+      );
+      if (fileUrl == null || fileUrl.isEmpty) {
+        throw 'Failed to upload report document to storage.';
+      }
+
+      final currentUser = AuthService.instance.currentUser;
+      final periodLabel = targetReports.length == 1
+          ? '${DateFormat.yMMMd().format(targetReports.first.reportPeriodStart)} - ${DateFormat.yMMMd().format(targetReports.first.reportPeriodEnd)}'
+          : '${targetReports.length} Reports (${DateFormat.yMMMd().format(now)})';
+
+      final boardDoc = BoardDocument(
+        id: 'rep_${now.millisecondsSinceEpoch}',
+        title: '$officeTitle — $periodLabel',
+        description:
+            'Archived Discipleship Officer Inbox report(s) for $officeTitle handled by $officerName.',
+        fileName: fileName,
+        fileUrl: fileUrl,
+        fileType: 'docx',
+        fileSize: bytes.length,
+        uploadedBy:
+            currentUser?.displayName ?? currentUser?.email ?? officerName,
+        uploaderId: currentUser?.uid ?? '',
+        uploadedAt: now,
+        category: 'discipleship_reports',
+        accessLevel: 'board_only',
+        tags: ['discipleship_report', officeTitle],
+      );
+
+      await AppwriteBoardService.instance.addBoardDocument(boardDoc.toJson());
+      await DiscipleshipService.instance.markReportsDone(
+        targetReports.map((r) => r.id).toList(),
+      );
+
+      if (mounted) {
+        setState(() {
+          if (targetReports.any((r) => r.id == _expandedReportId)) {
+            _expandedReportId = null;
+          }
+        });
+      }
+      await onRefresh();
+
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Marked ${targetReports.length} report(s) as Done and saved to Board Documents → Discipleship Reports.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to mark done: ${ErrorHandler.getUserFriendlyMessage(e)}',
+            ),
+          ),
         );
       }
     }

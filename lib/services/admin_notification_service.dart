@@ -375,6 +375,74 @@ class AdminNotificationService {
     );
   }
 
+  /// Notify admin & chapter leadership when a member chooses/joins a chapter.
+  Future<bool> notifyAdminOfChapterJoinRequest({
+    required String userId,
+    required String userName,
+    required String userEmail,
+    required String chapterName,
+    String source = 'chapter_join',
+  }) async {
+    try {
+      await _storeNotificationRecord(
+        type: 'chapter_join_request',
+        userId: userId,
+        details: {
+          'email': userEmail,
+          'full_name': userName,
+          'chapter_name': chapterName,
+          'source': source,
+          'status': 'pending',
+        },
+      );
+
+      final recipients = AppwriteBackendConfig.superAdminEmails.toList();
+      if (recipients.isEmpty) {
+        recipients.add(AppwriteBackendConfig.supportEmail);
+      }
+
+      final subject =
+          'Chapter Approval Needed: $userName requested to join $chapterName';
+      final body = StringBuffer()
+        ..writeln('A member has requested to join a chapter in ALIVE Nigeria.')
+        ..writeln('')
+        ..writeln('Member: $userName ($userEmail)')
+        ..writeln('Requested Chapter: $chapterName')
+        ..writeln('Source: $source')
+        ..writeln('Status: Pending Approval')
+        ..writeln('')
+        ..writeln(
+            'Please review and approve or decline this membership in the Admin Approvals / Chapter Coordinator screen.');
+
+      final profile = UserProfile(
+        id: userId,
+        email: userEmail,
+        fullName: userName,
+        localChapter: chapterName,
+        role: 'member',
+        isApproved: true,
+        approvalStatus: 'pending',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      bool anySent = false;
+      for (final to in recipients) {
+        final sent = await _sendEmailNotification(
+          to: to,
+          subject: subject,
+          body: body.toString(),
+          userProfile: profile,
+        );
+        if (sent) anySent = true;
+      }
+      return anySent;
+    } catch (e) {
+      _logger.error('Failed to notify admin of chapter join request', e);
+      return false;
+    }
+  }
+
   /// Get all admin notifications from Appwrite
   Future<List<Map<String, dynamic>>> getAdminNotifications(
       {int limit = 50}) async {

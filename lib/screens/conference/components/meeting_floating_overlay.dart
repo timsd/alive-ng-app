@@ -35,12 +35,14 @@ class _MeetingFloatingOverlayState extends ConsumerState<MeetingFloatingOverlay>
   Widget build(BuildContext context) {
     final sessionAsync = ref.watch(meetingSessionStreamProvider);
     final isMinimized = ref.watch(isMeetingMinimizedProvider);
+    final isPipMode = ref.watch(isMeetingPipModeProvider);
 
     final session = sessionAsync.value;
     final isConnected = session?.isConnected ?? false;
 
-    // Only render overlay if meeting is actively connected AND user minimized the screen
-    if (!isConnected || !isMinimized || session == null) {
+    // Only render in-app overlay if meeting is actively connected, user minimized
+    // in-app, and the app is not currently in OS Picture-in-Picture mode.
+    if (!isConnected || !isMinimized || isPipMode || session == null) {
       return const SizedBox.shrink();
     }
 

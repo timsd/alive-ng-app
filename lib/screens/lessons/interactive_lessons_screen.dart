@@ -535,7 +535,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
             )),
             Row(
               children: [
-                Icon(Icons.category, size: context.responsiveIconSize(16), color: Theme.of(context).colorScheme.outline),
+                Icon(Icons.category, size: context.responsiveIconSize(16), color: Theme.of(context).colorScheme.onSurfaceVariant),
                 SizedBox(width: ResponsiveUtils.getResponsiveValue(
                   context: context,
                   mobile: 4.0,
@@ -553,7 +553,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
             )),
             Row(
               children: [
-                Icon(Icons.signal_cellular_alt, size: context.responsiveIconSize(16), color: Theme.of(context).colorScheme.outline),
+                Icon(Icons.signal_cellular_alt, size: context.responsiveIconSize(16), color: Theme.of(context).colorScheme.onSurfaceVariant),
                 SizedBox(width: ResponsiveUtils.getResponsiveValue(
                   context: context,
                   mobile: 4.0,
@@ -571,7 +571,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
             )),
             Row(
               children: [
-                Icon(Icons.access_time, size: context.responsiveIconSize(16), color: Theme.of(context).colorScheme.outline),
+                Icon(Icons.access_time, size: context.responsiveIconSize(16), color: Theme.of(context).colorScheme.onSurfaceVariant),
                 SizedBox(width: ResponsiveUtils.getResponsiveValue(
                   context: context,
                   mobile: 4.0,

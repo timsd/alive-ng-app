@@ -17,6 +17,7 @@ class AppwritePushService {
   late final Account _account = Account(appwriteClient);
   late final TablesDB _tables = TablesDB(appwriteClient);
   late final Messaging _messaging = Messaging(appwriteClient);
+  late final Functions _functions = Functions(appwriteClient);
   final Logger _logger = Logger('AppwritePushService');
 
   Future<String?> registerToken(String token) async {
@@ -150,6 +151,42 @@ class AppwritePushService {
 
     await StorageService.instance.remove(StorageKeys.fcmToken);
     await StorageService.instance.remove(StorageKeys.appwritePushTargetId);
+  }
+
+  /// Dispatches an admin push broadcast via the `send_push` Appwrite function.
+  Future<Map<String, dynamic>> sendPushBroadcast({
+    required String title,
+    required String body,
+    List<String> topics = const ['all_users'],
+    String? route,
+    String type = 'announcement',
+    String priority = 'high',
+  }) async {
+    final execution = await _functions.createExecution(
+      functionId: AppwriteBackendConfig.sendPushFunctionId,
+      body: jsonEncode({
+        'title': title,
+        'body': body,
+        'topics': topics,
+        if (route != null && route.trim().isNotEmpty) 'route': route.trim(),
+        'type': type,
+        'priority': priority,
+      }),
+      xasync: false,
+    );
+
+    final raw = execution.responseBody.trim();
+    final decoded = raw.isNotEmpty
+        ? Map<String, dynamic>.from(jsonDecode(raw) as Map)
+        : <String, dynamic>{};
+
+    if (execution.responseStatusCode >= 400 || decoded['error'] != null) {
+      throw Exception(
+        decoded['error']?.toString() ??
+            'Push broadcast failed (status ${execution.responseStatusCode})',
+      );
+    }
+    return decoded;
   }
 
   Future<void> _upsertPushTokenRecord(
