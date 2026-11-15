@@ -300,6 +300,54 @@ const functionConfigs = [
       scopes: ['databases.read', 'documents.read'],
     },
   },
+  {
+    id: 'monthly_donation_reminder',
+    name: 'monthlyDonationReminder',
+    path: 'appwrite_functions/monthlyDonationReminder',
+    variables: [
+      literalVariable('APPWRITE_ENDPOINT', endpoint),
+      literalVariable('APPWRITE_PROJECT_ID', projectId),
+      literalVariable('APPWRITE_DATABASE_ID', databaseId),
+      envVariable('APPWRITE_API_KEY', { required: true, secret: true }),
+    ],
+    create: {
+      runtime: 'node-20.0',
+      execute: ['any'],
+      scopes: ['users.read', 'messages.write', 'databases.read', 'documents.read'],
+    },
+  },
+  {
+    id: 'bind_office_on_signup',
+    name: 'bindOfficeOnSignup',
+    path: 'appwrite_functions/bindOfficeOnSignup',
+    variables: [
+      literalVariable('APPWRITE_ENDPOINT', endpoint),
+      literalVariable('APPWRITE_PROJECT_ID', projectId),
+      literalVariable('APPWRITE_DATABASE_ID', databaseId),
+      envVariable('APPWRITE_API_KEY', { required: true, secret: true }),
+    ],
+    create: {
+      runtime: 'node-20.0',
+      execute: ['users'],
+      scopes: ['databases.read', 'databases.write', 'users.read'],
+    },
+  },
+  {
+    id: 'send_push',
+    name: 'sendPush',
+    path: 'appwrite_functions/sendPush',
+    variables: [
+      literalVariable('APPWRITE_ENDPOINT', endpoint),
+      literalVariable('APPWRITE_PROJECT_ID', projectId),
+      literalVariable('APPWRITE_DATABASE_ID', databaseId),
+      envVariable('APPWRITE_API_KEY', { required: true, secret: true }),
+    ],
+    create: {
+      runtime: 'node-20.0',
+      execute: ['users'],
+      scopes: ['users.read', 'messages.write', 'databases.read', 'documents.read'],
+    },
+  },
 ];
 
 const client = new Client()
