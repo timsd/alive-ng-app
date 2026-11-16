@@ -99,6 +99,7 @@ dependencies:
   pdfrx: ^2.1.0
   firebase_core: ^5.1.0
   firebase_messaging: ^17.0.1
+  just_audio_background: ^0.0.1-beta.17
 
 dependency_overrides:
   permission_handler_android: 12.1.0

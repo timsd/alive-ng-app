@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 /// Global persistent audio service for podcasts.
 /// Ensures that when the user leaves the podcast screen and returns,
@@ -55,7 +56,33 @@ class PodcastAudioService extends ChangeNotifier {
 
     // New episode or fresh start
     try {
-      await _player.setUrl(audioUrl);
+      final episodeId =
+          (episode['id'] ?? episode['title'] ?? audioUrl).toString();
+      final episodeTitle =
+          (episode['title'] ?? 'ALIVE Podcast Episode').toString();
+      final podcastAlbum = _currentPodcastTitle ?? 'ALIVE Nigeria Podcasts';
+      final speaker = (episode['speaker'] ??
+              episode['author'] ??
+              episode['host'] ??
+              podcastAlbum)
+          .toString();
+      final parsedArt = (_currentCoverImage != null &&
+              _currentCoverImage!.trim().startsWith('http'))
+          ? Uri.tryParse(_currentCoverImage!.trim())
+          : null;
+
+      await _player.setAudioSource(
+        AudioSource.uri(
+          Uri.parse(audioUrl),
+          tag: MediaItem(
+            id: episodeId,
+            album: podcastAlbum,
+            title: episodeTitle,
+            artist: speaker,
+            artUri: parsedArt,
+          ),
+        ),
+      );
       await _player.play();
       notifyListeners();
     } catch (e) {

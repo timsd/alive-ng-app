@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:appwrite/appwrite.dart' hide Locale;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,6 +75,17 @@ void main() {
         debugPrint('Firebase initialized successfully for push transport.');
       } catch (e) {
         debugPrint('Firebase initialization failed: $e');
+      }
+      try {
+        await JustAudioBackground.init(
+          androidNotificationChannelId:
+              'com.alive.alivengandroidapp.channel.audio',
+          androidNotificationChannelName: 'ALIVE Podcasts',
+          androidNotificationOngoing: true,
+          androidNotificationIcon: 'drawable/ic_notification',
+        );
+      } catch (e) {
+        debugPrint('JustAudioBackground initialization failed: $e');
       }
     }
 

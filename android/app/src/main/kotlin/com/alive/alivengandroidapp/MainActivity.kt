@@ -3,6 +3,7 @@ package com.alive.alivengandroidapp
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import com.ryanheise.audioservice.AudioServicePlugin
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -29,9 +30,16 @@ class MainActivity: FlutterFragmentActivity() {
 
     private var pipChannel: MethodChannel? = null
     private var isInActiveMeeting: Boolean = false
+    private var isPlayingVideo: Boolean = false
+    private var videoAspectWidth: Int = 16
+    private var videoAspectHeight: Int = 9
     private var isAudioMuted: Boolean = false
     private var isRequestingScreenShare: Boolean = false
     private var pipReceiver: BroadcastReceiver? = null
+
+    override fun provideFlutterEngine(context: Context): FlutterEngine? {
+        return AudioServicePlugin.getFlutterEngine(context)
+    }
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -50,9 +58,29 @@ class MainActivity: FlutterFragmentActivity() {
                         }
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isPipSupported()) {
                             try {
-                                setPictureInPictureParams(buildPipParams(autoEnter = active))
+                                setPictureInPictureParams(buildPipParams(autoEnter = isInActiveMeeting || isPlayingVideo))
                             } catch (e: Exception) {
                                 Log.w("MainActivity", "Failed to update PiP params", e)
+                            }
+                        }
+                        result.success(true)
+                    }
+                    "setVideoPipState" -> {
+                        val active = call.argument<Boolean>("active") ?: false
+                        val isVertical = call.argument<Boolean>("isVertical") ?: false
+                        isPlayingVideo = active
+                        if (isVertical) {
+                            videoAspectWidth = 9
+                            videoAspectHeight = 16
+                        } else {
+                            videoAspectWidth = 16
+                            videoAspectHeight = 9
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isPipSupported()) {
+                            try {
+                                setPictureInPictureParams(buildPipParams(autoEnter = isInActiveMeeting || isPlayingVideo))
+                            } catch (e: Exception) {
+                                Log.w("MainActivity", "Failed to update video PiP params", e)
                             }
                         }
                         result.success(true)
@@ -219,7 +247,7 @@ class MainActivity: FlutterFragmentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (isInActiveMeeting && !isInPictureInPictureMode && !isRequestingScreenShare) {
+        if ((isInActiveMeeting || isPlayingVideo) && !isInPictureInPictureMode && !isRequestingScreenShare) {
             tryEnterPipMode()
         }
     }
@@ -240,7 +268,7 @@ class MainActivity: FlutterFragmentActivity() {
     private fun tryEnterPipMode(): Boolean {
         if (!isPipSupported()) return false
         return try {
-            enterPictureInPictureMode(buildPipParams(autoEnter = isInActiveMeeting))
+            enterPictureInPictureMode(buildPipParams(autoEnter = isInActiveMeeting || isPlayingVideo))
         } catch (e: Exception) {
             Log.e("MainActivity", "Failed to enter Picture-in-Picture mode", e)
             false
@@ -319,8 +347,15 @@ class MainActivity: FlutterFragmentActivity() {
         )
 
         val builder = PictureInPictureParams.Builder()
-            .setAspectRatio(Rational(9, 16))
-            .setActions(listOf(micAction, leaveAction))
+        if (isPlayingVideo && !isInActiveMeeting) {
+            builder
+                .setAspectRatio(Rational(videoAspectWidth, videoAspectHeight))
+                .setActions(emptyList())
+        } else {
+            builder
+                .setAspectRatio(Rational(9, 16))
+                .setActions(listOf(micAction, leaveAction))
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(autoEnter)
             builder.setSeamlessResizeEnabled(true)

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import '../services/meeting_pip_service.dart';
 import '../widgets/custom_image.dart';
 import '../widgets/video_embed_view.dart';
 
@@ -87,6 +88,13 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
     _loadSavedPosition();
     _startPlayback();
     _scheduleHideControls();
+    MeetingPipService.instance.isInPipModeNotifier.addListener(_onPipChanged);
+    MeetingPipService.instance
+        .setVideoPipState(_isPlaying, isVertical: _isVertical);
+  }
+
+  void _onPipChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadSavedPosition() async {
@@ -135,6 +143,9 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
 
   @override
   void dispose() {
+    MeetingPipService.instance.isInPipModeNotifier
+        .removeListener(_onPipChanged);
+    MeetingPipService.instance.setVideoPipState(false);
     _saveCurrentPosition();
     _playbackTimer?.cancel();
     _hideControlsTimer?.cancel();
@@ -184,6 +195,8 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
       _isPlaying = !_isPlaying;
       _showControls = true;
     });
+    MeetingPipService.instance
+        .setVideoPipState(_isPlaying, isVertical: _isVertical);
     _scheduleHideControls();
   }
 
@@ -265,6 +278,21 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
     final description = widget.videoData['description']?.toString() ??
         'Equipping believers across Nigeria with scripture-based video teachings, discipleship methods, and mission insights.';
     final externalUrl = _resolveVideoUrl();
+
+    if (MeetingPipService.instance.isInPipModeNotifier.value) {
+      return Material(
+        color: Colors.black,
+        child: Center(
+          child: AspectRatio(
+            aspectRatio: _isVertical ? (9 / 16) : (16 / 9),
+            child: _buildVideoContent(
+              colorScheme: colorScheme,
+              thumbnailUrl: thumbnailUrl,
+            ),
+          ),
+        ),
+      );
+    }
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -349,6 +377,10 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
                         setState(() {
                           _isVertical = !_isVertical;
                         });
+                        MeetingPipService.instance.setVideoPipState(
+                          _isPlaying,
+                          isVertical: _isVertical,
+                        );
                       },
                     ),
                     IconButton(

@@ -14,7 +14,13 @@ class MeetingPipService {
   bool _initialized = false;
   bool? _lastActiveState;
   bool? _lastMutedState;
+  bool? _lastVideoActiveState;
+  bool? _lastVideoVerticalState;
+  void Function(bool isInPipMode)? _onPipModeChanged;
   void Function(String action)? _onPipAction;
+
+  /// Broadcasts OS Picture-in-Picture state to any active player (meeting or video).
+  final ValueNotifier<bool> isInPipModeNotifier = ValueNotifier<bool>(false);
 
   bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -26,13 +32,15 @@ class MeetingPipService {
     void Function(String action)? onPipAction,
   }) {
     if (!_isAndroid) return;
+    _onPipModeChanged = onPipModeChanged;
     _onPipAction = onPipAction;
     if (_initialized) return;
     _initialized = true;
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'onPipModeChanged') {
         final isPip = call.arguments == true;
-        onPipModeChanged(isPip);
+        isInPipModeNotifier.value = isPip;
+        _onPipModeChanged?.call(isPip);
       } else if (call.method == 'onPipAction') {
         final action = call.arguments?.toString();
         if (action != null && action.isNotEmpty) {
@@ -40,6 +48,36 @@ class MeetingPipService {
         }
       }
     });
+  }
+
+  /// Ensures the native PiP channel listener is active even outside meetings
+  /// (e.g., when playing a video in [StandardVideoPlayerModal]).
+  void ensureListenerRegistered() {
+    if (!_isAndroid || _initialized) return;
+    init((_) {});
+  }
+
+  /// Tells Android whether a video player is actively playing so minimizing the
+  /// app enters OS Picture-in-Picture mode in 16:9 (landscape) or 9:16 (portrait).
+  Future<void> setVideoPipState(bool active, {bool isVertical = false}) async {
+    if (!_isAndroid) return;
+    ensureListenerRegistered();
+    if (_lastVideoActiveState == active &&
+        _lastVideoVerticalState == isVertical) {
+      return;
+    }
+    _lastVideoActiveState = active;
+    _lastVideoVerticalState = isVertical;
+    try {
+      await _channel.invokeMethod<bool>('setVideoPipState', {
+        'active': active,
+        'isVertical': isVertical,
+      });
+    } on MissingPluginException {
+      // Ignored in tests or unsupported runners.
+    } on PlatformException {
+      // Ignored if Activity is detaching.
+    }
   }
 
   /// Tells Android whether a live meeting is currently connected so pressing
