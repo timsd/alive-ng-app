@@ -1,6 +1,7 @@
 import UIKit
 import Flutter
 import UserNotifications
+import AVFoundation
 
 @UIApplicationMain
 @objc class AppDelegate: FlutterAppDelegate {
@@ -22,6 +23,7 @@ import UserNotifications
     }
     
     application.registerForRemoteNotifications()
+    configureSharedAudioSession()
     
     // Setup method channel for native functionality
     let controller : FlutterViewController = window?.rootViewController as! FlutterViewController
@@ -72,6 +74,10 @@ import UserNotifications
           result(FlutterError(code: "INVALID_ARGUMENT", message: "Email is required", details: nil))
         }
         
+      case "configureAudioSession":
+        self.configureSharedAudioSession()
+        result(true)
+
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -146,6 +152,23 @@ import UserNotifications
       }
     } else {
       result(FlutterError(code: "INVALID_EMAIL", message: "Invalid email address", details: nil))
+    }
+  }
+
+  /// Ensures AVAudioSession uses .playAndRecord with .mixWithOthers and
+  /// .defaultToSpeaker so WebRTC and SFSpeechRecognizer share the mic cleanly
+  /// without audio-focus contention.
+  private func configureSharedAudioSession() {
+    do {
+      let session = AVAudioSession.sharedInstance()
+      try session.setCategory(
+        .playAndRecord,
+        mode: .voiceChat,
+        options: [.mixWithOthers, .defaultToSpeaker, .allowBluetooth]
+      )
+      try session.setActive(true)
+    } catch {
+      NSLog("[AppDelegate] AVAudioSession configuration warning: \(error.localizedDescription)")
     }
   }
 }

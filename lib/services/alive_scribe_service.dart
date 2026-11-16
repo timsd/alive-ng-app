@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'ports/meeting_gateway.dart';
@@ -407,6 +408,14 @@ class AliveScribeService {
     });
   }
 
+  static const MethodChannel _nativeChannel =
+      MethodChannel('com.alive.alivengandroidapp/native');
+
+  void _ensureIosSharedAudioSession() {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+    _nativeChannel.invokeMethod<bool>('configureAudioSession').catchError((_) => false);
+  }
+
   void _startSttSession() {
     if (!_isListening ||
         !_isLocalMicActive ||
@@ -414,6 +423,8 @@ class AliveScribeService {
         _speechToText.isListening) {
       return;
     }
+
+    _ensureIosSharedAudioSession();
 
     try {
       _currentSessionWords = '';
