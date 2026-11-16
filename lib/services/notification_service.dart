@@ -345,6 +345,7 @@ class NotificationService {
 
   void handleMessageOpenedApp(Map<String, dynamic> data) {
     _logger.info('Notification opened: ${data.keys.toList()}');
+    dismissActivePopups();
     // Navigate based on the data payload — check route first, otherwise check type/id
     final route = data['route'] as String?;
     if (route != null && navigatorKey.currentState != null) {

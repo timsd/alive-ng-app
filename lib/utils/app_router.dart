@@ -145,6 +145,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
   ref.listen(authStateProvider, (_, __) => refresh.value++);
   ref.onDispose(refresh.dispose);
+  String? lastRouterUri;
 
   return GoRouter(
     refreshListenable: refresh,
@@ -152,6 +153,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     // Always start from splash so web/mobile behavior is consistent.
     initialLocation: AppConstants.splashRoute,
     redirect: (context, state) async {
+      final currentUri = state.uri.toString();
+      if (lastRouterUri != null && lastRouterUri != currentUri) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => dismissActivePopups());
+      }
+      lastRouterUri = currentUri;
       debugPrint('Router redirect start: ${state.uri.path}');
       final currentUser = ref.read(authGatewayProvider).currentUser;
       final isAuthenticated = currentUser != null;
