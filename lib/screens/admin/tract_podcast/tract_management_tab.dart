@@ -965,13 +965,15 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       });
 
       if (extracted != null && extracted.interactiveSections.isNotEmpty && mounted) {
+        final warnCount = extracted.extractionWarnings.length;
+        final msg = warnCount == 0
+            ? 'Extracted ${extracted.interactiveSections.length} interactive study sections from $fileName.'
+            : 'Extracted ${extracted.interactiveSections.length} sections with $warnCount lint warning(s): ${extracted.extractionWarnings.first}';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Extracted ${extracted.interactiveSections.length} interactive study sections from $fileName.',
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
+            content: Text(msg),
+            backgroundColor: warnCount == 0 ? Colors.green : Colors.orange.shade800,
+            duration: Duration(seconds: warnCount == 0 ? 3 : 5),
           ),
         );
       }

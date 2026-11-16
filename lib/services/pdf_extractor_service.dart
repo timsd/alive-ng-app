@@ -122,6 +122,9 @@ class ExtractedLessonSection {
   final List<Map<String, String>> verseQuotes;
   final List<Map<String, String>> steps;
   final String? highlightNote;
+  final String? principleNote;
+  final bool checkableSteps;
+  final List<Map<String, String>> qaItems;
   final bool isQuestion;
   final bool hasInputTarget;
   final String reflectionPrompt;
@@ -135,6 +138,9 @@ class ExtractedLessonSection {
     required this.verseQuotes,
     this.steps = const [],
     this.highlightNote,
+    this.principleNote,
+    this.checkableSteps = false,
+    this.qaItems = const [],
     required this.isQuestion,
     required this.hasInputTarget,
     required this.reflectionPrompt,
@@ -150,6 +156,10 @@ class ExtractedLessonSection {
         if (steps.isNotEmpty) 'steps': steps,
         if (highlightNote != null && highlightNote!.isNotEmpty)
           'highlightNote': highlightNote,
+        if (principleNote != null && principleNote!.isNotEmpty)
+          'principleNote': principleNote,
+        if (checkableSteps) 'checkableSteps': true,
+        if (qaItems.isNotEmpty) 'qaItems': qaItems,
         'isQuestion': isQuestion,
         'hasInputTarget': hasInputTarget,
         'reflectionPrompt': reflectionPrompt,
@@ -160,6 +170,7 @@ class ExtractedLessonSection {
     final rawRefs = json['scriptureReferences'];
     final rawQuotes = json['verseQuotes'];
     final rawSteps = json['steps'];
+    final rawQa = json['qaItems'];
     return ExtractedLessonSection(
       number: (json['number'] as num?)?.toInt() ?? 1,
       title: json['title']?.toString() ?? 'Study Section',
@@ -186,6 +197,19 @@ class ExtractedLessonSection {
               .toList()
           : const [],
       highlightNote: json['highlightNote']?.toString(),
+      principleNote: json['principleNote']?.toString(),
+      checkableSteps: json['checkableSteps'] == true,
+      qaItems: rawQa is List
+          ? rawQa
+              .whereType<Map>()
+              .map((m) => {
+                    'letter': m['letter']?.toString() ?? '',
+                    'question': m['question']?.toString() ?? '',
+                    'text': m['text']?.toString() ?? '',
+                    'placeholder': m['placeholder']?.toString() ?? '',
+                  })
+              .toList()
+          : const [],
       isQuestion: json['isQuestion'] == true,
       hasInputTarget: json['hasInputTarget'] ?? true,
       reflectionPrompt:
@@ -209,6 +233,7 @@ class ExtractedTractArticle {
   final String? heroVerse;
   final String? heroVerseRef;
   final String? estimatedReadTime;
+  final List<String> extractionWarnings;
 
   const ExtractedTractArticle({
     required this.title,
@@ -222,6 +247,7 @@ class ExtractedTractArticle {
     this.heroVerse,
     this.heroVerseRef,
     this.estimatedReadTime,
+    this.extractionWarnings = const [],
   });
 }
 
@@ -426,6 +452,7 @@ class PdfExtractorService {
     }
 
     final estMinutes = max(10, 5 * ((wordCount / 130) / 5).round());
+    final warnings = _lintSections(interactiveSections);
 
     return ExtractedTractArticle(
       title: effectiveTitle,
@@ -439,6 +466,7 @@ class PdfExtractorService {
       heroVerse: heroVerse,
       heroVerseRef: heroVerseRef,
       estimatedReadTime: '$estMinutes–${estMinutes + 5} mins',
+      extractionWarnings: warnings,
     );
   }
 
@@ -530,6 +558,8 @@ class PdfExtractorService {
           title.toLowerCase().contains('practice');
 
       String? highlightNote;
+      String? principleNote;
+      final qaItems = <Map<String, String>>[];
       final remainingLines = <String>[];
 
       for (final rawBLine in body.split('\n')) {
@@ -588,11 +618,32 @@ class PdfExtractorService {
 
         if (highlightNote == null &&
             (bLine.startsWith('The Bible, from Genesis to Revelation') ||
-                bLine.startsWith('Note:') ||
-                bLine.startsWith('Key Principle:'))) {
+                bLine.startsWith('Note:'))) {
           highlightNote = bLine
-              .replaceFirst(RegExp(r'^(?:Note|Key Principle):\s*', caseSensitive: false), '')
+              .replaceFirst(RegExp(r'^Note:\s*', caseSensitive: false), '')
               .trim();
+          continue;
+        }
+
+        if (principleNote == null &&
+            RegExp(r'^(?:Key\s+)?Principle:\s*', caseSensitive: false)
+                .hasMatch(bLine)) {
+          principleNote = bLine
+              .replaceFirst(
+                  RegExp(r'^(?:Key\s+)?Principle:\s*', caseSensitive: false), '')
+              .trim();
+          continue;
+        }
+
+        final qaMatch = RegExp(r'^([A-Z])[\.\)]\s+([^?]+\?)\s*(.*)$')
+            .firstMatch(bLine);
+        if (qaMatch != null) {
+          qaItems.add({
+            'letter': qaMatch.group(1)!.trim(),
+            'question': qaMatch.group(2)!.trim(),
+            'text': qaMatch.group(3)?.trim() ?? '',
+            'placeholder': 'Write your answer...',
+          });
           continue;
         }
 
@@ -613,6 +664,9 @@ class PdfExtractorService {
           verseQuotes: verseQuotes,
           steps: steps,
           highlightNote: highlightNote,
+          principleNote: principleNote,
+          checkableSteps: isStepsSection && steps.isNotEmpty,
+          qaItems: qaItems,
           isQuestion: isQuestion,
           hasInputTarget: !isStepsSection,
           reflectionPrompt: isQuestion
@@ -624,6 +678,43 @@ class PdfExtractorService {
     }
 
     return result;
+  }
+
+  /// Lint extracted sections for truncation, missing punctuation, or empty text
+  /// (modeled on the ALIVE interactive lesson builder lint pass).
+  static List<String> _lintSections(List<ExtractedLessonSection> sections) {
+    final warnings = <String>[];
+    void checkText(String text, String where) {
+      final t = text.replaceAll(RegExp(r'[*_]'), '').trimRight();
+      if (t.isEmpty) {
+        warnings.add('$where: empty text');
+      } else if (t.endsWith('…') || t.endsWith('...')) {
+        warnings.add('$where: ends with an ellipsis (source truncated?)');
+      } else if (!RegExp(r'[.!?\"”\x27\):;,]$').hasMatch(t)) {
+        warnings.add('$where: no closing punctuation (truncated?)');
+      }
+    }
+
+    for (final sec in sections) {
+      if (sec.bodyText.trim().isNotEmpty) {
+        checkText(sec.bodyText, 'Section ${sec.number} ("${sec.title}") body');
+      }
+      for (final q in sec.verseQuotes) {
+        final qt = q['quote'] ?? '';
+        if (qt.trim().isNotEmpty) {
+          checkText(qt, 'Section ${sec.number} verse ${q['reference'] ?? '?'}');
+        }
+      }
+      for (int i = 0; i < sec.steps.length; i++) {
+        checkText(sec.steps[i]['text'] ?? '', 'Section ${sec.number} step ${i + 1}');
+      }
+      for (final qa in sec.qaItems) {
+        if ((qa['text'] ?? '').trim().isNotEmpty) {
+          checkText(qa['text']!, 'Section ${sec.number} Q&A ${qa['letter'] ?? ''}');
+        }
+      }
+    }
+    return warnings;
   }
 
   static String _cleanHeaderLine(String input) {

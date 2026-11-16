@@ -1496,9 +1496,112 @@ class _InteractiveLessonReaderScreenState
                 ),
               ),
             ],
+            if (sec.principleNote != null &&
+                sec.principleNote!.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.amber.withValues(alpha: 0.14)
+                      : Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Colors.amber.withValues(alpha: 0.45),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.lightbulb_rounded,
+                      size: 18,
+                      color: Colors.amber.shade700,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        sec.principleNote!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.45,
+                          fontWeight: FontWeight.w500,
+                          color: isDark
+                              ? Colors.amber.shade100
+                              : const Color(0xFF451A03),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (sec.qaItems.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              for (int qIdx = 0; qIdx < sec.qaItems.length; qIdx++) ...[
+                if (qIdx > 0) const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isDark ? Colors.white12 : Colors.grey.shade200,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 22,
+                            height: 22,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Color(palette.primaryHex),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              sec.qaItems[qIdx]['letter'] ??
+                                  String.fromCharCode(65 + qIdx),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              sec.qaItems[qIdx]['question'] ?? '',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(palette.primaryHex),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if ((sec.qaItems[qIdx]['text'] ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          sec.qaItems[qIdx]['text']!,
+                          style: const TextStyle(fontSize: 13, height: 1.45),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
             if (sec.steps.isNotEmpty) ...[
               const SizedBox(height: 10),
-              if (!sec.hasInputTarget)
+              if (sec.checkableSteps || !sec.hasInputTarget)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text(
