@@ -609,17 +609,19 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   Timer? _hintAutoAdvanceTimer;
   bool _isGameOverShowing = false;
 
-  /// The best available STT locale resolved at init (en-NG → en-GB → en-US).
-  String _resolvedSttLocale = 'en-NG';
+  /// The best available STT locale resolved at init (en-GB → en-US → en-NG).
+  /// `en-GB` and `en-US` typically use Android's fast on-device neural packs,
+  /// avoiding cloud-only cutoffs while handling Nigerian English accents well.
+  String _resolvedSttLocale = 'en-GB';
 
-  /// Ordered locale fallback chain: Nigerian English → British English → US English.
+  /// Ordered locale fallback chain: British English → US English → Nigerian English.
   static const _localeFallbackChain = [
-    'en-NG',
-    'en_NG',
     'en-GB',
     'en_GB',
     'en-US',
-    'en_US'
+    'en_US',
+    'en-NG',
+    'en_NG',
   ];
 
   @override
