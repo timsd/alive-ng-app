@@ -215,12 +215,17 @@ class _ConferencePlatformScreenState
     }
   }
 
-  Future<void> _openRoom(String roomName, MeetingType meetingType) async {
+  Future<void> _openRoom(
+    String roomName,
+    MeetingType meetingType, {
+    bool autoJoin = false,
+  }) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => LiveKitMeetingScreen(
           customRoomName: roomName,
           meetingType: meetingType,
+          autoJoin: autoJoin,
         ),
       ),
     );
@@ -442,6 +447,7 @@ class _ConferencePlatformScreenState
                                     onPressed: () => _openRoom(
                                       room.roomName,
                                       room.meetingType,
+                                      autoJoin: true,
                                     ),
                                     icon: const Icon(
                                       Icons.login_rounded,

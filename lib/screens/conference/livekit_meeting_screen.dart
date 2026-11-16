@@ -44,12 +44,14 @@ class LiveKitMeetingScreen extends ConsumerStatefulWidget {
   final MeetingType? meetingType;
   final String? customRoomName;
   final bool isModerator;
+  final bool autoJoin;
 
   const LiveKitMeetingScreen({
     super.key,
     this.meetingType,
     this.customRoomName,
     this.isModerator = false,
+    this.autoJoin = false,
   });
 
   @override
@@ -110,8 +112,17 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     _loadAvailableChannels();
     _loadStreamingPlatformSetting();
     // Ensure meeting overlay is dismissed when opening full meeting screen
+    if (widget.autoJoin) {
+      // Joining an already-ongoing meeting: do not re-notify or show host setup.
+      _notifyMembers = false;
+      _requireHostApproval = false;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(isMeetingMinimizedProvider.notifier).state = false;
+      if (widget.autoJoin &&
+          !ref.read(meetingGatewayProvider).currentSession.isConnected) {
+        _joinMeeting(ref.read(meetingGatewayProvider));
+      }
     });
 
     _breakoutUiTicker = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -1065,7 +1076,20 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    MeetingPrejoinLobby(
+                    if (widget.autoJoin && _isJoining)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 48),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text('Joining ongoing meeting...'),
+                          ],
+                        ),
+                      )
+                    else
+                      MeetingPrejoinLobby(
                       roomController: _roomController,
                       isLeader: isLeader,
                       isJoining: _isJoining,

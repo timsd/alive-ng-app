@@ -301,7 +301,17 @@ export default async ({ req, res, log, error }) => {
       if (!target) {
         return res.json({ error: 'Room name is required.' }, 400);
       }
-      const canEnd = ['coordinator', 'leader', 'director', 'bod', 'trustee', 'admin'].includes(role);
+      const normalizedRole = String(role || '').trim().toLowerCase();
+      const canEnd = [
+        'coordinator',
+        'leader',
+        'director',
+        'bod',
+        'trustee',
+        'president',
+        'admin',
+        'super_admin',
+      ].includes(normalizedRole);
       if (!canEnd && !isInternal) {
         return res.json({ error: 'Only leaders and administrators can end a meeting for all.' }, 403);
       }
