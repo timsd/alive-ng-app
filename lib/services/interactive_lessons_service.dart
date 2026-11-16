@@ -1,6 +1,10 @@
 import 'dart:convert';
+import 'package:appwrite/appwrite.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
+import '../utils/appwrite_id_utils.dart';
 
 class InteractiveLessonItem {
   final String id;
@@ -113,9 +117,12 @@ class InteractiveLessonsService extends ChangeNotifier {
 
   static const String _storageKey = 'interactive_lessons_list';
   static const String _progressPrefix = 'lesson_progress_';
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   List<InteractiveLessonItem> _lessons = [];
   bool _isLoaded = false;
+  bool _isSyncing = false;
+  DateTime? _lastRemoteSync;
 
   List<InteractiveLessonItem> get lessons => List.unmodifiable(_lessons);
   List<InteractiveLessonItem> get activeLessons =>
@@ -171,11 +178,163 @@ class InteractiveLessonsService extends ChangeNotifier {
 
       _isLoaded = true;
       notifyListeners();
+      // Sync latest lessons from Appwrite (tracts + dynamic_content) in background.
+      syncFromRemote();
     } catch (e) {
       debugPrint('Failed to load interactive lessons: $e');
       _lessons = List.from(_defaultLessons);
       _isLoaded = true;
       notifyListeners();
+    }
+  }
+
+  /// Syncs interactive lessons from Appwrite (`dynamic_content` + `tracts`/`tract_contents`)
+  /// so newly uploaded tract lessons and admin edits appear everywhere as a single source of truth.
+  Future<void> syncFromRemote({bool force = false}) async {
+    if (_isSyncing) return;
+    if (!force &&
+        _lastRemoteSync != null &&
+        DateTime.now().difference(_lastRemoteSync!) < const Duration(minutes: 2)) {
+      return;
+    }
+    _isSyncing = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final existingById = {for (final l in _lessons) l.id: l};
+      final existingByTractId = {
+        for (final l in _lessons)
+          if (l.tractId != null && l.tractId!.isNotEmpty) l.tractId!: l,
+      };
+
+      final merged = <String, InteractiveLessonItem>{
+        for (final l in _lessons) l.id: l,
+      };
+
+      // 1. Load tract-based interactive lessons from `tracts` + `tract_contents`
+      try {
+        final tractsRes = await _tables.listRows(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.tractsCollectionId,
+          queries: [Query.limit(100)],
+        );
+        final contentsRes = await _tables.listRows(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.tractContentsCollectionId,
+          queries: [Query.limit(100)],
+        );
+        final contentByTractId = <String, String>{};
+        for (final row in contentsRes.rows) {
+          final tid = (row.data['tract_id'] ?? row.$id).toString();
+          final body = (row.data['content'] ?? '').toString();
+          if (tid.isNotEmpty && body.trim().isNotEmpty) {
+            contentByTractId[tid] = body;
+          }
+        }
+
+        for (final row in tractsRes.rows) {
+          final tractId = row.$id;
+          final remoteContent = contentByTractId[tractId] ??
+              (row.data['content'] ?? '').toString();
+          final existing = existingByTractId[tractId];
+          // Include if it has interactive lesson content in tract_contents or is already linked
+          if (remoteContent.trim().isEmpty && existing == null) continue;
+
+          final lessonId = existing?.id ?? 'lesson_$tractId';
+          final title = (row.data['title'] ?? existing?.title ?? 'Untitled Lesson').toString();
+          final description = (row.data['description'] ?? existing?.description ?? '').toString();
+          final category = (row.data['category'] ?? existing?.category ?? 'Bible Study').toString();
+          final coverImage = (row.data['cover_image'] ?? existing?.coverImage)?.toString();
+          final resolvedContent = remoteContent.trim().isNotEmpty
+              ? remoteContent
+              : (existing?.content ?? '');
+
+          merged[lessonId] = InteractiveLessonItem(
+            id: lessonId,
+            title: title,
+            description: description,
+            category: category.isNotEmpty ? category : 'Bible Study',
+            level: existing?.level ?? 'Beginner',
+            duration: existing?.duration ?? '25 min',
+            content: resolvedContent,
+            tractId: tractId,
+            coverImage: coverImage,
+            isFavorite: existing?.isFavorite ?? false,
+            progress: existing?.progress ?? 0.0,
+            isCompleted: existing?.isCompleted ?? false,
+            isActive: existing?.isActive ?? true,
+          );
+        }
+      } catch (e) {
+        debugPrint('Tract-lesson sync note: $e');
+      }
+
+      // 2. Load admin-managed lessons from `dynamic_content` (`type = interactive_lesson`)
+      try {
+        final dynRes = await _tables.listRows(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.dynamicContentCollectionId,
+          queries: [
+            Query.equal('type', 'interactive_lesson'),
+            Query.limit(100),
+          ],
+        );
+        for (final row in dynRes.rows) {
+          final data = row.data;
+          Map<String, dynamic> meta = {};
+          final rawMeta = data['metadata'];
+          if (rawMeta is String && rawMeta.trim().isNotEmpty) {
+            try {
+              meta = Map<String, dynamic>.from(jsonDecode(rawMeta) as Map);
+            } catch (_) {}
+          } else if (rawMeta is Map) {
+            meta = Map<String, dynamic>.from(rawMeta);
+          }
+
+          final lessonId = (meta['lessonId'] ?? row.$id).toString();
+          final tractId = meta['tractId']?.toString();
+          final prev = existingById[lessonId] ??
+              (tractId != null ? existingByTractId[tractId] : null);
+          final targetId = prev?.id ?? lessonId;
+
+          merged[targetId] = InteractiveLessonItem(
+            id: targetId,
+            title: (data['title'] ?? prev?.title ?? 'Untitled Lesson').toString(),
+            description: (meta['description'] ?? prev?.description ?? '').toString(),
+            category: (meta['category'] ?? prev?.category ?? 'Bible Study').toString(),
+            level: (meta['level'] ?? prev?.level ?? 'Beginner').toString(),
+            duration: (meta['duration'] ?? prev?.duration ?? '30 min').toString(),
+            content: (data['content'] ?? prev?.content ?? '').toString(),
+            tractId: tractId ?? prev?.tractId,
+            coverImage: (meta['coverImage'] ?? prev?.coverImage)?.toString(),
+            isFavorite: prev?.isFavorite ?? false,
+            progress: prev?.progress ?? 0.0,
+            isCompleted: prev?.isCompleted ?? false,
+            isActive: data['is_active'] as bool? ?? prev?.isActive ?? true,
+          );
+        }
+      } catch (e) {
+        debugPrint('Dynamic-content lesson sync note: $e');
+      }
+
+      final result = merged.values.toList();
+      for (int i = 0; i < result.length; i++) {
+        final prog = prefs.getDouble('$_progressPrefix${result[i].id}');
+        if (prog != null) {
+          result[i] = result[i].copyWith(
+            progress: prog,
+            isCompleted: prog >= 1.0,
+          );
+        }
+      }
+
+      _lessons = result;
+      _lastRemoteSync = DateTime.now();
+      await _persistLessons();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Remote lesson sync error: $e');
+    } finally {
+      _isSyncing = false;
     }
   }
 
@@ -198,12 +357,96 @@ class InteractiveLessonsService extends ChangeNotifier {
     }
     await _persistLessons();
     notifyListeners();
+    await _syncLessonToRemote(lesson);
+  }
+
+  Future<void> _syncLessonToRemote(InteractiveLessonItem lesson) async {
+    final docId = AppwriteIdUtils.toValidUid(lesson.id);
+    final payload = {
+      'type': 'interactive_lesson',
+      'title': lesson.title,
+      'content': lesson.content,
+      'is_active': lesson.isActive,
+      'metadata': jsonEncode({
+        'lessonId': lesson.id,
+        'description': lesson.description,
+        'category': lesson.category,
+        'level': lesson.level,
+        'duration': lesson.duration,
+        'tractId': lesson.tractId,
+        'coverImage': lesson.coverImage,
+      }),
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    try {
+      await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.dynamicContentCollectionId,
+        rowId: docId,
+        data: payload,
+      );
+    } on AppwriteException catch (e) {
+      if (e.code == 404) {
+        try {
+          await _tables.createRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.dynamicContentCollectionId,
+            rowId: docId,
+            data: {
+              ...payload,
+              'created_at': DateTime.now().toIso8601String(),
+            },
+          );
+        } catch (createErr) {
+          debugPrint('Remote lesson create note: $createErr');
+        }
+      } else {
+        debugPrint('Remote lesson update note: $e');
+      }
+    } catch (e) {
+      debugPrint('Remote lesson sync note: $e');
+    }
+
+    // Keep linked tract & tract_contents in sync if tractId is set
+    final tractId = lesson.tractId;
+    if (tractId != null && tractId.isNotEmpty) {
+      try {
+        await _tables.updateRow(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.tractsCollectionId,
+          rowId: AppwriteIdUtils.toValidUid(tractId),
+          data: {
+            'title': lesson.title,
+            'description': lesson.description,
+            'category': lesson.category,
+            if (lesson.coverImage != null) 'cover_image': lesson.coverImage,
+          },
+        );
+      } catch (_) {}
+      if (lesson.content.trim().isNotEmpty) {
+        try {
+          await _tables.updateRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.tractContentsCollectionId,
+            rowId: AppwriteIdUtils.toValidUid(tractId),
+            data: {'content': lesson.content},
+          );
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> deleteLesson(String lessonId) async {
     _lessons.removeWhere((l) => l.id == lessonId);
     await _persistLessons();
     notifyListeners();
+    try {
+      await _tables.deleteRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.dynamicContentCollectionId,
+        rowId: AppwriteIdUtils.toValidUid(lessonId),
+      );
+    } catch (_) {}
   }
 
   Future<void> toggleFavorite(String lessonId) async {

@@ -43,9 +43,15 @@ class Project {
   });
 
   factory Project.fromJson(Map<String, dynamic> json) {
-    final goal = (json['goal'] as num?) ?? (json['target_amount'] as num?);
-    final raised =
+    final rawGoal = (json['goal'] as num?);
+    final goal = (rawGoal != null && rawGoal > 0)
+        ? rawGoal
+        : (json['target_amount'] as num?);
+    final rawRaised =
         (json['raised'] as num?) ?? (json['raised_amount'] as num?);
+    final raised = (rawRaised != null && rawRaised > 0)
+        ? rawRaised
+        : ((json['amount_raised'] as num?) ?? rawRaised);
     // Status may be an explicit bool flag or a string status
     // ('active', 'planning', 'completed', ...).
     final bool active;

@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/language_provider.dart';
 import '../../config/org_structure.dart';
+import '../../services/content_pages_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
@@ -42,7 +43,51 @@ class AboutAliveScreen extends ConsumerWidget {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1080),
-            child: ListView(
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: ContentPagesService.instance.listPages(),
+              builder: (context, snapshot) {
+                final pages = snapshot.data ?? const <Map<String, dynamic>>[];
+                Map<String, dynamic>? findPage(String slugOrId) {
+                  for (final p in pages) {
+                    if ((p['slug'] == slugOrId || p['id'] == slugOrId) &&
+                        p['is_published'] != false) {
+                      return p;
+                    }
+                  }
+                  return null;
+                }
+
+                final aboutPage = findPage('about-alive');
+                final aboutTitle =
+                    (aboutPage?['title'] ?? '').toString().trim().isNotEmpty
+                        ? aboutPage!['title'].toString().trim()
+                        : 'ALIVE Nigeria';
+                final aboutBody =
+                    (aboutPage?['content'] ?? '').toString().trim().isNotEmpty
+                        ? aboutPage!['content'].toString().trim()
+                        : 'A.L.I.V.E is an acronym for Africans Living In View of Eternity. ALIVE-Nigeria is the Nigerian chapter of this movement, committed to a Bible-based, youth-led revival across Africa.';
+
+                final mvPage = findPage('mission-vision');
+                final mvContent = (mvPage?['content'] ?? '').toString().trim();
+                String missionText =
+                    'Our mission is to prepare Africa for the imminent return of Jesus Christ. Through biblical spiritual training and evangelistic efforts, we challenge African Seventh-day Adventist young adults to live with authentic biblical excellence, develop a missionary volunteer spirit, support missionary movements across Africa, and make meaningful impact in neglected areas.';
+                String visionText =
+                    'At ALIVE, our vision is to ignite and sustain a Bible-based, youth-led revival movement across the continent of Africa, empowering every Seventh-day Adventist young professional to become a dedicated missionary with a deep personal relationship with Jesus Christ and commitment to His Great Commission.';
+                if (mvContent.isNotEmpty) {
+                  final upper = mvContent.toUpperCase();
+                  final mIdx = upper.indexOf('MISSION STATEMENT:');
+                  final vIdx = upper.indexOf('VISION STATEMENT:');
+                  if (mIdx != -1 && vIdx != -1 && vIdx > mIdx) {
+                    missionText = mvContent
+                        .substring(mIdx + 'MISSION STATEMENT:'.length, vIdx)
+                        .trim();
+                    visionText = mvContent
+                        .substring(vIdx + 'VISION STATEMENT:'.length)
+                        .trim();
+                  }
+                }
+
+                return ListView(
               padding: EdgeInsets.fromLTRB(
                 horizontalPadding,
                 20,
@@ -51,26 +96,23 @@ class AboutAliveScreen extends ConsumerWidget {
               ),
               children: [
                 _AliveHeroCard(
-                  title: 'ALIVE Nigeria',
-                  description:
-                      'A.L.I.V.E is an acronym for Africans Living In View of Eternity. ALIVE-Nigeria is the Nigerian chapter of this movement, committed to a Bible-based, youth-led revival across Africa.',
+                  title: aboutTitle,
+                  description: aboutBody,
                 ),
                 const SizedBox(height: 20),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final twoColumns = constraints.maxWidth >= 780;
                     final content = [
-                      const _StatementCard(
+                      _StatementCard(
                         title: 'Mission Statement',
                         icon: Icons.flag_rounded,
-                        description:
-                            'Our mission is to prepare Africa for the imminent return of Jesus Christ. Through biblical spiritual training and evangelistic efforts, we challenge African Seventh-day Adventist young adults to live with authentic biblical excellence, develop a missionary volunteer spirit, support missionary movements across Africa, and make meaningful impact in neglected areas.',
+                        description: missionText,
                       ),
-                      const _StatementCard(
+                      _StatementCard(
                         title: 'Vision Statement',
                         icon: Icons.visibility_rounded,
-                        description:
-                            'At ALIVE, our vision is to ignite and sustain a Bible-based, youth-led revival movement across the continent of Africa, empowering every Seventh-day Adventist young professional to become a dedicated missionary with a deep personal relationship with Jesus Christ and commitment to His Great Commission.',
+                        description: visionText,
                       ),
                     ];
 
@@ -382,6 +424,8 @@ class AboutAliveScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+            );
+              },
             ),
           ),
         ),

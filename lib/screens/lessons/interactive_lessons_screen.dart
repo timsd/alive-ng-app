@@ -39,6 +39,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
     _tabController = TabController(length: 4, vsync: this);
     _loadFromService();
     _lessonsService.addListener(_onServiceUpdate);
+    _lessonsService.syncFromRemote();
   }
 
   void _onServiceUpdate() {

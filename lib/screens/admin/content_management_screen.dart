@@ -12,6 +12,7 @@ import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/project_sync_bridge.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../services/content_pages_service.dart';
 import '../../services/interactive_lessons_service.dart';
 import '../../services/exchange_rate_service.dart';
 import '../../config/default_content_data.dart';
@@ -68,6 +69,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
       await Future.wait([
         _loadContentPages(),
         _loadProjects(),
+        InteractiveLessonsService.instance.syncFromRemote(force: true),
       ]);
     } catch (e) {
       debugPrint('Error loading content: $e');
@@ -618,6 +620,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                         );
                         ToastUtils.showSuccess('Content page created');
                       }
+                      ContentPagesService.instance.invalidateCache();
                       if (!mounted) return;
                       Navigator.of(context).pop();
                     } catch (e) {
@@ -698,6 +701,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           AppwriteBackendConfig.contentPagesCollectionId,
           id,
         );
+        ContentPagesService.instance.invalidateCache();
       } catch (e) {
         debugPrint('Note: local page removed, Appwrite sync: $e');
       }
@@ -774,10 +778,22 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     );
   }
 
+  double _projectGoal(Map<String, dynamic> project) {
+    final g = double.tryParse(project['goal']?.toString() ?? '') ?? 0.0;
+    if (g > 0) return g;
+    return double.tryParse(project['target_amount']?.toString() ?? '') ?? 0.0;
+  }
+
+  double _projectRaised(Map<String, dynamic> project) {
+    final r = double.tryParse(project['raised']?.toString() ?? '') ?? 0.0;
+    if (r > 0) return r;
+    return double.tryParse(project['amount_raised']?.toString() ?? '') ?? 0.0;
+  }
+
   Widget _buildProjectCard(Map<String, dynamic> project) {
     final theme = Theme.of(context);
-    final goal = double.tryParse(project['goal']?.toString() ?? '') ?? 0.0;
-    final raised = double.tryParse(project['raised']?.toString() ?? '') ?? 0.0;
+    final goal = _projectGoal(project);
+    final raised = _projectRaised(project);
     final percent = goal > 0 ? (raised / goal).clamp(0.0, 1.0) : 0.0;
     final status = (project['status'] ?? 'active').toString();
     final rate = ExchangeRateService.instance.lastKnownRate;
@@ -1016,9 +1032,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     final descriptionController =
         TextEditingController(text: project?['description'] ?? '');
     final goalController =
-        TextEditingController(text: (project?['goal'] ?? 0).toString());
+        TextEditingController(text: _projectGoal(project ?? const {}).toString());
     final raisedController =
-        TextEditingController(text: (project?['raised'] ?? 0).toString());
+        TextEditingController(text: _projectRaised(project ?? const {}).toString());
     final imageUrlController =
         TextEditingController(text: project?['image_url'] ?? '');
     final fundUpdateTitleController =
@@ -1213,6 +1229,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           'fund_update_updated_at': DateTime.now().toIso8601String(),
         'priority': int.tryParse(priorityController.text) ?? 100,
         'status': status,
+        'is_active': status == 'active',
       };
 
       setState(() {
