@@ -813,7 +813,8 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
       };
 
       Future<void> writeRow(Map<String, dynamic> payload) async {
-        if (widget.announcement == null) {
+        final existingId = widget.announcement?['id']?.toString().trim() ?? '';
+        if (existingId.isEmpty) {
           payload['created_at'] = DateTime.now().toIso8601String();
           payload['author_id'] = currentUserId;
           payload['created_timestamp'] = DateTime.now().millisecondsSinceEpoch;
@@ -824,12 +825,28 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
             data: payload,
           );
         } else {
-          await TablesDB(appwriteClient).updateRow(
-            databaseId: AppwriteBackendConfig.databaseId,
-            tableId: AppwriteBackendConfig.announcementsCollectionId,
-            rowId: widget.announcement!['id'],
-            data: payload,
-          );
+          try {
+            await TablesDB(appwriteClient).updateRow(
+              databaseId: AppwriteBackendConfig.databaseId,
+              tableId: AppwriteBackendConfig.announcementsCollectionId,
+              rowId: existingId,
+              data: payload,
+            );
+          } on AppwriteException catch (e) {
+            if (e.code == 404 || e.type == 'row_not_found' || e.type == 'document_not_found') {
+              payload['created_at'] = DateTime.now().toIso8601String();
+              payload['author_id'] = currentUserId;
+              payload['created_timestamp'] = DateTime.now().millisecondsSinceEpoch;
+              await TablesDB(appwriteClient).createRow(
+                databaseId: AppwriteBackendConfig.databaseId,
+                tableId: AppwriteBackendConfig.announcementsCollectionId,
+                rowId: ID.unique(),
+                data: payload,
+              );
+            } else {
+              rethrow;
+            }
+          }
         }
       }
 
