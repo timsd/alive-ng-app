@@ -48,31 +48,34 @@ class TractService {
     'Lesson 11: What the Bible Says, Beyound the Dark!',
   ];
 
-  // Get all available tracts
+  // Get all available tracts (remote-first with local SQLite offline fallback)
   Future<List<Tract>> getAllTracts() async {
     try {
-      if (kIsWeb) {
-        final remoteTracts = await _fetchTractsFromAppwrite();
-        return remoteTracts.isNotEmpty ? remoteTracts : _getDefaultTracts();
-      }
-
-      // Try to get from local database first
-      final localTracts = await _dbHelper.getAllTracts();
-      if (localTracts.isNotEmpty) {
-        return localTracts;
-      }
-
-      // If not in local database, fetch from Appwrite.
-      final remoteTracts = await _fetchTractsFromAppwrite();
-      if (remoteTracts.isNotEmpty) {
-        // Cache in local database
-        for (final tract in remoteTracts) {
-          await _dbHelper.insertTract(tract);
+      try {
+        final remoteTracts = await _fetchTractsFromAppwrite()
+            .timeout(const Duration(seconds: 6), onTimeout: () => <Tract>[]);
+        if (remoteTracts.isNotEmpty) {
+          if (!kIsWeb) {
+            for (final tract in remoteTracts) {
+              try {
+                await _dbHelper.insertTract(tract);
+              } catch (_) {}
+            }
+          }
+          return remoteTracts;
         }
-        return remoteTracts;
+      } catch (e) {
+        _logger.warning('Remote tracts fetch failed, using offline cache: $e');
       }
 
-      // Return default tracts if nothing found
+      if (!kIsWeb) {
+        final localTracts = await _dbHelper.getAllTracts();
+        if (localTracts.isNotEmpty) {
+          return localTracts;
+        }
+      }
+
+      // Return default tracts if nothing found remotely or locally
       return _getDefaultTracts();
     } catch (e) {
       if (e is AppException) rethrow;
@@ -81,29 +84,35 @@ class TractService {
     }
   }
 
-  // Get tract by ID
+  // Get tract by ID (remote-first with local SQLite offline fallback)
   Future<Tract?> getTractById(String tractId) async {
     try {
-      if (kIsWeb) {
-        final remoteTract = await _fetchTractFromAppwrite(tractId);
-        if (remoteTract != null) return remoteTract;
-        return _getDefaultTracts()
-            .where((tract) => tract.id == tractId)
-            .firstOrNull;
+      try {
+        final remoteTract = await _fetchTractFromAppwrite(tractId)
+            .timeout(const Duration(seconds: 5), onTimeout: () => null);
+        if (remoteTract != null) {
+          if (!kIsWeb) {
+            try {
+              await _dbHelper.insertTract(remoteTract);
+            } catch (_) {}
+          }
+          return remoteTract;
+        }
+      } catch (e) {
+        _logger.warning('Remote getTractById failed, using offline cache: $e');
       }
 
-      // Try local database first
-      final localTract = await _dbHelper.getTractById(tractId);
-      if (localTract != null) {
-        return localTract;
+      if (!kIsWeb) {
+        final localTract = await _dbHelper.getTractById(tractId);
+        if (localTract != null) {
+          return localTract;
+        }
       }
 
-      // Fetch from Appwrite if not found locally.
-      final remoteTract = await _fetchTractFromAppwrite(tractId);
-      if (remoteTract != null) {
-        await _dbHelper.insertTract(remoteTract);
-        return remoteTract;
-      }
+      final defaultMatch = _getDefaultTracts()
+          .where((tract) => tract.id == tractId)
+          .firstOrNull;
+      if (defaultMatch != null) return defaultMatch;
 
       throw NotFoundException('Tract not found');
     } catch (e) {
@@ -113,39 +122,35 @@ class TractService {
     }
   }
 
-  // Get tract content with questions and answers
+  // Get tract content with questions and answers (remote-first with offline fallback)
   Future<TractContent?> getTractContent(String tractId) async {
     try {
-      if (kIsWeb) {
-        final remoteContent = await _fetchTractContentFromAppwrite(tractId)
-            .timeout(const Duration(seconds: 4), onTimeout: () => null);
-        return remoteContent ?? _getDefaultTractContent(tractId);
-      }
-
-      // Try local database first with timeout
-      try {
-        final localContent = await _dbHelper
-            .getTractContent(tractId)
-            .timeout(const Duration(seconds: 2), onTimeout: () => null);
-        if (localContent != null) {
-          return localContent;
-        }
-      } catch (e) {
-        _logger.warning('Local db getTractContent failed or timed out: $e');
-      }
-
-      // Fetch from Appwrite if not found locally with timeout
       try {
         final remoteContent = await _fetchTractContentFromAppwrite(tractId)
             .timeout(const Duration(seconds: 4), onTimeout: () => null);
         if (remoteContent != null) {
-          try {
-            await _dbHelper.insertTractContent(remoteContent);
-          } catch (_) {}
+          if (!kIsWeb) {
+            try {
+              await _dbHelper.insertTractContent(remoteContent);
+            } catch (_) {}
+          }
           return remoteContent;
         }
       } catch (e) {
-        _logger.warning('Appwrite getTractContent failed or timed out: $e');
+        _logger.warning('Remote getTractContent failed, using offline cache: $e');
+      }
+
+      if (!kIsWeb) {
+        try {
+          final localContent = await _dbHelper
+              .getTractContent(tractId)
+              .timeout(const Duration(seconds: 2), onTimeout: () => null);
+          if (localContent != null) {
+            return localContent;
+          }
+        } catch (e) {
+          _logger.warning('Local db getTractContent failed or timed out: $e');
+        }
       }
 
       // Fallback to default lesson content if not yet provisioned in Appwrite
