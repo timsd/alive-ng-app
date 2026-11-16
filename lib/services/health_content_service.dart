@@ -1,6 +1,10 @@
 import 'dart:convert';
+import 'package:appwrite/appwrite.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
+import '../utils/appwrite_id_utils.dart';
 
 class HealthRecipeItem {
   final String id;
@@ -236,6 +240,7 @@ class HealthContentService extends ChangeNotifier {
   static const String _recipesKey = 'health_plus_custom_recipes';
   static const String _remediesKey = 'health_plus_custom_remedies';
   static const String _commentsKey = 'health_plus_comments';
+  final TablesDB _tables = TablesDB(appwriteClient);
 
   List<HealthRecipeItem> _recipes = [];
   List<HealthRemedyItem> _remedies = [];
@@ -285,6 +290,122 @@ class HealthContentService extends ChangeNotifier {
 
     _initialized = true;
     notifyListeners();
+    syncFromRemote();
+  }
+
+  /// Syncs Health+ recipes and remedies from Appwrite `dynamic_content` so
+  /// admin edits/additions/deletions sync across all users.
+  Future<void> syncFromRemote() async {
+    try {
+      final recipesRes = await _tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.dynamicContentCollectionId,
+        queries: [Query.equal('type', 'health_recipe'), Query.limit(100)],
+      );
+      final remediesRes = await _tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.dynamicContentCollectionId,
+        queries: [Query.equal('type', 'health_remedy'), Query.limit(100)],
+      );
+
+      bool changed = false;
+      for (final row in recipesRes.rows) {
+        final raw = row.data['metadata'];
+        if (raw is String && raw.trim().isNotEmpty) {
+          try {
+            final item = HealthRecipeItem.fromJson(
+              Map<String, dynamic>.from(jsonDecode(raw) as Map),
+            );
+            if (row.data['is_active'] == false) {
+              _recipes.removeWhere((r) => r.id == item.id);
+            } else {
+              final idx = _recipes.indexWhere((r) => r.id == item.id);
+              if (idx != -1) {
+                _recipes[idx] = item;
+              } else {
+                _recipes.insert(0, item);
+              }
+            }
+            changed = true;
+          } catch (_) {}
+        }
+      }
+      for (final row in remediesRes.rows) {
+        final raw = row.data['metadata'];
+        if (raw is String && raw.trim().isNotEmpty) {
+          try {
+            final item = HealthRemedyItem.fromJson(
+              Map<String, dynamic>.from(jsonDecode(raw) as Map),
+            );
+            if (row.data['is_active'] == false) {
+              _remedies.removeWhere((r) => r.id == item.id);
+            } else {
+              final idx = _remedies.indexWhere((r) => r.id == item.id);
+              if (idx != -1) {
+                _remedies[idx] = item;
+              } else {
+                _remedies.insert(0, item);
+              }
+            }
+            changed = true;
+          } catch (_) {}
+        }
+      }
+      if (changed) {
+        await _saveRecipes();
+        await _saveRemedies();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('HealthContentService remote sync note: $e');
+    }
+  }
+
+  Future<void> _upsertRemoteItem({
+    required String id,
+    required String type,
+    required String title,
+    required Map<String, dynamic> jsonMap,
+    bool isActive = true,
+  }) async {
+    final docId = AppwriteIdUtils.toValidUid(id);
+    final payload = {
+      'type': type,
+      'title': title,
+      'content': (jsonMap['description'] ?? '').toString(),
+      'is_active': isActive,
+      'metadata': jsonEncode(jsonMap),
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    try {
+      await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.dynamicContentCollectionId,
+        rowId: docId,
+        data: payload,
+      );
+    } on AppwriteException catch (e) {
+      if (e.code == 404) {
+        try {
+          await _tables.createRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.dynamicContentCollectionId,
+            rowId: docId,
+            data: {...payload, 'created_at': DateTime.now().toIso8601String()},
+          );
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _deleteRemoteItem(String id) async {
+    try {
+      await _tables.deleteRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.dynamicContentCollectionId,
+        rowId: AppwriteIdUtils.toValidUid(id),
+      );
+    } catch (_) {}
   }
 
   // --- Recipe Operations (Admin & App) ---
@@ -292,6 +413,12 @@ class HealthContentService extends ChangeNotifier {
     _recipes.insert(0, recipe);
     await _saveRecipes();
     notifyListeners();
+    await _upsertRemoteItem(
+      id: recipe.id,
+      type: 'health_recipe',
+      title: recipe.title,
+      jsonMap: recipe.toJson(),
+    );
   }
 
   Future<void> updateRecipe(HealthRecipeItem recipe) async {
@@ -300,6 +427,12 @@ class HealthContentService extends ChangeNotifier {
       _recipes[idx] = recipe;
       await _saveRecipes();
       notifyListeners();
+      await _upsertRemoteItem(
+        id: recipe.id,
+        type: 'health_recipe',
+        title: recipe.title,
+        jsonMap: recipe.toJson(),
+      );
     }
   }
 
@@ -307,6 +440,7 @@ class HealthContentService extends ChangeNotifier {
     _recipes.removeWhere((r) => r.id == id);
     await _saveRecipes();
     notifyListeners();
+    await _deleteRemoteItem(id);
   }
 
   // --- Remedy Operations (Admin & App) ---
@@ -314,6 +448,12 @@ class HealthContentService extends ChangeNotifier {
     _remedies.insert(0, remedy);
     await _saveRemedies();
     notifyListeners();
+    await _upsertRemoteItem(
+      id: remedy.id,
+      type: 'health_remedy',
+      title: remedy.title,
+      jsonMap: remedy.toJson(),
+    );
   }
 
   Future<void> updateRemedy(HealthRemedyItem remedy) async {
@@ -322,6 +462,12 @@ class HealthContentService extends ChangeNotifier {
       _remedies[idx] = remedy;
       await _saveRemedies();
       notifyListeners();
+      await _upsertRemoteItem(
+        id: remedy.id,
+        type: 'health_remedy',
+        title: remedy.title,
+        jsonMap: remedy.toJson(),
+      );
     }
   }
 
@@ -329,6 +475,7 @@ class HealthContentService extends ChangeNotifier {
     _remedies.removeWhere((r) => r.id == id);
     await _saveRemedies();
     notifyListeners();
+    await _deleteRemoteItem(id);
   }
 
   // --- Comments & Community Q&A ---

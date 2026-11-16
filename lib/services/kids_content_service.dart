@@ -1180,11 +1180,37 @@ class KidsContentService {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getKidsMissions({
+    int limit = 100,
+    bool forceRefresh = false,
+  }) async {
+    return _listAppwrite(_kidsMissionsCollection);
+  }
+
   static Future<String> createKidsMission(Map<String, dynamic> mission) async {
     try {
       return await _createAppwriteDocument(_kidsMissionsCollection, mission);
     } catch (e) {
       throw DatabaseException('Failed to create kids mission',
+          originalError: e);
+    }
+  }
+
+  static Future<void> updateKidsMission(
+      String id, Map<String, dynamic> data) async {
+    try {
+      await _updateAppwriteDocument(_kidsMissionsCollection, id, data);
+    } catch (e) {
+      throw DatabaseException('Failed to update kids mission',
+          originalError: e);
+    }
+  }
+
+  static Future<void> deleteKidsMission(String id) async {
+    try {
+      await _deleteAppwriteDocument(_kidsMissionsCollection, id);
+    } catch (e) {
+      throw DatabaseException('Failed to delete kids mission',
           originalError: e);
     }
   }

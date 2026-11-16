@@ -6,6 +6,7 @@ import '../../services/file_picker_facade.dart';
 import '../../services/pdf_extractor_service.dart';
 import '../../services/appwrite_storage_service.dart';
 import '../../services/appwrite_study_service.dart';
+import '../../models/app_models.dart';
 import '../../models/study_guide_models.dart';
 import '../../utils/text_formatter.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -17,11 +18,17 @@ class AdminStudyGuidesScreen extends StatefulWidget {
   State<AdminStudyGuidesScreen> createState() => _AdminStudyGuidesScreenState();
 }
 
-class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
+class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _pdfExtractor = PdfExtractorService();
   final _storageService = AppwriteStorageService.instance;
   final _studyService = AppwriteStudyService.instance;
+  late final TabController _tabController;
+
+  List<StudyProgram> _existingGuides = [];
+  bool _isLoadingList = true;
+  String? _editingGuideId;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -42,7 +49,88 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
   bool _isSaving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadExistingGuides();
+  }
+
+  Future<void> _loadExistingGuides() async {
+    setState(() => _isLoadingList = true);
+    try {
+      final list = await _studyService.getStudyPrograms();
+      if (mounted) {
+        setState(() {
+          _existingGuides = list;
+          _isLoadingList = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingList = false);
+    }
+  }
+
+  void _startEditGuide(StudyProgram guide) {
+    setState(() {
+      _editingGuideId = guide.id;
+      _titleController.text = guide.title;
+      _descriptionController.text = guide.description;
+      _durationController.text = guide.duration.toString();
+    });
+    _tabController.animateTo(1);
+  }
+
+  void _resetForm() {
+    setState(() {
+      _editingGuideId = null;
+      _titleController.clear();
+      _descriptionController.clear();
+      _durationController.text = '45';
+      _objectivesController.clear();
+      _lessonContentController.clear();
+      _keyVersesController.clear();
+      _coverImageBytes = null;
+      _coverImageName = null;
+    });
+  }
+
+  Future<void> _deleteGuide(StudyProgram guide) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Study Guide'),
+        content: Text('Delete "${guide.title}"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _studyService.deleteStudyGuide(guide.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Study guide deleted')),
+        );
+      }
+      await _loadExistingGuides();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
+        );
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    _tabController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _durationController.dispose();
@@ -179,13 +267,35 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
         await _studyService.createStudyLesson(lesson.toJson());
       }
 
+      if (_editingGuideId != null) {
+        await _studyService.updateStudyGuide(_editingGuideId!, {
+          'title': _titleController.text.trim(),
+          'description': _descriptionController.text.trim(),
+          'estimated_duration_minutes': durationInt,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: const Text('Study Guide updated successfully!'),
+                backgroundColor: Theme.of(context).colorScheme.tertiary),
+          );
+          _resetForm();
+          await _loadExistingGuides();
+          _tabController.animateTo(0);
+        }
+        return;
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: const Text('Study Guide published successfully!'),
               backgroundColor: Theme.of(context).colorScheme.tertiary),
         );
-        Navigator.pop(context);
+        _resetForm();
+        await _loadExistingGuides();
+        _tabController.animateTo(0);
       }
     } catch (e) {
       if (mounted) {
@@ -205,16 +315,27 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Study Guide Builder',
+      appBar: CustomAppBar(
+        title: _editingGuideId != null ? 'Edit Study Guide' : 'Study Guides',
         showBackButton: true,
         showDonationButton: false,
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Manage Guides'),
+            Tab(text: 'Create / Edit'),
+          ],
+        ),
       ),
-      body: _isSaving
-          ? Center(
-              child: CircularProgressIndicator(
-                  color: Theme.of(context).colorScheme.primary))
-          : SingleChildScrollView(
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildExistingGuidesTab(),
+          _isSaving
+              ? Center(
+                  child: CircularProgressIndicator(
+                      color: Theme.of(context).colorScheme.primary))
+              : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Form(
                 key: _formKey,
@@ -389,8 +510,11 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
                               Theme.of(context).colorScheme.onPrimary,
                         ),
                         onPressed: _saveStudyGuide,
-                        child: const Text('Save Study Guide Curriculum',
-                            style: TextStyle(
+                        child: Text(
+                            _editingGuideId != null
+                                ? 'Update Study Guide'
+                                : 'Save Study Guide Curriculum',
+                            style: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
@@ -399,6 +523,69 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExistingGuidesTab() {
+    if (_isLoadingList) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_existingGuides.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('No study guides found in Appwrite yet.'),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {
+                _resetForm();
+                _tabController.animateTo(1);
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Create First Study Guide'),
+            ),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _loadExistingGuides,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _existingGuides.length,
+        itemBuilder: (ctx, i) {
+          final g = _existingGuides[i];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              title: Text(g.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(
+                g.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Edit',
+                    onPressed: () => _startEditGuide(g),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    tooltip: 'Delete',
+                    onPressed: () => _deleteGuide(g),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

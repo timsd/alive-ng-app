@@ -794,11 +794,13 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     final theme = Theme.of(context);
     final goal = _projectGoal(project);
     final raised = _projectRaised(project);
+    final remaining = (goal - raised).clamp(0.0, double.infinity);
     final percent = goal > 0 ? (raised / goal).clamp(0.0, 1.0) : 0.0;
     final status = (project['status'] ?? 'active').toString();
     final rate = ExchangeRateService.instance.lastKnownRate;
     final usdRaised = rate > 0 ? (raised / rate) : 0.0;
     final usdGoal = rate > 0 ? (goal / rate) : 0.0;
+    final usdRemaining = rate > 0 ? (remaining / rate) : 0.0;
     final title = (project['title'] ?? 'Untitled Project').toString();
     final summary = (project['summary'] ?? '').toString();
 
@@ -891,6 +893,33 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                         Text(
                           '(≈ \$${NumberFormat.currency(symbol: '', decimalDigits: 0).format(usdGoal)})',
                           style: const TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Remaining: ${NumberFormat.simpleCurrency(name: 'NGN').format(remaining)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange.shade800,
+                        ),
+                      ),
+                      if (rate > 0) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          '(≈ \$${NumberFormat.currency(symbol: '', decimalDigits: 0).format(usdRemaining)})',
+                          style: TextStyle(fontSize: 10, color: Colors.orange.shade700),
                         ),
                       ],
                     ],
@@ -1037,6 +1066,10 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         TextEditingController(text: _projectRaised(project ?? const {}).toString());
     final imageUrlController =
         TextEditingController(text: project?['image_url'] ?? '');
+    final viewerUrlController =
+        TextEditingController(text: project?['viewer_url'] ?? '');
+    final ctaLabelController =
+        TextEditingController(text: project?['cta_label'] ?? '');
     final fundUpdateTitleController =
         TextEditingController(text: project?['fund_update_title'] ?? '');
     final fundUpdateTextController =
@@ -1117,6 +1150,32 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
                       labelText: 'Image URL',
                       border: OutlineInputBorder(),
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: viewerUrlController,
+                          decoration: const InputDecoration(
+                            labelText: '3D Viewer URL (optional)',
+                            hintText: 'alive_ng_3d_viewer.html',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: ctaLabelController,
+                          decoration: const InputDecoration(
+                            labelText: 'Button Label (CTA)',
+                            hintText: 'Donate',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -1220,6 +1279,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         'raised': double.tryParse(raisedController.text) ?? 0,
         'amount_raised': double.tryParse(raisedController.text) ?? 0,
         'image_url': imageUrlController.text,
+        'viewer_url': viewerUrlController.text.trim(),
+        'cta_label': ctaLabelController.text.trim(),
         'fund_update_title': fundUpdateTitleController.text,
         'fund_update_text': fundUpdateTextController.text,
         'fund_update_images': fundUpdateImages,

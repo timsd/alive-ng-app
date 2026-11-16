@@ -101,6 +101,33 @@ class AppwriteStudyService {
     }
   }
 
+  Future<void> updateStudyGuide(String id, Map<String, dynamic> data) async {
+    try {
+      await _tables.updateRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.studyGuidesCollectionId,
+        rowId: AppwriteIdUtils.toValidUid(id),
+        data: _sanitizeWriteData(data),
+      );
+    } catch (e) {
+      _logger.error('Failed to update study guide', e);
+      throw DatabaseException('Failed to update study guide', originalError: e);
+    }
+  }
+
+  Future<void> deleteStudyGuide(String id) async {
+    try {
+      await _tables.deleteRow(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.studyGuidesCollectionId,
+        rowId: AppwriteIdUtils.toValidUid(id),
+      );
+    } catch (e) {
+      _logger.error('Failed to delete study guide', e);
+      throw DatabaseException('Failed to delete study guide', originalError: e);
+    }
+  }
+
   Future<String> createStudyLesson(Map<String, dynamic> data) async {
     try {
       final row = await _tables.createRow(

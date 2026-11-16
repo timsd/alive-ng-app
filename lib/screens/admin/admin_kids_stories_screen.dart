@@ -16,10 +16,18 @@ class AdminKidsStoriesScreen extends StatefulWidget {
   State<AdminKidsStoriesScreen> createState() => _AdminKidsStoriesScreenState();
 }
 
-class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
+class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _pdfExtractor = PdfExtractorService();
   final _storageService = AppwriteStorageService.instance;
+  late final TabController _tabController;
+
+  List<Map<String, dynamic>> _existingStories = [];
+  bool _isLoadingList = true;
+  String? _editingStoryId;
+  String? _existingImageUrl;
+  String? _existingAudioUrl;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _subtitleController = TextEditingController();
@@ -43,7 +51,105 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
   bool _isSaving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadExistingStories();
+  }
+
+  Future<void> _loadExistingStories() async {
+    setState(() => _isLoadingList = true);
+    try {
+      final list = await KidsContentService.getKidsStories();
+      if (mounted) {
+        setState(() {
+          _existingStories = list;
+          _isLoadingList = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingList = false);
+    }
+  }
+
+  void _startEditStory(Map<String, dynamic> story) {
+    setState(() {
+      _editingStoryId = story['id']?.toString();
+      _titleController.text = (story['title'] ?? '').toString();
+      _subtitleController.text = (story['subtitle'] ?? '').toString();
+      _descriptionController.text = (story['description'] ?? '').toString();
+      _contentController.text = (story['content'] ?? '').toString();
+      _moralLessonController.text = (story['moral_lesson'] ?? '').toString();
+      _bibleReferenceController.text = (story['bible_reference'] ?? '').toString();
+      _durationController.text = (story['duration_minutes'] ?? 10).toString();
+      _existingImageUrl = story['image_url']?.toString();
+      _existingAudioUrl = story['audio_url']?.toString();
+      _coverImageBytes = null;
+      _coverImageName = null;
+      _audioBytes = null;
+      _audioName = null;
+    });
+    _tabController.animateTo(1);
+  }
+
+  void _resetForm() {
+    setState(() {
+      _editingStoryId = null;
+      _existingImageUrl = null;
+      _existingAudioUrl = null;
+      _titleController.clear();
+      _subtitleController.clear();
+      _descriptionController.clear();
+      _contentController.clear();
+      _moralLessonController.clear();
+      _bibleReferenceController.clear();
+      _durationController.text = '10';
+      _coverImageBytes = null;
+      _coverImageName = null;
+      _audioBytes = null;
+      _audioName = null;
+    });
+  }
+
+  Future<void> _deleteStory(Map<String, dynamic> story) async {
+    final id = story['id']?.toString() ?? '';
+    if (id.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Kids Story'),
+        content: Text('Delete "${story['title']}"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await KidsContentService.deleteKidsStory(id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Story deleted')),
+        );
+      }
+      await _loadExistingStories();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed: ${ErrorHandler.getUserFriendlyMessage(e)}')),
+        );
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    _tabController.dispose();
     _titleController.dispose();
     _subtitleController.dispose();
     _descriptionController.dispose();
@@ -122,8 +228,8 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
     setState(() => _isSaving = true);
 
     try {
-      String? uploadedImageUrl;
-      String? uploadedAudioUrl;
+      String? uploadedImageUrl = _existingImageUrl;
+      String? uploadedAudioUrl = _existingAudioUrl;
 
       // 1. Upload Media
       if (_coverImageBytes != null && _coverImageName != null) {
@@ -170,15 +276,24 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
       };
 
       // 3. Save to Appwrite
-      await KidsContentService.createKidsStory(payload);
+      if (_editingStoryId != null && _editingStoryId!.isNotEmpty) {
+        payload.remove('created_at');
+        await KidsContentService.updateKidsStory(_editingStoryId!, payload);
+      } else {
+        await KidsContentService.createKidsStory(payload);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: const Text('Story published successfully!'),
+              content: Text(_editingStoryId != null
+                  ? 'Story updated successfully!'
+                  : 'Story published successfully!'),
               backgroundColor: Theme.of(context).colorScheme.tertiary),
         );
-        Navigator.pop(context); // Return to previous screen
+        _resetForm();
+        await _loadExistingStories();
+        _tabController.animateTo(0);
       }
     } catch (e) {
       if (mounted) {
@@ -205,7 +320,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
             Icon(Icons.auto_stories_rounded, size: 22, color: Theme.of(context).colorScheme.onSurface),
             const SizedBox(width: 8),
             Text(
-              'Add Kids Story',
+              _editingStoryId != null ? 'Edit Kids Story' : 'Kids Stories',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -216,12 +331,23 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
         ),
         showBackButton: true,
         showDonationButton: false,
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Manage Stories'),
+            Tab(text: 'Add / Edit'),
+          ],
+        ),
       ),
-      body: _isSaving
-          ? Center(
-              child: CircularProgressIndicator(
-                  color: Theme.of(context).colorScheme.primary))
-          : SingleChildScrollView(
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildExistingStoriesTab(),
+          _isSaving
+              ? Center(
+                  child: CircularProgressIndicator(
+                      color: Theme.of(context).colorScheme.primary))
+              : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Form(
                 key: _formKey,
@@ -423,8 +549,9 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                               Theme.of(context).colorScheme.onPrimary,
                         ),
                         onPressed: _saveStory,
-                        child: const Text('Save Story',
-                            style: TextStyle(
+                        child: Text(
+                            _editingStoryId != null ? 'Update Story' : 'Save Story',
+                            style: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
@@ -433,6 +560,70 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExistingStoriesTab() {
+    if (_isLoadingList) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_existingStories.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('No kids stories found yet.'),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {
+                _resetForm();
+                _tabController.animateTo(1);
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add First Story'),
+            ),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _loadExistingStories,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _existingStories.length,
+        itemBuilder: (ctx, i) {
+          final s = _existingStories[i];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              title: Text((s['title'] ?? 'Untitled').toString(),
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(
+                '${s['age_group'] ?? ''} • ${s['category'] ?? ''} • ${s['bible_reference'] ?? ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Edit',
+                    onPressed: () => _startEditStory(s),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    tooltip: 'Delete',
+                    onPressed: () => _deleteStory(s),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
