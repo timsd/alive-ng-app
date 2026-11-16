@@ -28,6 +28,7 @@ import 'system_logs_screen.dart';
 import '../../services/appwrite_admin_export_service.dart';
 import '../../services/monthly_reminder_setting_service.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/modern_dropdown.dart';
 import '../../widgets/shimmer_loading.dart';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -850,7 +851,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       if (_canAccessFinance)
         _MgmtSection('Donations & Finance', Icons.savings_outlined, [
           _MgmtTile('Donation Reports', 'Search, filter and export every gift', Icons.receipt_long_outlined, () => context.push(AppConstants.adminDonationsReportRoute)),
-          _MgmtTile('Monthly Support Reminder', 'Send on the 1st of each month. Enable to let members opt out.', Icons.notifications_active_outlined, () => _showMonthlyReminderControl()),
+          _MgmtTile('Monthly Support Reminder', 'Configure reminder schedule date, status, and member opt-outs', Icons.notifications_active_outlined, () => _showMonthlyReminderControl()),
         ]),
       _MgmtSection('Discipleship Operations', Icons.groups_rounded, [
         _MgmtTile('Discipleship Flow', 'Officer routing, report assignments, and disciple deletion approvals', Icons.groups_rounded, () => _showOfficerRoutingDialog()),
@@ -977,15 +978,36 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   }
 
   /// Admin control for the monthly ministry-support reminder.
-  /// When enabled, members get an opt-out toggle in their notification
-  /// preferences; when disabled the toggle is greyed out and everyone
-  /// receives the reminder on the 1st of each month.
+  static String _formatOrdinal(int day) {
+    if (day >= 11 && day <= 13) return '${day}th';
+    switch (day % 10) {
+      case 1:
+        return '${day}st';
+      case 2:
+        return '${day}nd';
+      case 3:
+        return '${day}rd';
+      default:
+        return '${day}th';
+    }
+  }
+
+  static String _formatHourWat(int hour) {
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour % 12 == 0 ? 12 : hour % 12;
+    return '$displayHour:00 $period WAT';
+  }
+
+  /// Controls the monthly ministry-support reminder schedule and opt-out policy.
   Future<void> _showMonthlyReminderControl() async {
-    final current =
-        await MonthlyReminderSettingService.isUserToggleEnabled();
+    final current = await MonthlyReminderSettingService.getConfig();
     if (!mounted) return;
 
-    var enabled = current;
+    var reminderEnabled = current.enabled;
+    var dayOfMonth = current.dayOfMonth;
+    var hourWat = current.hourWat;
+    var userToggleEnabled = current.userToggleEnabled;
+    var isSaving = false;
 
     await showDialog<void>(
       context: context,
@@ -995,55 +1017,143 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
           builder: (context, setDialogState) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text('Monthly Support Reminder'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sent to all members on the 1st of each month, reminding them '
-                  'to support the ministry and honour monthly commitments.',
-                  style: dialogTheme.textTheme.bodyMedium?.copyWith(
-                    color: dialogTheme.colorScheme.onSurfaceVariant,
-                    height: 1.45,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    'Let members opt out',
-                    style: dialogTheme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Text(
-                    enabled
-                        ? 'Members can turn this reminder off themselves'
-                        : 'Everyone receives it (toggle is greyed out for members)',
-                    style: dialogTheme.textTheme.bodySmall?.copyWith(
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    reminderEnabled
+                        ? 'Scheduled for the ${_formatOrdinal(dayOfMonth)} of each month at ${_formatHourWat(hourWat)}.'
+                        : 'Monthly support reminders are currently paused.',
+                    style: dialogTheme.textTheme.bodyMedium?.copyWith(
                       color: dialogTheme.colorScheme.onSurfaceVariant,
-                      height: 1.35,
-                      fontSize: 12,
+                      height: 1.45,
+                      fontSize: 13,
                     ),
                   ),
-                  value: enabled,
-                  onChanged: (value) => setDialogState(() => enabled = value),
-                ),
-                const SizedBox(height: 8),
-                // Oversight: who has actually declined. Without this an admin
-                // cannot tell a member who opted out from one who simply never
-                // gets the notification.
-                if (enabled)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      icon: const Icon(Icons.people_outline, size: 18),
-                      label: const Text('View members who opted out'),
-                      onPressed: () => _showMonthlyReminderOptOuts(dialogContext),
+                  if (reminderEnabled && dayOfMonth > 28) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Months with fewer than $dayOfMonth days will send on their last day.',
+                      style: dialogTheme.textTheme.bodySmall?.copyWith(
+                        color: dialogTheme.colorScheme.primary,
+                        fontSize: 12,
+                      ),
                     ),
+                  ],
+                  const SizedBox(height: 14),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Monthly reminder active',
+                      style: dialogTheme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      reminderEnabled
+                          ? 'Automated monthly push reminder is enabled'
+                          : 'Paused — no monthly reminders will be sent',
+                      style: dialogTheme.textTheme.bodySmall?.copyWith(
+                        color: dialogTheme.colorScheme.onSurfaceVariant,
+                        height: 1.35,
+                        fontSize: 12,
+                      ),
+                    ),
+                    value: reminderEnabled,
+                    onChanged: isSaving
+                        ? null
+                        : (value) => setDialogState(() => reminderEnabled = value),
                   ),
-              ],
+                  const SizedBox(height: 10),
+                  ModernDropdownFormField<int>(
+                    value: dayOfMonth,
+                    isExpanded: true,
+                    enabled: reminderEnabled && !isSaving,
+                    sheetTitle: 'Reminder Day of Month',
+                    decoration: const InputDecoration(
+                      labelText: 'Day of Month',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: List.generate(31, (i) {
+                      final day = i + 1;
+                      return DropdownMenuItem<int>(
+                        value: day,
+                        child: Text('${_formatOrdinal(day)} of every month'),
+                      );
+                    }),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => dayOfMonth = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ModernDropdownFormField<int>(
+                    value: hourWat,
+                    isExpanded: true,
+                    enabled: reminderEnabled && !isSaving,
+                    sheetTitle: 'Send Time (WAT)',
+                    decoration: const InputDecoration(
+                      labelText: 'Send Time (WAT)',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: List.generate(24, (hour) {
+                      return DropdownMenuItem<int>(
+                        value: hour,
+                        child: Text(_formatHourWat(hour)),
+                      );
+                    }),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => hourWat = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Let members opt out',
+                      style: dialogTheme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      userToggleEnabled
+                          ? 'Members can turn this reminder off themselves'
+                          : 'Everyone receives it (toggle is greyed out for members)',
+                      style: dialogTheme.textTheme.bodySmall?.copyWith(
+                        color: dialogTheme.colorScheme.onSurfaceVariant,
+                        height: 1.35,
+                        fontSize: 12,
+                      ),
+                    ),
+                    value: userToggleEnabled,
+                    onChanged: isSaving
+                        ? null
+                        : (value) => setDialogState(() => userToggleEnabled = value),
+                  ),
+                  const SizedBox(height: 8),
+                  // Oversight: who has actually declined. Without this an admin
+                  // cannot tell a member who opted out from one who simply never
+                  // gets the notification.
+                  if (userToggleEnabled)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.people_outline, size: 18),
+                        label: const Text('View members who opted out'),
+                        onPressed: isSaving
+                            ? null
+                            : () => _showMonthlyReminderOptOuts(dialogContext),
+                      ),
+                    ),
+                ],
+              ),
             ),
             actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
             actions: [
@@ -1053,7 +1163,9 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        onPressed: isSaving
+                            ? null
+                            : () => Navigator.of(dialogContext).pop(),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -1072,25 +1184,41 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          final saved = await MonthlyReminderSettingService
-                              .setUserToggleEnabled(enabled);
-                          if (!dialogContext.mounted) return;
-                          Navigator.of(dialogContext).pop();
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                saved
-                                    ? (enabled
-                                        ? 'Members can now opt out of the monthly reminder'
-                                        : 'Monthly reminder is now admin-managed for everyone')
-                                    : 'Could not save the monthly reminder setting',
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text('Save'),
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                setDialogState(() => isSaving = true);
+                                final messenger = ScaffoldMessenger.of(context);
+                                final saved =
+                                    await MonthlyReminderSettingService.saveConfig(
+                                  MonthlyReminderConfig(
+                                    enabled: reminderEnabled,
+                                    dayOfMonth: dayOfMonth,
+                                    hourWat: hourWat,
+                                    userToggleEnabled: userToggleEnabled,
+                                  ),
+                                );
+                                if (!dialogContext.mounted) return;
+                                Navigator.of(dialogContext).pop();
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      saved
+                                          ? (reminderEnabled
+                                              ? 'Monthly reminder scheduled for the ${_formatOrdinal(dayOfMonth)} at ${_formatHourWat(hourWat)}'
+                                              : 'Monthly reminder paused')
+                                          : 'Could not save the monthly reminder setting',
+                                    ),
+                                  ),
+                                );
+                              },
+                        child: isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('Save'),
                       ),
                     ),
                   ],

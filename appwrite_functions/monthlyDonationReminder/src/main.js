@@ -91,6 +91,9 @@ module.exports = async ({ req, res, log, error }) => {
   // not written by the app, so treat it as read-only and do not expect it to
   // grow.
   let optedOutUserIds = new Set();
+  let reminderEnabled = true;
+  let dayOfMonth = 1;
+  let hourWat = 9;
   let userToggleEnabled = false;
   try {
     const settingsDoc = await databases.getDocument(
@@ -100,13 +103,74 @@ module.exports = async ({ req, res, log, error }) => {
     );
     const raw = settingsDoc?.data?.value;
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (typeof parsed?.enabled === 'boolean') {
+      reminderEnabled = parsed.enabled;
+    }
+    const rawDay = Number(parsed?.day_of_month);
+    if (Number.isFinite(rawDay) && rawDay >= 1) {
+      dayOfMonth = Math.min(31, Math.max(1, Math.trunc(rawDay)));
+    }
+    const rawHour = Number(parsed?.hour_wat);
+    if (Number.isFinite(rawHour) && rawHour >= 0) {
+      hourWat = Math.min(23, Math.max(0, Math.trunc(rawHour)));
+    }
     userToggleEnabled = parsed?.user_toggle_enabled === true;
   } catch (e) {
-    // No flag document yet: default to admin-managed (members cannot opt out),
-    // which is the safe default and matches the client.
+    // No flag document yet: default to enabled on the 1st at 09:00 WAT and
+    // admin-managed (members cannot opt out), matching the client defaults.
     if (e?.code !== 404) error(`Warning: could not read the monthly_reminder flag: ${e?.message}`);
   }
-  log(`Admin toggle (members may opt out): ${userToggleEnabled ? 'enabled' : 'disabled'}`);
+  log(
+    `Monthly reminder config: enabled=${reminderEnabled}, day_of_month=${dayOfMonth}, hour_wat=${hourWat}, user_toggle_enabled=${userToggleEnabled}`,
+  );
+
+  let forceRun = false;
+  try {
+    const body = typeof req?.body === 'string' && req.body.trim()
+      ? JSON.parse(req.body)
+      : req?.body;
+    forceRun = body?.force === true;
+  } catch (_) {}
+
+  const isScheduledTrigger = req?.headers?.['x-appwrite-trigger'] === 'schedule';
+
+  if (!reminderEnabled && !forceRun) {
+    const summary = {
+      ok: true,
+      skipped: true,
+      reason: 'disabled',
+      timestamp: new Date().toISOString(),
+    };
+    log(`Skipping monthly reminder: ${JSON.stringify(summary)}`);
+    return res.json(summary);
+  }
+
+  if (isScheduledTrigger && !forceRun) {
+    // Nigeria WAT is UTC+1 year-round (no DST).
+    const watNow = new Date(Date.now() + 60 * 60 * 1000);
+    const watYear = watNow.getUTCFullYear();
+    const watMonth = watNow.getUTCMonth();
+    const watDay = watNow.getUTCDate();
+    const watHour = watNow.getUTCHours();
+    const daysInMonth = new Date(Date.UTC(watYear, watMonth + 1, 0)).getUTCDate();
+    const effectiveTargetDay = Math.min(dayOfMonth, daysInMonth);
+
+    if (watDay !== effectiveTargetDay || watHour !== hourWat) {
+      const summary = {
+        ok: true,
+        skipped: true,
+        reason: 'schedule_mismatch',
+        configuredDay: dayOfMonth,
+        effectiveTargetDay,
+        configuredHourWat: hourWat,
+        currentWatDay: watDay,
+        currentWatHour: watHour,
+        timestamp: new Date().toISOString(),
+      };
+      log(`Skipping scheduled run: ${JSON.stringify(summary)}`);
+      return res.json(summary);
+    }
+  }
 
   try {
     const settingsDoc = await databases.getDocument(

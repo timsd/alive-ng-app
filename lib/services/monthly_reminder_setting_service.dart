@@ -29,19 +29,81 @@ class MonthlyReminderOptOut {
   }
 }
 
+/// Admin-configurable schedule and opt-out settings for the monthly reminder.
+class MonthlyReminderConfig {
+  final bool enabled;
+  final int dayOfMonth;
+  final int hourWat;
+  final bool userToggleEnabled;
+
+  const MonthlyReminderConfig({
+    this.enabled = true,
+    this.dayOfMonth = 1,
+    this.hourWat = 9,
+    this.userToggleEnabled = false,
+  });
+
+  MonthlyReminderConfig copyWith({
+    bool? enabled,
+    int? dayOfMonth,
+    int? hourWat,
+    bool? userToggleEnabled,
+  }) {
+    return MonthlyReminderConfig(
+      enabled: enabled ?? this.enabled,
+      dayOfMonth: (dayOfMonth ?? this.dayOfMonth).clamp(1, 31),
+      hourWat: (hourWat ?? this.hourWat).clamp(0, 23),
+      userToggleEnabled: userToggleEnabled ?? this.userToggleEnabled,
+    );
+  }
+
+  factory MonthlyReminderConfig.fromRaw(dynamic rawValue) {
+    if (rawValue == null) return const MonthlyReminderConfig();
+    try {
+      final Map<String, dynamic> data = rawValue is String
+          ? jsonDecode(rawValue) as Map<String, dynamic>
+          : Map<String, dynamic>.from(rawValue as Map);
+      final rawDay = data['day_of_month'];
+      final parsedDay = rawDay is num
+          ? rawDay.toInt()
+          : int.tryParse(rawDay?.toString() ?? '') ?? 1;
+      final rawHour = data['hour_wat'];
+      final parsedHour = rawHour is num
+          ? rawHour.toInt()
+          : int.tryParse(rawHour?.toString() ?? '') ?? 9;
+      return MonthlyReminderConfig(
+        enabled: data['enabled'] is bool ? data['enabled'] as bool : true,
+        dayOfMonth: parsedDay.clamp(1, 31),
+        hourWat: parsedHour.clamp(0, 23),
+        userToggleEnabled: data['user_toggle_enabled'] == true,
+      );
+    } catch (e) {
+      debugPrint('Invalid monthly_reminder app setting: $e');
+      return const MonthlyReminderConfig();
+    }
+  }
+
+  Map<String, dynamic> toJson() => {
+        'enabled': enabled,
+        'day_of_month': dayOfMonth.clamp(1, 31),
+        'hour_wat': hourWat.clamp(0, 23),
+        'user_toggle_enabled': userToggleEnabled,
+      };
+}
+
 /// Controls the monthly ministry-support reminder:
-/// * The admin flag lives in the Appwrite `app_settings` collection
-///   (document `monthly_reminder`, field `value.user_toggle_enabled`).
-/// * By default the flag is `false`, so every member receives the reminder
-///   and the preference toggle is greyed out in the app.
-/// * When an admin enables the flag, members may opt out themselves.
+/// * The admin config lives in the Appwrite `app_settings` collection
+///   (document `monthly_reminder`, field `value`).
+/// * By default the reminder is enabled on day `1` at `09:00 WAT`, and
+///   `user_toggle_enabled` is `false` (admin-managed).
+/// * When an admin enables `user_toggle_enabled`, members may opt out themselves.
 class MonthlyReminderSettingService {
   static final _logger = Logger('MonthlyReminderSettingService');
   static const String _documentId = 'monthly_reminder';
   static const String _localToggleKey = 'monthly_reminder_user_opt_out';
 
-  /// Reads the admin-controlled flag. Defaults to `false` (admin-managed).
-  static Future<bool> isUserToggleEnabled() async {
+  /// Reads the full admin-configured monthly reminder settings.
+  static Future<MonthlyReminderConfig> getConfig() async {
     try {
       final databases = Databases(appwriteClient);
       // ignore: deprecated_member_use
@@ -50,21 +112,18 @@ class MonthlyReminderSettingService {
         collectionId: AppwriteBackendConfig.appSettingsCollectionId,
         documentId: _documentId,
       );
-      return _readToggleEnabled(doc.data['value']);
+      return MonthlyReminderConfig.fromRaw(doc.data['value']);
     } catch (e) {
-      _logger.info('Monthly reminder flag unavailable, defaulting to false: $e');
-      return false;
+      _logger.info('Monthly reminder config unavailable, using defaults: $e');
+      return const MonthlyReminderConfig();
     }
   }
 
-  /// Admin-only: exposes/hides the user toggle in the app.
-  static Future<bool> setUserToggleEnabled(bool enabled) async {
+  /// Saves the full admin-configured monthly reminder settings.
+  static Future<bool> saveConfig(MonthlyReminderConfig config) async {
     try {
       final databases = Databases(appwriteClient);
-      final payload = {
-        'value': jsonEncode({'user_toggle_enabled': enabled}),
-      };
-
+      final payload = {'value': jsonEncode(config.toJson())};
       try {
         // ignore: deprecated_member_use
         await databases.updateDocument(
@@ -85,9 +144,21 @@ class MonthlyReminderSettingService {
       }
       return true;
     } catch (e) {
-      _logger.error('Failed to update monthly reminder toggle flag: $e');
+      _logger.error('Failed to save monthly reminder config: $e');
       return false;
     }
+  }
+
+  /// Reads the admin-controlled flag. Defaults to `false` (admin-managed).
+  static Future<bool> isUserToggleEnabled() async {
+    final config = await getConfig();
+    return config.userToggleEnabled;
+  }
+
+  /// Admin-only: exposes/hides the user toggle in the app while preserving schedule fields.
+  static Future<bool> setUserToggleEnabled(bool enabled) async {
+    final existing = await getConfig();
+    return saveConfig(existing.copyWith(userToggleEnabled: enabled));
   }
 
   /// The signed-in member's own choice.
@@ -262,19 +333,6 @@ class MonthlyReminderSettingService {
       return true;
     } catch (e) {
       _logger.error('Failed to clear monthly reminder opt-out for $userId: $e');
-      return false;
-    }
-  }
-
-  static bool _readToggleEnabled(dynamic rawValue) {
-    if (rawValue == null) return false;
-    try {
-      final Map<String, dynamic> data = rawValue is String
-          ? jsonDecode(rawValue) as Map<String, dynamic>
-          : Map<String, dynamic>.from(rawValue as Map);
-      return data['user_toggle_enabled'] == true;
-    } catch (e) {
-      debugPrint('Invalid monthly_reminder app setting: $e');
       return false;
     }
   }
