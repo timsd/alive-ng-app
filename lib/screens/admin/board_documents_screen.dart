@@ -113,11 +113,6 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
         showDonationButton: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _loadDocuments,
-          ),
-          IconButton(
             icon: const Icon(Icons.upload_file),
             tooltip: 'Upload Document',
             onPressed: () => _showUploadDialog(),

@@ -22,6 +22,7 @@ class AdminAnnouncementsScreen extends StatefulWidget {
 class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
   final TablesDB _tables = TablesDB(appwriteClient);
   bool _isLoading = true;
+  bool _hasAttemptedAutoSeed = false;
   List<Map<String, dynamic>> _announcements = [];
   String _searchQuery = '';
   String _selectedFilter = 'all'; // all, active, inactive
@@ -49,6 +50,11 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
       final rows = response.rows
           .map((row) => {...Map<String, dynamic>.from(row.data), 'id': row.$id})
           .toList();
+      if (rows.isEmpty && !_hasAttemptedAutoSeed) {
+        _hasAttemptedAutoSeed = true;
+        await _seedDefaultAnnouncements();
+        return;
+      }
       setState(() {
         _announcements = rows;
       });
@@ -161,18 +167,6 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
         title: 'App Broadcast',
         showBackButton: true,
         showDonationButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.playlist_add_check_rounded),
-            tooltip: 'Seed Default & 2027 Retreat Announcements',
-            onPressed: _isLoading ? null : _seedDefaultAnnouncements,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _loadAnnouncements,
-          ),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openEditor(),
@@ -226,37 +220,48 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
             child: _isLoading
                 ? const LoadingWidget()
                 : _filteredAnnouncements.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.campaign_outlined,
-                                size: 64, color: colorScheme.onSurfaceVariant),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No broadcasts found',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
+                    ? RefreshIndicator(
+                        onRefresh: _loadAnnouncements,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) =>
+                              SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight,
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.campaign_outlined,
+                                        size: 64,
+                                        color: colorScheme.onSurfaceVariant),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No broadcasts found',
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ElevatedButton.icon(
+                                      onPressed: () => _openEditor(),
+                                      icon: const Icon(Icons.add),
+                                      label: const Text('Create Broadcast'),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            ElevatedButton.icon(
-                              onPressed: () => _openEditor(),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Create Broadcast'),
-                            ),
-                            const SizedBox(height: 8),
-                            OutlinedButton.icon(
-                              onPressed: _seedDefaultAnnouncements,
-                              icon: const Icon(Icons.playlist_add_check_rounded),
-                              label: const Text('Seed Default & 2027 Retreat'),
-                            ),
-                          ],
+                          ),
                         ),
                       )
                     : RefreshIndicator(
                         onRefresh: _loadAnnouncements,
                         child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(16),
                           itemCount: _filteredAnnouncements.length,
                           itemBuilder: (context, index) {

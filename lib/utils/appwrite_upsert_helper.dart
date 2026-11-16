@@ -1,4 +1,4 @@
-hoimport 'package:appwrite/appwrite.dart';
+import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 
 /// Centralised helper for Appwrite `TablesDB` operations that must gracefully

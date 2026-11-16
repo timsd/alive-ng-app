@@ -449,18 +449,6 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         title: 'Admin Dashboard',
         showBackButton: true,
         showDonationButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh dashboard',
-            onPressed: () {
-              _staggerController.reset();
-              _loadDashboardStats().then((_) {
-                if (mounted) _staggerController.forward();
-              });
-            },
-          ),
-        ],
       ),
       body: _isLoading
           ? const AdminDashboardSkeleton()
@@ -564,8 +552,15 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
   Widget _buildScrollableContent(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 920;
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(isWide ? 28 : 16),
+    return RefreshIndicator(
+      onRefresh: () async {
+        _staggerController.reset();
+        await _loadDashboardStats();
+        if (mounted) _staggerController.forward();
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(isWide ? 28 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -600,6 +595,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
           ),
         ],
       ),
+    ),
     );
   }
 

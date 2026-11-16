@@ -340,18 +340,14 @@ class _AdminDonationsReportContentState
         title: 'Donations & Financial Report',
         showBackButton: true,
         showDonationButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _loadDonations,
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+          : RefreshIndicator(
+              onRefresh: _loadDonations,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -430,6 +426,7 @@ class _AdminDonationsReportContentState
                 ],
               ),
             ),
+          ),
     );
   }
 

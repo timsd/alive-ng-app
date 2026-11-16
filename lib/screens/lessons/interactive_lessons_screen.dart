@@ -100,13 +100,6 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
       appBar: CustomAppBar(
         title: translate('interactive_lessons'),
         showBackButton: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh lessons',
-            onPressed: () => _lessonsService.syncFromRemote(force: true),
-          ),
-        ],
       ),
       body: Column(
         children: [

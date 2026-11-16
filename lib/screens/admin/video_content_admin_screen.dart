@@ -534,13 +534,6 @@ class _VideoContentAdminScreenState extends State<VideoContentAdminScreen> {
           title: 'Video Content Management',
           showBackButton: true,
           showDonationButton: false,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Reload from Database',
-              onPressed: () => _loadVideos(forceRefresh: true),
-            ),
-          ],
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _showVideoEditorDialog(),

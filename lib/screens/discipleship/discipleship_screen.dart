@@ -278,12 +278,6 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
-        ],
       ),
       floatingActionButton: _buildAddFab(),
       body: _isLoading
@@ -293,7 +287,10 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
               : TabBarView(
                   controller: _tabController,
                   children: [
-                    DiscipleshipOverviewTab(statistics: _statistics),
+                    RefreshIndicator(
+                      onRefresh: _loadData,
+                      child: DiscipleshipOverviewTab(statistics: _statistics),
+                    ),
                     _buildContactsTab(),
                     _buildActivitiesTab(),
                     _buildPrayerTab(),
@@ -445,29 +442,44 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           ),
         ),
         Expanded(
-          child: _contacts.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.people_outline, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text('No contacts found'),
-                      Text('Tap + to add your first contact'),
-                    ],
+          child: RefreshIndicator(
+            onRefresh: _loadData,
+            child: _contacts.isEmpty
+                ? LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(minHeight: constraints.maxHeight),
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.people_outline,
+                                  size: 64, color: Colors.grey),
+                              SizedBox(height: 16),
+                              Text('No contacts found'),
+                              Text('Tap + to add your first contact'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: _contacts.length,
+                    itemBuilder: (context, index) {
+                      final contact = _contacts[index];
+                      return DiscipleshipContactCard(
+                        contact: contact,
+                        onTap: () => _showContactDetails(contact),
+                        onAction: (action) =>
+                            _handleContactAction(contact, action),
+                      );
+                    },
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _contacts.length,
-                  itemBuilder: (context, index) {
-                    final contact = _contacts[index];
-                    return DiscipleshipContactCard(
-                      contact: contact,
-                      onTap: () => _showContactDetails(contact),
-                      onAction: (action) => _handleContactAction(contact, action),
-                    );
-                  },
-                ),
+          ),
         ),
       ],
     );
@@ -507,57 +519,88 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   }
 
   Widget _buildInteractionsList() {
-    return _recentInteractions.isEmpty
-        ? const Center(child: Text('No recent interactions'))
-        : ListView.builder(
-            itemCount: _recentInteractions.length,
-            itemBuilder: (context, index) {
-              final interaction = _recentInteractions[index];
-              return ListTile(
-                leading: Icon(DiscipleshipHelpers.getMethodIcon(interaction.method)),
-                title: Text(interaction.title),
-                subtitle: Text(
-                  '${DateFormat('MMM dd, yyyy').format(interaction.date)} • ${interaction.durationMinutes} min',
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: _recentInteractions.isEmpty
+          ? LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: const Center(child: Text('No recent interactions')),
                 ),
-                trailing: Text(_getContactName(interaction.contactId)),
-              );
-            },
-          );
+              ),
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: _recentInteractions.length,
+              itemBuilder: (context, index) {
+                final interaction = _recentInteractions[index];
+                return ListTile(
+                  leading: Icon(
+                      DiscipleshipHelpers.getMethodIcon(interaction.method)),
+                  title: Text(interaction.title),
+                  subtitle: Text(
+                    '${DateFormat('MMM dd, yyyy').format(interaction.date)} • ${interaction.durationMinutes} min',
+                  ),
+                  trailing: Text(_getContactName(interaction.contactId)),
+                );
+              },
+            ),
+    );
   }
 
   Widget _buildStudySessionsList() {
-    return _recentStudySessions.isEmpty
-        ? const Center(child: Text('No recent study sessions'))
-        : ListView.builder(
-            itemCount: _recentStudySessions.length,
-            itemBuilder: (context, index) {
-              final session = _recentStudySessions[index];
-              return ListTile(
-                leading: Icon(Icons.book, color: DiscipleshipHelpers.getStudyTypeColor(session.type)),
-                title: Text(session.title),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${DateFormat('MMM dd, yyyy').format(session.date)} • ${session.durationMinutes} min'),
-                    if (session.topic != null) Text('Topic: ${session.topic}'),
-                  ],
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: _recentStudySessions.isEmpty
+          ? LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child:
+                      const Center(child: Text('No recent study sessions')),
                 ),
-                trailing: session.rating != null
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: List.generate(
-                          5,
-                          (i) => Icon(
-                            i < session.rating! ? Icons.star : Icons.star_border,
-                            size: 16,
-                            color: Colors.amber,
+              ),
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: _recentStudySessions.length,
+              itemBuilder: (context, index) {
+                final session = _recentStudySessions[index];
+                return ListTile(
+                  leading: Icon(Icons.book,
+                      color:
+                          DiscipleshipHelpers.getStudyTypeColor(session.type)),
+                  title: Text(session.title),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          '${DateFormat('MMM dd, yyyy').format(session.date)} • ${session.durationMinutes} min'),
+                      if (session.topic != null) Text('Topic: ${session.topic}'),
+                    ],
+                  ),
+                  trailing: session.rating != null
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(
+                            5,
+                            (i) => Icon(
+                              i < session.rating!
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              size: 16,
+                              color: Colors.amber,
+                            ),
                           ),
-                        ),
-                      )
-                    : null,
-              );
-            },
-          );
+                        )
+                      : null,
+                );
+              },
+            ),
+    );
   }
 
   Widget _buildPrayerTab() {
@@ -700,61 +743,83 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           ),
         ),
         Expanded(
-          child: currentList.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _selectedPrayerSubTab == 0 ? Icons.favorite_outline : Icons.check_circle_outline,
-                        size: 64,
-                        color: _selectedPrayerSubTab == 0 ? Colors.grey : Colors.green.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _selectedPrayerSubTab == 0
-                            ? 'No active prayer requests'
-                            : 'No answered prayers yet',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 6),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          _selectedPrayerSubTab == 0
-                              ? 'Tap + Add Prayer to record a prayer request for your disciples.'
-                              : 'When God answers your prayers, tap "Mark as Answered" to record testimonies and celebrate breakthrough here.',
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          child: RefreshIndicator(
+            onRefresh: _loadData,
+            child: currentList.isEmpty
+                ? LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(minHeight: constraints.maxHeight),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _selectedPrayerSubTab == 0
+                                    ? Icons.favorite_outline
+                                    : Icons.check_circle_outline,
+                                size: 64,
+                                color: _selectedPrayerSubTab == 0
+                                    ? Colors.grey
+                                    : Colors.green.withValues(alpha: 0.6),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _selectedPrayerSubTab == 0
+                                    ? 'No active prayer requests'
+                                    : 'No answered prayers yet',
+                                style: theme.textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 6),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 32),
+                                child: Text(
+                                  _selectedPrayerSubTab == 0
+                                      ? 'Tap + Add Prayer to record a prayer request for your disciples.'
+                                      : 'When God answers your prayers, tap "Mark as Answered" to record testimonies and celebrate breakthrough here.',
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ],
+                    ),
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: currentList.length,
+                    itemBuilder: (context, index) {
+                      final prayer = currentList[index];
+                      final contact = _contacts.firstWhere(
+                        (c) => c.id == prayer.contactId,
+                        orElse: () => DiscipleshipContact(
+                          id: '',
+                          discipleMakerId: '',
+                          firstName:
+                              prayer.contactId.isEmpty ? 'General' : 'Disciple',
+                          lastName:
+                              prayer.contactId.isEmpty ? 'Prayer' : 'Contact',
+                          currentLevel: DiscipleshipLevel.prospect,
+                          firstContact: DateTime.now(),
+                          createdAt: DateTime.now(),
+                          updatedAt: DateTime.now(),
+                        ),
+                      );
+                      return DiscipleshipPrayerCard(
+                        prayer: prayer,
+                        contact: contact,
+                        onRefresh: _loadData,
+                      );
+                    },
                   ),
-                )
-              : ListView.builder(
-                  itemCount: currentList.length,
-                  itemBuilder: (context, index) {
-                    final prayer = currentList[index];
-                    final contact = _contacts.firstWhere(
-                      (c) => c.id == prayer.contactId,
-                      orElse: () => DiscipleshipContact(
-                        id: '',
-                        discipleMakerId: '',
-                        firstName: prayer.contactId.isEmpty ? 'General' : 'Disciple',
-                        lastName: prayer.contactId.isEmpty ? 'Prayer' : 'Contact',
-                        currentLevel: DiscipleshipLevel.prospect,
-                        firstContact: DateTime.now(),
-                        createdAt: DateTime.now(),
-                        updatedAt: DateTime.now(),
-                      ),
-                    );
-                    return DiscipleshipPrayerCard(
-                      prayer: prayer,
-                      contact: contact,
-                      onRefresh: _loadData,
-                    );
-                  },
-                ),
+          ),
         ),
       ],
     );

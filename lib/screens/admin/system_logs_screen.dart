@@ -247,13 +247,6 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
         title: 'System Logs',
         showBackButton: true,
         showDonationButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _loadLogs,
-            tooltip: 'Refresh',
-          ),
-        ],
       ),
       body: _isLoading
           ? const LoadingWidget()

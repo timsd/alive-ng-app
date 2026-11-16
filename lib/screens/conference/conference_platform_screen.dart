@@ -293,13 +293,6 @@ class _ConferencePlatformScreenState
       appBar: CustomAppBar(
         title: 'ALIVE Meet',
         showBackButton: true,
-        actions: [
-          IconButton(
-            tooltip: 'Refresh ongoing meetings',
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _fetchOngoingRooms,
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _fetchOngoingRooms,

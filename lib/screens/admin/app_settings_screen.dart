@@ -258,11 +258,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               onPressed: _showAddSettingDialog,
               tooltip: 'Add Setting',
             ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _loadSettings,
-              tooltip: 'Refresh',
-            ),
           ],
         ),
         body: _isLoading
@@ -322,8 +317,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   Widget _buildSettingsList() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+    return RefreshIndicator(
+      onRefresh: _loadSettings,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -341,6 +339,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 80), // Space for FAB
         ],
       ),
+    ),
     );
   }
 

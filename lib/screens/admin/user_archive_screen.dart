@@ -175,12 +175,6 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
         title: 'Archived Users',
         showBackButton: true,
         showDonationButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadArchivedUsers,
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -228,61 +222,82 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
 
           // Archived Users List
           Expanded(
-            child: _filteredUsers.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.archive_outlined,
-                          size: ResponsiveUtils.getResponsiveIconSize(
-                              context, 64),
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant
-                              .withValues(alpha: 0.4),
-                        ),
-                        SizedBox(
-                            height: ResponsiveUtils.getResponsiveSpacing(
-                                context, 16)),
-                        Text(
-                          _searchQuery.isEmpty
-                              ? 'No archived users found'
-                              : 'No users match your search',
-                          style: TextStyle(
-                            fontSize: ResponsiveUtils.getResponsiveFontSize(
-                                context, 18),
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        SizedBox(
-                            height: ResponsiveUtils.getResponsiveSpacing(
-                                context, 8)),
-                        Text(
-                          _searchQuery.isEmpty
-                              ? 'Users who leave the organization will appear here'
-                              : 'Try adjusting your search terms',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
+            child: RefreshIndicator(
+              onRefresh: _loadArchivedUsers,
+              child: _filteredUsers.isEmpty
+                  ? LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(minHeight: constraints.maxHeight),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.archive_outlined,
+                                  size: ResponsiveUtils.getResponsiveIconSize(
+                                      context, 64),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: 0.4),
+                                ),
+                                SizedBox(
+                                    height:
+                                        ResponsiveUtils.getResponsiveSpacing(
+                                            context, 16)),
+                                Text(
+                                  _searchQuery.isEmpty
+                                      ? 'No archived users found'
+                                      : 'No users match your search',
+                                  style: TextStyle(
+                                    fontSize:
+                                        ResponsiveUtils.getResponsiveFontSize(
+                                            context, 18),
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurfaceVariant,
                                   ),
-                          textAlign: TextAlign.center,
+                                ),
+                                SizedBox(
+                                    height:
+                                        ResponsiveUtils.getResponsiveSpacing(
+                                            context, 8)),
+                                Text(
+                                  _searchQuery.isEmpty
+                                      ? 'Users who leave the organization will appear here'
+                                      : 'Try adjusting your search terms',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.symmetric(
-                        horizontal:
-                            ResponsiveUtils.getResponsivePaddingValue(context)),
-                    itemCount: _filteredUsers.length,
+                      ),
+                    )
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(
+                          horizontal:
+                              ResponsiveUtils.getResponsivePaddingValue(
+                                  context)),
+                      itemCount: _filteredUsers.length,
                     itemBuilder: (context, index) {
                       final user = _filteredUsers[index];
                       return _buildArchivedUserCard(user);
                     },
                   ),
+            ),
           ),
         ],
       ),

@@ -184,13 +184,6 @@ class _AdminOperationsHubBodyState extends State<_AdminOperationsHubBody>
       appBar: CustomAppBar(
         title: 'Operations & Content Hub',
         showBackButton: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _loadAll,
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,

@@ -67,13 +67,6 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       appBar: CustomAppBar(
         title: translate('news_feed'),
         showBackButton: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _loadData,
-          ),
-        ],
       ),
       floatingActionButton: RoleAccessService.instance.canCreateEvents() 
           ? FloatingActionButton(

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart' hide Locale;
@@ -209,6 +210,7 @@ class _AliveAppState extends ConsumerState<AliveApp>
       title: 'ALIVE Nigeria',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: rootScaffoldMessengerKey,
+      scrollBehavior: const _AppScrollBehavior(),
 
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
@@ -789,4 +791,17 @@ class MainNavigationScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.invertedStylus,
+      };
 }

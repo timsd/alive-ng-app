@@ -64,13 +64,6 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
       appBar: CustomAppBar(
         title: 'Podcasts',
         showBackButton: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh podcasts',
-            onPressed: () => ref.read(podcastProvider.notifier).loadPodcasts(),
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

@@ -135,16 +135,12 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
         title: 'Board of Directors',
         showBackButton: true,
         showDonationButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _checkAccess,
-          ),
-        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+      body: RefreshIndicator(
+        onRefresh: _checkAccess,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -335,6 +331,7 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

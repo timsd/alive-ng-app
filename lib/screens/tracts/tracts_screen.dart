@@ -78,15 +78,6 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
         showBackButton: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {
-                _tractsFuture = TractService().getAllTracts();
-              });
-            },
-            tooltip: 'Refresh Tracts',
-          ),
-          IconButton(
             icon: Icon(_viewMode == 'grid' ? Icons.view_list : Icons.grid_view),
             onPressed: () {
               setState(() {

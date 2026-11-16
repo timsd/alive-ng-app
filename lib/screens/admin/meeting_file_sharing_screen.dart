@@ -123,11 +123,6 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _loadFiles,
-          ),
         ],
       ),
       body: Column(

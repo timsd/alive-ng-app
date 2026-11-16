@@ -558,13 +558,6 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         title: 'Leadership Directory',
         showBackButton: true,
         showDonationButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Refresh',
-          ),
-        ],
       ),
       body: _isLoading
           ? const LoadingWidget()
@@ -840,40 +833,56 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             : 'Add Director';
 
     if (holders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 48,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No $label found for selected tenure',
-              style: TextStyle(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 48,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No $label found for selected tenure',
+                      style: TextStyle(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _showAddOfficeHolderDialog(category),
+                      icon: const Icon(Icons.add),
+                      label: Text(addLabel),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: () => _showAddOfficeHolderDialog(category),
-              icon: const Icon(Icons.add),
-              label: Text(addLabel),
-            ),
-          ],
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: holders.length,
-      itemBuilder: (context, index) {
-        final holder = holders[index];
-        return _buildOfficeHolderCard(holder, category);
-      },
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: holders.length,
+        itemBuilder: (context, index) {
+          final holder = holders[index];
+          return _buildOfficeHolderCard(holder, category);
+        },
+      ),
     );
   }
 
@@ -1548,8 +1557,11 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
     final liveArchived = _archivedRecords.length;
     final liveTotal = liveActiveLeaders + liveCompleted + liveArchived;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1737,6 +1749,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -1757,40 +1770,55 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
 
   Widget _buildRecordsTab(List<LeadershipRecord> records, String title) {
     if (records.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inbox,
-              size: 64,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.3),
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.inbox,
+                      size: 64,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.3),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No records found',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.6),
+                          ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'No records found',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.6),
-                  ),
-            ),
-          ],
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: records.length,
-      itemBuilder: (context, index) {
-        final record = records[index];
-        return _buildRecordCard(record);
-      },
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: records.length,
+        itemBuilder: (context, index) {
+          final record = records[index];
+          return _buildRecordCard(record);
+        },
+      ),
     );
   }
 

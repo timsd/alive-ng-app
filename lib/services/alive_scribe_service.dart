@@ -425,6 +425,13 @@ class AliveScribeService {
           if (rawText.trim().isEmpty) return;
 
           _consecutiveSttErrors = 0;
+
+          final currentWords = rawText.trim().split(RegExp(r'\s+'));
+          if (_committedSessionWords.length > 2 &&
+              currentWords.length < _committedSessionWords.length - 2) {
+            _committedSessionWords = [];
+          }
+
           _currentSessionWords = rawText;
 
           // Smart continuous commit: if user pauses speaking for ~1.8s, commit only
@@ -473,13 +480,14 @@ class AliveScribeService {
     if (trimmed.isEmpty) return;
 
     final pending = _extractUncommittedDelta(trimmed);
-    _committedSessionWords = trimmed.split(RegExp(r'\s+'));
-
     if (pending.isEmpty) return;
+
     if (_isLikelyRemoteSpeakerBleed) {
       debugPrint('[AliveScribeService] Suppressed probable remote speaker bleed');
       return;
     }
+
+    _committedSessionWords = trimmed.split(RegExp(r'\s+'));
 
     final cleanText = cleanDisfluencies(pending);
     if (cleanText.isEmpty) return;
@@ -1018,6 +1026,7 @@ class AliveScribeService {
     stopListening();
     _sessionSub?.cancel();
     _dataChannelSub?.cancel();
+    voiceLevelNotifier.dispose();
     _transcriptStreamController.close();
     _decisionsStreamController.close();
     _actionItemsStreamController.close();

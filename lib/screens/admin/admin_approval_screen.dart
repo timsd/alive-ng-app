@@ -513,13 +513,6 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
         title: 'User Approval Management',
         showBackButton: true,
         showDonationButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _loadUsers,
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Theme.of(context).colorScheme.primary,

@@ -423,22 +423,26 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
         pendingChapterName != null &&
         pendingChapterName.trim().isNotEmpty;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildGeneralMeetingBanner(),
-          if (isPendingApproval) ...[
-            _buildPendingApprovalCard(pendingChapterName),
-            const SizedBox(height: 16),
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildGeneralMeetingBanner(),
+            if (isPendingApproval) ...[
+              _buildPendingApprovalCard(pendingChapterName),
+              const SizedBox(height: 16),
+            ],
+            _buildStatisticsCards(),
+            const SizedBox(height: 24),
+            _buildRecentActivities(),
+            const SizedBox(height: 24),
+            _buildUpcomingTasks(),
           ],
-          _buildStatisticsCards(),
-          const SizedBox(height: 24),
-          _buildRecentActivities(),
-          const SizedBox(height: 24),
-          _buildUpcomingTasks(),
-        ],
+        ),
       ),
     );
   }

@@ -126,11 +126,6 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
         showLanguageToggle: false,
         showDonationButton: false,
         actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadRooms,
-          ),
           if (_canCreateRoom && _rooms.isEmpty)
             IconButton(
               tooltip: 'Create Room',

@@ -187,13 +187,6 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         title: 'Role Management',
         showBackButton: true,
         showDonationButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _loadUsers,
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -342,48 +335,63 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
 
           // Users List
           Expanded(
-            child: _filteredUsers.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.people_outline,
-                          size: 64,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isNotEmpty ||
-                                  _selectedRole != 'all' ||
-                                  _selectedChapter != 'all'
-                              ? 'No users match your filters'
-                              : 'No users found',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            child: RefreshIndicator(
+              onRefresh: _loadUsers,
+              child: _filteredUsers.isEmpty
+                  ? LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(minHeight: constraints.maxHeight),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.people_outline,
+                                  size: 64,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _searchQuery.isNotEmpty ||
+                                          _selectedRole != 'all' ||
+                                          _selectedChapter != 'all'
+                                      ? 'No users match your filters'
+                                      : 'No users found',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Try adjusting your search or filter criteria',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Try adjusting your search or filter criteria',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                      ),
+                    )
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      itemCount: _filteredUsers.length,
+                      itemBuilder: (context, index) {
+                        final user = _filteredUsers[index];
+                        return _buildUserCard(user);
+                      },
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    itemCount: _filteredUsers.length,
-                    itemBuilder: (context, index) {
-                      final user = _filteredUsers[index];
-                      return _buildUserCard(user);
-                    },
-                  ),
+            ),
           ),
         ],
       ),

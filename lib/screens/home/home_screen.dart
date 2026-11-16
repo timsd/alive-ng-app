@@ -168,9 +168,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final dailyVerseAsync = ref.watch(dailyVerseProvider);
     final roleService = RoleAccessService.instance;
 
-    return SingleChildScrollView(
-      controller: _scrollController,
-      padding: ResponsiveUtils.getResponsivePadding(context),
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(dailyVerseProvider);
+        ref.invalidate(authStateProvider);
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        controller: _scrollController,
+        padding: ResponsiveUtils.getResponsivePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -225,6 +231,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             SizedBox(height: context.isMobile ? 16 : 24),
         ],
       ),
+    ),
     );
   }
 

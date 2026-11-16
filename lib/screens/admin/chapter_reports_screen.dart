@@ -652,11 +652,6 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
             onPressed: _exportLeadershipReportsToDocx,
             tooltip: 'Export Reports (.docx)',
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadReports,
-            tooltip: 'Refresh Reports',
-          ),
         ],
       ),
       body: Column(

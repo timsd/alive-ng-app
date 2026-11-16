@@ -301,13 +301,6 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
         title: 'Backup & Restore',
         showBackButton: true,
         showDonationButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _loadBackups,
-            tooltip: 'Refresh',
-          ),
-        ],
       ),
       body: _isLoading
           ? const LoadingWidget()
