@@ -145,19 +145,24 @@ class AliveScribeService {
   bool _isSttInitialized = false;
   bool _isListening = false;
   bool _isRestarting = false;
-  String _lastRecognizedWords = '';
+  String _currentSessionWords = '';
+  int _lastCommittedLength = 0;
+  int _consecutiveSttErrors = 0;
+  DateTime? _lastLocalSpeakingAt;
 
-  /// The best available STT locale resolved at init (en-NG → en-GB → en-US), matching Bible Game.
-  String _resolvedSttLocale = 'en-NG';
+  /// The best available STT locale resolved at init (en-GB → en-US → en-NG).
+  /// `en-GB` and `en-US` almost always have Android on-device neural packs,
+  /// avoiding cloud-only 10-15s cutoffs while handling Nigerian English well.
+  String _resolvedSttLocale = 'en-GB';
 
-  /// Ordered locale fallback chain: Nigerian English → British English → US English.
+  /// Ordered locale fallback chain: British English → US English → Nigerian English.
   static const _localeFallbackChain = [
-    'en-NG',
-    'en_NG',
     'en-GB',
     'en_GB',
     'en-US',
     'en_US',
+    'en-NG',
+    'en_NG',
   ];
 
   final List<ScribeTranscriptPacket> _transcript = [];
@@ -196,18 +201,42 @@ class AliveScribeService {
 
   void _listenToSessionMicState() {
     _sessionSub = _gateway.sessionStream.listen((session) {
+      for (final p in session.participants) {
+        if (p.isLocal && p.isSpeaking) {
+          _lastLocalSpeakingAt = DateTime.now();
+          break;
+        }
+      }
       if (!_isListening) return;
       if (session.isConnected && !session.isAudioMuted) {
         if (!_speechToText.isListening && !_isRestarting) {
           _startSttSession();
         }
       } else {
-        if (_speechToText.isListening || _lastRecognizedWords.isNotEmpty) {
+        if (_speechToText.isListening || _hasPendingSpeech) {
           _commitPendingSpeech();
           _speechToText.stop().catchError((_) {});
         }
       }
     });
+  }
+
+  bool get _hasPendingSpeech =>
+      _currentSessionWords.length > _lastCommittedLength &&
+      _currentSessionWords.substring(_lastCommittedLength).trim().isNotEmpty;
+
+  /// Suppresses phantom STT triggers caused by remote speaker bleed when
+  /// remote participants are actively speaking and local WebRTC VAD has been
+  /// silent for > 2.5 seconds.
+  bool get _isLikelyRemoteSpeakerBleed {
+    final session = _gateway.currentSession;
+    final remoteSpeaking =
+        session.participants.any((p) => !p.isLocal && p.isSpeaking);
+    if (!remoteSpeaking) return false;
+    final localSpokeRecently = _lastLocalSpeakingAt != null &&
+        DateTime.now().difference(_lastLocalSpeakingAt!) <
+            const Duration(milliseconds: 2500);
+    return !localSpokeRecently;
   }
 
   List<ScribeTranscriptPacket> get transcript => List.unmodifiable(_transcript);
@@ -251,16 +280,17 @@ class AliveScribeService {
       _isSttInitialized = await _speechToText.initialize(
         onError: (err) {
           debugPrint('[AliveScribeService] STT error: $err');
+          _consecutiveSttErrors++;
           _commitPendingSpeech();
           if (_isListening) {
-            _restartListening();
+            _restartListening(fromError: true);
           }
         },
         onStatus: (status) {
           debugPrint('[AliveScribeService] STT status: $status');
           if ((status == 'notListening' || status == 'done') && _isListening) {
             _commitPendingSpeech();
-            _restartListening();
+            _restartListening(immediate: true);
           }
         },
         options: [
@@ -303,7 +333,9 @@ class AliveScribeService {
 
   Future<void> startListening() async {
     _isListening = true;
-    _lastRecognizedWords = '';
+    _currentSessionWords = '';
+    _lastCommittedLength = 0;
+    _consecutiveSttErrors = 0;
 
     // Only initialize and run local microphone STT when the user's meeting
     // microphone is actually enabled. Muted attendees still receive remote
@@ -345,19 +377,27 @@ class AliveScribeService {
     if (!_isListening || !_isLocalMicActive || !_isSttInitialized) return;
 
     try {
-      _lastRecognizedWords = '';
+      _currentSessionWords = '';
+      _lastCommittedLength = 0;
       _speechToText.listen(
         onResult: (result) {
           if (!_isListening || !_isLocalMicActive) return;
-          final rawText = result.recognizedWords.trim();
-          if (rawText.isEmpty) return;
-          _lastRecognizedWords = rawText;
+          final rawText = result.recognizedWords;
+          if (rawText.trim().isEmpty) return;
 
-          // Smart continuous commit: if user pauses speaking for ~1.8s, commit words
-          // into the live transcript immediately so no utterances are lost if engine stops.
+          _consecutiveSttErrors = 0;
+
+          // If the engine reset its internal buffer mid-session, reset offset.
+          if (rawText.length < _lastCommittedLength) {
+            _lastCommittedLength = 0;
+          }
+          _currentSessionWords = rawText;
+
+          // Smart continuous commit: if user pauses speaking for ~1.8s, commit only
+          // the uncommitted delta so subsequent finalResult revisions never duplicate.
           _speechPauseCommitTimer?.cancel();
           _speechPauseCommitTimer = Timer(const Duration(milliseconds: 1800), () {
-            if (_isListening && _lastRecognizedWords.isNotEmpty) {
+            if (_isListening && _hasPendingSpeech) {
               _commitPendingSpeech();
             }
           });
@@ -377,17 +417,26 @@ class AliveScribeService {
       );
     } catch (e) {
       debugPrint('[AliveScribeService] Start STT session error: $e');
+      _consecutiveSttErrors++;
       if (_isListening) {
-        _restartListening();
+        _restartListening(fromError: true);
       }
     }
   }
 
   void _commitPendingSpeech() {
     _speechPauseCommitTimer?.cancel();
-    final pending = _lastRecognizedWords.trim();
+    if (_currentSessionWords.isEmpty) return;
+
+    final safeStart = _lastCommittedLength.clamp(0, _currentSessionWords.length);
+    final pending = _currentSessionWords.substring(safeStart).trim();
+    _lastCommittedLength = _currentSessionWords.length;
+
     if (pending.isEmpty) return;
-    _lastRecognizedWords = '';
+    if (_isLikelyRemoteSpeakerBleed) {
+      debugPrint('[AliveScribeService] Suppressed probable remote speaker bleed');
+      return;
+    }
 
     final cleanText = cleanDisfluencies(pending);
     if (cleanText.isEmpty) return;
@@ -406,10 +455,24 @@ class AliveScribeService {
     _broadcastPacket(packet);
   }
 
-  void _restartListening() {
+  void _restartListening({bool immediate = false, bool fromError = false}) {
     if (!_isListening || !_isLocalMicActive || _isRestarting) return;
     _isRestarting = true;
-    Future.delayed(const Duration(milliseconds: 60), () {
+
+    if (immediate && !fromError) {
+      Future.microtask(() {
+        _isRestarting = false;
+        if (_isListening && _isLocalMicActive) {
+          _startSttSession();
+        }
+      });
+      return;
+    }
+
+    // Exponential backoff on repeated errors (150ms, 300ms, 600ms, 1200ms, max 2000ms)
+    final shift = (_consecutiveSttErrors - 1).clamp(0, 4);
+    final delayMs = fromError ? (150 << shift).clamp(150, 2000) : 40;
+    Future.delayed(Duration(milliseconds: delayMs), () {
       _isRestarting = false;
       if (_isListening && _isLocalMicActive) {
         _startSttSession();
@@ -664,6 +727,9 @@ class AliveScribeService {
       RegExp(r'\b(approved the budget for\s+(.+))', caseSensitive: false),
       RegExp(r'\b(voted to (adopt|approve|appoint|proceed with)\s+(.+))', caseSensitive: false),
       RegExp(r'\b(confirmed the appointment of\s+(.+))', caseSensitive: false),
+      RegExp(r'\b(it is decided that\s+(.+))', caseSensitive: false),
+      RegExp(r"\b((let'?s|we('ll| will)?)\s+(go with|adopt|approve|proceed with|stick with)\s+(.+))", caseSensitive: false),
+      RegExp(r'\b((agreed|settled|confirmed|approved)\s+(to|that|on)\s+(.+))', caseSensitive: false),
     ];
 
     for (final pattern in decisionPatterns) {
@@ -718,6 +784,8 @@ class AliveScribeService {
       RegExp(r'\b(we will follow up on\s+(.+))', caseSensitive: false),
       RegExp(r'\b(take responsibility for\s+(.+))', caseSensitive: false),
       RegExp(r'\b(action point(\s+is)?\s+(.+))', caseSensitive: false),
+      RegExp(r'\b(action\s+(?:on|for)\s+([A-Za-z\s]+?)\s*(?:to|:|-)\s*(.+))', caseSensitive: false),
+      RegExp(r"\b(we(?:'ll| will| need to)\s+(?:make sure|ensure|send|prepare|share|follow up|contact)\s+(.+))", caseSensitive: false),
     ];
 
     for (final pattern in actionPatterns) {
