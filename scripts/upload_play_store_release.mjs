@@ -381,10 +381,10 @@ async function main() {
               language: 'en-US',
               text:
                 `What's New in v${versionName}:\n` +
-                `• Leadership Directory: Centralized directory for Board of Trustees, Directors, and Ministry Leadership with linked account bindings.\n` +
-                `• Board of Directors Portal: Streamlined meeting resolutions, decisions, and governance tools.\n` +
-                `• Secure Live Payments: Direct live Paystack integration for seamless donations and ministry support.\n` +
-                `• ALIVE Meet & Scribe: Unified conference controls, automated minutes sync, and low-latency meeting collaboration.`,
+                `• Live Voice Activity: Real-time speaking & mic indicators across ALIVE Meet, Chat, Bible Game, and Kids Missions.\n` +
+                `• Instant Content Sync: Faster updates and offline access for tracts, lessons, podcasts, Health+, and announcements.\n` +
+                `• Smoother Meetings: Direct join for ongoing meetings, seamless overlay resume, and reliable alerts.\n` +
+                `• Bug fixes and performance improvements.`,
             },
           ],
         },
