@@ -744,24 +744,5 @@ class HealthContentService extends ChangeNotifier {
     ),
   ];
 
-  static final List<HealthCommentItem> _defaultComments = [
-    HealthCommentItem(
-      id: 'comm_1',
-      targetId: 'general',
-      authorName: 'Sister Grace O.',
-      authorEmail: 'grace@example.com',
-      content:
-          'The plant-based switch has tremendously improved my energy levels and blood pressure. Blessed to have local Nigerian Adventist recipes here!',
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-    HealthCommentItem(
-      id: 'comm_2',
-      targetId: 'rec_brown_rice_veggie_stew',
-      authorName: 'Brother Emmanuel',
-      authorEmail: 'emmanuel@example.com',
-      content:
-          'Tasted wonderful! Adding the scent leaf right at the end made the whole house smell amazing.',
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
+  static const List<HealthCommentItem> _defaultComments = [];
 }

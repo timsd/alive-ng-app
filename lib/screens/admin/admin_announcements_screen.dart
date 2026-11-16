@@ -25,39 +25,6 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
   String _searchQuery = '';
   String _selectedFilter = 'all'; // all, active, inactive
 
-  static final List<Map<String, dynamic>> _defaultBroadcasts = [
-    {
-      'id': 'broadcast_welcome_alive',
-      'title': 'Welcome to ALIVE Nigeria Broadcast Network',
-      'content':
-          'Stay connected with all official updates, national prayer calls, and chapter mission announcements directly through your app.',
-      'priority': 'normal',
-      'target_audience': 'all',
-      'is_active': true,
-      'created_at': DateTime.now().toIso8601String(),
-    },
-    {
-      'id': 'broadcast_monthly_prayer',
-      'title': 'Monthly All-Chapter Prayer & Fasting',
-      'content':
-          'Join our nationwide fellowship every first Sabbath for combined prayer and mission testimonies.',
-      'priority': 'high',
-      'target_audience': 'all',
-      'is_active': true,
-      'created_at': DateTime.now().toIso8601String(),
-    },
-    {
-      'id': 'broadcast_mission_outreach',
-      'title': 'Campus & Community Health Outreaches',
-      'content':
-          'Volunteer registration is now open for campus missionaries and medical evangelism teams.',
-      'priority': 'normal',
-      'target_audience': 'members',
-      'is_active': true,
-      'created_at': DateTime.now().toIso8601String(),
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -82,13 +49,13 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
           .map((row) => {...Map<String, dynamic>.from(row.data), 'id': row.$id})
           .toList();
       setState(() {
-        _announcements = rows.isNotEmpty ? rows : List.from(_defaultBroadcasts);
+        _announcements = rows;
       });
     } catch (e) {
       debugPrint('Error loading announcements: $e');
       if (mounted) {
         setState(() {
-          _announcements = List.from(_defaultBroadcasts);
+          _announcements = [];
         });
       }
     } finally {
