@@ -58,7 +58,10 @@
             "commands": "npm install",
             "scopes": [
                 "databases.read",
-                "documents.read"
+                "documents.read",
+                "users.read",
+                "messages.write",
+                "topics.read"
             ]
         },
         {
@@ -159,7 +162,10 @@
             "commands": "npm install",
             "scopes": [
                 "databases.read",
-                "documents.read"
+                "documents.read",
+                "users.read",
+                "messages.write",
+                "topics.read"
             ]
         },
         {
