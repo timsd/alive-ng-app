@@ -273,11 +273,27 @@ class AppwriteAdminExportService {
       xasync: false,
     );
     final raw = execution.responseBody.trim();
-    if (raw.isEmpty) return {};
+    if (raw.isEmpty) {
+      if (execution.responseStatusCode >= 400) {
+        throw AppException(
+          'Paystack sync failed (status ${execution.responseStatusCode})',
+        );
+      }
+      return {};
+    }
     final decoded = jsonDecode(raw);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    return {};
+    final map = decoded is Map<String, dynamic>
+        ? decoded
+        : (decoded is Map
+            ? Map<String, dynamic>.from(decoded)
+            : <String, dynamic>{});
+    if (execution.responseStatusCode >= 400 || map['error'] != null) {
+      throw AppException(
+        map['error']?.toString() ??
+            'Paystack sync failed (status ${execution.responseStatusCode})',
+      );
+    }
+    return map;
   }
 
   /// Generate a detailed donation report (CSV or JSON) and upload to Storage

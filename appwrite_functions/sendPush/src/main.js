@@ -157,6 +157,8 @@ export default async ({ req, res, log, error }) => {
       users,
       targets,
       data,
+      icon: 'ic_notification',
+      color: '#0F9A07',
       sound,
       priority,
       draft: false,

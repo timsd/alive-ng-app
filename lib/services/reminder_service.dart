@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/notification_service.dart';
 import '../services/notification_settings_service.dart';
 import '../utils/logger.dart';
 
@@ -105,7 +106,7 @@ class ReminderService {
 
     // Initialize local notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('ic_notification');
 
     const DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
@@ -188,6 +189,34 @@ class ReminderService {
     }
   }
 
+  static const Color _aliveGreen = Color(0xFF0F9A07);
+
+  AndroidNotificationDetails _buildAndroidDetails({
+    required String channelId,
+    required String channelName,
+    required String channelDescription,
+    Importance importance = Importance.high,
+    Priority priority = Priority.high,
+    bool playSound = true,
+    bool showWhen = false,
+    bool autoCancel = false,
+    bool enableVibration = false,
+  }) {
+    return AndroidNotificationDetails(
+      channelId,
+      channelName,
+      channelDescription: channelDescription,
+      icon: 'ic_notification',
+      color: _aliveGreen,
+      importance: importance,
+      priority: priority,
+      playSound: playSound,
+      showWhen: showWhen,
+      autoCancel: autoCancel,
+      enableVibration: enableVibration,
+    );
+  }
+
   Future<void> showImmediateNotification({
     required int id,
     required String title,
@@ -196,9 +225,9 @@ class ReminderService {
   }) async {
     await initialize();
 
-    const androidDetails = AndroidNotificationDetails(
-      'default_channel',
-      'Default Notifications',
+    final androidDetails = _buildAndroidDetails(
+      channelId: 'default_channel',
+      channelName: 'Default Notifications',
       channelDescription: 'Default app notifications',
       importance: Importance.defaultImportance,
       priority: Priority.defaultPriority,
@@ -209,7 +238,7 @@ class ReminderService {
       id: id,
       title: title,
       body: body,
-      notificationDetails: const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      notificationDetails: NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: payload,
     );
   }
@@ -223,9 +252,9 @@ class ReminderService {
     final soundEnabled = settings?.soundEnabled ?? true;
 
     final AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      soundEnabled ? 'reminder_channel' : 'reminder_channel_silent',
-      soundEnabled ? 'Reminders' : 'Reminders (Silent)',
+        _buildAndroidDetails(
+      channelId: soundEnabled ? 'reminder_channel' : 'reminder_channel_silent',
+      channelName: soundEnabled ? 'Reminders' : 'Reminders (Silent)',
       channelDescription: 'Daily reminders for ALIVE Nigeria app',
       importance: Importance.high,
       priority: Priority.high,
@@ -302,9 +331,9 @@ class ReminderService {
     final soundEnabled = settings?.soundEnabled ?? true;
 
     final AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      soundEnabled ? 'reminder_channel' : 'reminder_channel_silent',
-      soundEnabled ? 'Reminders' : 'Reminders (Silent)',
+        _buildAndroidDetails(
+      channelId: soundEnabled ? 'reminder_channel' : 'reminder_channel_silent',
+      channelName: soundEnabled ? 'Reminders' : 'Reminders (Silent)',
       channelDescription: 'Daily reminders for ALIVE Nigeria app',
       importance: Importance.high,
       priority: Priority.high,
@@ -342,13 +371,7 @@ class ReminderService {
     if (payload != null) {
       try {
         final data = jsonDecode(payload) as Map<String, dynamic>;
-        final route = data['route'] as String?;
-
-        if (route != null) {
-          // Navigate to the appropriate route
-          // This would typically be handled by your navigation service
-          _logger.info('Navigate to: $route');
-        }
+        NotificationService.instance.handleMessageOpenedApp(data);
       } catch (e) {
         _logger.error('Error parsing notification payload', e);
       }

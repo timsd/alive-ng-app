@@ -396,6 +396,8 @@ export default async ({ req, res, log, error }) => {
               targetAudience: targetAudience,
               targetChapter: targetChapter,
             },
+            icon: 'ic_notification',
+            color: '#0F9A07',
             sound: 'default',
             priority: 'high',
             draft: false,

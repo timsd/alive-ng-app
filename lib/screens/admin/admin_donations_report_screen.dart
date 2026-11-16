@@ -108,7 +108,6 @@ class _AdminDonationsReportContentState
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -118,6 +117,8 @@ class _AdminDonationsReportContentState
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

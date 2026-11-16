@@ -377,35 +377,55 @@ export default async ({ req, res, log, error }) => {
 
     // ── Admin sync: pull live Paystack transactions directly into payment_logs ──
     if (action === 'sync_transactions') {
-      const perPage = Math.min(Math.max(Number(body.per_page || 100), 1), 100);
-      const listRes = await fetch(
-        `https://api.paystack.co/transaction?status=success&perPage=${perPage}`,
-        {
-          headers: {
-            Authorization: `Bearer ${secret}`,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-      const listData = await listRes.json();
-      if (!listRes.ok || !listData.status) {
+      const liveConf = await getPaystackConfigKeys(log, { forceTestMode: false });
+      const liveSecret = liveConf.liveSecretKey;
+      if (!liveSecret || !liveSecret.startsWith('sk_live_')) {
         return res.json(
-          { error: listData.message || 'Could not fetch Paystack transactions' },
-          502,
+          { error: 'Live Paystack secret key (sk_live_...) is not configured.' },
+          500,
         );
       }
-      const rows = Array.isArray(listData.data) ? listData.data : [];
+
+      const perPage = Math.min(Math.max(Number(body.per_page || 100), 1), 100);
+      const allRows = [];
+      let page = 1;
+      while (true) {
+        const listRes = await fetch(
+          `https://api.paystack.co/transaction?status=success&perPage=${perPage}&page=${page}`,
+          {
+            headers: {
+              Authorization: `Bearer ${liveSecret}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+        const listData = await listRes.json();
+        if (!listRes.ok || !listData.status) {
+          return res.json(
+            { error: listData.message || 'Could not fetch Paystack transactions' },
+            502,
+          );
+        }
+        const rows = Array.isArray(listData.data) ? listData.data : [];
+        allRows.push(...rows);
+        const total = Number(listData.meta?.total ?? allRows.length);
+        if (rows.length < perPage || allRows.length >= total || page >= 10) {
+          break;
+        }
+        page++;
+      }
+
       let synced = 0;
-      for (const tx of rows) {
+      for (const tx of allRows) {
         if (tx && tx.status === 'success' && tx.reference) {
-          await handleVerifiedPayment(tx, log);
+          await handleVerifiedPayment(tx, log, { skipReceiptEmail: true });
           synced++;
         }
       }
       return res.json({
         success: true,
         synced,
-        total_fetched: rows.length,
+        total_fetched: allRows.length,
       });
     }
 
@@ -1223,8 +1243,9 @@ async function addToProjectRaised({ databases, projectsCollectionId, projectId, 
   return next;
 }
 
-async function handleVerifiedPayment(paystackData, log) {
+async function handleVerifiedPayment(paystackData, log, options = {}) {
   try {
+    const skipReceiptEmail = options.skipReceiptEmail === true;
     const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;
     const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
     const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
@@ -1288,54 +1309,66 @@ async function handleVerifiedPayment(paystackData, log) {
     });
 
     // 1. Update or create donation record
-    try {
-      await databases.updateDocument(databaseId, donationsCollectionId, reference, {
-        status: 'completed',
-        transaction_id: String(paystackData.id || ''),
-        purpose,
-        project_title: purpose,
-        amount_kobo: Math.round(amountKobo),
-        amount,
-        currency: paystackData.currency || 'NGN',
-        user_name: donorName,
-        user_email: customerEmail,
-        email: customerEmail,
-        is_test: isTestPayment,
-        completed_at: paystackData.paid_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        metadata: JSON.stringify(metadata),
-      });
-    } catch (_) {
+    const paidAt = paystackData.paid_at || paystackData.created_at || new Date().toISOString();
+    const nowIso = new Date().toISOString();
+    const updatePayload = {
+      status: 'completed',
+      transaction_id: String(paystackData.id || ''),
+      purpose,
+      project_title: purpose,
+      amount_kobo: Math.round(amountKobo),
+      amount,
+      currency: paystackData.currency || 'NGN',
+      user_name: donorName,
+      user_email: customerEmail,
+      email: customerEmail,
+      is_test: isTestPayment,
+      completed_at: paidAt,
+      created_at: paidAt,
+      updated_at: nowIso,
+      metadata: JSON.stringify(metadata),
+    };
+    const createPayload = {
+      reference,
+      ...updatePayload,
+      processor: 'paystack',
+      user_id: paystackData.metadata?.user_id || paystackData.metadata?.appwrite_user_id || 'guest',
+      type: paystackData.metadata?.donation_type || 'generalSupport',
+      payment_method: 'paystack',
+    };
+
+    const upsertDonation = async (payloadForUpdate, payloadForCreate) => {
       try {
-        await databases.createDocument(databaseId, donationsCollectionId, reference, {
-          reference,
-          status: 'completed',
-          processor: 'paystack',
-          purpose,
-          project_title: purpose,
-          amount_kobo: Math.round(amountKobo),
-          amount,
-          currency: paystackData.currency || 'NGN',
-          user_id: paystackData.metadata?.user_id || paystackData.metadata?.appwrite_user_id || 'guest',
-          // donorName is resolved above (metadata.donor_name, then the Paystack
-          // customer's first name, then 'Donor'). It was computed but never
-          // written, so every donation made through this function had a NULL
-          // user_name and the admin list fell back to deriving a name from the
-          // email address or showing 'Anonymous Donor'. Guest donors on the web
-          // page are the worst affected, since they have no account to fall back
-          // to.
-          user_name: donorName,
-          user_email: customerEmail,
-          email: customerEmail,
-          type: paystackData.metadata?.donation_type || 'generalSupport',
-          payment_method: 'paystack',
-          transaction_id: String(paystackData.id || ''),
-          completed_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          metadata: JSON.stringify(metadata),
-        });
-      } catch (e) {
+        await databases.updateDocument(databaseId, donationsCollectionId, reference, payloadForUpdate);
+      } catch (updErr) {
+        if (updErr?.code === 404) {
+          try {
+            await databases.createDocument(databaseId, donationsCollectionId, reference, payloadForCreate);
+          } catch (crtErr) {
+            if (crtErr?.code === 409) {
+              await databases.updateDocument(databaseId, donationsCollectionId, reference, payloadForUpdate);
+            } else {
+              throw crtErr;
+            }
+          }
+        } else {
+          throw updErr;
+        }
+      }
+    };
+
+    try {
+      await upsertDonation(updatePayload, createPayload);
+    } catch (e) {
+      if (String(e?.message || '').includes('is_test')) {
+        const { is_test: _u, ...fallbackUpdate } = updatePayload;
+        const { is_test: _c, ...fallbackCreate } = createPayload;
+        try {
+          await upsertDonation(fallbackUpdate, fallbackCreate);
+        } catch (fallbackErr) {
+          if (log) log(`Donation record save note: ${fallbackErr.message}`);
+        }
+      } else {
         if (log) log(`Donation record save note: ${e.message}`);
       }
     }
@@ -1403,10 +1436,16 @@ async function handleVerifiedPayment(paystackData, log) {
     //
     // Paystack's webhook sends the same receipt, so a single gift produced two
     // identical "Official Donation Receipt" emails. The marker on the donation
-    // row keeps it to one.
-    const receiptAlreadySent = await hasReceiptBeenSent(databases, reference);
+    // row keeps it to one. Historical sync also skips email dispatch.
+    const receiptAlreadySent = skipReceiptEmail || (await hasReceiptBeenSent(databases, reference));
     if (receiptAlreadySent) {
-      if (log) log(`Receipt already sent for ${reference}; not resending`);
+      if (log) {
+        log(
+          skipReceiptEmail
+            ? `Skipping receipt email for ${reference} during historical sync`
+            : `Receipt already sent for ${reference}; not resending`,
+        );
+      }
     } else if (process.env.RESEND_API_KEY && customerEmail) {
       try {
         const dateStr = new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });

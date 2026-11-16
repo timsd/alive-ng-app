@@ -7,6 +7,7 @@ import '../../services/notification_service.dart' hide NotificationSettings;
 import '../../services/notification_settings_service.dart';
 import '../../services/monthly_reminder_setting_service.dart';
 import '../../services/reminder_service.dart';
+import '../../services/role_access_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/responsive_utils.dart';
@@ -509,17 +510,19 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                               await _updateSetting(_settings.copyWith(soundEnabled: value));
                             },
                           ),
-                          const Divider(),
-                          ListTile(
-                            leading: const Icon(Icons.notifications_active_outlined),
-                            title: const Text('Send Test Notification'),
-                            subtitle: Text(
-                              'Verify local, reminder, and sound delivery on this device',
-                              style: subtitleStyle,
+                          if (RoleAccessService.instance.canAccessAdmin()) ...[
+                            const Divider(),
+                            ListTile(
+                              leading: const Icon(Icons.notifications_active_outlined),
+                              title: const Text('Send Test Notification'),
+                              subtitle: Text(
+                                'Verify local, reminder, and sound delivery on this device',
+                                style: subtitleStyle,
+                              ),
+                              trailing: const Icon(Icons.send_rounded, size: 18),
+                              onTap: _isSaving ? null : _sendTestNotification,
                             ),
-                            trailing: const Icon(Icons.send_rounded, size: 18),
-                            onTap: _isSaving ? null : _sendTestNotification,
-                          ),
+                          ],
                         ],
                       ),
                     ),
