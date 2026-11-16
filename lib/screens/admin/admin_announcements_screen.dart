@@ -5,6 +5,7 @@ import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../utils/appwrite_upsert_helper.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../utils/layout_fix_utils.dart';
@@ -65,6 +66,77 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
     }
   }
 
+  Future<void> _seedDefaultAnnouncements() async {
+    final now = DateTime.now().toUtc();
+    final nowIso = now.toIso8601String();
+    final seeds = <Map<String, dynamic>>[
+      {
+        'id': 'ann_retreat_2027',
+        'title': 'ALIVE Nigeria National Retreat 2027',
+        'content':
+            'Prepare and pray toward the upcoming ALIVE Nigeria National Retreat 2027! Expect powerful Bible study, revival sessions, mission workshops, and fellowship with Adventist young adults nationwide. Registration details and venue updates will be announced soon.',
+        'audience': 'all',
+        'target_audience': 'all',
+        'priority': 'high',
+        'is_active': true,
+      },
+      {
+        'id': 'ann_welcome_alive',
+        'title': 'Welcome to ALIVE Nigeria',
+        'content':
+            'Stay connected with Bible studies, gospel tracts, chapter fellowship, live ALIVE Meet sessions, and ministry updates across Nigeria.',
+        'audience': 'all',
+        'target_audience': 'all',
+        'priority': 'normal',
+        'is_active': true,
+      },
+      {
+        'id': 'ann_prayer_fellowship',
+        'title': 'Weekly Intercessory Prayer Fellowship',
+        'content':
+            'Join brethren nationwide on the Prayer Wall and in ALIVE Meet prayer sessions as we intercede for revival, missions, and campuses across Africa.',
+        'audience': 'all',
+        'target_audience': 'all',
+        'priority': 'normal',
+        'is_active': true,
+      },
+    ];
+
+    setState(() => _isLoading = true);
+    try {
+      for (final item in seeds) {
+        final id = item['id'] as String;
+        final payload = Map<String, dynamic>.from(item)..remove('id');
+        payload['published_at'] = nowIso;
+        payload['updated_at'] = nowIso;
+        await AppwriteUpsertHelper.updateOrCreateRow(
+          _tables,
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: AppwriteBackendConfig.announcementsCollectionId,
+          rowId: id,
+          data: payload,
+          createData: {
+            ...payload,
+            'author_id': 'admin',
+            'created_timestamp': now.millisecondsSinceEpoch,
+            'created_at': nowIso,
+          },
+        );
+      }
+      await _loadAnnouncements();
+      if (mounted) {
+        ToastUtils.showSuccess(
+          'Default & 2027 Retreat announcements seeded to Appwrite.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ToastUtils.showError('Could not seed announcements: $e');
+      }
+    }
+  }
+
   List<Map<String, dynamic>> get _filteredAnnouncements {
     return _announcements.where((announcement) {
       final isActive = announcement['is_active'] ?? false;
@@ -90,6 +162,11 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
         showBackButton: true,
         showDonationButton: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.playlist_add_check_rounded),
+            tooltip: 'Seed Default & 2027 Retreat Announcements',
+            onPressed: _isLoading ? null : _seedDefaultAnnouncements,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
@@ -167,6 +244,12 @@ class _AdminAnnouncementsScreenState extends State<AdminAnnouncementsScreen> {
                               onPressed: () => _openEditor(),
                               icon: const Icon(Icons.add),
                               label: const Text('Create Broadcast'),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              onPressed: _seedDefaultAnnouncements,
+                              icon: const Icon(Icons.playlist_add_check_rounded),
+                              label: const Text('Seed Default & 2027 Retreat'),
                             ),
                           ],
                         ),
