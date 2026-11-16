@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -205,6 +206,18 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
 
   Future<void> _sendTestNotification() async {
     final messenger = ScaffoldMessenger.of(context);
+    if (kIsWeb) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            _settings.soundEnabled
+                ? 'In-app alerts & sound are active on Web (native push runs on Android/iOS).'
+                : 'In-app alerts are active on Web (sound muted in settings).',
+          ),
+        ),
+      );
+      return;
+    }
     try {
       await NotificationService.instance.initialize();
       await _syncReminderSchedules(_settings);

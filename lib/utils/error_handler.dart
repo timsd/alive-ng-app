@@ -182,9 +182,8 @@ class ErrorHandler {
       return 'USD payment could not be processed with current settings. Please try NGN or contact support.';
     }
     if (lower.contains('paystack_payments') ||
-        lower.contains('executions') ||
-        lower.contains('bad state') ||
-        lower.contains('no element')) {
+        lower.contains('paystack') ||
+        lower.contains('payment_gateway')) {
       return 'Payment service temporarily unavailable. Please try again or contact support.';
     }
 

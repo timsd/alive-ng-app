@@ -299,6 +299,7 @@ class NotificationService {
     String channelId = 'alive_ng_notifications',
     bool playSound = true,
   }) async {
+    if (kIsWeb) return;
     final effectiveChannelId = playSound ? channelId : '${channelId}_silent';
     final effectiveChannelName = playSound
         ? 'ALIVE Nigeria Notifications'

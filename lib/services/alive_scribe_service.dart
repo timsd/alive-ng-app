@@ -146,7 +146,7 @@ class AliveScribeService {
   bool _isListening = false;
   bool _isRestarting = false;
   String _currentSessionWords = '';
-  int _lastCommittedLength = 0;
+  List<String> _committedSessionWords = [];
   int _consecutiveSttErrors = 0;
   DateTime? _lastLocalSpeakingAt;
   final ValueNotifier<double> voiceLevelNotifier = ValueNotifier<double>(0.0);
@@ -224,17 +224,47 @@ class AliveScribeService {
   }
 
   bool get _hasPendingSpeech =>
-      _currentSessionWords.length > _lastCommittedLength &&
-      _currentSessionWords.substring(_lastCommittedLength).trim().isNotEmpty;
+      _extractUncommittedDelta(_currentSessionWords).isNotEmpty;
+
+  /// Word-aligned delta extraction so engine revisions (e.g. "two hundred" -> "200"
+  /// or trailing word corrections) never slice a word in half or skip words.
+  String _extractUncommittedDelta(String rawText) {
+    final trimmed = rawText.trim();
+    if (trimmed.isEmpty) return '';
+    final currentWords = trimmed.split(RegExp(r'\s+'));
+    if (_committedSessionWords.isEmpty) return trimmed;
+
+    int matchCount = 0;
+    final limit = currentWords.length < _committedSessionWords.length
+        ? currentWords.length
+        : _committedSessionWords.length;
+    while (matchCount < limit &&
+        currentWords[matchCount].toLowerCase() ==
+            _committedSessionWords[matchCount].toLowerCase()) {
+      matchCount++;
+    }
+
+    final startIndex = matchCount > 0
+        ? matchCount
+        : _committedSessionWords.length.clamp(0, currentWords.length);
+
+    if (startIndex >= currentWords.length) return '';
+    return currentWords.sublist(startIndex).join(' ');
+  }
 
   /// Suppresses phantom STT triggers caused by remote speaker bleed when
-  /// remote participants are actively speaking and local WebRTC VAD has been
-  /// silent for > 2.5 seconds.
+  /// remote participants are actively speaking and the local participant is
+  /// neither currently speaking nor spoke in the last 2.5 seconds.
   bool get _isLikelyRemoteSpeakerBleed {
     final session = _gateway.currentSession;
+    final localCurrentlySpeaking =
+        session.participants.any((p) => p.isLocal && p.isSpeaking);
+    if (localCurrentlySpeaking) return false;
+
     final remoteSpeaking =
         session.participants.any((p) => !p.isLocal && p.isSpeaking);
     if (!remoteSpeaking) return false;
+
     final localSpokeRecently = _lastLocalSpeakingAt != null &&
         DateTime.now().difference(_lastLocalSpeakingAt!) <
             const Duration(milliseconds: 2500);
@@ -290,7 +320,9 @@ class AliveScribeService {
         },
         onStatus: (status) {
           debugPrint('[AliveScribeService] STT status: $status');
-          if ((status == 'notListening' || status == 'done') && _isListening) {
+          if ((status == 'notListening' || status == 'done') &&
+              _isListening &&
+              _isLocalMicActive) {
             _commitPendingSpeech();
             _restartListening(immediate: true);
           }
@@ -300,7 +332,7 @@ class AliveScribeService {
         ],
       );
 
-      // Resolve the best available STT locale from the fallback chain (matching Bible Game accuracy: en-NG → en-GB → en-US)
+      // Resolve the best available STT locale from the fallback chain (en-GB → en-US → en-NG)
       if (_isSttInitialized) {
         try {
           final locales = await _speechToText.locales();
@@ -336,7 +368,7 @@ class AliveScribeService {
   Future<void> startListening() async {
     _isListening = true;
     _currentSessionWords = '';
-    _lastCommittedLength = 0;
+    _committedSessionWords = [];
     _consecutiveSttErrors = 0;
 
     // Only initialize and run local microphone STT when the user's meeting
@@ -376,11 +408,16 @@ class AliveScribeService {
   }
 
   void _startSttSession() {
-    if (!_isListening || !_isLocalMicActive || !_isSttInitialized) return;
+    if (!_isListening ||
+        !_isLocalMicActive ||
+        !_isSttInitialized ||
+        _speechToText.isListening) {
+      return;
+    }
 
     try {
       _currentSessionWords = '';
-      _lastCommittedLength = 0;
+      _committedSessionWords = [];
       _speechToText.listen(
         onResult: (result) {
           if (!_isListening || !_isLocalMicActive) return;
@@ -388,15 +425,10 @@ class AliveScribeService {
           if (rawText.trim().isEmpty) return;
 
           _consecutiveSttErrors = 0;
-
-          // If the engine reset its internal buffer mid-session, reset offset.
-          if (rawText.length < _lastCommittedLength) {
-            _lastCommittedLength = 0;
-          }
           _currentSessionWords = rawText;
 
           // Smart continuous commit: if user pauses speaking for ~1.8s, commit only
-          // the uncommitted delta so subsequent finalResult revisions never duplicate.
+          // the word-aligned uncommitted delta so revisions never slice or duplicate.
           _speechPauseCommitTimer?.cancel();
           _speechPauseCommitTimer = Timer(const Duration(milliseconds: 1800), () {
             if (_isListening && _hasPendingSpeech) {
@@ -437,11 +469,11 @@ class AliveScribeService {
 
   void _commitPendingSpeech() {
     _speechPauseCommitTimer?.cancel();
-    if (_currentSessionWords.isEmpty) return;
+    final trimmed = _currentSessionWords.trim();
+    if (trimmed.isEmpty) return;
 
-    final safeStart = _lastCommittedLength.clamp(0, _currentSessionWords.length);
-    final pending = _currentSessionWords.substring(safeStart).trim();
-    _lastCommittedLength = _currentSessionWords.length;
+    final pending = _extractUncommittedDelta(trimmed);
+    _committedSessionWords = trimmed.split(RegExp(r'\s+'));
 
     if (pending.isEmpty) return;
     if (_isLikelyRemoteSpeakerBleed) {
@@ -699,8 +731,8 @@ class AliveScribeService {
           _transcriptStreamController.add(List.unmodifiable(_transcript));
         }
 
-        // Run Pass 2 on the consolidated text
-        _runPass2Extraction(updated);
+        // Run Pass 2 only on the newly arrived packet to avoid re-matching earlier turns
+        _runPass2Extraction(packet);
         return;
       }
     }
