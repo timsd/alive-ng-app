@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../utils/appwrite_id_utils.dart';
+import '../utils/appwrite_upsert_helper.dart';
 
 class InteractiveLessonItem {
   final String id;
@@ -423,25 +424,37 @@ class InteractiveLessonsService extends ChangeNotifier {
     final tractId = lesson.tractId;
     if (tractId != null && tractId.isNotEmpty) {
       try {
-        await _tables.updateRow(
+        final tractPayload = {
+          'title': lesson.title,
+          'description': lesson.description,
+          'category': lesson.category,
+          if (lesson.coverImage != null) 'cover_image': lesson.coverImage,
+        };
+        await AppwriteUpsertHelper.updateOrCreateRow(
+          _tables,
           databaseId: AppwriteBackendConfig.databaseId,
           tableId: AppwriteBackendConfig.tractsCollectionId,
           rowId: AppwriteIdUtils.toValidUid(tractId),
-          data: {
-            'title': lesson.title,
-            'description': lesson.description,
-            'category': lesson.category,
-            if (lesson.coverImage != null) 'cover_image': lesson.coverImage,
+          data: tractPayload,
+          createData: {
+            ...tractPayload,
+            'is_active': true,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
           },
         );
       } catch (_) {}
       if (lesson.content.trim().isNotEmpty) {
         try {
-          await _tables.updateRow(
+          await AppwriteUpsertHelper.updateOrCreateRow(
+            _tables,
             databaseId: AppwriteBackendConfig.databaseId,
             tableId: AppwriteBackendConfig.tractContentsCollectionId,
             rowId: AppwriteIdUtils.toValidUid(tractId),
             data: {'content': lesson.content},
+            createData: {
+              'tract_id': tractId,
+              'content': lesson.content,
+            },
           );
         } catch (_) {}
       }

@@ -165,9 +165,15 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         category: 'Prayer',
       ),
       FAQItem(
-        question: 'What are Private Prayer Rooms and how do I access them?',
+        question: 'What are Private Prayer Rooms and who can access them?',
         answer:
-            'Private Prayer Rooms are confidential intercession chambers designed for specialized pastoral care, leadership teams, and chapter prayer bands. They are protected with role-based permissions or secret room access tokens.',
+            'Private Prayer Rooms are confidential intercession spaces for Directors, Chapter Leaders, Coordinators, Board of Directors, Trustees, Admins, and invited members. Requests shared inside a Private Prayer Room are strictly restricted to authorized room members and never appear on the public Prayer Wall.',
+        category: 'Prayer',
+      ),
+      FAQItem(
+        question: 'How do I create or pray in a Private Prayer Room?',
+        answer:
+            'Open Prayer and tap "Private Rooms" (or the Private Prayer Rooms icon in the Prayer Wall bar). Authorized leaders can tap "+" to create a new room with a name and purpose, edit or delete rooms they manage, post private prayer requests, intercede for room members, and mark answered prayers.',
         category: 'Prayer',
       ),
       FAQItem(
@@ -436,7 +442,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         ],
       ),
       GuideItem(
-        title: 'Prayer Wall, Private Rooms & Testimonies',
+        title: 'Prayer Wall & Testimonies',
         description:
             'Share public or anonymous prayer requests, intercede for others, and celebrate praise reports.',
         icon: Icons.volunteer_activism_rounded,
@@ -445,9 +451,22 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
           'Open Prayer from the navigation bar or home screen to access the Prayer Wall.',
           'Tap "New Prayer" to submit a request. Choose between public posting or anonymous submission.',
           'Intercede for brethren by tapping "Pray" on any prayer card to increment the community prayer count.',
-          'Access confidential Private Prayer Rooms with your credentials or room token for dedicated pastoral intercession.',
           'When God answers your prayer, tap "Mark Answered" on your card to share your testimony and date of breakthrough.',
           'Switch to the "Answered" tab on the Prayer Wall to rejoice with brethren over all recorded testimonies.',
+        ],
+      ),
+      GuideItem(
+        title: 'Private Prayer Rooms',
+        description:
+            'Confidential intercession chambers for leadership teams, pastoral care, and invited prayer partners.',
+        icon: Icons.lock_person_rounded,
+        color: const Color(0xFF7C3AED),
+        steps: [
+          'Open Prayer from the navigation bar and tap "Private Rooms" (or tap the Private Prayer Rooms icon in the Prayer Wall AppBar).',
+          'Select an existing Private Prayer Room you belong to, or tap "+" (for Directors, Chapter Leaders, Coordinators, Trustees, and Admins) to create a new room with a name and purpose.',
+          'Post confidential prayer requests inside the room — they remain private to room members and never appear on the public Prayer Wall.',
+          'Intercede for fellow room members by tapping "Pray", and mark requests as answered when God responds.',
+          'Room creators and admins can edit room details or remove a room anytime from the room menu.',
         ],
       ),
       GuideItem(

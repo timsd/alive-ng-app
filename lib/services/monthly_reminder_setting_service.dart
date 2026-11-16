@@ -113,6 +113,16 @@ class MonthlyReminderSettingService {
         documentId: _documentId,
       );
       return MonthlyReminderConfig.fromRaw(doc.data['value']);
+    } on AppwriteException catch (e) {
+      if (e.code == 404) {
+        const defaults = MonthlyReminderConfig();
+        if (AuthService.instance.currentUser != null) {
+          await saveConfig(defaults);
+        }
+        return defaults;
+      }
+      _logger.info('Monthly reminder config unavailable, using defaults: $e');
+      return const MonthlyReminderConfig();
     } catch (e) {
       _logger.info('Monthly reminder config unavailable, using defaults: $e');
       return const MonthlyReminderConfig();
@@ -331,6 +341,10 @@ class MonthlyReminderSettingService {
         data: {'monthly_reminder_opt_out': false},
       );
       return true;
+    } on AppwriteException catch (e) {
+      if (e.code == 404) return true;
+      _logger.error('Failed to clear monthly reminder opt-out for $userId: $e');
+      return false;
     } catch (e) {
       _logger.error('Failed to clear monthly reminder opt-out for $userId: $e');
       return false;

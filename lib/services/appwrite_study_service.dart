@@ -7,6 +7,7 @@ import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../models/app_models.dart';
 import '../utils/app_exception.dart';
+import '../utils/appwrite_upsert_helper.dart';
 import '../utils/logger.dart';
 
 class AppwriteStudyService {
@@ -103,7 +104,8 @@ class AppwriteStudyService {
 
   Future<void> updateStudyGuide(String id, Map<String, dynamic> data) async {
     try {
-      await _tables.updateRow(
+      await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyGuidesCollectionId,
         rowId: AppwriteIdUtils.toValidUid(id),

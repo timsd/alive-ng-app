@@ -7,6 +7,7 @@ import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../models/leadership_models.dart';
 import '../utils/app_exception.dart';
+import '../utils/appwrite_upsert_helper.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
 
@@ -162,7 +163,8 @@ class LeadershipService {
         'updated_by': currentUserId,
       });
 
-      final document = await _tables.updateRow(
+      final document = await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: _recordsCollection,
         rowId: AppwriteIdUtils.toValidUid(recordId),

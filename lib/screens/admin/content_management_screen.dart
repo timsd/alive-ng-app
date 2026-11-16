@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../../utils/appwrite_id_utils.dart';
+import '../../utils/appwrite_upsert_helper.dart';
 import 'package:flutter/material.dart';
 import '../../widgets/modern_dropdown.dart';
 import '../../services/appwrite_facade.dart';
@@ -201,7 +202,8 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     String documentId,
     Map<String, dynamic> data,
   ) async {
-    await _tables.updateRow(
+    await AppwriteUpsertHelper.updateOrCreateRow(
+      _tables,
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: collectionId,
       rowId: AppwriteIdUtils.toValidUid(documentId),

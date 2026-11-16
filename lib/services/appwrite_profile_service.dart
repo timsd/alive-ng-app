@@ -9,6 +9,7 @@ import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../models/app_models.dart';
 import '../models/leadership_models.dart' show RoleHistoryRecord;
+import '../utils/appwrite_upsert_helper.dart';
 import 'appwrite_client.dart';
 import 'auth_service.dart';
 import 'channel_membership_sync_service.dart';
@@ -112,6 +113,31 @@ class AppwriteProfileService {
       );
     } on AppwriteException catch (e) {
       if (e.code == 404) {
+        final currentAuthUser = AuthService.instance.currentUser;
+        if (currentAuthUser != null && currentAuthUser.uid == userId) {
+          try {
+            final now = DateTime.now().toUtc().toIso8601String();
+            final rawName = currentAuthUser.displayName?.trim();
+            final name = (rawName != null && rawName.isNotEmpty)
+                ? rawName
+                : currentAuthUser.email.split('@').first;
+            return await _tables.createRow(
+              databaseId: AppwriteBackendConfig.databaseId,
+              tableId: AppwriteBackendConfig.usersCollectionId,
+              rowId: userId,
+              data: {
+                'user_id': userId,
+                'email': currentAuthUser.email,
+                'full_name': name,
+                'role': 'member',
+                'is_approved': true,
+                'approval_status': 'approved',
+                'created_at': now,
+                'updated_at': now,
+              },
+            );
+          } catch (_) {}
+        }
         return null;
       }
       debugPrint('Appwrite profile load error: $e');
@@ -154,13 +180,21 @@ class AppwriteProfileService {
   }
 
   Future<void> updateUserRole(String userId, String newRole) async {
-    await _tables.updateRow(
+    final now = DateTime.now().toUtc().toIso8601String();
+    final data = {
+      'role': newRole,
+      'updated_at': now,
+    };
+    await AppwriteUpsertHelper.updateOrCreateRow(
+      _tables,
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.usersCollectionId,
       rowId: userId,
-      data: {
-        'role': newRole,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      data: data,
+      createData: {
+        ...data,
+        'user_id': userId,
+        'created_at': now,
       },
     );
 
@@ -201,11 +235,17 @@ class AppwriteProfileService {
       updateData['role'] = targetRole.trim();
     }
 
-    await _tables.updateRow(
+    await AppwriteUpsertHelper.updateOrCreateRow(
+      _tables,
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.usersCollectionId,
       rowId: userId,
       data: updateData,
+      createData: {
+        ...updateData,
+        'user_id': userId,
+        'created_at': now,
+      },
     );
 
     final updated = await getUserProfileModel(userId);
@@ -253,11 +293,17 @@ class AppwriteProfileService {
       'updated_at': now,
     };
 
-    await _tables.updateRow(
+    await AppwriteUpsertHelper.updateOrCreateRow(
+      _tables,
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.usersCollectionId,
       rowId: userId,
       data: updateData,
+      createData: {
+        ...updateData,
+        'user_id': userId,
+        'created_at': now,
+      },
     );
 
     final updated = await getUserProfileModel(userId);
@@ -287,13 +333,21 @@ class AppwriteProfileService {
   }
 
   Future<void> archiveUser(String userId) async {
-    await _tables.updateRow(
+    final now = DateTime.now().toUtc().toIso8601String();
+    final data = {
+      'is_archived': true,
+      'updated_at': now,
+    };
+    await AppwriteUpsertHelper.updateOrCreateRow(
+      _tables,
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.usersCollectionId,
       rowId: userId,
-      data: {
-        'is_archived': true,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      data: data,
+      createData: {
+        ...data,
+        'user_id': userId,
+        'created_at': now,
       },
     );
   }

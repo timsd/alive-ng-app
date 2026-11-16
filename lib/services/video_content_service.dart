@@ -4,6 +4,7 @@ import 'package:appwrite/appwrite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
+import '../utils/appwrite_upsert_helper.dart';
 import '../utils/logger.dart';
 
 class VideoContentService {
@@ -72,12 +73,20 @@ class VideoContentService {
     dataToSave['updated_at'] = now;
 
     if (existingId != null && existingId.isNotEmpty) {
-      // Update existing
-      final updated = await _tables.updateRow(
+      // Update existing (auto-create on 404 so edited items always persist)
+      final updated = await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.videosCollectionId,
         rowId: existingId,
         data: dataToSave,
+        createData: {
+          ...dataToSave,
+          'created_at': now,
+        },
+        permissions: [
+          Permission.read(Role.any()),
+        ],
       );
       final item = {
         ...Map<String, dynamic>.from(updated.data),

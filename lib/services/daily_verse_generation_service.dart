@@ -243,7 +243,12 @@ class DailyVerseGenerationService {
       if (value is String) return value.toLowerCase() == 'true';
       return true;
     } catch (e) {
-      if (e is AppwriteException && e.code == 404) return true;
+      if (e is AppwriteException && e.code == 404) {
+        try {
+          await setAutoGenerationEnabled(true);
+        } catch (_) {}
+        return true;
+      }
       _logger.error('Error checking auto-generation setting: $e');
       return true;
     }

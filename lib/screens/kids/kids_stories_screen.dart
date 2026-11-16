@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../services/appwrite_facade.dart';
 import '../../config/appwrite_backend_config.dart';
+import '../../constants/app_constants.dart';
 import '../../main.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../models/kids_models.dart';
+import '../../services/role_access_service.dart';
 import '../../utils/error_handler.dart';
 import '../../utils/search_utils.dart';
 
@@ -211,6 +214,14 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
           ],
         ),
         showBackButton: true,
+        actions: [
+          if (RoleAccessService.instance.canManageKidsContent())
+            IconButton(
+              icon: const Icon(Icons.edit_note_rounded),
+              tooltip: 'Manage Kids Stories',
+              onPressed: () => context.push(AppConstants.adminKidsStoriesRoute),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,

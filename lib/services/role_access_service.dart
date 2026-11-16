@@ -49,6 +49,7 @@ class RoleAccessService {
     'campus_missionary',
     'amtc_team',
     'dietist',
+    'kids_lead',
     'coordinator',
     'leader',
     'director',
@@ -215,6 +216,18 @@ class RoleAccessService {
     final role = _normalizeRole(getCurrentUserRole());
     if (role == null) return false;
     return ChapterConstants.healthContentRoles.contains(role);
+  }
+
+  /// Check if the user may add/edit Kids area content (stories and missions).
+  ///
+  /// Deliberately WIDER than [canAccessAdmin] but NARROWER than
+  /// [canAccessLeadership]: a `kids_lead` gets the Kids editors and
+  /// nothing else. Admins and leadership roles keep their existing access.
+  bool canManageKidsContent() {
+    if (isSuperAdmin()) return true;
+    final role = _normalizeRole(getCurrentUserRole());
+    if (role == null) return false;
+    return ChapterConstants.kidsContentRoles.contains(role);
   }
 
   /// Check if user can create chat channels (strictly admin-only)

@@ -7,6 +7,7 @@ import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../models/study_guide_models.dart';
 import '../utils/app_exception.dart';
+import '../utils/appwrite_upsert_helper.dart';
 import '../utils/logger.dart';
 
 class StudyGuideService {
@@ -122,7 +123,8 @@ class StudyGuideService {
   Future<StudyGuide> updateStudyGuide(StudyGuide studyGuide) async {
     try {
       final updatedStudyGuide = studyGuide.copyWith(updatedAt: DateTime.now());
-      await _tables.updateRow(
+      await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyGuidesCollectionId,
         rowId: AppwriteIdUtils.toValidUid(studyGuide.id),
@@ -365,7 +367,8 @@ class StudyGuideService {
       UserStudyProgress progress) async {
     try {
       final updatedProgress = progress.copyWith(updatedAt: DateTime.now());
-      await _tables.updateRow(
+      await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyProgressCollectionId,
         rowId: AppwriteIdUtils.toValidUid(progress.id),
@@ -393,7 +396,8 @@ class StudyGuideService {
         progressPercentage: 100.0,
         updatedAt: DateTime.now(),
       );
-      await _tables.updateRow(
+      await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyProgressCollectionId,
         rowId: AppwriteIdUtils.toValidUid(progress.id),
@@ -520,7 +524,8 @@ class StudyGuideService {
       );
 
       final lesson = await getLessonById(lessonId);
-      await _tables.updateRow(
+      await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyProgressCollectionId,
         rowId: AppwriteIdUtils.toValidUid(progress.id),
@@ -560,7 +565,8 @@ class StudyGuideService {
       );
 
       final lesson = await getLessonById(lessonId);
-      await _tables.updateRow(
+      await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.studyProgressCollectionId,
         rowId: AppwriteIdUtils.toValidUid(progress.id),

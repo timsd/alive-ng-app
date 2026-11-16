@@ -102,17 +102,18 @@ class ChapterConstants {
 
   /// Roles an admin can assign from Role Management.
   ///
-  /// `field_worker`, `campus_missionary`, `amtc_team`, and `dietist` are
-  /// specialized functional roles sitting at the member privilege tier.
-  /// They grant zero administrative permissions, but automatically enroll
-  /// holders into their dedicated mission chat channels, team badges,
-  /// and specialized broadcasts.
+  /// `field_worker`, `campus_missionary`, `amtc_team`, `dietist`, and
+  /// `kids_lead` are specialized functional roles sitting at the member
+  /// privilege tier. They grant zero administrative permissions, but
+  /// automatically enroll holders into their dedicated mission chat channels,
+  /// team badges, and specialized content areas.
   static const List<String> userRoles = [
     'member',
     'field_worker',
     'campus_missionary',
     'amtc_team',
     'dietist',
+    'kids_lead',
     'coordinator',
     'leader',
     'director',
@@ -127,6 +128,19 @@ class ChapterConstants {
   /// agree on exactly who qualifies.
   static const Set<String> healthContentRoles = {
     'dietist',
+    'coordinator',
+    'leader',
+    'director',
+    'bod',
+    'trustee',
+    'admin',
+    'super_admin',
+  };
+
+  /// Roles that grant access to the Kids area content editors (stories +
+  /// missions) without granting any other admin surface.
+  static const Set<String> kidsContentRoles = {
+    'kids_lead',
     'coordinator',
     'leader',
     'director',

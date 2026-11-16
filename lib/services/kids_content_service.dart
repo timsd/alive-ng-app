@@ -1,4 +1,5 @@
 import '../utils/appwrite_id_utils.dart';
+import '../utils/appwrite_upsert_helper.dart';
 import 'dart:convert';
 import 'package:appwrite/appwrite.dart' as aw;
 import '../config/appwrite_backend_config.dart';
@@ -162,11 +163,14 @@ class KidsContentService {
 
   static Future<void> _updateAppwriteDocument(
       String collection, String id, Map<String, dynamic> updates) async {
-    await _tables.updateRow(
+    final now = _now();
+    await AppwriteUpsertHelper.updateOrCreateRow(
+      _tables,
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: _collectionId(collection),
       rowId: AppwriteIdUtils.toValidUid(id),
-      data: _writeData({...updates, 'updated_at': _now()}),
+      data: _writeData({...updates, 'updated_at': now}),
+      createData: _writeData({...updates, 'created_at': now, 'updated_at': now}),
     );
   }
 

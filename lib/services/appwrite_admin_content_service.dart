@@ -1,4 +1,5 @@
 import '../utils/appwrite_id_utils.dart';
+import '../utils/appwrite_upsert_helper.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
 
@@ -97,7 +98,8 @@ class AppwriteAdminContentService {
     Map<String, dynamic> data,
   ) async {
     final collectionId = _collectionId(collection);
-    await _tables.updateRow(
+    await AppwriteUpsertHelper.updateOrCreateRow(
+      _tables,
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: collectionId,
       rowId: AppwriteIdUtils.toValidUid(documentId),

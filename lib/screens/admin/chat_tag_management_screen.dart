@@ -5,6 +5,7 @@ import 'package:appwrite/appwrite.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../services/channel_membership_sync_service.dart';
+import '../../utils/appwrite_upsert_helper.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/modern_dropdown.dart';
 
@@ -271,11 +272,16 @@ class _ChatTagManagementScreenState extends State<ChatTagManagementScreen>
       };
 
       if (_tagConfigRowId != null && _tagConfigRowId!.isNotEmpty) {
-        await tables.updateRow(
+        await AppwriteUpsertHelper.updateOrCreateRow(
+          tables,
           databaseId: AppwriteBackendConfig.databaseId,
           tableId: AppwriteBackendConfig.appSettingsCollectionId,
           rowId: _tagConfigRowId!,
           data: payload,
+          createData: {
+            ...payload,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+          },
         );
       } else {
         final existing = await tables.listRows(

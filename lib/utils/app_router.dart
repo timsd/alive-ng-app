@@ -945,7 +945,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AdminKidsStoriesScreen(),
         redirect: (context, state) {
           final roleService = RoleAccessService.instance;
-          if (!roleService.canAccessAdmin()) {
+          if (!roleService.canAccessAdmin() &&
+              !roleService.canManageKidsContent()) {
             return '/home';
           }
           return null;
@@ -956,7 +957,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AdminKidsMissionsScreen(),
         redirect: (context, state) {
           final roleService = RoleAccessService.instance;
-          if (!roleService.canAccessAdmin()) {
+          if (!roleService.canAccessAdmin() &&
+              !roleService.canManageKidsContent()) {
             return '/home';
           }
           return null;

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../../utils/appwrite_id_utils.dart';
+import '../../utils/appwrite_upsert_helper.dart';
 import '../../services/appwrite_facade.dart';
 import 'package:flutter/material.dart';
 import '../../config/appwrite_backend_config.dart';
@@ -195,7 +196,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   Future<void> _updateSetting(
       String documentId, Map<String, dynamic> data) async {
-    await _tables.updateRow(
+    await AppwriteUpsertHelper.updateOrCreateRow(
+      _tables,
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.appSettingsCollectionId,
       rowId: AppwriteIdUtils.toValidUid(documentId, prefix: 'st'),

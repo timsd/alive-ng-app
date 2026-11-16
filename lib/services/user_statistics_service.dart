@@ -7,6 +7,7 @@ import 'package:appwrite/models.dart' as models;
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../utils/app_exception.dart';
+import '../utils/appwrite_upsert_helper.dart';
 import '../utils/logger.dart';
 import 'analytics_service.dart';
 
@@ -265,19 +266,30 @@ class UserStatisticsService {
     }
   }
 
-  /// Get user statistics from the Appwrite users table.
+  /// Get user statistics from the Appwrite users table (auto-creates row on 404).
   Future<Map<String, dynamic>> getUserStatistics(String userId) async {
     try {
-      final row = await _tables.getRow(
+      final now = DateTime.now().toUtc().toIso8601String();
+      final row = await AppwriteUpsertHelper.getOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.usersCollectionId,
         rowId: userId,
+        defaultData: {
+          'user_id': userId,
+          'total_reading_time': 0,
+          'chapters_read': 0,
+          'verses_read': 0,
+          'prayers_offered': 0,
+          'study_sessions_completed': 0,
+          'session_count': 0,
+          'total_study_time': 0,
+          'created_at': now,
+          'updated_at': now,
+        },
       );
       return row.data;
     } on AppwriteException catch (e) {
-      if (e.code == 404) {
-        throw NotFoundException('User statistics not found');
-      }
       _logger.error('Error fetching user statistics', e);
       throw DatabaseException('Failed to fetch user statistics',
           originalError: e);
@@ -476,19 +488,27 @@ class UserStatisticsService {
   /// Reset statistics for a user.
   Future<void> resetUserStatistics(String userId) async {
     try {
-      await _tables.updateRow(
+      final now = DateTime.now().toUtc().toIso8601String();
+      final resetData = {
+        'total_reading_time': 0,
+        'chapters_read': 0,
+        'verses_read': 0,
+        'prayers_offered': 0,
+        'study_sessions_completed': 0,
+        'session_count': 0,
+        'total_study_time': 0,
+        'updated_at': now,
+      };
+      await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.usersCollectionId,
         rowId: userId,
-        data: {
-          'total_reading_time': 0,
-          'chapters_read': 0,
-          'verses_read': 0,
-          'prayers_offered': 0,
-          'study_sessions_completed': 0,
-          'session_count': 0,
-          'total_study_time': 0,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        data: resetData,
+        createData: {
+          ...resetData,
+          'user_id': userId,
+          'created_at': now,
         },
       );
 
@@ -594,11 +614,17 @@ class UserStatisticsService {
       incrementalUpdates['updated_at'] =
           DateTime.now().toUtc().toIso8601String();
 
-      await _tables.updateRow(
+      await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.usersCollectionId,
         rowId: _currentUserId!,
         data: incrementalUpdates,
+        createData: {
+          ...incrementalUpdates,
+          'user_id': _currentUserId!,
+          'created_at': incrementalUpdates['updated_at'],
+        },
       );
     } catch (e) {
       _logger.error('Error updating user statistics', e);

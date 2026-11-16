@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
+import '../utils/appwrite_upsert_helper.dart';
 import '../utils/web_launch_params.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/painting.dart';
@@ -126,21 +127,31 @@ class AppwriteAuthService {
 
       if (!isAdmin) return;
 
-      await _tables.updateRow(
+      final nowIso = DateTime.now().toIso8601String();
+      final adminData = {
+        'role': 'admin',
+        'approval_status': 'approved',
+        'is_approved': true,
+        'approved_by': isSuperAdmin
+            ? 'super_admin_email:$email'
+            : isInAdminTeam
+                ? 'appwrite_team:${AppwriteBackendConfig.adminTeamId}'
+                : 'database_role:admin',
+        'approved_at': nowIso,
+        'updated_at': nowIso,
+      };
+      await AppwriteUpsertHelper.updateOrCreateRow(
+        _tables,
         databaseId: databaseId,
         tableId: usersCollectionId,
         rowId: userId,
-        data: {
-          'role': 'admin',
-          'approval_status': 'approved',
-          'is_approved': true,
-          'approved_by': isSuperAdmin
-              ? 'super_admin_email:$email'
-              : isInAdminTeam
-                  ? 'appwrite_team:${AppwriteBackendConfig.adminTeamId}'
-                  : 'database_role:admin',
-          'approved_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
+        data: adminData,
+        createData: {
+          ...adminData,
+          'user_id': userId,
+          'email': email,
+          'full_name': email.split('@').first,
+          'created_at': nowIso,
         },
       );
       debugPrint('Admin privileges synced for: $userId ($email)');

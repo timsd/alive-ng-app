@@ -715,6 +715,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
       case 'campus_missionary':
       case 'amtc_team':
       case 'dietist':
+      case 'kids_lead':
         newRole = 'member';
         break;
       default:

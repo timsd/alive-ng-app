@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../services/appwrite_facade.dart';
 import '../../config/appwrite_backend_config.dart';
+import '../../constants/app_constants.dart';
 import '../../main.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
@@ -14,6 +16,7 @@ import '../../models/kids_missions.dart';
 import '../../utils/error_handler.dart';
 import '../../utils/mission_scoring.dart';
 import '../../services/kids_mission_progress_service.dart';
+import '../../services/role_access_service.dart';
 
 class KidsMissionScreen extends ConsumerStatefulWidget {
   const KidsMissionScreen({super.key});
@@ -727,6 +730,14 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
           ],
         ),
         showBackButton: true,
+        actions: [
+          if (RoleAccessService.instance.canManageKidsContent())
+            IconButton(
+              icon: const Icon(Icons.edit_note_rounded),
+              tooltip: 'Manage Kids Missions',
+              onPressed: () => context.push(AppConstants.adminKidsMissionsRoute),
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
