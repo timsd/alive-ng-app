@@ -5,6 +5,8 @@ import '../../../models/meeting_models.dart';
 import '../../../providers/meeting_provider.dart';
 import '../../../services/meeting_pip_service.dart';
 import '../../../services/ports/meeting_gateway.dart';
+import '../../../utils/navigation_keys.dart';
+import '../livekit_meeting_screen.dart';
 import 'meeting_stage_view.dart';
 
 /// Compact Zoom / Google Meet style view rendered inside the OS
@@ -18,13 +20,42 @@ class MeetingPipOverlay extends ConsumerStatefulWidget {
 }
 
 class _MeetingPipOverlayState extends ConsumerState<MeetingPipOverlay> {
+  bool _wasInPipMode = false;
+
   @override
   void initState() {
     super.initState();
     MeetingPipService.instance.init(
       (isInPipMode) {
         if (!mounted) return;
+        final exitedPip = _wasInPipMode && !isInPipMode;
+        _wasInPipMode = isInPipMode;
         ref.read(isMeetingPipModeProvider.notifier).state = isInPipMode;
+
+        if (exitedPip) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            // Only expand when the user tapped the PiP overlay to resume the
+            // app (not when they dismissed/closed the PiP window).
+            if (WidgetsBinding.instance.lifecycleState !=
+                AppLifecycleState.resumed) {
+              return;
+            }
+            final gateway = ref.read(meetingGatewayProvider);
+            final session = gateway.currentSession;
+            if (!session.isConnected) return;
+            if (ref.read(isMeetingMinimizedProvider)) {
+              ref.read(isMeetingMinimizedProvider.notifier).state = false;
+              rootNavigatorKey.currentState?.push(
+                MaterialPageRoute(
+                  builder: (_) => LiveKitMeetingScreen(
+                    customRoomName: session.roomName,
+                  ),
+                ),
+              );
+            }
+          });
+        }
       },
       onPipAction: (action) async {
         if (!mounted) return;
