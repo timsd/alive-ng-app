@@ -161,7 +161,7 @@ class MeetingPrejoinLobby extends StatelessWidget {
               : const Icon(Icons.video_call),
           label: Text(isJoining
               ? 'Joining...'
-              : (isLeader ? 'Start / Join ALIVE Meet' : 'Join ALIVE Meet')),
+              : (isLeader ? 'Start ALIVE Meet' : 'Join ALIVE Meet')),
         ),
       ],
     );
