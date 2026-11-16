@@ -1,5 +1,5 @@
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
-import { Client, Messaging, ID } from 'node-appwrite';
+import { Client, Databases, ID, Messaging, Query } from 'node-appwrite';
 
 const rawServiceUrl = (process.env.LIVEKIT_URL || 'https://livekit.alivenigeria.org')
   .replace(/^ws:\/\//, 'http://')
@@ -90,32 +90,45 @@ async function getRole(userId, req) {
   return String(profile.role || 'member').trim().toLowerCase();
 }
 
-async function getTargetUsers(endpoint, projectId, databaseId, serverApiKey, usersTableId, targetAudience, targetChapter) {
-  if (targetAudience === 'general') return { users: [], topics: ['all_users'] };
+const VALID_TOPICS = new Set([
+  'all_users',
+  'admins',
+  'bod',
+  'directors',
+  'chapter_leaders',
+  'approvals',
+  'prayer',
+  'chat',
+  'donations',
+  'events',
+  'study',
+  'kids',
+  'health',
+  'content',
+]);
 
-  const headers = {
-    'X-Appwrite-Project': projectId,
-    'X-Appwrite-Key': serverApiKey,
-  };
+async function getTargetUsers(databases, databaseId, usersTableId, targetAudience, targetChapter) {
+  if (targetAudience === 'general' || targetAudience === 'all') {
+    return { users: [], topics: ['all_users'] };
+  }
 
-  let rows = [];
+  const rows = [];
+  let offset = 0;
   try {
-    let res = await fetch(
-      `${endpoint}/databases/${databaseId}/collections/${usersTableId}/documents?limit=250`,
-      { headers },
-    );
-    if (res.status === 404) {
-      res = await fetch(
-        `${endpoint}/tablesdb/${databaseId}/tables/${usersTableId}/rows?limit=250`,
-        { headers },
-      );
-    }
-    if (res.ok) {
-      const data = await res.json();
-      rows = data.documents || data.rows || [];
+    while (true) {
+      const res = await databases.listDocuments(databaseId, usersTableId, [
+        Query.limit(100),
+        Query.offset(offset),
+      ]);
+      const docs = res?.documents || [];
+      rows.push(...docs);
+      if (docs.length < 100 || rows.length >= (res?.total ?? rows.length) || rows.length >= 1000) {
+        break;
+      }
+      offset += 100;
     }
   } catch (e) {
-    // If user listing fails, fall back to topic
+    // If user listing fails, fall back to valid topics
   }
 
   const norm = (s) => String(s || '').trim().toLowerCase();
@@ -125,86 +138,94 @@ async function getTargetUsers(endpoint, projectId, databaseId, serverApiKey, use
   switch (targetAudience) {
     case 'chapter': {
       const chapterQuery = norm(targetChapter);
-      const chapterSlug = chapterQuery.replace(/[^a-z0-9]/g, '_');
-      topics = chapterSlug ? [`chapter_${chapterSlug}`] : ['all_users'];
       matchedIds = rows
         .filter((r) => {
           const chId = norm(r.chapter_id || r.chapterId);
           const localCh = norm(r.local_chapter || r.localChapter);
-          return chId === chapterQuery || localCh === chapterQuery || chId.includes(chapterQuery) || localCh.includes(chapterQuery);
+          return (
+            chapterQuery &&
+            (chId === chapterQuery ||
+              localCh === chapterQuery ||
+              chId.includes(chapterQuery) ||
+              localCh.includes(chapterQuery))
+          );
         })
-        .map((r) => r.$id || r.id);
+        .map((r) => r.$id || r.id)
+        .filter(Boolean);
       break;
     }
     case 'singles': {
-      topics = ['singles', 'fellowship_singles'];
       matchedIds = rows
         .filter((r) => norm(r.marital_status || r.maritalStatus) === 'single')
-        .map((r) => r.$id || r.id);
+        .map((r) => r.$id || r.id)
+        .filter(Boolean);
       break;
     }
     case 'married':
     case 'couples':
     case 'channel_married': {
-      topics = ['married', 'fellowship_married', 'couples'];
       matchedIds = rows
         .filter((r) => ['married', 'couple'].includes(norm(r.marital_status || r.maritalStatus)))
-        .map((r) => r.$id || r.id);
+        .map((r) => r.$id || r.id)
+        .filter(Boolean);
       break;
     }
     case 'directors': {
       topics = ['directors'];
       matchedIds = rows
-        .filter((r) => ['director', 'admin'].includes(norm(r.role)))
-        .map((r) => r.$id || r.id);
+        .filter((r) => ['director', 'admin', 'super_admin'].includes(norm(r.role)))
+        .map((r) => r.$id || r.id)
+        .filter(Boolean);
       break;
     }
     case 'bod_only': {
-      topics = ['bod', 'board_only'];
+      topics = ['bod'];
       matchedIds = rows
-        .filter((r) => ['bod', 'admin'].includes(norm(r.role)) || (Array.isArray(r.roles) && r.roles.map(norm).includes('bod')))
-        .map((r) => r.$id || r.id);
+        .filter(
+          (r) =>
+            ['bod', 'admin', 'super_admin'].includes(norm(r.role)) ||
+            (Array.isArray(r.roles) && r.roles.map(norm).includes('bod')),
+        )
+        .map((r) => r.$id || r.id)
+        .filter(Boolean);
       break;
     }
     case 'board':
     case 'bod': {
-      topics = ['board', 'bod'];
+      topics = ['bod'];
       matchedIds = rows
-        .filter((r) => ['bod', 'trustee', 'admin'].includes(norm(r.role)) || (Array.isArray(r.roles) && (r.roles.map(norm).includes('bod') || r.roles.map(norm).includes('trustee'))))
-        .map((r) => r.$id || r.id);
+        .filter(
+          (r) =>
+            ['bod', 'trustee', 'admin', 'super_admin'].includes(norm(r.role)) ||
+            (Array.isArray(r.roles) &&
+              (r.roles.map(norm).includes('bod') || r.roles.map(norm).includes('trustee'))),
+        )
+        .map((r) => r.$id || r.id)
+        .filter(Boolean);
       break;
     }
     case 'leadership': {
-      topics = ['leadership'];
+      topics = ['admins', 'bod', 'directors', 'chapter_leaders'];
       matchedIds = rows
-        .filter((r) => ['coordinator', 'leader', 'director', 'bod', 'trustee', 'admin'].includes(norm(r.role)))
-        .map((r) => r.$id || r.id);
+        .filter((r) =>
+          ['coordinator', 'leader', 'director', 'bod', 'trustee', 'admin', 'super_admin'].includes(
+            norm(r.role),
+          ),
+        )
+        .map((r) => r.$id || r.id)
+        .filter(Boolean);
       break;
     }
     default: {
       if (targetAudience && (targetAudience.startsWith('channel_') || targetAudience.length === 20)) {
         const channelId = targetAudience;
-        const channelSlug = channelId.replace(/[^a-z0-9]/g, '_');
-        topics = [`channel_${channelSlug}`];
         try {
           const chatChannelsTableId = '6a08f1c70032affbc00d';
-          let chRes = await fetch(
-            `${endpoint}/databases/${databaseId}/collections/${chatChannelsTableId}/documents/${channelId}`,
-            { headers }
-          );
-          if (chRes.status === 404) {
-            chRes = await fetch(
-              `${endpoint}/tablesdb/${databaseId}/tables/${chatChannelsTableId}/rows/${channelId}`,
-              { headers }
-            );
-          }
-          if (chRes.ok) {
-            const chData = await chRes.json();
-            const members = Array.isArray(chData.members) ? chData.members : [];
-            matchedIds = members;
-          }
+          const chData = await databases.getDocument(databaseId, chatChannelsTableId, channelId);
+          const members = Array.isArray(chData?.members) ? chData.members : [];
+          matchedIds = members.filter(Boolean);
         } catch (chErr) {
-          // Fall back to channel topic
+          // Fall back if channel lookup fails
         }
       } else {
         topics = ['all_users'];
@@ -213,7 +234,10 @@ async function getTargetUsers(endpoint, projectId, databaseId, serverApiKey, use
     }
   }
 
-  return { users: matchedIds.slice(0, 100), topics };
+  return {
+    users: Array.from(new Set(matchedIds)),
+    topics: topics.filter((t) => VALID_TOPICS.has(t)),
+  };
 }
 
 export default async ({ req, res, log, error }) => {
@@ -327,10 +351,18 @@ export default async ({ req, res, log, error }) => {
     // Trigger targeted push notification when a leader/admin starts a meeting
     if (notifyMembers && isLeader) {
       try {
-        const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, '');
-        const projectId = process.env.APPWRITE_PROJECT_ID;
-        const databaseId = process.env.APPWRITE_DATABASE_ID;
-        const serverApiKey = req.headers['x-appwrite-key'] || process.env.APPWRITE_FUNCTION_API_KEY;
+        const endpoint = (
+          process.env.APPWRITE_FUNCTION_API_ENDPOINT ||
+          process.env.APPWRITE_ENDPOINT ||
+          'https://api.alivenigeria.org/v1'
+        ).replace(/\/$/, '');
+        const projectId =
+          process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
+        const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
+        const serverApiKey =
+          process.env.APPWRITE_FUNCTION_API_KEY ||
+          process.env.APPWRITE_API_KEY ||
+          req.headers['x-appwrite-key'];
         const usersTableId = process.env.APPWRITE_USERS_TABLE_ID || '6a08943100226f5b4963';
 
         if (endpoint && projectId && databaseId && serverApiKey) {
@@ -338,6 +370,7 @@ export default async ({ req, res, log, error }) => {
             .setEndpoint(endpoint)
             .setProject(projectId)
             .setKey(serverApiKey);
+          const databases = new Databases(client);
           const messaging = new Messaging(client);
           const meetingTitle = body.meetingTitle || targetRoom;
           const host = participantName || (isAdmin ? 'An Admin' : 'A Leader');
@@ -345,10 +378,8 @@ export default async ({ req, res, log, error }) => {
           const targetAudience = body.targetAudience || 'general';
           const targetChapter = body.targetChapter || '';
           const { users: targetUsers, topics: targetTopics } = await getTargetUsers(
-            endpoint,
-            projectId,
+            databases,
             databaseId,
-            serverApiKey,
             usersTableId,
             targetAudience,
             targetChapter,
@@ -383,14 +414,12 @@ export default async ({ req, res, log, error }) => {
             notificationBody = `${host} has started a meeting for this channel. Tap to join!`;
           }
 
-          const pushPayload = {
-            messageId: ID.unique(),
+          const basePushPayload = {
             title: notificationTitle,
             body: notificationBody,
-            topics: targetTopics && targetTopics.length > 0 ? targetTopics : undefined,
-            users: targetUsers && targetUsers.length > 0 ? targetUsers : undefined,
             data: {
               type: 'meeting_started',
+              route: `/meet/${targetRoom}`,
               roomName: targetRoom,
               meetingType: meetingType,
               targetAudience: targetAudience,
@@ -403,12 +432,29 @@ export default async ({ req, res, log, error }) => {
             draft: false,
           };
 
-          if (!pushPayload.topics && !pushPayload.users) {
-            pushPayload.topics = ['all_users'];
+          if (targetUsers && targetUsers.length > 0) {
+            for (let i = 0; i < targetUsers.length; i += 100) {
+              await messaging.createPush({
+                ...basePushPayload,
+                messageId: ID.unique(),
+                users: targetUsers.slice(i, i + 100),
+              });
+            }
           }
-
-          await messaging.createPush(pushPayload);
-          if (log) log(`Targeted meeting notification dispatched for ${targetAudience} (${targetChapter})`);
+          if (targetTopics && targetTopics.length > 0) {
+            await messaging.createPush({
+              ...basePushPayload,
+              messageId: ID.unique(),
+              topics: targetTopics,
+            });
+          } else if (!targetUsers || targetUsers.length === 0) {
+            await messaging.createPush({
+              ...basePushPayload,
+              messageId: ID.unique(),
+              topics: ['all_users'],
+            });
+          }
+          if (log) log(`Targeted meeting notification dispatched for ${targetAudience} (${targetChapter}) -> users=${targetUsers.length}, topics=${targetTopics.join(',')}`);
         }
       } catch (pushErr) {
         if (error) error(`Failed to dispatch meeting start push notification: ${pushErr.message}`);
