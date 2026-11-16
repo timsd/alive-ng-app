@@ -415,9 +415,22 @@ export default async ({ req, res, log, error }) => {
         page++;
       }
 
+      let syncDb = null;
+      if (process.env.APPWRITE_API_KEY && process.env.APPWRITE_ENDPOINT) {
+        const syncClient = new Client()
+          .setEndpoint(process.env.APPWRITE_ENDPOINT)
+          .setProject(process.env.APPWRITE_PROJECT_ID || '')
+          .setKey(process.env.APPWRITE_API_KEY);
+        syncDb = new Databases(syncClient);
+      }
       let synced = 0;
+      let skippedExternal = 0;
       for (const tx of allRows) {
         if (tx && tx.status === 'success' && tx.reference) {
+          if (!(await isAliveAppTransaction(tx, syncDb))) {
+            skippedExternal++;
+            continue;
+          }
           await handleVerifiedPayment(tx, log, { skipReceiptEmail: true });
           synced++;
         }
@@ -425,6 +438,7 @@ export default async ({ req, res, log, error }) => {
       return res.json({
         success: true,
         synced,
+        skipped_external: skippedExternal,
         total_fetched: allRows.length,
       });
     }
@@ -567,6 +581,8 @@ export default async ({ req, res, log, error }) => {
     const metadata = {
       ...(body.metadata || {}),
       appwrite_user_id: userId,
+      app_id: 'alive_nigeria_app',
+      source: body.metadata?.source || 'alive_ng_app',
       guest_donation: isGuest,
       reference,
     };
@@ -996,6 +1012,43 @@ function containsRawCardData(value) {
   };
 
   return visit(value);
+}
+
+/**
+ * Returns true only for Paystack transactions that originated from the ALIVE
+ * Nigeria App (or web donation page), so transactions from the shared
+ * Membership Portal on the same Paystack account are never imported.
+ */
+async function isAliveAppTransaction(txData, databases) {
+  const meta =
+    typeof txData?.metadata === 'string'
+      ? (() => { try { return JSON.parse(txData.metadata); } catch (_) { return {}; } })()
+      : (txData?.metadata || {});
+  const ref = String(txData?.reference || '').trim();
+
+  if (
+    meta.app_id === 'alive_nigeria_app' ||
+    meta.source === 'alive_ng_app' ||
+    meta.source === 'web_donation_page' ||
+    Boolean(meta.donation_id) ||
+    ref.startsWith('ALIVE') ||
+    ref.startsWith('don_')
+  ) {
+    return true;
+  }
+
+  if (databases && ref) {
+    try {
+      await databases.getDocument(
+        databaseId,
+        process.env.APPWRITE_DONATIONS_COLLECTION_ID || 'donation_records',
+        ref,
+      );
+      return true;
+    } catch (_) {}
+  }
+
+  return false;
 }
 
 async function writePaymentLog({ event, reference, status, payload, log }) {

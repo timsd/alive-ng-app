@@ -208,6 +208,34 @@ export default async ({ req, res, log, error }) => {
     }
 
     const databases = appwriteDatabases();
+
+    // Isolate ALIVE Nigeria App transactions from the shared Membership Portal
+    // on the same Paystack account. Any Paystack event without app metadata,
+    // app reference prefix, or a pre-created donation_records row is ignored.
+    const metaRaw =
+      typeof data.metadata === 'string'
+        ? (() => { try { return JSON.parse(data.metadata); } catch (_) { return {}; } })()
+        : (data.metadata || {});
+    let isAppTx =
+      metaRaw.app_id === 'alive_nigeria_app' ||
+      metaRaw.source === 'alive_ng_app' ||
+      metaRaw.source === 'web_donation_page' ||
+      Boolean(metaRaw.donation_id) ||
+      String(reference).startsWith('ALIVE') ||
+      String(reference).startsWith('don_');
+
+    if (!isAppTx) {
+      try {
+        await databases.getDocument(databaseId, donationsCollectionId, reference);
+        isAppTx = true;
+      } catch (_) {}
+    }
+
+    if (!isAppTx) {
+      log(`Ignoring non-app Paystack webhook (${type}) for ${reference}`);
+      return res.json({ ok: true, ignored: true, reason: 'non_app_transaction' });
+    }
+
     await writePaymentLog(databases, type, reference, 'received', event);
 
     const metadata = {

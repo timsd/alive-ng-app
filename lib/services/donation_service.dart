@@ -840,6 +840,8 @@ class DonationService {
           donation?.userEmail ??
           email;
       final baseMetadata = {
+        'app_id': 'alive_nigeria_app',
+        'source': 'alive_ng_app',
         'donation_id': donationId,
         'appwrite_user_id': donation?.userId ?? 'guest',
         'donation_type': donation?.type.name ?? 'generalSupport',
