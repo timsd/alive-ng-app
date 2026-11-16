@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/meeting_models.dart';
 import '../../../services/ports/meeting_gateway.dart';
+import '../../../widgets/voice_activity_bars.dart';
 
 /// Active participant list displaying names, roles (host/co-host), audio/video states,
 /// raised hands, and interactive taps for management and private direct messaging.
@@ -161,11 +162,21 @@ class MeetingParticipantsList extends StatelessWidget {
                       color: (participant.isAudioMuted ? Colors.red : Colors.green).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      participant.isAudioMuted ? Icons.mic_off : Icons.mic,
-                      size: 15,
-                      color: participant.isAudioMuted ? Colors.red : Colors.green,
-                    ),
+                    child: participant.isAudioMuted
+                        ? const Icon(
+                            Icons.mic_off,
+                            size: 15,
+                            color: Colors.red,
+                          )
+                        : VoiceActivityBars(
+                            isActive: participant.isSpeaking,
+                            barCount: 3,
+                            activeColor: Colors.green,
+                            inactiveColor: Colors.grey,
+                            maxHeight: 14,
+                            barWidth: 2.5,
+                            spacing: 1.8,
+                          ),
                   ),
                   const SizedBox(width: 4),
                   Container(

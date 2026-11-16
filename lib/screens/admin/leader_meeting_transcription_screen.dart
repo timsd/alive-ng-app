@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../models/meeting_models.dart';
 import '../../providers/meeting_provider.dart';
 import '../../services/alive_scribe_service.dart';
+import '../../widgets/voice_activity_bars.dart';
 import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/docx_report_generator.dart';
@@ -567,13 +568,33 @@ class _LeaderMeetingTranscriptionScreenState
                           ),
                         ),
                         const SizedBox(width: 6),
-                        Icon(
-                          isListening ? Icons.mic_rounded : Icons.mic_off_rounded,
-                          size: 16,
-                          color: isListening
-                              ? (isDark ? const Color(0xFF34D399) : const Color(0xFF15803D))
-                              : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                        ),
+                        if (isListening && _scribeService != null)
+                          ValueListenableBuilder<double>(
+                            valueListenable: _scribeService!.voiceLevelNotifier,
+                            builder: (context, level, _) {
+                              final activeColor = isDark
+                                  ? const Color(0xFF34D399)
+                                  : const Color(0xFF15803D);
+                              return VoiceActivityBars(
+                                isActive: level > 0.08,
+                                level: level,
+                                barCount: 3,
+                                activeColor: activeColor,
+                                inactiveColor: activeColor.withValues(alpha: 0.4),
+                                maxHeight: 14,
+                                barWidth: 2.5,
+                                spacing: 2,
+                              );
+                            },
+                          )
+                        else
+                          Icon(
+                            Icons.mic_off_rounded,
+                            size: 16,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                          ),
                         const SizedBox(width: 5),
                         Text(
                           isListening ? 'REC' : 'MUTED',

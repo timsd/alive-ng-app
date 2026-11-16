@@ -17,6 +17,7 @@ import '../../utils/error_handler.dart';
 import '../../utils/mission_scoring.dart';
 import '../../services/kids_mission_progress_service.dart';
 import '../../services/role_access_service.dart';
+import '../../widgets/voice_activity_bars.dart';
 
 class KidsMissionScreen extends ConsumerStatefulWidget {
   const KidsMissionScreen({super.key});
@@ -993,6 +994,7 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
 
   bool _listening = false;
   bool _speechAvailable = false;
+  double _voiceLevel = 0.0;
   String _transcript = '';
   int? _score;
   bool _completed = false;
@@ -1092,6 +1094,7 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
     setState(() {
       _transcript = '';
       _score = null;
+      _voiceLevel = 0.0;
       _listening = true;
     });
     await _speech.listen(
@@ -1101,11 +1104,19 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
         partialResults: false, // avoids duplicated transcripts
         listenMode: stt.ListenMode.dictation,
       ),
+      onSoundLevelChange: (level) {
+        if (!mounted) return;
+        final normalized = ((level - 1.0) / 8.0).clamp(0.0, 1.0);
+        setState(() => _voiceLevel = normalized);
+      },
       onResult: (result) {
         if (!mounted) return;
         setState(() => _transcript = result.recognizedWords);
         if (result.finalResult) {
-          setState(() => _listening = false);
+          setState(() {
+            _listening = false;
+            _voiceLevel = 0.0;
+          });
           _scoreRecitation();
         }
       },
@@ -1426,9 +1437,26 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
+              if (_listening) ...[
+                VoiceActivityBars(
+                  isActive: _voiceLevel > 0.08,
+                  level: _voiceLevel,
+                  barCount: 5,
+                  activeColor: Colors.red,
+                  inactiveColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
+                  maxHeight: 20,
+                  barWidth: 3.5,
+                  spacing: 3,
+                ),
+                const SizedBox(height: 6),
+              ],
               Text(
-                _listening ? 'Listening… tap to stop' : 'Tap to start reciting',
+                _listening
+                    ? (_voiceLevel > 0.08
+                        ? 'Hearing your voice… tap to stop'
+                        : 'Silent — speak to recite')
+                    : 'Tap to start reciting',
                 style: theme.textTheme.bodySmall,
               ),
             ],

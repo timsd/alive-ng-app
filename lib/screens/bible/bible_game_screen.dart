@@ -9,6 +9,7 @@ import '../../services/bible_source.dart';
 import '../../constants/bible_verses.dart';
 import '../../widgets/star_animation_widget.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/voice_activity_bars.dart';
 
 // Game State Provider
 final bibleGameProvider =
@@ -604,6 +605,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   bool _speechEnabled = false;
   bool _speechReady = false;
   bool _ttsReady = false;
+  double _voiceLevel = 0.0;
   Timer? _hintAutoAdvanceTimer;
   bool _isGameOverShowing = false;
 
@@ -912,12 +914,18 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
       if (_ttsReady) {
         await _tts.stop();
       }
+      _voiceLevel = 0.0;
       await _speech.listen(
         onResult: (result) {
           _bufferedTranscript = result.recognizedWords;
           if (result.finalResult) {
             _stopListening();
           }
+        },
+        onSoundLevelChange: (level) {
+          if (!mounted) return;
+          final normalized = ((level - 1.0) / 8.0).clamp(0.0, 1.0);
+          setState(() => _voiceLevel = normalized);
         },
         // Uses best available: en-NG → en-GB → en-US
         listenOptions: stt.SpeechListenOptions(
@@ -935,6 +943,9 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   void _stopListening() async {
     if (_speechReady) {
       await _speech.stop();
+    }
+    if (mounted) {
+      setState(() => _voiceLevel = 0.0);
     }
     ref.read(bibleGameProvider.notifier).setListening(false);
     final gameState = ref.read(bibleGameProvider);
@@ -1438,33 +1449,65 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   /// Wires into the same `_startListening` / `_stopListening` handlers.
   Widget _buildVoiceMicButton({required bool isListening}) {
     final cs = Theme.of(context).colorScheme;
-    return Center(
-      child: GestureDetector(
-        onTap: _speechEnabled
-            ? (isListening ? _stopListening : _startListening)
-            : null,
-        child: Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isListening ? cs.error : cs.primary,
-            boxShadow: [
-              BoxShadow(
-                color: (isListening ? cs.error : cs.primary)
-                    .withValues(alpha: 0.35),
-                blurRadius: isListening ? 20 : 8,
-                spreadRadius: isListening ? 4 : 0,
+    final hasVoice = isListening && _voiceLevel > 0.08;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: GestureDetector(
+            onTap: _speechEnabled
+                ? (isListening ? _stopListening : _startListening)
+                : null,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isListening ? cs.error : cs.primary,
+                boxShadow: [
+                  BoxShadow(
+                    color: (isListening ? cs.error : cs.primary)
+                        .withValues(alpha: 0.35),
+                    blurRadius: isListening ? 20 : 8,
+                    spreadRadius: isListening ? 4 : 0,
+                  ),
+                ],
+              ),
+              child: Icon(
+                isListening ? Icons.stop : Icons.mic,
+                color: cs.onPrimary,
+                size: 30,
+              ),
+            ),
+          ),
+        ),
+        if (isListening) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              VoiceActivityBars(
+                isActive: hasVoice,
+                level: _voiceLevel,
+                barCount: 5,
+                activeColor: cs.error,
+                inactiveColor: cs.onSurfaceVariant.withValues(alpha: 0.45),
+                maxHeight: 20,
+                barWidth: 3.5,
+                spacing: 3,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                hasVoice ? 'Receiving voice…' : 'Silent — speak now',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: hasVoice ? cs.error : cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
             ],
           ),
-          child: Icon(
-            isListening ? Icons.stop : Icons.mic,
-            color: cs.onPrimary,
-            size: 30,
-          ),
-        ),
-      ),
+        ],
+      ],
     );
   }
 

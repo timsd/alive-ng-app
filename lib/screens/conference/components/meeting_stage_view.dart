@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/meeting_models.dart';
 import '../../../providers/appwrite_auth_provider.dart';
 import '../../../services/ports/meeting_gateway.dart';
+import '../../../widgets/voice_activity_bars.dart';
 
 String formatMeetingParticipantName(ParticipantInfo p) {
   final raw = p.name.trim();
@@ -260,16 +261,30 @@ class MeetingVideoGridStage extends ConsumerWidget {
                               child: const Icon(Icons.pan_tool_rounded, size: 12, color: Colors.black87),
                             ),
                           Container(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
-                              color: p.isAudioMuted ? Colors.red.shade900 : Colors.black54,
+                              color: p.isAudioMuted
+                                  ? Colors.red.shade900
+                                  : (isSpeaking
+                                      ? Colors.green.shade800.withValues(alpha: 0.85)
+                                      : Colors.black54),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(
-                              p.isAudioMuted ? Icons.mic_off : Icons.mic,
-                              size: 14,
-                              color: p.isAudioMuted ? Colors.white : Colors.greenAccent,
-                            ),
+                            child: p.isAudioMuted
+                                ? const Icon(
+                                    Icons.mic_off,
+                                    size: 14,
+                                    color: Colors.white,
+                                  )
+                                : VoiceActivityBars(
+                                    isActive: isSpeaking,
+                                    barCount: 3,
+                                    activeColor: Colors.greenAccent,
+                                    inactiveColor: Colors.white54,
+                                    maxHeight: 13,
+                                    barWidth: 2.5,
+                                    spacing: 1.8,
+                                  ),
                           ),
                         ],
                       ),
@@ -441,12 +456,23 @@ class MeetingParticipantStrip extends ConsumerWidget {
                       color: Colors.black87,
                       child: Row(
                         children: [
-                          Icon(
-                            p.isAudioMuted ? Icons.mic_off : Icons.mic,
-                            size: 10,
-                            color: p.isAudioMuted ? Colors.red : Colors.green,
-                          ),
-                          const SizedBox(width: 3),
+                          if (p.isAudioMuted)
+                            const Icon(
+                              Icons.mic_off,
+                              size: 10,
+                              color: Colors.red,
+                            )
+                          else
+                            VoiceActivityBars(
+                              isActive: p.isSpeaking,
+                              barCount: 3,
+                              activeColor: Colors.greenAccent,
+                              inactiveColor: Colors.white54,
+                              maxHeight: 10,
+                              barWidth: 2,
+                              spacing: 1.5,
+                            ),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               name,

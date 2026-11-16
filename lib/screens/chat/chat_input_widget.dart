@@ -3,6 +3,7 @@ import '../../utils/error_handler.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../services/file_picker_facade.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/auth_service.dart';
@@ -12,6 +13,7 @@ import '../../utils/responsive_utils.dart';
 import 'dart:io' as io;
 import '../../config/chat_config.dart';
 import '../../utils/image_compression_utils.dart';
+import '../../widgets/voice_activity_bars.dart';
 
 class ChatInputWidget extends StatefulWidget {
   final TextEditingController controller;
@@ -37,6 +39,11 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   final ImagePicker _imagePicker = ImagePicker();
   bool _isComposing = false;
   bool _isUploading = false;
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _speechReady = false;
+  bool _isDictating = false;
+  double _voiceLevel = 0.0;
+  String _baseTextBeforeDictation = '';
 
   @override
   void initState() {
@@ -55,6 +62,9 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   @override
   void dispose() {
     _tagDebounce?.cancel();
+    if (_isDictating) {
+      _speech.stop().catchError((_) {});
+    }
     widget.controller.removeListener(_onTextChanged);
     super.dispose();
   }
@@ -234,6 +244,89 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
       case TagType.group:
         return Icons.forum;
     }
+  }
+
+  Future<void> _toggleVoiceDictation() async {
+    if (_isDictating) {
+      await _stopVoiceDictation();
+      return;
+    }
+    if (!_speechReady) {
+      _speechReady = await _speech.initialize(
+        onError: (_) {
+          if (mounted) {
+            setState(() {
+              _isDictating = false;
+              _voiceLevel = 0.0;
+            });
+          }
+        },
+        onStatus: (status) {
+          if ((status == 'done' || status == 'notListening') && mounted) {
+            setState(() {
+              _isDictating = false;
+              _voiceLevel = 0.0;
+            });
+          }
+        },
+      );
+    }
+    if (!_speechReady || !mounted) return;
+    _baseTextBeforeDictation = widget.controller.text.trim();
+    setState(() {
+      _isDictating = true;
+      _voiceLevel = 0.0;
+    });
+    await _speech.listen(
+      onSoundLevelChange: (level) {
+        if (!mounted) return;
+        final normalized = ((level - 1.0) / 8.0).clamp(0.0, 1.0);
+        setState(() => _voiceLevel = normalized);
+      },
+      onResult: (result) {
+        if (!mounted) return;
+        final spoken = result.recognizedWords.trim();
+        final combined = _baseTextBeforeDictation.isEmpty
+            ? spoken
+            : (spoken.isEmpty
+                ? _baseTextBeforeDictation
+                : '$_baseTextBeforeDictation $spoken');
+        widget.controller.value = TextEditingValue(
+          text: combined,
+          selection: TextSelection.collapsed(offset: combined.length),
+        );
+        if (result.finalResult) {
+          setState(() {
+            _isDictating = false;
+            _voiceLevel = 0.0;
+          });
+        }
+      },
+      listenOptions: stt.SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: false,
+        listenMode: stt.ListenMode.dictation,
+      ),
+    );
+  }
+
+  Future<void> _stopVoiceDictation({bool cancel = false}) async {
+    try {
+      await _speech.stop();
+    } catch (_) {}
+    if (!mounted) return;
+    if (cancel) {
+      widget.controller.value = TextEditingValue(
+        text: _baseTextBeforeDictation,
+        selection: TextSelection.collapsed(
+          offset: _baseTextBeforeDictation.length,
+        ),
+      );
+    }
+    setState(() {
+      _isDictating = false;
+      _voiceLevel = 0.0;
+    });
   }
 
   void _handleSubmitted() {
@@ -588,6 +681,59 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
             ),
           // Discord-style tag suggestions appear above the composer
           _buildTagSuggestions(),
+          if (_isDictating)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                    color: Theme.of(context).colorScheme.error,
+                    tooltip: 'Cancel voice input',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _stopVoiceDictation(cancel: true),
+                  ),
+                  const SizedBox(width: 6),
+                  VoiceActivityBars(
+                    isActive: _voiceLevel > 0.08,
+                    level: _voiceLevel,
+                    barCount: 7,
+                    activeColor: Theme.of(context).colorScheme.primary,
+                    inactiveColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
+                    maxHeight: 20,
+                    barWidth: 3,
+                    spacing: 2.5,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _voiceLevel > 0.08
+                          ? 'Listening — receiving voice…'
+                          : 'Silent — speak now…',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: _voiceLevel > 0.08
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.stop_circle_rounded, size: 22),
+                    color: Theme.of(context).colorScheme.error,
+                    tooltip: 'Done',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _stopVoiceDictation(),
+                  ),
+                ],
+              ),
+            ),
           Row(
             children: [
               // Attachment button
@@ -633,6 +779,18 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                   keyboardType: TextInputType.multiline,
                   enabled: !_isUploading,
                 ),
+              ),
+              // WhatsApp / Discord style voice dictation mic button
+              IconButton(
+                icon: Icon(
+                  _isDictating ? Icons.mic : Icons.mic_none_rounded,
+                  size: context.responsiveIconSize(24),
+                  color: _isDictating
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                tooltip: _isDictating ? 'Stop voice input' : 'Voice input',
+                onPressed: _isUploading ? null : _toggleVoiceDictation,
               ),
               // Send button
               IconButton(

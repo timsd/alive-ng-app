@@ -149,6 +149,7 @@ class AliveScribeService {
   int _lastCommittedLength = 0;
   int _consecutiveSttErrors = 0;
   DateTime? _lastLocalSpeakingAt;
+  final ValueNotifier<double> voiceLevelNotifier = ValueNotifier<double>(0.0);
 
   /// The best available STT locale resolved at init (en-GB → en-US → en-NG).
   /// `en-GB` and `en-US` almost always have Android on-device neural packs,
@@ -213,6 +214,7 @@ class AliveScribeService {
           _startSttSession();
         }
       } else {
+        voiceLevelNotifier.value = 0.0;
         if (_speechToText.isListening || _hasPendingSpeech) {
           _commitPendingSpeech();
           _speechToText.stop().catchError((_) {});
@@ -406,6 +408,15 @@ class AliveScribeService {
             _commitPendingSpeech();
           }
         },
+        onSoundLevelChange: (level) {
+          if (!_isListening || !_isLocalMicActive) {
+            if (voiceLevelNotifier.value != 0.0) voiceLevelNotifier.value = 0.0;
+            return;
+          }
+          // speech_to_text reports dB roughly in [-2, 10+]. Map noise floor to 0.
+          final normalized = ((level - 1.0) / 8.0).clamp(0.0, 1.0);
+          voiceLevelNotifier.value = normalized;
+        },
         listenOptions: stt.SpeechListenOptions(
           partialResults: true,
           cancelOnError: false,
@@ -482,6 +493,7 @@ class AliveScribeService {
 
   Future<void> stopListening() async {
     _isListening = false;
+    voiceLevelNotifier.value = 0.0;
     _watchdogTimer?.cancel();
     _watchdogTimer = null;
     _speechPauseCommitTimer?.cancel();
