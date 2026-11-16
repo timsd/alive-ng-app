@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/custom_image.dart';
+import '../widgets/scripture_rich_text.dart';
 import '../utils/podcast_share_helper.dart';
 import 'podcast_control_buttons.dart';
 import 'podcast_seek_bar.dart';
@@ -1160,7 +1161,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text(
+                          ScriptureRichText(
                             item.text,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               height: 1.5,
@@ -1673,41 +1674,51 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     final pattern = RegExp(r'(\*\*[^*]+\*\*|\*[^*]+\*)');
     int lastEnd = 0;
 
+    void addSpans(String segment, TextStyle? style) {
+      spans.addAll(
+        ScriptureTextParser.buildSpans(
+          context,
+          segment,
+          baseStyle: style,
+        ),
+      );
+    }
+
     for (final match in pattern.allMatches(text)) {
       if (match.start > lastEnd) {
-        spans.add(TextSpan(
-          text: text.substring(lastEnd, match.start),
-          style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-        ));
+        addSpans(
+          text.substring(lastEnd, match.start),
+          theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+        );
       }
 
       final matchedText = match.group(0)!;
       if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
-        spans.add(TextSpan(
-          text: matchedText.substring(2, matchedText.length - 2),
-          style: theme.textTheme.bodyMedium?.copyWith(
+        addSpans(
+          matchedText.substring(2, matchedText.length - 2),
+          theme.textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.bold,
             height: 1.6,
             color: colorScheme.onSurface,
           ),
-        ));
+        );
       } else if (matchedText.startsWith('*') && matchedText.endsWith('*')) {
-        spans.add(TextSpan(
-          text: matchedText.substring(1, matchedText.length - 1),
-          style: theme.textTheme.bodyMedium?.copyWith(
+        addSpans(
+          matchedText.substring(1, matchedText.length - 1),
+          theme.textTheme.bodyMedium?.copyWith(
             fontStyle: FontStyle.italic,
             height: 1.6,
           ),
-        ));
+        );
       }
       lastEnd = match.end;
     }
 
     if (lastEnd < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(lastEnd),
-        style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-      ));
+      addSpans(
+        text.substring(lastEnd),
+        theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+      );
     }
 
     return SelectableText.rich(

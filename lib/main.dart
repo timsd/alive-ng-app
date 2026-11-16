@@ -476,6 +476,7 @@ class MainNavigationScreen extends ConsumerWidget {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
@@ -532,7 +533,7 @@ class MainNavigationScreen extends ConsumerWidget {
               ),
             ),
           ],
-          Expanded(
+          Flexible(
             child: Builder(builder: (context) {
               final items = <Map<String, dynamic>>[
                 if (canAccessRoleGated) ...[
@@ -679,7 +680,13 @@ class MainNavigationScreen extends ConsumerWidget {
               }).toList();
 
               return GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shrinkWrap: true,
+                  padding: EdgeInsets.fromLTRB(
+                    12,
+                    8,
+                    12,
+                    16 + MediaQuery.of(context).padding.bottom,
+                  ),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
                     mainAxisSpacing: 12,

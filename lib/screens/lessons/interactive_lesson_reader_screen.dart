@@ -4,6 +4,7 @@ import '../../widgets/modern_dropdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/bible_reference_modal_sheet.dart';
+import '../../widgets/scripture_rich_text.dart';
 import '../../widgets/custom_image.dart';
 import '../../services/interactive_lessons_service.dart';
 import '../../services/pdf_extractor_service.dart';
@@ -1455,7 +1456,7 @@ class _InteractiveLessonReaderScreenState
               ),
             if (sec.bodyText.isNotEmpty) ...[
               const SizedBox(height: 4),
-              Text(
+              ScriptureRichText(
                 sec.bodyText,
                 style: const TextStyle(fontSize: 13.5, height: 1.5),
               ),

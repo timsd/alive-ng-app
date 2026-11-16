@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../widgets/scripture_rich_text.dart';
+
 import 'toast_utils.dart';
 
 /// Utilities for detecting URLs in feed content, generating smart CTA labels,
@@ -222,8 +224,8 @@ class SmartLinkHelper {
     }
   }
 
-  /// Renders [text] with any embedded URLs styled as clickable links that
-  /// open in the user's external browser.
+  /// Renders [text] with any embedded URLs styled as clickable links and any
+  /// Bible references clickable to open [BibleReferenceModalSheet].
   static Widget buildLinkifiedText(
     BuildContext context,
     String text, {
@@ -231,7 +233,7 @@ class SmartLinkHelper {
   }) {
     final matches = _urlRegex.allMatches(text).toList();
     if (matches.isEmpty) {
-      return Text(text, style: style);
+      return ScriptureRichText(text, style: style);
     }
 
     final linkColor = Theme.of(context).colorScheme.primary;
@@ -240,7 +242,13 @@ class SmartLinkHelper {
 
     for (final match in matches) {
       if (match.start > cursor) {
-        spans.add(TextSpan(text: text.substring(cursor, match.start)));
+        spans.addAll(
+          ScriptureTextParser.buildSpans(
+            context,
+            text.substring(cursor, match.start),
+            baseStyle: style,
+          ),
+        );
       }
       final rawMatch = match.group(0) ?? '';
       final cleaned = _stripTrailingPunctuation(rawMatch);
@@ -267,7 +275,13 @@ class SmartLinkHelper {
     }
 
     if (cursor < text.length) {
-      spans.add(TextSpan(text: text.substring(cursor)));
+      spans.addAll(
+        ScriptureTextParser.buildSpans(
+          context,
+          text.substring(cursor),
+          baseStyle: style,
+        ),
+      );
     }
 
     return Text.rich(
