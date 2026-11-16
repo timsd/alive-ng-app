@@ -1484,29 +1484,16 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           ),
         ),
         if (isListening) ...[
-          const SizedBox(height: 10),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              VoiceActivityBars(
-                isActive: hasVoice,
-                level: _voiceLevel,
-                barCount: 5,
-                activeColor: cs.error,
-                inactiveColor: cs.onSurfaceVariant.withValues(alpha: 0.45),
-                maxHeight: 20,
-                barWidth: 3.5,
-                spacing: 3,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                hasVoice ? 'Receiving voice…' : 'Silent — speak now',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: hasVoice ? cs.error : cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            ],
+          const SizedBox(height: 12),
+          VoiceActivityBars(
+            isActive: true,
+            level: hasVoice ? _voiceLevel : null,
+            barCount: 3,
+            activeColor: hasVoice ? cs.error : cs.primary,
+            inactiveColor: cs.onSurfaceVariant.withValues(alpha: 0.45),
+            maxHeight: 22,
+            barWidth: 4.0,
+            spacing: 4.0,
           ),
         ],
       ],

@@ -1437,28 +1437,26 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
-              if (_listening) ...[
+              const SizedBox(height: 12),
+              if (_listening)
                 VoiceActivityBars(
-                  isActive: _voiceLevel > 0.08,
-                  level: _voiceLevel,
-                  barCount: 5,
-                  activeColor: Colors.red,
-                  inactiveColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
-                  maxHeight: 20,
-                  barWidth: 3.5,
-                  spacing: 3,
+                  isActive: true,
+                  level: _voiceLevel > 0.08 ? _voiceLevel : null,
+                  barCount: 3,
+                  activeColor: _voiceLevel > 0.08
+                      ? Colors.red
+                      : colorScheme.primary,
+                  inactiveColor:
+                      colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
+                  maxHeight: 22,
+                  barWidth: 4.0,
+                  spacing: 4.0,
+                )
+              else
+                Text(
+                  'Tap to start reciting',
+                  style: theme.textTheme.bodySmall,
                 ),
-                const SizedBox(height: 6),
-              ],
-              Text(
-                _listening
-                    ? (_voiceLevel > 0.08
-                        ? 'Hearing your voice… tap to stop'
-                        : 'Silent — speak to recite')
-                    : 'Tap to start reciting',
-                style: theme.textTheme.bodySmall,
-              ),
             ],
           ),
         ),

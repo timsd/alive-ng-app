@@ -699,29 +699,21 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                     onPressed: () => _stopVoiceDictation(cancel: true),
                   ),
                   const SizedBox(width: 6),
-                  VoiceActivityBars(
-                    isActive: _voiceLevel > 0.08,
-                    level: _voiceLevel,
-                    barCount: 7,
-                    activeColor: Theme.of(context).colorScheme.primary,
-                    inactiveColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
-                    maxHeight: 20,
-                    barWidth: 3,
-                    spacing: 2.5,
-                  ),
-                  const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      _voiceLevel > 0.08
-                          ? 'Listening — receiving voice…'
-                          : 'Silent — speak now…',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: _voiceLevel > 0.08
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                      overflow: TextOverflow.ellipsis,
+                    child: Center(
+                      child: VoiceActivityBars(
+                        isActive: true,
+                        level: _voiceLevel > 0.08 ? _voiceLevel : null,
+                        barCount: 3,
+                        activeColor: Theme.of(context).colorScheme.primary,
+                        inactiveColor: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant
+                            .withValues(alpha: 0.45),
+                        maxHeight: 22,
+                        barWidth: 4,
+                        spacing: 4,
+                      ),
                     ),
                   ),
                   IconButton(

@@ -72,7 +72,8 @@ class _VoiceActivityBarsState extends State<VoiceActivityBars>
     final activeColor = widget.activeColor ?? theme.colorScheme.primary;
     final inactiveColor = widget.inactiveColor ??
         theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.45);
-    final minHeight = widget.barWidth;
+    final minHeight =
+        math.max(widget.barWidth * 1.8, widget.maxHeight * 0.38);
 
     return SizedBox(
       height: widget.maxHeight,
@@ -81,8 +82,8 @@ class _VoiceActivityBarsState extends State<VoiceActivityBars>
         builder: (context, _) {
           final t = _controller.value * 2 * math.pi;
           final amplitude = widget.level != null
-              ? widget.level!.clamp(0.0, 1.0)
-              : (widget.isActive ? 0.85 : 0.0);
+              ? widget.level!.clamp(0.28, 1.0)
+              : (widget.isActive ? 0.9 : 0.0);
 
           return Row(
             mainAxisSize: MainAxisSize.min,
@@ -91,15 +92,17 @@ class _VoiceActivityBarsState extends State<VoiceActivityBars>
               // Symmetric Google Meet wave: center bars peak higher than edges.
               final center = (widget.barCount - 1) / 2.0;
               final distFromCenter = (i - center).abs();
-              final centerWeight = 1.0 - (distFromCenter / (center + 1.0)) * 0.35;
+              final centerWeight =
+                  1.0 - (distFromCenter / (center + 1.0)) * 0.35;
 
               final wave = widget.isActive
                   ? (0.45 + 0.55 * ((math.sin(t + i * 1.35) + 1) / 2))
                   : 0.0;
-              final targetFactor =
-                  widget.isActive ? (wave * amplitude * centerWeight).clamp(0.18, 1.0) : 0.0;
-              final height = minHeight +
-                  (widget.maxHeight - minHeight) * targetFactor;
+              final targetFactor = widget.isActive
+                  ? (wave * amplitude * centerWeight).clamp(0.18, 1.0)
+                  : (0.25 * centerWeight);
+              final height =
+                  minHeight + (widget.maxHeight - minHeight) * targetFactor;
 
               return Padding(
                 padding: EdgeInsets.only(
