@@ -386,6 +386,8 @@ class _TractFormDialogState extends State<_TractFormDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: ResponsiveUtils.getResponsiveValue(
           context: context,
@@ -655,13 +657,17 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
-                                    'Default Cover Image',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
+                                  const Expanded(
+                                    child: Text(
+                                      'Default Cover Image',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
                                   ElevatedButton.icon(
                                     onPressed:
                                         _isUploading ? null : _selectCoverImage,
@@ -747,13 +753,17 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
-                                    'Lesson Cover Images (Multiple)',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
+                                  const Expanded(
+                                    child: Text(
+                                      'Lesson Cover Images (Multiple)',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
                                   ElevatedButton.icon(
                                     onPressed: _isUploading
                                         ? null
@@ -1340,6 +1350,8 @@ class _StandaloneLessonFormDialogState
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: ResponsiveUtils.getResponsiveValue(
           context: context,

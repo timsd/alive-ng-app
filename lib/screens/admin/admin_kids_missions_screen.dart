@@ -316,6 +316,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                       children: [
                         Expanded(
                           child: ModernDropdownFormField<MissionCategory>(
+                            isExpanded: true,
                             initialValue: _selectedCategory,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -334,6 +335,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: ModernDropdownFormField<MissionDifficulty>(
+                            isExpanded: true,
                             initialValue: _selectedDifficulty,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -388,6 +390,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: ModernDropdownFormField<VerificationMethod>(
+                            isExpanded: true,
                             initialValue: _selectedVerification,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,

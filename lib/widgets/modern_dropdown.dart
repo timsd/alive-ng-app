@@ -110,14 +110,19 @@ class _ModernDropdownSheetContentState<T>
             return label.contains(_searchQuery) || valStr.contains(_searchQuery);
           }).toList();
 
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 540,
-          maxHeight: mediaQuery.size.height * 0.78,
-        ),
-        child: Container(
+    return SafeArea(
+      top: true,
+      bottom: true,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 540,
+              maxHeight: (mediaQuery.size.height - mediaQuery.viewPadding.vertical) * 0.78,
+            ),
+            child: Container(
           margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
@@ -341,6 +346,8 @@ class _ModernDropdownSheetContentState<T>
             ],
           ),
         ),
+      ),
+    ),
       ),
     );
   }

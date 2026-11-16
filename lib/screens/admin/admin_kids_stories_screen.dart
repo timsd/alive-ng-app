@@ -327,6 +327,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                       children: [
                         Expanded(
                           child: ModernDropdownFormField<StoryCategory>(
+                            isExpanded: true,
                             initialValue: _selectedCategory,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -345,6 +346,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: ModernDropdownFormField<AgeGroup>(
+                            isExpanded: true,
                             initialValue: _selectedAgeGroup,
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,

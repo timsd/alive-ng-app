@@ -6,6 +6,7 @@ import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../services/channel_membership_sync_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/modern_dropdown.dart';
 
 /// Admin screen for managing and editing chat #role tags, special @announcement tags,
 /// and channel directory & bridge mappings.
@@ -742,52 +743,23 @@ class _ChatTagManagementScreenState extends State<ChatTagManagementScreen>
                   InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () async {
-                      final picked = await showModalBottomSheet<String>(
+                      await showModernDropdownSheet<String>(
                         context: ctx,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.vertical(top: Radius.circular(20)),
-                        ),
-                        builder: (sheetCtx) => SafeArea(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Text(
-                                  'Select Target Channel',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16),
-                                ),
-                              ),
-                              Flexible(
-                                child: ListView(
-                                  shrinkWrap: true,
-                                  children: channelOptions
-                                      .map((opt) => ListTile(
-                                            leading: const Icon(
-                                                Icons.forum_outlined),
-                                            title: Text(opt['name']!),
-                                            subtitle: Text(opt['id']!),
-                                            trailing: opt['id'] ==
-                                                    selectedChannelId
-                                                ? Icon(Icons.check_circle,
-                                                    color: colorScheme.primary)
-                                                : null,
-                                            onTap: () => Navigator.pop(
-                                                sheetCtx, opt['id']),
-                                          ))
-                                      .toList(),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        title: 'Select Target Channel',
+                        headerIcon: Icons.forum_outlined,
+                        selectedValue: selectedChannelId,
+                        items: channelOptions
+                            .map((opt) => DropdownMenuItem<String>(
+                                  value: opt['id'],
+                                  child: Text('${opt['name']} (${opt['id']})'),
+                                ))
+                            .toList(),
+                        onChanged: (picked) {
+                          if (picked != null) {
+                            setDialogState(() => selectedChannelId = picked);
+                          }
+                        },
                       );
-                      if (picked != null) {
-                        setDialogState(() => selectedChannelId = picked);
-                      }
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(

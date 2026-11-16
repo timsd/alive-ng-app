@@ -415,6 +415,8 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: ResponsiveUtils.getResponsiveValue(
           context: context,
@@ -1030,6 +1032,8 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: ResponsiveUtils.getResponsiveValue(
           context: context,
