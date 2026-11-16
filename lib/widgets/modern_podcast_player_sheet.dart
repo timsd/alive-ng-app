@@ -111,6 +111,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
   int _activeTranscriptIndex = -1;
   bool _userIsScrollingTranscript = false;
   Timer? _userScrollTimer;
+  DateTime? _lastManualSeekAt;
   final Map<int, GlobalKey> _transcriptItemKeys = {};
 
   // Personal Notes State
@@ -178,6 +179,11 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
     _positionSubscription = widget.audioPlayer.positionStream.listen((pos) {
       if (!mounted || _transcriptLines.isEmpty) return;
+      if (_lastManualSeekAt != null &&
+          DateTime.now().difference(_lastManualSeekAt!) <
+              const Duration(milliseconds: 600)) {
+        return;
+      }
       final currentMs = pos.inMilliseconds;
       final newIndex = _findActiveTranscriptIndex(currentMs);
 
@@ -455,7 +461,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
       r'^(?:\[|\()?(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?(?:\s*[-–—:]\s*(?:(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?))?(?:\]|\))?\s*[-–—:]?\s*',
     );
     final cueRegex = RegExp(
-      r'^(?:(?:\d{1,2}:)?\d{2}:\d{2}(?:[.,]\d+)?)\s*-->\s*(?:(?:\d{1,2}:)?\d{2}:\d{2}(?:[.,]\d+)?)\s*',
+      r'^(?:(\d{1,2}):)?(\d{2}):(\d{2})(?:[.,](\d{1,3}))?\s*-->\s*(?:(\d{1,2}):)?(\d{2}):(\d{2})(?:[.,](\d{1,3}))?\s*',
     );
     final speakerRegex = RegExp(
       r'^\*?\*?([A-Za-z0-9\s_]+)\*?\*?:\s*',
@@ -508,13 +514,33 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
         continue;
       }
 
-      // Strip leading bullet markers like "* ****" or "* "
-      p = p.replaceAll(RegExp(r'^\*+\s*(\*+\s*)*'), '').trim();
+      // Strip leading bullet / numbered / bold markers like "* ", "- ", "1. ", "**"
+      p = p
+          .replaceAll(RegExp(r'^(?:[-•*]|\d+\.)\s+'), '')
+          .replaceAll(RegExp(r'^\*\*'), '')
+          .trim();
 
-      // Check and strip SRT/VTT cue headers if present
+      // Parse SRT/VTT cue headers into explicit start/end timestamps
       final cueMatch = cueRegex.firstMatch(p);
       if (cueMatch != null) {
+        if (currentStartMs != null || currentTextLines.isNotEmpty) {
+          commitCurrentSegment();
+        }
+        hasExplicitTimestamps = true;
+        final sh = int.tryParse(cueMatch.group(1) ?? '0') ?? 0;
+        final sm = int.tryParse(cueMatch.group(2) ?? '0') ?? 0;
+        final ss = int.tryParse(cueMatch.group(3) ?? '0') ?? 0;
+        final sms = parseFracMs(cueMatch.group(4));
+        currentStartMs = ((sh * 3600) + (sm * 60) + ss) * 1000 + sms;
+
+        final eh = int.tryParse(cueMatch.group(5) ?? '0') ?? 0;
+        final em = int.tryParse(cueMatch.group(6) ?? '0') ?? 0;
+        final es = int.tryParse(cueMatch.group(7) ?? '0') ?? 0;
+        final ems = parseFracMs(cueMatch.group(8));
+        currentEndMs = ((eh * 3600) + (em * 60) + es) * 1000 + ems;
+
         p = p.substring(cueMatch.end).trim();
+        if (p.isEmpty) continue;
       }
 
       final timeMatch = timestampRegex.firstMatch(p);
@@ -1042,18 +1068,29 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                       return KeyedSubtree(
                         key: itemKey,
                         child: InkWell(
-                          onTap: () {
-                            // Tap timestamp or card to seek and play instantly
-                            widget.audioPlayer
-                                .seek(Duration(milliseconds: item.startMs));
-                            if (!widget.audioPlayer.playing) {
-                              widget.audioPlayer.play();
+                          onTap: () async {
+                            final fullIdx = _transcriptLines.indexOf(item);
+                            final targetIdx = fullIdx >= 0 ? fullIdx : index;
+                            final dur = widget.audioPlayer.duration;
+                            var targetMs = item.startMs;
+                            if (dur != null && dur.inMilliseconds > 0) {
+                              targetMs = targetMs.clamp(0, dur.inMilliseconds);
                             }
+                            _lastManualSeekAt = DateTime.now();
                             setState(() {
-                              _activeTranscriptIndex = index;
+                              _activeTranscriptIndex = targetIdx;
                               _userIsScrollingTranscript = false;
                             });
-                            _scrollToActiveIndex(index, animate: true);
+                            _scrollToActiveIndex(targetIdx, animate: true);
+                            try {
+                              await widget.audioPlayer
+                                  .seek(Duration(milliseconds: targetMs));
+                              if (!widget.audioPlayer.playing) {
+                                await widget.audioPlayer.play();
+                              }
+                            } catch (e) {
+                              debugPrint('Transcript seek error: $e');
+                            }
                           },
                     borderRadius: BorderRadius.circular(12),
                     child: AnimatedContainer(
