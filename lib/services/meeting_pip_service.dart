@@ -79,4 +79,44 @@ class MeetingPipService {
       return false;
     }
   }
+
+  /// Starts the Android `mediaProjection` foreground service required on
+  /// Android 14+ before requesting screen capture, and temporarily suppresses
+  /// auto-PiP while the system screen-share permission prompt is shown.
+  Future<void> startScreenShareService() async {
+    if (!_isAndroid) return;
+    try {
+      await _channel.invokeMethod<bool>('startScreenShareService');
+    } on MissingPluginException {
+      // Ignored in tests or unsupported runners.
+    } on PlatformException {
+      // Handled by caller if MediaProjection fails.
+    }
+  }
+
+  /// Stops the Android `mediaProjection` foreground service when screen sharing ends.
+  Future<void> stopScreenShareService() async {
+    if (!_isAndroid) return;
+    try {
+      await _channel.invokeMethod<bool>('stopScreenShareService');
+    } on MissingPluginException {
+      // Ignored in tests or unsupported runners.
+    } on PlatformException {
+      // Ignored if Activity is detaching.
+    }
+  }
+
+  /// Clears/sets the flag suppressing auto-PiP during the screen-share consent prompt.
+  Future<void> setRequestingScreenShare(bool requesting) async {
+    if (!_isAndroid) return;
+    try {
+      await _channel.invokeMethod<bool>('setRequestingScreenShare', {
+        'requesting': requesting,
+      });
+    } on MissingPluginException {
+      // Ignored in tests.
+    } on PlatformException {
+      // Ignored if Activity is detaching.
+    }
+  }
 }

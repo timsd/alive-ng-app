@@ -223,9 +223,9 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="alive_ng_notifications" />
-        <!-- LiveKit / FlutterWebRTC media projection foreground service for screen sharing -->
+        <!-- Android 14+ media projection foreground service for ALIVE Meet screen sharing -->
         <service
-            android:name="com.cloudwebrtc.webrtc.FlutterWebRTCService"
+            android:name="com.alive.alivengandroidapp.MediaProjectionForegroundService"
             android:foregroundServiceType="mediaProjection"
             android:exported="false" />
     </application>

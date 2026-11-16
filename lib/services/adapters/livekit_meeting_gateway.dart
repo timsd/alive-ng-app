@@ -18,6 +18,7 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../models/meeting_models.dart';
+import '../meeting_pip_service.dart';
 import '../ports/meeting_gateway.dart';
 import '../role_access_service.dart';
 
@@ -1375,6 +1376,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     if (participant == null) return;
 
     final shouldEnable = !_isScreenShareEnabled;
+    if (shouldEnable) {
+      await MeetingPipService.instance.startScreenShareService();
+    }
     try {
       // Standard conferencing: stream screen video AND computer/tab audio together
       await participant.setScreenShareEnabled(
@@ -1385,6 +1389,11 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         ),
       );
       _isScreenShareEnabled = shouldEnable;
+      if (shouldEnable) {
+        await MeetingPipService.instance.setRequestingScreenShare(false);
+      } else {
+        await MeetingPipService.instance.stopScreenShareService();
+      }
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] toggleScreenShare with audio note: $e');
       if (shouldEnable) {
@@ -1392,8 +1401,10 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         try {
           await participant.setScreenShareEnabled(shouldEnable);
           _isScreenShareEnabled = true;
+          await MeetingPipService.instance.setRequestingScreenShare(false);
         } catch (innerErr) {
           _isScreenShareEnabled = false;
+          await MeetingPipService.instance.stopScreenShareService();
           final errStr = innerErr.toString();
           if (errStr.contains('Screen sharing is not supported') ||
               errStr.contains('not supported on mobile devices')) {
@@ -1405,6 +1416,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         }
       } else {
         _isScreenShareEnabled = false;
+        await MeetingPipService.instance.stopScreenShareService();
       }
     }
     _syncStateFromRoom();
@@ -2063,6 +2075,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _isScreenShareEnabled = false;
       _isScreenSharePermitted = false;
       _screenSharePermittedIdentities.clear();
+      MeetingPipService.instance.stopScreenShareService();
       _hostIdentity = null;
       _coHostIdentities.clear();
       _isRoomAudioLocked = false;

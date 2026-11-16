@@ -30,6 +30,7 @@ class MainActivity: FlutterFragmentActivity() {
     private var pipChannel: MethodChannel? = null
     private var isInActiveMeeting: Boolean = false
     private var isAudioMuted: Boolean = false
+    private var isRequestingScreenShare: Boolean = false
     private var pipReceiver: BroadcastReceiver? = null
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
@@ -75,6 +76,26 @@ class MainActivity: FlutterFragmentActivity() {
                     }
                     "isPipSupported" -> {
                         result.success(isPipSupported())
+                    }
+                    "startScreenShareService" -> {
+                        isRequestingScreenShare = true
+                        try {
+                            MediaProjectionForegroundService.start(this@MainActivity)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            isRequestingScreenShare = false
+                            Log.e("MainActivity", "Failed to start screen share service", e)
+                            result.error("SCREEN_SHARE_SERVICE_ERROR", e.message, null)
+                        }
+                    }
+                    "stopScreenShareService" -> {
+                        isRequestingScreenShare = false
+                        MediaProjectionForegroundService.stop(this@MainActivity)
+                        result.success(true)
+                    }
+                    "setRequestingScreenShare" -> {
+                        isRequestingScreenShare = call.argument<Boolean>("requesting") ?: false
+                        result.success(true)
                     }
                     else -> result.notImplemented()
                 }
@@ -198,7 +219,7 @@ class MainActivity: FlutterFragmentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (isInActiveMeeting && !isInPictureInPictureMode) {
+        if (isInActiveMeeting && !isInPictureInPictureMode && !isRequestingScreenShare) {
             tryEnterPipMode()
         }
     }
@@ -298,7 +319,7 @@ class MainActivity: FlutterFragmentActivity() {
         )
 
         val builder = PictureInPictureParams.Builder()
-            .setAspectRatio(Rational(16, 9))
+            .setAspectRatio(Rational(9, 16))
             .setActions(listOf(micAction, leaveAction))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(autoEnter)
