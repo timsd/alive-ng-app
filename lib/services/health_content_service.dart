@@ -300,13 +300,18 @@ class HealthContentService extends ChangeNotifier {
       final recipesRes = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.dynamicContentCollectionId,
-        queries: [Query.equal('type', 'health_recipe'), Query.limit(100)],
+        queries: [Query.equal('type', 'health_recipe'), Query.limit(250)],
       );
       final remediesRes = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.dynamicContentCollectionId,
-        queries: [Query.equal('type', 'health_remedy'), Query.limit(100)],
+        queries: [Query.equal('type', 'health_remedy'), Query.limit(250)],
       );
+
+      final defaultRecipeIds = _defaultRecipes.map((r) => r.id).toSet();
+      final defaultRemedyIds = _defaultRemedies.map((r) => r.id).toSet();
+      final remoteRecipeIds = <String>{};
+      final remoteRemedyIds = <String>{};
 
       bool changed = false;
       for (final row in recipesRes.rows) {
@@ -316,6 +321,7 @@ class HealthContentService extends ChangeNotifier {
             final item = HealthRecipeItem.fromJson(
               Map<String, dynamic>.from(jsonDecode(raw) as Map),
             );
+            remoteRecipeIds.add(item.id);
             if (row.data['is_active'] == false) {
               _recipes.removeWhere((r) => r.id == item.id);
             } else {
@@ -330,6 +336,12 @@ class HealthContentService extends ChangeNotifier {
           } catch (_) {}
         }
       }
+      final beforeRecipeCount = _recipes.length;
+      _recipes.removeWhere(
+        (r) => !defaultRecipeIds.contains(r.id) && !remoteRecipeIds.contains(r.id),
+      );
+      if (_recipes.length != beforeRecipeCount) changed = true;
+
       for (final row in remediesRes.rows) {
         final raw = row.data['metadata'];
         if (raw is String && raw.trim().isNotEmpty) {
@@ -337,6 +349,7 @@ class HealthContentService extends ChangeNotifier {
             final item = HealthRemedyItem.fromJson(
               Map<String, dynamic>.from(jsonDecode(raw) as Map),
             );
+            remoteRemedyIds.add(item.id);
             if (row.data['is_active'] == false) {
               _remedies.removeWhere((r) => r.id == item.id);
             } else {
@@ -351,6 +364,11 @@ class HealthContentService extends ChangeNotifier {
           } catch (_) {}
         }
       }
+      final beforeRemedyCount = _remedies.length;
+      _remedies.removeWhere(
+        (r) => !defaultRemedyIds.contains(r.id) && !remoteRemedyIds.contains(r.id),
+      );
+      if (_remedies.length != beforeRemedyCount) changed = true;
       if (changed) {
         await _saveRecipes();
         await _saveRemedies();
