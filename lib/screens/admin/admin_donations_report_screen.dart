@@ -369,29 +369,31 @@ class _AdminDonationsReportContentState
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Donation Records (${_filteredDonations.length})',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          'Donation Records (${_filteredDonations.length})',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          OutlinedButton.icon(
-                            icon: const Icon(Icons.cloud_download_outlined, size: 16),
-                            label: const Text(
-                              'Sync Paystack',
-                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          IconButton(
+                            icon: const Icon(Icons.cloud_download_outlined, size: 20),
+                            tooltip: 'Sync Paystack',
+                            onPressed: _isLoading ? null : _syncFromPaystack,
+                            style: IconButton.styleFrom(
+                              side: BorderSide(color: theme.colorScheme.outlineVariant),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
+                              padding: const EdgeInsets.all(8),
+                              minimumSize: const Size(36, 36),
                             ),
-                            onPressed: _isLoading ? null : _syncFromPaystack,
                           ),
                           const SizedBox(width: 8),
                           OutlinedButton.icon(
