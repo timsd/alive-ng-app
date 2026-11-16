@@ -214,6 +214,20 @@ class TractDatabaseHelper {
     return maps.map((map) => _tractFromMap(map)).toList();
   }
 
+  Future<void> deleteTractsNotIn(Set<String> keepIds) async {
+    final db = await database;
+    if (keepIds.isEmpty) {
+      await db.delete(_tractsTable);
+      return;
+    }
+    final placeholders = List.filled(keepIds.length, '?').join(',');
+    await db.delete(
+      _tractsTable,
+      where: 'id NOT IN ($placeholders)',
+      whereArgs: keepIds.toList(),
+    );
+  }
+
   Future<Tract?> getTractById(String id) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(

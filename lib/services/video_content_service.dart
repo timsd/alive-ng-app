@@ -43,11 +43,9 @@ class VideoContentService {
         r'$id': r.$id,
       }).toList();
 
-      if (items.isNotEmpty) {
-        _cachedVideos = items;
-        await _saveToLocalCache();
-        return _cachedVideos;
-      }
+      _cachedVideos = items;
+      await _saveToLocalCache();
+      return _cachedVideos;
     } catch (e) {
       _logger.warning('TablesDB failed listing videos: $e');
     }

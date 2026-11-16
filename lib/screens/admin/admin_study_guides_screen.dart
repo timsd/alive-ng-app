@@ -232,48 +232,16 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen>
         updatedAt: DateTime.now(),
       );
 
-      // Save Guide
-      await _studyService.createStudyGuide({
-        ...guide.toJson(),
-        'cover_image_url': uploadedImageUrl,
-        'is_published': true,
-        'lesson_count': _lessonContentController.text.isNotEmpty ? 1 : 0,
-      });
-
-      // 3. Build & Save Initial Lesson from Extracted Content
-      final rawVerses = _keyVersesController.text.trim();
-      final versesList = rawVerses.isNotEmpty
-          ? rawVerses
-              .split(',')
-              .map((e) => e.trim())
-              .where((s) => s.isNotEmpty)
-              .toList()
-          : <String>[];
-
-      if (_lessonContentController.text.isNotEmpty) {
-        final lessonId = '${guideId}_lesson_1';
-        final lesson = StudyLesson(
-          id: lessonId,
-          studyGuideId: guideId,
-          title: 'Lesson 1: Introduction', // Default first lesson generated
-          content: _lessonContentController.text.trim(),
-          keyVerses: versesList,
-          lessonNumber: 1,
-          estimatedDurationMinutes: durationInt,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-
-        await _studyService.createStudyLesson(lesson.toJson());
-      }
-
       if (_editingGuideId != null) {
-        await _studyService.updateStudyGuide(_editingGuideId!, {
-          'title': _titleController.text.trim(),
-          'description': _descriptionController.text.trim(),
-          'estimated_duration_minutes': durationInt,
-          'updated_at': DateTime.now().toIso8601String(),
-        });
+        final updateData = guide.toJson()
+          ..remove('id')
+          ..remove('created_at')
+          ..remove('createdAt');
+        if (uploadedImageUrl != null) {
+          updateData['cover_image_url'] = uploadedImageUrl;
+        }
+        updateData['updated_at'] = DateTime.now().toIso8601String();
+        await _studyService.updateStudyGuide(_editingGuideId!, updateData);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -285,6 +253,40 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen>
           _tabController.animateTo(0);
         }
         return;
+      }
+
+      // Save new Guide
+      await _studyService.createStudyGuide({
+        ...guide.toJson(),
+        'cover_image_url': uploadedImageUrl,
+        'is_published': true,
+        'lesson_count': _lessonContentController.text.isNotEmpty ? 1 : 0,
+      });
+
+      // 3. Build & Save Initial Lesson from Extracted Content (snake_case schema)
+      final rawVerses = _keyVersesController.text.trim();
+      final versesList = rawVerses.isNotEmpty
+          ? rawVerses
+              .split(',')
+              .map((e) => e.trim())
+              .where((s) => s.isNotEmpty)
+              .toList()
+          : <String>[];
+
+      if (_lessonContentController.text.isNotEmpty) {
+        final lessonId = '${guideId}_lesson_1';
+        final nowIso = DateTime.now().toIso8601String();
+        await _studyService.createStudyLesson({
+          'id': lessonId,
+          'study_guide_id': guideId,
+          'title': 'Lesson 1: Introduction',
+          'content': _lessonContentController.text.trim(),
+          'key_verses': versesList,
+          'lesson_number': 1,
+          'estimated_duration_minutes': durationInt,
+          'created_at': nowIso,
+          'updated_at': nowIso,
+        });
       }
 
       if (mounted) {

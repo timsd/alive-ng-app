@@ -21,6 +21,7 @@ import '../../providers/appwrite_auth_provider.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../services/exchange_rate_service.dart';
 import '../../services/channel_membership_sync_service.dart';
+import '../../services/donation_service.dart';
 import '../../utils/error_handler.dart';
 
 class DonationScreen extends ConsumerStatefulWidget {
@@ -47,6 +48,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   final TextEditingController _customDesignationController =
       TextEditingController();
   final List<Project> _fallbackProjects = donationFallbackProjects;
+  List<Project> _projects = List<Project>.from(donationFallbackProjects);
 
   bool _isMonthlySelected = false;
 
@@ -102,6 +104,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     _animationController.forward();
 
     _loadSelectedProject();
+    _loadProjects();
     _fetchExchangeRate();
   }
 
@@ -126,6 +129,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     } catch (e) {
       debugPrint('Using fallback exchange rate: $_exchangeRate ($e)');
     }
+  }
+
+  Future<void> _loadProjects() async {
+    try {
+      final fetched = await DonationService().getDonationProjects();
+      if (!mounted || fetched.isEmpty) return;
+      setState(() => _projects = fetched);
+    } catch (_) {}
   }
 
   @override
@@ -685,13 +696,13 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 10)),
 
         // Capital projects, each with an icon, before the general purposes.
-        if (_fallbackProjects.isNotEmpty) ...[
+        if (_projects.isNotEmpty) ...[
           _buildSelectorGroupLabel(context, theme, 'Projects'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final project in _fallbackProjects)
+              for (final project in _projects)
                 _buildDesignationChip(
                   context,
                   theme,

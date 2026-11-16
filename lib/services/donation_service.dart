@@ -6,6 +6,7 @@ import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:appwrite/models.dart' as models;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../config/payment_config.dart';
@@ -131,6 +132,8 @@ class DonationService {
     }
   }
 
+  static const String _projectsCacheKey = 'donation_projects_cache_v1';
+
   Future<List<Project>> getDonationProjects() async {
     try {
       final snapshot = await _tables.listRows(
@@ -141,11 +144,30 @@ class DonationService {
           Query.limit(100),
         ],
       );
-      return snapshot.rows
+      final projects = snapshot.rows
           .map((row) => Project.fromJson(_rowData(row)))
           .toList();
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          _projectsCacheKey,
+          jsonEncode(projects.map((p) => p.toJson()).toList()),
+        );
+      } catch (_) {}
+      return projects;
     } catch (e) {
-      _logger.error('Failed to fetch donation projects', e);
+      _logger.error('Failed to fetch donation projects, using cache if available', e);
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final raw = prefs.getString(_projectsCacheKey);
+        if (raw != null && raw.isNotEmpty) {
+          final decoded = jsonDecode(raw) as List<dynamic>;
+          return decoded
+              .whereType<Map>()
+              .map((m) => Project.fromJson(Map<String, dynamic>.from(m)))
+              .toList();
+        }
+      } catch (_) {}
       return [];
     }
   }

@@ -100,7 +100,13 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
       appBar: CustomAppBar(
         title: translate('interactive_lessons'),
         showBackButton: true,
-
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh lessons',
+            onPressed: () => _lessonsService.syncFromRemote(force: true),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -268,8 +274,11 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
       );
     }
 
-    return GridView.builder(
-      padding: context.responsivePadding,
+    return RefreshIndicator(
+      onRefresh: () => _lessonsService.syncFromRemote(force: true),
+      child: GridView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: context.responsivePadding,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: ResponsiveUtils.getResponsiveValue(
           context: context,
@@ -301,6 +310,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
         final lesson = lessons[index];
         return _buildLessonCard(lesson, index);
       },
+      ),
     );
   }
 

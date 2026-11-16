@@ -53,15 +53,18 @@ class TractService {
     try {
       try {
         final remoteTracts = await _fetchTractsFromAppwrite()
-            .timeout(const Duration(seconds: 6), onTimeout: () => <Tract>[]);
-        if (remoteTracts.isNotEmpty) {
-          if (!kIsWeb) {
+            .timeout(const Duration(seconds: 6));
+        if (!kIsWeb) {
+          try {
+            await _dbHelper.deleteTractsNotIn(
+              remoteTracts.map((t) => t.id).toSet(),
+            );
             for (final tract in remoteTracts) {
-              try {
-                await _dbHelper.insertTract(tract);
-              } catch (_) {}
+              await _dbHelper.insertTract(tract);
             }
-          }
+          } catch (_) {}
+        }
+        if (remoteTracts.isNotEmpty) {
           return remoteTracts;
         }
       } catch (e) {
@@ -427,8 +430,11 @@ class TractService {
       // Fetch latest tracts from Appwrite.
       final remoteTracts = await _fetchTractsFromAppwrite();
 
-      // Update local database
+      // Update local database (prune deleted tracts and upsert remote ones)
       if (!kIsWeb) {
+        await _dbHelper.deleteTractsNotIn(
+          remoteTracts.map((t) => t.id).toSet(),
+        );
         for (final tract in remoteTracts) {
           await _dbHelper.insertTract(tract);
         }

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../providers/language_provider.dart';
 import '../../config/org_structure.dart';
 import '../../services/content_pages_service.dart';
+import '../../services/org_structure_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/responsive_utils.dart';
@@ -43,10 +44,19 @@ class AboutAliveScreen extends ConsumerWidget {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1080),
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: ContentPagesService.instance.listPages(),
+            child: FutureBuilder<List<dynamic>>(
+              future: Future.wait<dynamic>([
+                ContentPagesService.instance.listPages(),
+                OrgStructureService.instance.getLeadershipPeople(),
+              ]),
               builder: (context, snapshot) {
-                final pages = snapshot.data ?? const <Map<String, dynamic>>[];
+                final results = snapshot.data;
+                final pages = results != null
+                    ? (results[0] as List<Map<String, dynamic>>)
+                    : const <Map<String, dynamic>>[];
+                final liveLeadership = results != null
+                    ? (results[1] as List<OrgPerson>)
+                    : leadershipPeople;
                 Map<String, dynamic>? findPage(String slugOrId) {
                   for (final p in pages) {
                     if ((p['slug'] == slugOrId || p['id'] == slugOrId) &&
@@ -238,7 +248,7 @@ class AboutAliveScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      ...leadershipPeople
+                      ...liveLeadership
                           .where((p) => p.isDirector)
                           .map(
                         (person) => Padding(
@@ -281,7 +291,7 @@ class AboutAliveScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       if (canSeeLeadership)
-                        ...leadershipPeople
+                        ...liveLeadership
                             .where((p) => p.isBodMember)
                             .map(
                           (person) => Padding(
@@ -327,7 +337,7 @@ class AboutAliveScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       if (canSeeLeadership)
-                        ...leadershipPeople
+                        ...liveLeadership
                             .where((p) => p.isTrustee)
                             .map(
                           (person) => Padding(

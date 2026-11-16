@@ -1,5 +1,7 @@
+import 'dart:convert';
+
 import 'package:appwrite/appwrite.dart';
-import 'package:appwrite/models.dart' as models;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -14,19 +16,39 @@ class AppwriteEventsService {
 
   late final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('AppwriteEventsService');
+  static const String _eventsCacheKey = 'appwrite_events_cache_v1';
+  static const String _announcementsCacheKey = 'appwrite_announcements_cache_v1';
 
   Future<List<Event>> listEvents() async {
     try {
       final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.eventsCollectionId,
-        queries: [Query.limit(100)],
+        queries: [Query.limit(200)],
       );
 
-      final events = response.rows.map(_rowToEvent).toList();
+      final rawMaps = response.rows
+          .where((row) {
+            final status = (row.data['status'] ?? '').toString().toLowerCase();
+            return status != 'draft' && status != 'archived';
+          })
+          .map((row) => {
+                ...Map<String, dynamic>.from(row.data),
+                'id': row.$id,
+              })
+          .toList();
+
+      await _saveCache(_eventsCacheKey, rawMaps);
+      final events = rawMaps.map(Event.fromJson).toList();
       events.sort((a, b) => b.sortDate.compareTo(a.sortDate));
       return events;
     } catch (e) {
+      final cached = await _loadCache(_eventsCacheKey);
+      if (cached != null) {
+        final events = cached.map(Event.fromJson).toList();
+        events.sort((a, b) => b.sortDate.compareTo(a.sortDate));
+        return events;
+      }
       _logger.error('Failed to load events', e);
       throw DatabaseException('Failed to load events', originalError: e);
     }
@@ -37,15 +59,61 @@ class AppwriteEventsService {
       final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.announcementsCollectionId,
-        queries: [Query.limit(100)],
+        queries: [Query.limit(200)],
       );
 
-      final announcements = response.rows.map(_rowToAnnouncement).toList();
+      final now = DateTime.now();
+      final rawMaps = response.rows
+          .where((row) {
+            if (row.data['is_active'] == false) return false;
+            final expiresRaw = row.data['expires_at']?.toString();
+            if (expiresRaw != null && expiresRaw.isNotEmpty) {
+              final expiresAt = DateTime.tryParse(expiresRaw);
+              if (expiresAt != null && expiresAt.isBefore(now)) return false;
+            }
+            return true;
+          })
+          .map((row) => {
+                ...Map<String, dynamic>.from(row.data),
+                'id': row.$id,
+              })
+          .toList();
+
+      await _saveCache(_announcementsCacheKey, rawMaps);
+      final announcements = rawMaps.map(Announcement.fromJson).toList();
       announcements.sort((a, b) => b.sortDate.compareTo(a.sortDate));
       return announcements;
     } catch (e) {
+      final cached = await _loadCache(_announcementsCacheKey);
+      if (cached != null) {
+        final announcements = cached.map(Announcement.fromJson).toList();
+        announcements.sort((a, b) => b.sortDate.compareTo(a.sortDate));
+        return announcements;
+      }
       _logger.error('Failed to load announcements', e);
       throw DatabaseException('Failed to load announcements', originalError: e);
+    }
+  }
+
+  Future<void> _saveCache(String key, List<Map<String, dynamic>> items) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, jsonEncode(items));
+    } catch (_) {}
+  }
+
+  Future<List<Map<String, dynamic>>?> _loadCache(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(key);
+      if (raw == null || raw.isEmpty) return null;
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .whereType<Map>()
+          .map((m) => Map<String, dynamic>.from(m))
+          .toList();
+    } catch (_) {
+      return null;
     }
   }
 
@@ -110,19 +178,5 @@ class AppwriteEventsService {
       _logger.error('Failed to create announcement', e);
       throw DatabaseException('Failed to create announcement', originalError: e);
     }
-  }
-
-  Event _rowToEvent(models.Row row) {
-    return Event.fromJson({
-      ...Map<String, dynamic>.from(row.data),
-      'id': row.$id,
-    });
-  }
-
-  Announcement _rowToAnnouncement(models.Row row) {
-    return Announcement.fromJson({
-      ...Map<String, dynamic>.from(row.data),
-      'id': row.$id,
-    });
   }
 }

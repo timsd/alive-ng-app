@@ -64,6 +64,13 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
       appBar: CustomAppBar(
         title: 'Podcasts',
         showBackButton: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh podcasts',
+            onPressed: () => ref.read(podcastProvider.notifier).loadPodcasts(),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -258,17 +265,21 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               );
             }
 
-            return ListView.builder(
-              padding:
-                  ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
-              itemCount: filteredPodcasts.length,
-              itemBuilder: (context, index) {
-                final podcast = filteredPodcasts[index];
-                return PodcastCard(
-                  podcast: podcast,
-                  onTap: () => _showPodcastDetails(context, podcast),
-                );
-              },
+            return RefreshIndicator(
+              onRefresh: () => ref.read(podcastProvider.notifier).loadPodcasts(),
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding:
+                    ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
+                itemCount: filteredPodcasts.length,
+                itemBuilder: (context, index) {
+                  final podcast = filteredPodcasts[index];
+                  return PodcastCard(
+                    podcast: podcast,
+                    onTap: () => _showPodcastDetails(context, podcast),
+                  );
+                },
+              ),
             );
           },
         );

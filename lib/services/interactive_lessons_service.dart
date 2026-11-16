@@ -206,22 +206,23 @@ class InteractiveLessonsService extends ChangeNotifier {
           if (l.tractId != null && l.tractId!.isNotEmpty) l.tractId!: l,
       };
 
-      final merged = <String, InteractiveLessonItem>{
-        for (final l in _lessons) l.id: l,
-      };
+      final merged = <String, InteractiveLessonItem>{};
+      var tractsSynced = false;
+      var dynamicSynced = false;
 
       // 1. Load tract-based interactive lessons from `tracts` + `tract_contents`
       try {
         final tractsRes = await _tables.listRows(
           databaseId: AppwriteBackendConfig.databaseId,
           tableId: AppwriteBackendConfig.tractsCollectionId,
-          queries: [Query.limit(100)],
+          queries: [Query.limit(250)],
         );
         final contentsRes = await _tables.listRows(
           databaseId: AppwriteBackendConfig.databaseId,
           tableId: AppwriteBackendConfig.tractContentsCollectionId,
-          queries: [Query.limit(100)],
+          queries: [Query.limit(250)],
         );
+        tractsSynced = true;
         final contentByTractId = <String, String>{};
         for (final row in contentsRes.rows) {
           final tid = (row.data['tract_id'] ?? row.$id).toString();
@@ -275,9 +276,10 @@ class InteractiveLessonsService extends ChangeNotifier {
           tableId: AppwriteBackendConfig.dynamicContentCollectionId,
           queries: [
             Query.equal('type', 'interactive_lesson'),
-            Query.limit(100),
+            Query.limit(250),
           ],
         );
+        dynamicSynced = true;
         for (final row in dynRes.rows) {
           final data = row.data;
           Map<String, dynamic> meta = {};
@@ -314,6 +316,16 @@ class InteractiveLessonsService extends ChangeNotifier {
         }
       } catch (e) {
         debugPrint('Dynamic-content lesson sync note: $e');
+      }
+
+      // Preserve cached items only for any remote source that failed to respond.
+      if (!tractsSynced || !dynamicSynced) {
+        for (final prev in _lessons) {
+          final isTractLesson = prev.tractId != null && prev.tractId!.isNotEmpty;
+          if ((isTractLesson && !tractsSynced) || (!isTractLesson && !dynamicSynced)) {
+            merged.putIfAbsent(prev.id, () => prev);
+          }
+        }
       }
 
       final result = merged.values.toList();

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:appwrite/appwrite.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/appwrite_backend_config.dart';
 import '../config/default_content_data.dart';
 import '../main.dart';
@@ -15,6 +18,7 @@ class ContentPagesService {
   List<Map<String, dynamic>>? _cachedPages;
   DateTime? _lastFetch;
   static const Duration _cacheTtl = Duration(minutes: 5);
+  static const String _prefsKey = 'content_pages_cache_v1';
 
   void invalidateCache() {
     _cachedPages = null;
@@ -44,11 +48,35 @@ class ContentPagesService {
       if (pages.isNotEmpty) {
         _cachedPages = pages;
         _lastFetch = DateTime.now();
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_prefsKey, jsonEncode(pages));
+        } catch (_) {}
         return pages;
       }
     } catch (e) {
       _logger.warning('Could not load content_pages from Appwrite: $e');
     }
+
+    if (_cachedPages != null && _cachedPages!.isNotEmpty) {
+      return _cachedPages!;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_prefsKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw) as List<dynamic>;
+        final cached = decoded
+            .whereType<Map>()
+            .map((m) => Map<String, dynamic>.from(m))
+            .toList();
+        if (cached.isNotEmpty) {
+          _cachedPages = cached;
+          return cached;
+        }
+      }
+    } catch (_) {}
 
     return DefaultContentData.defaultContentPages;
   }

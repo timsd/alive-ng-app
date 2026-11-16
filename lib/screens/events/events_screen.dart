@@ -67,6 +67,13 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       appBar: CustomAppBar(
         title: translate('news_feed'),
         showBackButton: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadData,
+          ),
+        ],
       ),
       floatingActionButton: RoleAccessService.instance.canCreateEvents() 
           ? FloatingActionButton(
@@ -194,13 +201,17 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
-      itemCount: _events.length,
-      itemBuilder: (context, index) {
-        final event = _events[index];
-        return _buildEventCard(context, event, translate);
-      },
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
+        itemCount: _events.length,
+        itemBuilder: (context, index) {
+          final event = _events[index];
+          return _buildEventCard(context, event, translate);
+        },
+      ),
     );
   }
 
@@ -227,13 +238,17 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
-      itemCount: _announcements.length,
-      itemBuilder: (context, index) {
-        final announcement = _announcements[index];
-        return _buildAnnouncementCard(context, announcement, translate);
-      },
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
+        itemCount: _announcements.length,
+        itemBuilder: (context, index) {
+          final announcement = _announcements[index];
+          return _buildAnnouncementCard(context, announcement, translate);
+        },
+      ),
     );
   }
 

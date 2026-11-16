@@ -99,6 +99,79 @@ class OrgStructureService {
     return _load(forceRefresh: forceRefresh);
   }
 
+  /// Grouped leadership roster built from live Appwrite offices (or seed fallback).
+  Future<List<OrgPerson>> getLeadershipPeople({bool forceRefresh = false}) async {
+    final offices = await _load(forceRefresh: forceRefresh);
+    if (offices.isEmpty) return leadershipPeople;
+
+    final people = <String, List<OrgOffice>>{};
+    OrgOffice? findById(String id) {
+      for (final o in offices) {
+        if (o.id == id) {
+          return OrgOffice(
+            id: o.id,
+            title: o.title,
+            iconName: o.iconName,
+            reportsTo: o.reportsTo,
+            namesRestrictedToLeadership: o.namesRestrictedToLeadership,
+          );
+        }
+      }
+      return orgOfficeById(id);
+    }
+
+    void add(String name, OrgOffice office) {
+      final trimmed = name.trim();
+      if (trimmed.isEmpty) return;
+      final list = people.putIfAbsent(trimmed, () => <OrgOffice>[]);
+      if (!list.any((o) => o.id == office.id)) list.add(office);
+    }
+
+    for (final office in offices) {
+      final asOrgOffice = OrgOffice(
+        id: office.id,
+        title: office.title,
+        iconName: office.iconName,
+        reportsTo: office.reportsTo,
+        namesRestrictedToLeadership: office.namesRestrictedToLeadership,
+      );
+      if (office.holderName != null && office.holderName!.trim().isNotEmpty) {
+        add(office.holderName!, asOrgOffice);
+      }
+      if (office.memberNames.isEmpty) continue;
+
+      final memberOffice = office.id == 'board_of_directors'
+          ? (findById('bod') ??
+              const OrgOffice(
+                id: 'bod',
+                title: 'Director (Board Member)',
+                iconName: 'business_center',
+                reportsTo: 'board_of_directors',
+              ))
+          : office.id == 'board_of_trustees'
+              ? (findById('trustee') ??
+                  const OrgOffice(
+                    id: 'trustee',
+                    title: 'Trustee (Board Member)',
+                    iconName: 'verified_user',
+                    reportsTo: null,
+                    namesRestrictedToLeadership: true,
+                  ))
+              : null;
+
+      if (memberOffice == null) continue;
+      for (final member in office.memberNames) {
+        if (member == office.holderName) continue;
+        add(member, memberOffice);
+      }
+    }
+
+    if (people.isEmpty) return leadershipPeople;
+    return people.entries
+        .map((e) => OrgPerson(name: e.key, offices: e.value))
+        .toList(growable: false);
+  }
+
   /// Directors: offices whose [reportsTo] is 'executive_president'.
   Future<List<DynamicOrgOffice>> getDirectors() async {
     final offices = await _load();

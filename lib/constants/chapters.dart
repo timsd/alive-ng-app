@@ -4,11 +4,14 @@
 // At runtime, call [ChapterConstants.loadDynamicChapters()] to refresh
 // from the server; the cached list is then returned by [availableChapters].
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../services/chapter_service.dart';
 import '../utils/logger.dart';
 
 class ChapterConstants {
   static final Logger _logger = Logger('ChapterConstants');
+  static const String _cacheKey = 'dynamic_chapters_cache_v1';
 
   /// Seed / fallback chapter names — used until the first Appwrite fetch.
   static const List<String> _seedChapters = [
@@ -46,11 +49,17 @@ class ChapterConstants {
   /// On failure the previous (or seed) list remains in place.
   static Future<void> loadDynamicChapters() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getStringList(_cacheKey);
+      if (cached != null && cached.isNotEmpty && !_loaded) {
+        _dynamicChapters = cached;
+      }
       final chapters = await ChapterService().getChapters(isActive: true);
       if (chapters.isNotEmpty) {
         final names = chapters.map((c) => c.name).toList()..sort();
         _dynamicChapters = names;
         _loaded = true;
+        await prefs.setStringList(_cacheKey, names);
         _logger.info('Loaded ${names.length} chapters from Appwrite');
       } else {
         _logger.info('Chapters collection empty; keeping seed data (${_seedChapters.length} chapters)');

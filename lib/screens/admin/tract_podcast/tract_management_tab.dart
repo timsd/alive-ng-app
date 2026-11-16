@@ -244,6 +244,16 @@ class _TractManagementTabState extends State<TractManagementTab> {
                 }
 
                 await contentService.deleteDocument('tracts', tract.id);
+                // Clean up linked tract_contents and dynamic_content lesson docs
+                try {
+                  await contentService.deleteDocument('tract_contents', tract.id);
+                } catch (_) {}
+                try {
+                  await contentService.deleteDocument(
+                    'dynamic_content',
+                    'lesson_${tract.id}',
+                  );
+                } catch (_) {}
 
                 if (!mounted) return;
                 setState(() {});
