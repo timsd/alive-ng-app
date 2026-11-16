@@ -27,6 +27,7 @@ import '../../services/role_access_service.dart';
 import '../../utils/docx_report_generator.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/error_handler.dart';
+import '../../utils/navigation_keys.dart';
 import '../../utils/toast_utils.dart';
 import '../admin/leader_meeting_transcription_screen.dart';
 import 'components/meeting_breakout_banner.dart';
@@ -396,6 +397,37 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     });
   }
 
+  void _showAlreadySavedNotesNotice() {
+    final messenger =
+        rootScaffoldMessengerKey.currentState ?? ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.clearSnackBars();
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Meeting notes already saved for this session ($_savedMinutesFileName)',
+        ),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'View Notes',
+          textColor: const Color(0xFF38BDF8),
+          onPressed: () {
+            messenger.hideCurrentSnackBar();
+            _openScribeScreen();
+          },
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+    // Explicitly close after 4s even when Android accessibility services are
+    // enabled (which otherwise pin SnackBars with an action forever).
+    Timer(const Duration(seconds: 4), () {
+      try {
+        controller.close();
+      } catch (_) {}
+    });
+  }
+
   Future<void> _autoSaveAndPromptMinutes() async {
     final scribe = _scribeService;
     if (scribe == null || scribe.transcript.isEmpty) return;
@@ -407,17 +439,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     // 1. In-memory session deduplication check
     if (_hasSavedMinutesForSession && _savedMinutesFileName != null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Meeting notes already saved for this session ($_savedMinutesFileName)'),
-          action: SnackBarAction(
-            label: 'View Notes',
-            textColor: const Color(0xFF38BDF8),
-            onPressed: _openScribeScreen,
-          ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      _showAlreadySavedNotesNotice();
       return;
     }
 
@@ -432,17 +454,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
         _savedMinutesFileName = existing['file_name']?.toString() ?? 'Meeting Notes';
         _isSavingMinutes = false;
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Meeting notes already saved for this session ($_savedMinutesFileName)'),
-            action: SnackBarAction(
-              label: 'View Notes',
-              textColor: const Color(0xFF38BDF8),
-              onPressed: _openScribeScreen,
-            ),
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        _showAlreadySavedNotesNotice();
         return;
       }
     } catch (e) {
