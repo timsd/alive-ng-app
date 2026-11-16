@@ -5,6 +5,7 @@ import 'package:appwrite/appwrite.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../services/channel_membership_sync_service.dart';
+import '../../services/tag_parser.dart';
 import '../../utils/appwrite_upsert_helper.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/modern_dropdown.dart';
@@ -310,6 +311,12 @@ class _ChatTagManagementScreenState extends State<ChatTagManagementScreen>
           _tagConfigRowId = created.$id;
         }
       }
+
+      ChannelMembershipSyncService.instance.invalidateTagConfigCache();
+      TagParser.applyRemoteConfig(
+        roleBridges: _roleBridges,
+        specialTags: _specialTags,
+      );
 
       if (!mounted) return;
       if (toastMessage != null) {

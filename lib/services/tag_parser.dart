@@ -2,6 +2,70 @@ import '../models/chat_models.dart';
 
 /// Parser for extracting tags from message content
 class TagParser {
+  static final Set<String> _dynamicRoleTags = <String>{};
+  static final Map<String, String> _dynamicRoleDisplayNames = <String, String>{};
+  static final Set<String> _disabledRoleTags = <String>{};
+  static final Set<String> _dynamicSpecialTags = <String>{};
+  static final Map<String, String> _dynamicSpecialDisplayNames =
+      <String, String>{};
+  static final Set<String> _disabledSpecialTags = <String>{};
+
+  /// Applies admin-configured `chat_tag_configuration` JSON from `app_settings`.
+  static void applyRemoteConfig({
+    List<Map<String, dynamic>>? roleBridges,
+    List<Map<String, dynamic>>? specialTags,
+  }) {
+    if (roleBridges != null) {
+      _dynamicRoleTags.clear();
+      _dynamicRoleDisplayNames.clear();
+      _disabledRoleTags.clear();
+      for (final bridge in roleBridges) {
+        final rawRole = (bridge['role'] ?? '').toString().trim();
+        final label = (bridge['label'] ?? '').toString().trim();
+        final enabled = bridge['enabled'] != false;
+        if (rawRole.isEmpty) continue;
+        for (final part in rawRole.split(RegExp(r'[/,]'))) {
+          final cleaned = part
+              .replaceAll(RegExp(r'\([^)]*\)'), '')
+              .trim()
+              .toLowerCase()
+              .replaceAll(RegExp(r'\s+'), '_');
+          if (cleaned.isEmpty || cleaned == 'all_active_members') continue;
+          if (enabled) {
+            _dynamicRoleTags.add(cleaned);
+            if (label.isNotEmpty) {
+              _dynamicRoleDisplayNames[cleaned] = label;
+            }
+          } else {
+            _disabledRoleTags.add(cleaned);
+          }
+        }
+      }
+    }
+
+    if (specialTags != null) {
+      _dynamicSpecialTags.clear();
+      _dynamicSpecialDisplayNames.clear();
+      _disabledSpecialTags.clear();
+      for (final item in specialTags) {
+        final rawTag = (item['tag'] ?? '').toString().trim();
+        final scope = (item['scope'] ?? '').toString().trim();
+        final enabled = item['enabled'] != false;
+        if (rawTag.isEmpty) continue;
+        final normalized = rawTag.replaceFirst(RegExp(r'^[@#]+'), '').toLowerCase();
+        if (normalized.isEmpty || normalized == 'role-tag') continue;
+        if (enabled) {
+          _dynamicSpecialTags.add(normalized);
+          if (scope.isNotEmpty) {
+            _dynamicSpecialDisplayNames[normalized] = scope;
+          }
+        } else {
+          _disabledSpecialTags.add(normalized);
+        }
+      }
+    }
+  }
+
   /// Parse message content and extract all tags
   static List<MessageTag> parseMessage(String content) {
     List<MessageTag> tags = [];
@@ -34,15 +98,25 @@ class TagParser {
       }
     });
     
-    // Parse user tags (@username)
+    // Parse user & @special tags (@username)
     final userTagRegex = RegExp(r'@([a-zA-Z0-9_.]+)');
     userTagRegex.allMatches(content).forEach((match) {
       final username = match.group(1)!;
-      tags.add(MessageTag(
-        type: TagType.user,
-        value: username,
-        displayName: username,
-      ));
+      final lower = username.toLowerCase();
+      if (_dynamicSpecialTags.contains(lower) &&
+          !_disabledSpecialTags.contains(lower)) {
+        tags.add(MessageTag(
+          type: TagType.special,
+          value: lower,
+          displayName: _dynamicSpecialDisplayNames[lower] ?? '@$username',
+        ));
+      } else {
+        tags.add(MessageTag(
+          type: TagType.user,
+          value: username,
+          displayName: username,
+        ));
+      }
     });
     
     return tags;
@@ -67,7 +141,11 @@ class TagParser {
 
   /// Check if a tag value is a valid role tag
   static bool _isValidRoleTag(String tagValue) {
-    final validRoles = [
+    final normalized = tagValue.toLowerCase();
+    if (_disabledRoleTags.contains(normalized)) return false;
+    if (_dynamicRoleTags.contains(normalized)) return true;
+
+    const validRoles = [
       'bod', 'trustees', 'executive', 'leadership',
       'director', 'field_director', 'campus_director', 'program_director',
       'evangelism_director', 'amtc_director',
@@ -89,16 +167,20 @@ class TagParser {
       return true;
     }
     
-    return validRoles.contains(tagValue);
+    return validRoles.contains(normalized);
   }
 
   /// Check if a tag value is a special tag
   static bool _isSpecialTag(String tagValue) {
-    final specialTags = [
+    final normalized = tagValue.toLowerCase();
+    if (_disabledSpecialTags.contains(normalized)) return false;
+    if (_dynamicSpecialTags.contains(normalized)) return true;
+
+    const specialTags = [
       'all', 'online', 'active', 'new',
       'meeting', 'conference', 'training'
     ];
-    return specialTags.contains(tagValue);
+    return specialTags.contains(normalized);
   }
 
   /// Get display name for role tags
@@ -151,7 +233,10 @@ class TagParser {
       return 'Event ${eventName.replaceAll('_', ' ').toUpperCase()}';
     }
 
-    return roleDisplayNames[roleValue] ?? roleValue.toUpperCase();
+    final normalized = roleValue.toLowerCase();
+    return _dynamicRoleDisplayNames[normalized] ??
+        roleDisplayNames[normalized] ??
+        roleValue.toUpperCase();
   }
 
   /// Get display name for special tags
@@ -166,7 +251,10 @@ class TagParser {
       'training': 'Training Participants',
     };
 
-    return specialDisplayNames[specialValue] ?? specialValue.toUpperCase();
+    final normalized = specialValue.toLowerCase();
+    return _dynamicSpecialDisplayNames[normalized] ??
+        specialDisplayNames[normalized] ??
+        specialValue.toUpperCase();
   }
 
   /// Get display name for group tags

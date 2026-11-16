@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:appwrite/appwrite.dart';
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../models/app_models.dart';
 import '../utils/logger.dart';
+import 'tag_parser.dart';
 
 /// Service responsible for automatically synchronizing user memberships across
 /// system chat channels (General, Singles, Married, Chapter Coordinators).
@@ -29,6 +31,92 @@ class ChannelMembershipSyncService {
   static const String channelFieldWorkersId = 'channel_field_workers';
   static const String channelCampusMissionariesId = 'channel_campus_missionaries';
   static const String channelAmtcId = 'channel_amtc';
+  static const String tagConfigKey = 'chat_tag_configuration';
+
+  List<Map<String, dynamic>>? _cachedRoleBridges;
+  DateTime? _tagConfigFetchedAt;
+
+  void invalidateTagConfigCache() {
+    _cachedRoleBridges = null;
+    _tagConfigFetchedAt = null;
+  }
+
+  /// Fetches `chat_tag_configuration` from `app_settings` (cached 5 minutes)
+  /// and applies it to [TagParser] as well.
+  Future<List<Map<String, dynamic>>> loadTagConfiguration({
+    bool forceRefresh = false,
+  }) async {
+    final now = DateTime.now();
+    if (!forceRefresh &&
+        _cachedRoleBridges != null &&
+        _tagConfigFetchedAt != null &&
+        now.difference(_tagConfigFetchedAt!) < const Duration(minutes: 5)) {
+      return _cachedRoleBridges!;
+    }
+    try {
+      final tables = TablesDB(appwriteClient);
+      final res = await tables.listRows(
+        databaseId: databaseId,
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
+        queries: [Query.equal('key', tagConfigKey), Query.limit(1)],
+      );
+      if (res.rows.isNotEmpty) {
+        final raw = (res.rows.first.data['value'] ?? '').toString().trim();
+        if (raw.isNotEmpty) {
+          final decoded = jsonDecode(raw);
+          if (decoded is Map) {
+            final bridges = (decoded['role_bridges'] as List?)
+                    ?.whereType<Map>()
+                    .map((e) => Map<String, dynamic>.from(e))
+                    .toList() ??
+                const <Map<String, dynamic>>[];
+            final specialTags = (decoded['special_tags'] as List?)
+                    ?.whereType<Map>()
+                    .map((e) => Map<String, dynamic>.from(e))
+                    .toList() ??
+                const <Map<String, dynamic>>[];
+            TagParser.applyRemoteConfig(
+              roleBridges: bridges,
+              specialTags: specialTags,
+            );
+            _cachedRoleBridges = bridges;
+            _tagConfigFetchedAt = now;
+            return bridges;
+          }
+        }
+      }
+    } catch (e) {
+      _logger.warning('Could not load chat_tag_configuration: $e');
+    }
+    return _cachedRoleBridges ?? const <Map<String, dynamic>>[];
+  }
+
+  bool _isBridgeEnabled(
+    List<Map<String, dynamic>> bridges,
+    String defaultChannelId,
+  ) {
+    if (bridges.isEmpty) return true;
+    final match = bridges.where(
+      (b) => (b['channelId'] ?? '').toString() == defaultChannelId,
+    );
+    if (match.isEmpty) return true;
+    return match.first['enabled'] != false;
+  }
+
+  String _resolvedChannelId(
+    List<Map<String, dynamic>> bridges,
+    String roleKeyword,
+    String fallbackChannelId,
+  ) {
+    for (final b in bridges) {
+      final r = (b['role'] ?? '').toString().toLowerCase();
+      final cid = (b['channelId'] ?? '').toString().trim();
+      if (r.contains(roleKeyword) && cid.isNotEmpty) {
+        return cid;
+      }
+    }
+    return fallbackChannelId;
+  }
 
   /// Synchronize a user's channel memberships based on their current profile.
   /// Automatically handles:
@@ -41,60 +129,17 @@ class ChannelMembershipSyncService {
 
     try {
       final tables = TablesDB(appwriteClient);
-
-      // 1. General Channel: All active members
-      await _ensureMembership(
-        tables: tables,
-        channelId: channelGeneralId,
-        userId: userId,
-        shouldBeMember: !profile.isArchived,
-      );
-
-      // 2. Singles vs Married Channels
-      final isMarried = (profile.maritalStatus ?? '').trim().toLowerCase() == 'married';
+      final bridges = await loadTagConfiguration();
+      final role = profile.role.toLowerCase();
+      final isMarried =
+          (profile.maritalStatus ?? '').trim().toLowerCase() == 'married';
       final isSingle = !isMarried && !profile.isArchived;
-
-      await _ensureMembership(
-        tables: tables,
-        channelId: channelSinglesId,
-        userId: userId,
-        shouldBeMember: isSingle,
-      );
-
-      await _ensureMembership(
-        tables: tables,
-        channelId: channelMarriedId,
-        userId: userId,
-        shouldBeMember: isMarried && !profile.isArchived,
-      );
-
-      // 3. Chapter Coordinators Channel
-      final isCoordinator =
-          profile.role.toLowerCase() == 'coordinator' && !profile.isArchived;
-
-      await _ensureMembership(
-        tables: tables,
-        channelId: channelCoordinatorsId,
-        userId: userId,
-        shouldBeMember: isCoordinator,
-      );
-
-      // 4. Donors Channel: Users with donor role or financial commitment
+      final isCoordinator = role == 'coordinator' && !profile.isArchived;
       final commitType = (profile.commitmentType ?? '').trim().toLowerCase();
       final isDonor = !profile.isArchived &&
-          (profile.role.toLowerCase().contains('donor') ||
+          (role.contains('donor') ||
               commitType == 'financial' ||
               commitType == 'both');
-
-      await _ensureMembership(
-        tables: tables,
-        channelId: channelDonorsId,
-        userId: userId,
-        shouldBeMember: isDonor,
-      );
-
-      // 5. Board of Directors (BOD) Channel
-      final role = profile.role.toLowerCase();
       final isBod = !profile.isArchived &&
           (role == 'bod' ||
               role == 'admin' ||
@@ -105,55 +150,164 @@ class ChannelMembershipSyncService {
               role.contains('trustee') ||
               role.contains('director'));
 
-      await _ensureMembership(
-        tables: tables,
-        channelId: channelBodId,
-        userId: userId,
-        shouldBeMember: isBod,
-      );
+      final isLeadership = !profile.isArchived &&
+          (role == 'admin' ||
+              role == 'super_admin' ||
+              role == 'bod' ||
+              role == 'board' ||
+              role.contains('director') ||
+              role.contains('trustee') ||
+              role.contains('president') ||
+              AppwriteBackendConfig.isSuperAdminEmail(profile.email));
 
-      // 6. Leadership & Admin Oversight Flag
-      // (Admins, Super Admins, BOD, Directors, Trustees, and President)
-      final isLeadership = !profile.isArchived && (
-          role == 'admin' ||
-          role == 'super_admin' ||
-          role == 'bod' ||
-          role == 'board' ||
-          role.contains('director') ||
-          role.contains('trustee') ||
-          role.contains('president') ||
-          AppwriteBackendConfig.isSuperAdminEmail(profile.email)
-      );
+      // 1. General Channel: All active members
+      final generalId =
+          _resolvedChannelId(bridges, 'all active', channelGeneralId);
+      if (_isBridgeEnabled(bridges, generalId)) {
+        await _ensureMembership(
+          tables: tables,
+          channelId: generalId,
+          userId: userId,
+          shouldBeMember: !profile.isArchived,
+        );
+      }
 
-      // 7. Field Workers Channel (Field Workers + Full Leadership/Admin Oversight)
+      // 2. Singles vs Married Channels
+      final singlesId = _resolvedChannelId(bridges, 'single', channelSinglesId);
+      if (_isBridgeEnabled(bridges, singlesId)) {
+        await _ensureMembership(
+          tables: tables,
+          channelId: singlesId,
+          userId: userId,
+          shouldBeMember: isSingle,
+        );
+      }
+
+      final marriedId =
+          _resolvedChannelId(bridges, 'married', channelMarriedId);
+      if (_isBridgeEnabled(bridges, marriedId)) {
+        await _ensureMembership(
+          tables: tables,
+          channelId: marriedId,
+          userId: userId,
+          shouldBeMember: isMarried && !profile.isArchived,
+        );
+      }
+
+      // 3. Chapter Coordinators Channel
+      final coordinatorsId =
+          _resolvedChannelId(bridges, 'coordinator', channelCoordinatorsId);
+      if (_isBridgeEnabled(bridges, coordinatorsId)) {
+        await _ensureMembership(
+          tables: tables,
+          channelId: coordinatorsId,
+          userId: userId,
+          shouldBeMember: isCoordinator,
+        );
+      }
+
+      // 4. Donors Channel: Users with donor role or financial commitment
+      final donorsId = _resolvedChannelId(bridges, 'donor', channelDonorsId);
+      if (_isBridgeEnabled(bridges, donorsId)) {
+        await _ensureMembership(
+          tables: tables,
+          channelId: donorsId,
+          userId: userId,
+          shouldBeMember: isDonor,
+        );
+      }
+
+      // 5. Board of Directors (BOD) Channel
+      final bodId = _resolvedChannelId(bridges, 'bod', channelBodId);
+      if (_isBridgeEnabled(bridges, bodId)) {
+        await _ensureMembership(
+          tables: tables,
+          channelId: bodId,
+          userId: userId,
+          shouldBeMember: isBod,
+        );
+      }
+
+      // 6. Field Workers Channel (Field Workers + Full Leadership/Admin Oversight)
       final isFieldWorker = !profile.isArchived &&
-          (role == 'field_worker' || role.contains('field_worker') || isLeadership);
-      await _ensureMembership(
-        tables: tables,
-        channelId: channelFieldWorkersId,
-        userId: userId,
-        shouldBeMember: isFieldWorker,
-      );
+          (role == 'field_worker' ||
+              role.contains('field_worker') ||
+              isLeadership);
+      final fieldWorkersId =
+          _resolvedChannelId(bridges, 'field_worker', channelFieldWorkersId);
+      if (_isBridgeEnabled(bridges, fieldWorkersId)) {
+        await _ensureMembership(
+          tables: tables,
+          channelId: fieldWorkersId,
+          userId: userId,
+          shouldBeMember: isFieldWorker,
+        );
+      }
 
-      // 8. Campus Missionary Team Channel (Campus Missionaries + Full Leadership/Admin Oversight)
+      // 7. Campus Missionary Team Channel (Campus Missionaries + Full Leadership/Admin Oversight)
       final isCampusMissionary = !profile.isArchived &&
-          (role == 'campus_missionary' || role.contains('campus_missionary') || isLeadership);
-      await _ensureMembership(
-        tables: tables,
-        channelId: channelCampusMissionariesId,
-        userId: userId,
-        shouldBeMember: isCampusMissionary,
-      );
+          (role == 'campus_missionary' ||
+              role.contains('campus_missionary') ||
+              isLeadership);
+      final campusId = _resolvedChannelId(
+          bridges, 'campus_missionary', channelCampusMissionariesId);
+      if (_isBridgeEnabled(bridges, campusId)) {
+        await _ensureMembership(
+          tables: tables,
+          channelId: campusId,
+          userId: userId,
+          shouldBeMember: isCampusMissionary,
+        );
+      }
 
-      // 9. AMTC Team Channel (AMTC Team + Full Leadership/Admin Oversight)
+      // 8. AMTC Team Channel (AMTC Team + Full Leadership/Admin Oversight)
       final isAmtc = !profile.isArchived &&
           (role == 'amtc_team' || role.contains('amtc_team') || isLeadership);
-      await _ensureMembership(
-        tables: tables,
-        channelId: channelAmtcId,
-        userId: userId,
-        shouldBeMember: isAmtc,
-      );
+      final amtcId = _resolvedChannelId(bridges, 'amtc_team', channelAmtcId);
+      if (_isBridgeEnabled(bridges, amtcId)) {
+        await _ensureMembership(
+          tables: tables,
+          channelId: amtcId,
+          userId: userId,
+          shouldBeMember: isAmtc,
+        );
+      }
+
+      // 9. Custom admin-defined role bridges from chat_tag_configuration
+      final builtInChannelIds = {
+        generalId,
+        singlesId,
+        marriedId,
+        coordinatorsId,
+        donorsId,
+        bodId,
+        fieldWorkersId,
+        campusId,
+        amtcId,
+      };
+      for (final bridge in bridges) {
+        if (bridge['enabled'] == false) continue;
+        final cid = (bridge['channelId'] ?? '').toString().trim();
+        final rawRole = (bridge['role'] ?? '').toString().trim().toLowerCase();
+        if (cid.isEmpty ||
+            rawRole.isEmpty ||
+            builtInChannelIds.contains(cid)) {
+          continue;
+        }
+        final tokens = rawRole
+            .split(RegExp(r'[/,]'))
+            .map((e) => e.replaceAll(RegExp(r'\([^)]*\)'), '').trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+        final matchesCustom = !profile.isArchived &&
+            tokens.any((t) => role == t || role.contains(t));
+        await _ensureMembership(
+          tables: tables,
+          channelId: cid,
+          userId: userId,
+          shouldBeMember: matchesCustom,
+        );
+      }
 
       // 10. Organization Leadership Auto-Access across active channels and chapters
 

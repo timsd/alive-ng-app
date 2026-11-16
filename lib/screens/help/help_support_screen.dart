@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../config/appwrite_backend_config.dart';
+import '../../main.dart';
 import '../../providers/language_provider.dart';
+import '../../services/appwrite_facade.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../widgets/custom_card.dart';
@@ -23,6 +27,14 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
   String _selectedCategory = 'All';
   String _selectedFeedbackType = 'General';
 
+  String _supportEmail = AppwriteBackendConfig.supportEmail;
+  String _supportPhone = '+2347068548865';
+  String _supportWebsite = 'https://www.alivenigeria.org';
+  String _officeHoursSunThu = '9:00 AM - 5:00 PM';
+  String _officeHoursFri = '9:00 AM - 2:00 PM';
+  String? _officeHoursSat;
+  List<FAQItem>? _remoteFaqs;
+
   final List<TextEditingController> _feedbackControllers = [
     TextEditingController(), // email
     TextEditingController(), // message
@@ -40,6 +52,84 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         _searchQuery = _searchController.text.toLowerCase();
       });
     });
+    _loadRemoteSupportConfig();
+  }
+
+  Future<void> _loadRemoteSupportConfig() async {
+    try {
+      final tables = TablesDB(appwriteClient);
+      final res = await tables.listRows(
+        databaseId: AppwriteBackendConfig.databaseId,
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
+        queries: [
+          Query.equal('key', [
+            'support_email',
+            'support_phone',
+            'support_website',
+            'support_office_hours_sun_thu',
+            'support_office_hours_fri',
+            'support_office_hours_sat',
+            'help_support_faqs',
+          ]),
+          Query.limit(20),
+        ],
+      );
+      if (!mounted) return;
+      String? email;
+      String? phone;
+      String? website;
+      String? sunThu;
+      String? fri;
+      String? sat;
+      List<FAQItem>? parsedFaqs;
+
+      for (final row in res.rows) {
+        if (row.data['is_active'] == false) continue;
+        final key = (row.data['key'] ?? '').toString();
+        final value = (row.data['value'] ?? '').toString().trim();
+        if (value.isEmpty) continue;
+        switch (key) {
+          case 'support_email':
+            email = value;
+          case 'support_phone':
+            phone = value;
+          case 'support_website':
+            website = value;
+          case 'support_office_hours_sun_thu':
+            sunThu = value;
+          case 'support_office_hours_fri':
+            fri = value;
+          case 'support_office_hours_sat':
+            sat = value;
+          case 'help_support_faqs':
+            try {
+              final decoded = jsonDecode(value);
+              if (decoded is List) {
+                final items = decoded
+                    .whereType<Map>()
+                    .map((m) => FAQItem(
+                          question: (m['question'] ?? '').toString(),
+                          answer: (m['answer'] ?? '').toString(),
+                          category: (m['category'] ?? 'General').toString(),
+                        ))
+                    .where((f) => f.question.isNotEmpty && f.answer.isNotEmpty)
+                    .toList();
+                if (items.isNotEmpty) parsedFaqs = items;
+              }
+            } catch (_) {}
+        }
+      }
+
+      setState(() {
+        if (email != null) _supportEmail = email;
+        if (phone != null) _supportPhone = phone;
+        if (website != null) _supportWebsite = website;
+        if (sunThu != null) _officeHoursSunThu = sunThu;
+        if (fri != null) _officeHoursFri = fri;
+        if (sat != null) _officeHoursSat = sat;
+        if (parsedFaqs != null) _remoteFaqs = parsedFaqs;
+      });
+    } catch (_) {}
   }
 
   @override
@@ -94,9 +184,18 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildFAQTab(context, translate),
-          _buildGuidesTab(context, translate),
-          _buildContactTab(context, translate),
+          RefreshIndicator(
+            onRefresh: _loadRemoteSupportConfig,
+            child: _buildFAQTab(context, translate),
+          ),
+          RefreshIndicator(
+            onRefresh: _loadRemoteSupportConfig,
+            child: _buildGuidesTab(context, translate),
+          ),
+          RefreshIndicator(
+            onRefresh: _loadRemoteSupportConfig,
+            child: _buildContactTab(context, translate),
+          ),
           _buildFeedbackTab(context, translate),
         ],
       ),
@@ -104,7 +203,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
   }
 
   Widget _buildFAQTab(BuildContext context, String Function(String) translate) {
-    final faqs = [
+    final defaultFaqs = [
       // 1. General & Chapters
       FAQItem(
         question: 'How do I join or transfer to a local ALIVE chapter?',
@@ -277,6 +376,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
         category: 'Settings',
       ),
     ];
+    final faqs = _remoteFaqs ?? defaultFaqs;
 
     var filteredFaqs = faqs.where((faq) {
       final matchesSearch = faq.question.toLowerCase().contains(_searchQuery) ||
@@ -686,19 +786,19 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
               context,
               icon: Icons.email_rounded,
               title: 'Email',
-              onTap: () => _launchEmail('app@alivenigeria.org'),
+              onTap: () => _launchEmail(_supportEmail),
             ),
             _buildContactIconCard(
               context,
               icon: Icons.phone_rounded,
               title: 'Phone',
-              onTap: () => _launchPhone('+2347068548865'),
+              onTap: () => _launchPhone(_supportPhone),
             ),
             _buildContactIconCard(
               context,
               icon: Icons.language_rounded,
               title: 'Website',
-              onTap: () => _launchWebsite('https://www.alivenigeria.org'),
+              onTap: () => _launchWebsite(_supportWebsite),
             ),
           ],
         ),
@@ -719,11 +819,13 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen>
                 SizedBox(
                     height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
                 _buildOfficeHour(
-                    context, translate('sunday_thursday'), '9:00 AM - 5:00 PM'),
+                    context, translate('sunday_thursday'), _officeHoursSunThu),
                 _buildOfficeHour(
-                    context, translate('friday'), '9:00 AM - 2:00 PM'),
+                    context, translate('friday'), _officeHoursFri),
                 _buildOfficeHour(
-                    context, translate('saturday'), translate('closed')),
+                    context,
+                    translate('saturday'),
+                    _officeHoursSat ?? translate('closed')),
               ],
             ),
           ),
