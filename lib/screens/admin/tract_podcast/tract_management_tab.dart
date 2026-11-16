@@ -309,6 +309,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
   // Additional lesson cover images (multiple)
   final List<Uint8List> _selectedCoverImages = [];
   List<String> _selectedCoverNames = [];
+  final List<String> _newAdditionalCoverNames = [];
   bool _isUploading = false;
   bool _createInteractiveLesson = true;
 
@@ -968,20 +969,25 @@ class _TractFormDialogState extends State<_TractFormDialog> {
   }
 
   void _selectCoverImage() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
+      withData: true,
     );
 
-    if (result != null && result.files.single.bytes != null) {
-      setState(() {
-        _selectedCoverImageBytes = result.files.single.bytes;
-        _selectedCoverImageName = result.files.single.name;
-      });
+    if (result != null && result.files.isNotEmpty) {
+      final picked = result.files.single;
+      final bytes = picked.bytes;
+      if (bytes != null && mounted) {
+        setState(() {
+          _selectedCoverImageBytes = bytes;
+          _selectedCoverImageName = picked.name;
+        });
+      }
     }
   }
 
   void _selectAdditionalCoverImages() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: true,
       withData: true,
@@ -991,15 +997,19 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       final names = <String>[];
       final bytesList = <Uint8List>[];
       for (final file in result.files) {
-        if (file.bytes != null) {
+        final bytes = file.bytes;
+        if (bytes != null) {
           names.add(file.name);
-          bytesList.add(file.bytes!);
+          bytesList.add(bytes);
         }
       }
-      setState(() {
-        _selectedCoverNames.addAll(names);
-        _selectedCoverImages.addAll(bytesList);
-      });
+      if (bytesList.isNotEmpty && mounted) {
+        setState(() {
+          _selectedCoverNames.addAll(names);
+          _newAdditionalCoverNames.addAll(names);
+          _selectedCoverImages.addAll(bytesList);
+        });
+      }
     }
   }
 
@@ -1057,9 +1067,10 @@ class _TractFormDialogState extends State<_TractFormDialog> {
         // Upload additional lesson cover images
         final List<String> additionalCoverUrls = [];
         for (int i = 0;
-            i < _selectedCoverImages.length && i < _selectedCoverNames.length;
+            i < _selectedCoverImages.length &&
+                i < _newAdditionalCoverNames.length;
             i++) {
-          final name = _selectedCoverNames[i];
+          final name = _newAdditionalCoverNames[i];
           final bytes = _selectedCoverImages[i];
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final fileName = '${timestamp}_$name';
