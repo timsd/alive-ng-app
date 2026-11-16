@@ -639,7 +639,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                                       style: TextStyle(
                                         color: _selectedPdfName != null
                                             ? Colors.green
-                                            : Colors.grey[600],
+                                            : Theme.of(context).colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                   ),
@@ -728,7 +728,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                                           fontSize: 12,
                                           color: _selectedCoverImageName != null
                                               ? Colors.green
-                                              : Colors.grey[600],
+                                              : Theme.of(context).colorScheme.onSurfaceVariant,
                                         ),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
@@ -826,7 +826,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                                           fontSize: 12,
                                           color: _selectedCoverNames.isNotEmpty
                                               ? Colors.green
-                                              : Colors.grey[600],
+                                              : Theme.of(context).colorScheme.onSurfaceVariant,
                                         ),
                                       ),
                                     ),

@@ -1109,7 +1109,7 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
                         child: Text(
                           'Unable to load episodes right now. Pull to retry.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ),
                       ),
                     );
@@ -1133,7 +1133,7 @@ class _EpisodeManagementDialogState extends State<_EpisodeManagementDialog> {
                             'No episodes yet',
                             style: TextStyle(
                               fontSize: 18,
-                              color: Colors.grey[600],
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(height: 8),

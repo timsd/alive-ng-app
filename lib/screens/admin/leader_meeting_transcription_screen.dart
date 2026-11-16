@@ -131,6 +131,18 @@ class _LeaderMeetingTranscriptionScreenState
     Color(0xFF4F46E5), // Indigo
   ];
 
+  // Bright, high-contrast speaker colors for dark-mode surfaces (#1E293B).
+  static const List<Color> _darkAvatarColors = [
+    Color(0xFF60A5FA), // Bright Sky
+    Color(0xFF2DD4BF), // Bright Teal
+    Color(0xFF93C5FD), // Soft Blue
+    Color(0xFFC4B5FD), // Soft Violet
+    Color(0xFF34D399), // Bright Emerald
+    Color(0xFFFBBF24), // Bright Amber
+    Color(0xFF22D3EE), // Bright Cyan
+    Color(0xFFA5B4FC), // Soft Indigo
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -238,9 +250,10 @@ class _LeaderMeetingTranscriptionScreenState
     });
   }
 
-  Color _getSpeakerColor(String speakerName) {
+  Color _getSpeakerColor(String speakerName, {bool isDark = false}) {
     final hash = speakerName.hashCode.abs();
-    return _avatarColors[hash % _avatarColors.length];
+    final palette = isDark ? _darkAvatarColors : _avatarColors;
+    return palette[hash % palette.length];
   }
 
   String _formatDuration(Duration d) {
@@ -931,7 +944,8 @@ class _LeaderMeetingTranscriptionScreenState
       itemCount: _transcript.length,
       itemBuilder: (context, index) {
         final packet = _transcript[index];
-        final color = _getSpeakerColor(packet.speakerName);
+        final avatarBg = _getSpeakerColor(packet.speakerName);
+        final color = _getSpeakerColor(packet.speakerName, isDark: isDark);
         final timeStr = DateFormat('HH:mm').format(packet.timestamp);
 
         return Container(
@@ -941,7 +955,7 @@ class _LeaderMeetingTranscriptionScreenState
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: color,
+                backgroundColor: avatarBg,
                 child: Text(
                   packet.speakerName.isNotEmpty ? packet.speakerName[0].toUpperCase() : '?',
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -975,7 +989,7 @@ class _LeaderMeetingTranscriptionScreenState
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                             decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.1),
+                              color: color.withValues(alpha: isDark ? 0.18 : 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(

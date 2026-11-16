@@ -531,7 +531,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   Icon(
                     Icons.person,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   SizedBox(
                       width: ResponsiveUtils.getResponsiveSpacing(context, 4)),
@@ -540,7 +540,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     style: TextStyle(
                       fontSize:
                           ResponsiveUtils.getResponsiveFontSize(context, 12),
-                      color: Colors.grey.shade600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   SizedBox(
@@ -548,7 +548,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   Icon(
                     Icons.calendar_today,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   SizedBox(
                       width: ResponsiveUtils.getResponsiveSpacing(context, 4)),
@@ -557,7 +557,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     style: TextStyle(
                       fontSize:
                           ResponsiveUtils.getResponsiveFontSize(context, 12),
-                      color: Colors.grey.shade600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   SizedBox(
@@ -565,7 +565,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                   Icon(
                     Icons.storage,
                     size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   SizedBox(
                       width: ResponsiveUtils.getResponsiveSpacing(context, 4)),
@@ -574,7 +574,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
                     style: TextStyle(
                       fontSize:
                           ResponsiveUtils.getResponsiveFontSize(context, 12),
-                      color: Colors.grey.shade600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const Spacer(),

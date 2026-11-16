@@ -365,7 +365,7 @@ class _StorageAdminScreenState extends State<StorageAdminScreen>
                           Text(
                             'No files in ${bucket.replaceAll('-', ' ')} bucket',
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontSize: 16,
                             ),
                           ),

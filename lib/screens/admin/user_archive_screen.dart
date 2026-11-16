@@ -252,7 +252,7 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
                           style: TextStyle(
                             fontSize: ResponsiveUtils.getResponsiveFontSize(
                                 context, 18),
-                            color: Colors.grey.shade600,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                         SizedBox(

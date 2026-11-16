@@ -361,7 +361,7 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
                               : 'No users found',
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey.shade600,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 8),
