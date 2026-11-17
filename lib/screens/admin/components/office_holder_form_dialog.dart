@@ -83,11 +83,18 @@ class _OfficeHolderFormDialogState extends State<OfficeHolderFormDialog> {
     _nameCtrl = TextEditingController(text: holder?['full_name'] ?? '');
     _titleCtrl = TextEditingController(text: holder?['office_title'] ?? '');
     _descriptionCtrl = TextEditingController(text: holder?['description'] ?? '');
+    final startDt = holder?['term_start'] != null
+        ? DateTime.tryParse(holder!['term_start'].toString())
+        : null;
+    final endDt = holder?['term_end'] != null
+        ? DateTime.tryParse(holder!['term_end'].toString())
+        : null;
     _tenureStartCtrl = TextEditingController(
-      text: (holder?['tenure_year'] ?? DateTime.now().year).toString(),
+      text: (startDt?.year ?? holder?['tenure_year'] ?? DateTime.now().year)
+          .toString(),
     );
     _tenureEndCtrl = TextEditingController(
-      text: holder?['tenure_end_year']?.toString() ?? '',
+      text: (endDt?.year ?? holder?['tenure_end_year'] ?? '').toString(),
     );
     _emailCtrl = TextEditingController(text: holder?['email'] ?? '');
 
@@ -160,8 +167,14 @@ class _OfficeHolderFormDialogState extends State<OfficeHolderFormDialog> {
                         .where((u) => u.id == _selectedUserId)
                         .firstOrNull;
                     if (match != null) {
-                      _nameCtrl.text = match.fullName ?? '';
-                      _emailCtrl.text = match.email ?? '';
+                      final regName = (match.fullName ?? '').toString().trim();
+                      final regEmail = (match.email ?? '').toString().trim();
+                      if (regName.isNotEmpty) {
+                        _nameCtrl.text = regName;
+                      }
+                      if (regEmail.isNotEmpty) {
+                        _emailCtrl.text = regEmail;
+                      }
                     }
                   }
                 });

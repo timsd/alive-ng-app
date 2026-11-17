@@ -1979,8 +1979,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
           rowId: _currentUserId!,
           data: {
             'local_chapter': targetChapter.name,
-            'chapter_approval_status': 'pending',
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
+            'approval_status': 'pending',
           },
         );
       } catch (e) {

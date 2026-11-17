@@ -208,12 +208,12 @@ class OfficeAccessService {
             // The legacy row stored a free-text title, so it is resolved to
             // the registry's office_id where it matches one.
             'office_id': officeIdForTitle(title) ?? title,
+            'office_title': title,
             'user_id': map['officer_id'] ?? '',
             'full_name': map['officer_name'] ?? '',
             'email': map['officer_email'] ?? '',
-            'migrated_from': 'shared_preferences',
-            'migrated_at': DateTime.now().toUtc().toIso8601String(),
-            'migrated_by': ownerUserId,
+            'is_current': true,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
           },
         );
         written++;

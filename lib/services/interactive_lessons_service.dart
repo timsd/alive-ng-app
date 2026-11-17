@@ -477,7 +477,6 @@ class InteractiveLessonsService extends ChangeNotifier {
           data: tractPayload,
           createData: {
             ...tractPayload,
-            'is_active': true,
             'created_at': DateTime.now().toUtc().toIso8601String(),
           },
         );

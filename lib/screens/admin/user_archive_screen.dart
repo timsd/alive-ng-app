@@ -523,7 +523,6 @@ class _UserArchiveScreenState extends State<UserArchiveScreen> {
         rowId: user.id,
         data: {
           'is_archived': false,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
         },
       );
 

@@ -1329,26 +1329,39 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
       final parsedEndYear = int.tryParse(tenureEndYear ?? '') ?? (parsedYear + 3);
       final termStartDate = DateTime.utc(parsedYear, 9, 1);
       final termEndDate = DateTime.utc(parsedEndYear, 8, 31);
+
+      var resolvedFullName = fullName.trim();
+      var resolvedEmail = email.trim();
+      final trimmedUserId = userId.trim();
+      if (trimmedUserId.isNotEmpty) {
+        final linkedUser = _registeredUsers
+            .where((u) => u.id == trimmedUserId)
+            .firstOrNull;
+        if (linkedUser != null) {
+          final linkedName = (linkedUser.fullName ?? '').trim();
+          if (linkedName.isNotEmpty) {
+            resolvedFullName = linkedName;
+          }
+          if ((linkedUser.email ?? '').trim().isNotEmpty) {
+            resolvedEmail = linkedUser.email!.trim();
+          }
+        }
+      }
+
       final payload = <String, dynamic>{
         'office_id': officeId.isNotEmpty ? officeId : (isTrustee ? 'trustee' : (isBod ? 'bod' : 'director')),
         'office_title': officeTitle.trim(),
-        'description': description.trim(),
         'scope': 'national',
         'chapter_id': '',
-        'user_id': userId.trim(),
-        'full_name': fullName.trim(),
-        'email': email.trim(),
+        'user_id': trimmedUserId,
+        'full_name': resolvedFullName,
+        'email': resolvedEmail,
         'supervisor_user_id': '',
         'supervisor_name': isTrustee ? 'Trustees' : (isBod ? 'Trustees' : 'Board of Directors'),
         'term_start': termStartDate.toIso8601String(),
         'term_end': termEndDate.toIso8601String(),
-        'tenure_year': '$parsedYear - $parsedEndYear',
-        'tenure_start_year': parsedYear.toString(),
-        'tenure_end_year': parsedEndYear.toString(),
         'ended_reason': isCurrent ? '' : 'Tenure Completed',
         'is_current': isCurrent,
-        'status': isCurrent ? 'active' : 'archived',
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
       if (docId != null && docId.isNotEmpty) {
@@ -1449,9 +1462,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             rowId: docId,
             data: {
               'is_current': false,
-              'status': 'archived',
               'ended_reason': 'Tenure Completed',
-              'updated_at': DateTime.now().toUtc().toIso8601String(),
             },
           );
         }

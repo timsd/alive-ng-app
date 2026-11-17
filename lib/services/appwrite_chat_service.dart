@@ -798,19 +798,9 @@ class AppwriteChatService extends ChangeNotifier {
     required String userId,
     required bool isOnline,
   }) async {
-    try {
-      await _tables.updateRow(
-        databaseId: databaseId,
-        tableId: AppwriteBackendConfig.usersCollectionId,
-        rowId: userId,
-        data: {
-          'is_online': isOnline,
-          'last_seen': DateTime.now().toIso8601String(),
-        },
-      );
-    } catch (e) {
-      _logger.error('Error updating Appwrite chat user status: $e');
-    }
+    // Presence attributes (`is_online`, `last_seen`) are not part of the
+    // `users` Appwrite collection schema; skip writing unknown columns.
+    return;
   }
 
   Future<List<ChatUser>> getOnlineChatUsers(String channelId) async {
