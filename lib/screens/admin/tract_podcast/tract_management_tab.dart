@@ -1143,6 +1143,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
           payload,
         );
 
+        ExtractedTractArticle? extractedArticle;
         String? extractedBody;
         if (_selectedPdfBytes != null && _selectedPdfName != null) {
           try {
@@ -1152,6 +1153,7 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                   _selectedPdfName!,
                   fallbackTitle: tract.title,
                 );
+            extractedArticle = article;
             extractedBody = article.fullFormattedBody.trim();
             if (extractedBody.isNotEmpty) {
               final extractedQuestions = article.interactiveSections
@@ -1177,9 +1179,17 @@ class _TractFormDialogState extends State<_TractFormDialog> {
                     'headings': article.headings,
                     'word_count': article.totalWordCount,
                     'primary_palette_id': article.primaryPaletteId,
+                    'enquiry_phone': article.enquiryPhone,
+                    'hero_verse': article.heroVerse,
+                    'hero_verse_ref': article.heroVerseRef,
+                    'intro_summary': article.introSummary,
+                    'intro_highlight': article.introHighlight,
+                    'decision_questions': article.decisionQuestions,
+                    'commitment_text': article.commitmentText,
                     'interactive_sections': article.interactiveSections
                         .map((s) => s.toJson())
                         .toList(),
+                    'lesson_json': article.lessonJson,
                   }),
                 },
               );
@@ -1223,11 +1233,17 @@ class _TractFormDialogState extends State<_TractFormDialog> {
               description: tract.description,
               category: _selectedCategoryName ?? 'What the Bible Says',
               level: 'Beginner',
-              duration: '${((tract.pages ?? 6) * 3).clamp(15, 45)} min',
+              duration: extractedArticle?.estimatedReadTime ??
+                  '${((tract.pages ?? 6) * 3).clamp(15, 45)} min',
               content: lessonContent,
               tractId: tract.id,
               coverImage: tract.coverImage,
               isActive: true,
+              interactiveSections: extractedArticle?.interactiveSections
+                      .map((s) => s.toJson())
+                      .toList() ??
+                  const [],
+              lessonJson: extractedArticle?.lessonJson,
             );
             await InteractiveLessonsService.instance.saveLesson(interactiveLesson);
           } catch (e) {

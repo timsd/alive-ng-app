@@ -126,6 +126,23 @@ class _InteractiveLessonReaderScreenState
       }
 
       if (_dynamicSections.isEmpty) {
+        final storedSections =
+            widget.lessonData?['interactiveSections'] is List
+                ? widget.lessonData!['interactiveSections'] as List
+                : InteractiveLessonsService.instance.lessons
+                    .where((l) => l.id == widget.lessonId)
+                    .map((l) => l.interactiveSections)
+                    .firstOrNull;
+        if (storedSections != null && storedSections.isNotEmpty) {
+          _dynamicSections = storedSections
+              .whereType<Map>()
+              .map((m) => ExtractedLessonSection.fromJson(
+                  Map<String, dynamic>.from(m)))
+              .toList();
+        }
+      }
+
+      if (_dynamicSections.isEmpty) {
         final rawContent = widget.lessonData?['content']?.toString() ??
             InteractiveLessonsService.instance.lessons
                 .where((l) => l.id == widget.lessonId)
@@ -1598,6 +1615,311 @@ class _InteractiveLessonReaderScreenState
                   ),
                 ),
               ],
+            ],
+            if (sec.checklistItems.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : Colors.grey.shade200,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Examples of Fulfilled Bible Prophecies',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(palette.primaryHex),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final item in sec.checklistItems) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.check_box_outlined,
+                              size: 16,
+                              color: Color(palette.primaryHex),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: RichText(
+                                text: TextSpan(
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    height: 1.4,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF334155),
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: '${item['label'] ?? ''} ',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    TextSpan(text: item['text'] ?? ''),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+            if (sec.factItems.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              for (final fact in sec.factItems) ...[
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Color(palette.lightTintHex),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: Color(palette.primaryHex).withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Color(palette.primaryHex),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          (fact['tag'] ?? 'FACT').toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        fact['title'] ?? '',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.black87 : const Color(0xFF0F172A),
+                        ),
+                      ),
+                      if ((fact['quote'] ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          fact['quote']!,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontStyle: FontStyle.italic,
+                            color: isDark
+                                ? Colors.black87
+                                : const Color(0xFF334155),
+                          ),
+                        ),
+                      ],
+                      if ((fact['text'] ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          fact['text']!,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: isDark
+                                ? Colors.black54
+                                : const Color(0xFF475569),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+            if (sec.darkCallout != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF334155)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.science_rounded,
+                            size: 18, color: Color(0xFF67E8F9)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            sec.darkCallout!['title'] ?? 'Key Insight',
+                            style: const TextStyle(
+                              color: Color(0xFF67E8F9),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      sec.darkCallout!['text'] ?? '',
+                      style: const TextStyle(
+                        color: Color(0xFFCBD5E1),
+                        fontSize: 12.5,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (sec.testimony != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.amber.shade50,
+                      Color(palette.lightTintHex),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Color(palette.primaryHex).withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.format_quote_rounded,
+                            size: 18, color: Color(palette.primaryHex)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            sec.testimony!['title'] ?? 'Testimony',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                              color: Color(palette.primaryHex),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '"${sec.testimony!['text'] ?? ''}"',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        height: 1.5,
+                        fontStyle: FontStyle.italic,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (sec.tableData != null &&
+                sec.tableData!['rows'] is List &&
+                (sec.tableData!['rows'] as List).isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : Colors.grey.shade200,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sec.tableData!['title']?.toString() ?? 'Reference Table',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(palette.primaryHex),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        headingRowColor: WidgetStateProperty.all(
+                          Color(palette.primaryHex),
+                        ),
+                        columns: [
+                          for (final col
+                              in (sec.tableData!['columns'] as List? ??
+                                  const ['Subject', 'OT', 'NT']))
+                            DataColumn(
+                              label: Text(
+                                col.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                        ],
+                        rows: [
+                          for (final row
+                              in (sec.tableData!['rows'] as List))
+                            if (row is List)
+                              DataRow(
+                                cells: [
+                                  for (int ci = 0; ci < 3; ci++)
+                                    DataCell(
+                                      Text(
+                                        ci < row.length
+                                            ? row[ci].toString()
+                                            : '',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
             if (sec.steps.isNotEmpty) ...[
               const SizedBox(height: 10),

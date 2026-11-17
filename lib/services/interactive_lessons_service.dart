@@ -21,6 +21,8 @@ class InteractiveLessonItem {
   final double progress;
   final bool isCompleted;
   final bool isActive;
+  final List<Map<String, dynamic>> interactiveSections;
+  final Map<String, dynamic>? lessonJson;
 
   const InteractiveLessonItem({
     required this.id,
@@ -36,6 +38,8 @@ class InteractiveLessonItem {
     this.progress = 0.0,
     this.isCompleted = false,
     this.isActive = true,
+    this.interactiveSections = const [],
+    this.lessonJson,
   });
 
   Map<String, dynamic> toJson() => {
@@ -52,26 +56,41 @@ class InteractiveLessonItem {
         'progress': progress,
         'isCompleted': isCompleted,
         'isActive': isActive,
+        if (interactiveSections.isNotEmpty)
+          'interactiveSections': interactiveSections,
+        if (lessonJson != null) 'lessonJson': lessonJson,
       };
 
-  factory InteractiveLessonItem.fromJson(Map<String, dynamic> json) =>
-      InteractiveLessonItem(
-        id: json['id'] as String? ?? 'lesson_${DateTime.now().millisecondsSinceEpoch}',
-        title: json['title'] as String? ?? 'Untitled Lesson',
-        description: json['description'] as String? ?? '',
-        category: json['category'] as String? ?? 'Bible Study',
-        level: json['level'] as String? ?? 'Beginner',
-        duration: json['duration'] as String? ?? '30 min',
-        content: json['content'] as String? ?? '',
-        tractId: json['tractId'] as String?,
-        coverImage: json['coverImage'] as String? ??
-            json['cover_image'] as String? ??
-            json['imageUrl'] as String?,
-        isFavorite: json['isFavorite'] as bool? ?? false,
-        progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
-        isCompleted: json['isCompleted'] as bool? ?? false,
-        isActive: json['isActive'] as bool? ?? true,
-      );
+  factory InteractiveLessonItem.fromJson(Map<String, dynamic> json) {
+    final rawSections = json['interactiveSections'];
+    return InteractiveLessonItem(
+      id: json['id'] as String? ??
+          'lesson_${DateTime.now().millisecondsSinceEpoch}',
+      title: json['title'] as String? ?? 'Untitled Lesson',
+      description: json['description'] as String? ?? '',
+      category: json['category'] as String? ?? 'Bible Study',
+      level: json['level'] as String? ?? 'Beginner',
+      duration: json['duration'] as String? ?? '30 min',
+      content: json['content'] as String? ?? '',
+      tractId: json['tractId'] as String?,
+      coverImage: json['coverImage'] as String? ??
+          json['cover_image'] as String? ??
+          json['imageUrl'] as String?,
+      isFavorite: json['isFavorite'] as bool? ?? false,
+      progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
+      isCompleted: json['isCompleted'] as bool? ?? false,
+      isActive: json['isActive'] as bool? ?? true,
+      interactiveSections: rawSections is List
+          ? rawSections
+              .whereType<Map>()
+              .map((m) => Map<String, dynamic>.from(m))
+              .toList()
+          : const [],
+      lessonJson: json['lessonJson'] is Map
+          ? Map<String, dynamic>.from(json['lessonJson'] as Map)
+          : null,
+    );
+  }
 
   InteractiveLessonItem copyWith({
     String? id,
@@ -87,6 +106,8 @@ class InteractiveLessonItem {
     double? progress,
     bool? isCompleted,
     bool? isActive,
+    List<Map<String, dynamic>>? interactiveSections,
+    Map<String, dynamic>? lessonJson,
   }) {
     return InteractiveLessonItem(
       id: id ?? this.id,
@@ -102,6 +123,8 @@ class InteractiveLessonItem {
       progress: progress ?? this.progress,
       isCompleted: isCompleted ?? this.isCompleted,
       isActive: isActive ?? this.isActive,
+      interactiveSections: interactiveSections ?? this.interactiveSections,
+      lessonJson: lessonJson ?? this.lessonJson,
     );
   }
 }
@@ -299,6 +322,17 @@ class InteractiveLessonsService extends ChangeNotifier {
               (tractId != null ? existingByTractId[tractId] : null);
           final targetId = prev?.id ?? lessonId;
 
+          final rawDynSections = meta['interactiveSections'];
+          final dynSections = rawDynSections is List
+              ? rawDynSections
+                  .whereType<Map>()
+                  .map((m) => Map<String, dynamic>.from(m))
+                  .toList()
+              : (prev?.interactiveSections ?? const <Map<String, dynamic>>[]);
+          final dynLessonJson = meta['lessonJson'] is Map
+              ? Map<String, dynamic>.from(meta['lessonJson'] as Map)
+              : prev?.lessonJson;
+
           merged[targetId] = InteractiveLessonItem(
             id: targetId,
             title: (data['title'] ?? prev?.title ?? 'Untitled Lesson').toString(),
@@ -313,6 +347,8 @@ class InteractiveLessonsService extends ChangeNotifier {
             progress: prev?.progress ?? 0.0,
             isCompleted: prev?.isCompleted ?? false,
             isActive: data['is_active'] as bool? ?? prev?.isActive ?? true,
+            interactiveSections: dynSections,
+            lessonJson: dynLessonJson,
           );
         }
       } catch (e) {
@@ -388,6 +424,9 @@ class InteractiveLessonsService extends ChangeNotifier {
         'duration': lesson.duration,
         'tractId': lesson.tractId,
         'coverImage': lesson.coverImage,
+        if (lesson.interactiveSections.isNotEmpty)
+          'interactiveSections': lesson.interactiveSections,
+        if (lesson.lessonJson != null) 'lessonJson': lesson.lessonJson,
       }),
       'updated_at': DateTime.now().toIso8601String(),
     };
