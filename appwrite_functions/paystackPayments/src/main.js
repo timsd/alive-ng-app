@@ -1037,17 +1037,6 @@ async function isAliveAppTransaction(txData, databases) {
     return true;
   }
 
-  if (databases && ref) {
-    try {
-      await databases.getDocument(
-        databaseId,
-        process.env.APPWRITE_DONATIONS_COLLECTION_ID || 'donation_records',
-        ref,
-      );
-      return true;
-    } catch (_) {}
-  }
-
   return false;
 }
 
