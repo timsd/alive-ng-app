@@ -878,46 +878,49 @@ class BibleDatabaseHelper {
     if (normalised.isEmpty) return [];
 
     try {
-      // Build the FTS5 MATCH expression.  Wrap multi-word queries in
-      // quotes so FTS5 treats them as a phrase, then OR with individual
-      // tokens for broader recall.
+      // Build the FTS5 MATCH expression. For multi-word queries, try exact
+      // phrase OR all-words (AND) first so common stopwords ("and", "all")
+      // don't force FTS5 to rank 20,000+ rows on every keystroke; fall back
+      // to OR only when the stricter query returns no matches.
       final tokens = normalised.split(RegExp(r'\s+'));
-      String matchExpr;
-      if (tokens.length > 1) {
-        final phrase = '"$normalised"';
-        final orTokens = tokens.join(' OR ');
-        matchExpr = '$phrase OR $orTokens';
-      } else {
-        matchExpr = normalised;
-      }
-
-      // Filter clauses for version/language
       final filters = <String>[];
-      final args = <dynamic>[matchExpr];
+      final baseFilterArgs = <dynamic>[];
       if (version != null && version.isNotEmpty) {
         filters.add('c.version = ?');
-        args.add(version);
+        baseFilterArgs.add(version);
       }
       if (language != null && language.isNotEmpty) {
         filters.add('c.language = ?');
-        args.add(language);
+        baseFilterArgs.add(language);
       }
-
       final whereExtra =
           filters.isEmpty ? '' : ' AND ${filters.join(" AND ")}';
-      args.add(limit);
 
-      final rows = await db.rawQuery('''
-        SELECT c.book, c.chapter, v.verse_number AS verse,
-               c.version, c.language, v.text,
-               bm25(bible_search) AS rank
-        FROM bible_search
-        JOIN bible_verses v ON v.id = bible_search.rowid
-        JOIN bible_chapters c ON c.id = v.chapter_id
-        WHERE bible_search MATCH ?$whereExtra
-        ORDER BY rank
-        LIMIT ?
-      ''', args);
+      Future<List<Map<String, Object?>>> runMatch(String expr) {
+        return db.rawQuery('''
+          SELECT c.book, c.chapter, v.verse_number AS verse,
+                 c.version, c.language, v.text,
+                 bm25(bible_search) AS rank
+          FROM bible_search
+          JOIN bible_verses v ON v.id = bible_search.rowid
+          JOIN bible_chapters c ON c.id = v.chapter_id
+          WHERE bible_search MATCH ?$whereExtra
+          ORDER BY rank
+          LIMIT ?
+        ''', [expr, ...baseFilterArgs, limit]);
+      }
+
+      List<Map<String, Object?>> rows;
+      if (tokens.length > 1) {
+        final phrase = '"$normalised"';
+        final andExpr = '$phrase OR (${tokens.join(' AND ')})';
+        rows = await runMatch(andExpr);
+        if (rows.isEmpty) {
+          rows = await runMatch('$phrase OR ${tokens.join(' OR ')}');
+        }
+      } else {
+        rows = await runMatch(normalised);
+      }
 
       return rows.map((row) {
         final book = row['book'] as String;

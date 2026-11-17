@@ -430,7 +430,9 @@ class OfflineBibleService {
     String? version,
     String? language,
     int limit = 50,
+    bool Function()? isCancelled,
   }) async {
+    if (isCancelled?.call() == true) return [];
     final versionCode = (version == null || version.isEmpty)
         ? _defaultVersion
         : version;
@@ -464,6 +466,7 @@ class OfflineBibleService {
         language: languageCode,
         limit: limit,
       );
+      if (isCancelled?.call() == true) return [];
       if (ftsResults.isNotEmpty) {
         final hits = ftsResults
             .map((r) => BibleTextHit(
@@ -482,12 +485,15 @@ class OfflineBibleService {
       _logger.warning('FTS5 search failed, falling back to in-memory: $e');
     }
 
+    if (isCancelled?.call() == true) return [];
+
     // ── Legacy in-memory index path (fallback) ───────────────────────
     final index = await _getOrBuildIndex(
       indexKey: indexKey,
       versionCode: versionCode,
       languageCode: languageCode,
     );
+    if (isCancelled?.call() == true) return [];
     if (index == null || index.entries.isEmpty) return [];
 
     final tokens = SearchUtils.tokensOf(query);
@@ -518,7 +524,10 @@ class OfflineBibleService {
     }
 
     // Candidate narrowing using token and stem inverted index
-    final candidateIndices = index.findCandidateIndices(tokens);
+    final candidateIndices = index.findCandidateIndices(
+      tokens,
+      maxCandidates: 1200,
+    );
     candidateIndices.addAll(refCandidateIndices);
 
     final pool = candidateIndices.isEmpty
@@ -526,7 +535,12 @@ class OfflineBibleService {
         : candidateIndices.map((i) => index.entries[i]);
 
     final scored = <MapEntry<BibleTextHit, int>>[];
+    int processed = 0;
     for (final entry in pool) {
+      if (++processed % 250 == 0) {
+        await Future<void>.delayed(Duration.zero);
+        if (isCancelled?.call() == true) return [];
+      }
       final score = SearchUtils.scoreVerse(
         reference: entry.reference,
         text: entry.text,

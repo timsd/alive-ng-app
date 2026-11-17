@@ -634,25 +634,27 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
 
   void _searchVerses(String query, {bool immediate = false}) {
     _searchDebounceTimer?.cancel();
+    // Invalidate any in-flight search immediately so it aborts early.
+    _searchToken++;
     final trimmed = query.trim();
     _refreshClearButton();
 
     if (trimmed.isEmpty) {
-      setState(() {
-        _fullTextResults = [];
-        _isSearching = false;
-      });
+      if (_fullTextResults.isNotEmpty || _isSearching) {
+        setState(() {
+          _fullTextResults = [];
+          _isSearching = false;
+        });
+      }
       return;
     }
-
-    setState(() {
-      _isSearching = true;
-    });
 
     if (immediate) {
       _executeSearch(trimmed);
     } else {
-      _searchDebounceTimer = Timer(const Duration(milliseconds: 250), () {
+      // Wait for a brief pause in typing before starting search/rebuilds so
+      // keystrokes and the mobile keyboard never stall or dismiss.
+      _searchDebounceTimer = Timer(const Duration(milliseconds: 380), () {
         _executeSearch(trimmed);
       });
     }
@@ -661,6 +663,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
   Future<void> _executeSearch(String query) async {
     final token = ++_searchToken;
     final languageCode = _languageCodes[_selectedLanguage] ?? 'en';
+
+    if (mounted && !_isSearching) {
+      setState(() {
+        _isSearching = true;
+      });
+    }
 
     // Full ranked text search across ALL bundled chapters (~31,000 verses)
     // for the currently selected version.
@@ -671,6 +679,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
         version: _selectedVersion,
         language: languageCode,
         limit: 50,
+        isCancelled: () => token != _searchToken || !mounted,
       );
     } catch (_) {
       ranked = [];
@@ -1711,76 +1720,80 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                         ),
                       ),
                     )
-                  : ListView(
+                  : ListView.builder(
                       padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12, left: 4),
-                          child: Text(
-                            '${_fullTextResults.length} matches found in $_selectedVersion · $_selectedLanguage',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: isSmallScreen ? 13 : 14,
-                              color: colorScheme.primary,
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      itemCount: _fullTextResults.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12, left: 4),
+                            child: Text(
+                              '${_fullTextResults.length} matches found in $_selectedVersion · $_selectedLanguage',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: isSmallScreen ? 13 : 14,
+                                color: colorScheme.primary,
+                              ),
                             ),
+                          );
+                        }
+                        final hit = _fullTextResults[index - 1];
+                        final hits = SearchUtils.highlightSpans(
+                          hit.text,
+                          _searchController.text,
+                          TextStyle(
+                            color: colorScheme.onSurface,
+                            fontSize: isSmallScreen ? 14 : 15,
+                            height: 1.35,
                           ),
-                        ),
-                        ..._fullTextResults.map((hit) {
-                          final hits = SearchUtils.highlightSpans(
-                            hit.text,
-                            _searchController.text,
-                            TextStyle(
-                              color: colorScheme.onSurface,
-                              fontSize: isSmallScreen ? 14 : 15,
-                              height: 1.35,
-                            ),
-                            TextStyle(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                              backgroundColor: colorScheme.primary
-                                  .withValues(alpha: 0.15),
-                            ),
-                          );
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              title: Text(
-                                hit.reference,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: isSmallScreen ? 14 : 16,
-                                  color: colorScheme.primary,
-                                ),
+                          TextStyle(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                            backgroundColor: colorScheme.primary
+                                .withValues(alpha: 0.15),
+                          ),
+                        );
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            title: Text(
+                              hit.reference,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: isSmallScreen ? 14 : 16,
+                                color: colorScheme.primary,
                               ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: RichText(
-                                  text: TextSpan(
-                                    style: TextStyle(
-                                      color: colorScheme.onSurface,
-                                      fontSize: isSmallScreen ? 14 : 15,
-                                      height: 1.35,
-                                    ),
-                                    children: hits,
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: RichText(
+                                text: TextSpan(
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                    fontSize: isSmallScreen ? 14 : 15,
+                                    height: 1.35,
                                   ),
-                                  maxLines: 4,
-                                  overflow: TextOverflow.ellipsis,
-                                  softWrap: true,
+                                  children: hits,
                                 ),
+                                maxLines: 4,
+                                overflow: TextOverflow.ellipsis,
+                                softWrap: true,
                               ),
-                              trailing: Icon(
-                                Icons.arrow_forward_ios,
-                                size: 14,
-                                color: colorScheme.onSurfaceVariant
-                                    .withValues(alpha: 0.6),
-                              ),
-                              onTap: () {
-                                _openReference(hit.reference);
-                              },
                             ),
-                          );
-                        }),
-                      ],
+                            trailing: Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.6),
+                            ),
+                            onTap: () {
+                              _openReference(hit.reference);
+                            },
+                          ),
+                        );
+                      },
                     )),
         ),
       ],
