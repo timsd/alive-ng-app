@@ -74,15 +74,16 @@ class AppTourService {
     if (force) {
       try {
         final navigator = Navigator.of(context, rootNavigator: true);
-        navigator.popUntil((route) => route.isFirst || route.settings is Page);
+        navigator.popUntil((route) => route.settings is Page || route.isFirst);
       } catch (_) {}
 
       try {
-        GoRouter.of(context).go(AppConstants.homeRoute);
+        GoRouter.maybeOf(context)?.go(AppConstants.homeRoute);
       } catch (_) {}
 
-      // Allow Home screen and app bar to fully render before painting the tour overlay.
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Allow Home screen and app bar to finish layout before painting the tour overlay.
+      await WidgetsBinding.instance.endOfFrame;
+      await Future.delayed(const Duration(milliseconds: 50));
     }
 
     final activeContext = rootNavigatorKey.currentContext ?? context;

@@ -627,13 +627,12 @@ class MainNavigationScreen extends ConsumerWidget {
                   'icon': Icons.explore_rounded,
                   'label': 'app_tour',
                   'onTap': () {
-                    // Close the More bottom sheet first so the underlying UI is clean
+                    // Capture GoRouter from the active screen context before closing
+                    // the More bottom sheet, then navigate cleanly to Home first.
+                    final router = GoRouter.maybeOf(context);
                     Navigator.of(context).pop();
-                    // Use a longer delay to ensure the bottom sheet is fully dismissed
-                    // and the Home screen has rendered before launching the tour overlay.
-                    // This prevents the race condition where the tour starts while the
-                    // sheet animation is still running, causing spotlights to be invisible.
-                    Future.delayed(const Duration(milliseconds: 500), () {
+                    router?.go(AppConstants.homeRoute);
+                    Future.delayed(const Duration(milliseconds: 180), () {
                       final navContext = rootNavigatorKey.currentContext;
                       if (navContext != null && navContext.mounted) {
                         AppTourService.maybeStartTour(navContext, force: true);
