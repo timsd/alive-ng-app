@@ -108,15 +108,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
     final isAuthenticated = currentUser != null;
 
     final roleService = RoleAccessService.instance;
-    final role = roleService.getCurrentUserRole() ?? 'member';
-    const privatePrayerRoles = {
-      'admin',
-      'bod',
-      'trustee',
-      'chapter_leader',
-      'director',
-    };
-    final canAccessPrivate = privatePrayerRoles.contains(role.toLowerCase());
+    final canAccessPrivate = roleService.canAccessPrivatePrayerRoom();
 
     final availableCategories = prayerRequestsAsync.maybeWhen(
       data: (requests) {

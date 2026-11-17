@@ -67,15 +67,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final roleService = RoleAccessService.instance;
-    final role = roleService.getCurrentUserRole() ?? 'member';
-    const privatePrayerRoles = {
-      'admin',
-      'bod',
-      'trustee',
-      'chapter_leader',
-      'director',
-    };
-    final canAccessPrivate = privatePrayerRoles.contains(role.toLowerCase());
+    final canAccessPrivate = roleService.canAccessPrivatePrayerRoom();
 
     return Scaffold(
       appBar: CustomAppBar(

@@ -107,11 +107,7 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
     }
   }
 
-  bool get _canCreateRoom {
-    final role = _roleService.getCurrentUserRole() ?? 'member';
-    const allowed = {'admin', 'bod', 'trustee', 'director', 'chapter_leader'};
-    return allowed.contains(role.toLowerCase());
-  }
+  bool get _canCreateRoom => _roleService.canAccessPrivatePrayerRoom();
 
   @override
   Widget build(BuildContext context) {

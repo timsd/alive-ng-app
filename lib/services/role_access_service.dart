@@ -235,6 +235,24 @@ class RoleAccessService {
     return canAccessAdmin();
   }
 
+  /// Check if user can access and manage Private Prayer Rooms
+  /// (Admin, Super Admin, BOD, Trustees, Directors, Chapter Leaders).
+  bool canAccessPrivatePrayerRoom() {
+    if (canAccessAdmin() || isSuperAdmin()) return true;
+    final raw = (getCurrentUserRole() ?? '').toLowerCase();
+    final normalized = _normalizeRole(raw) ?? raw;
+    const privatePrayerRoles = {
+      'admin',
+      'super_admin',
+      'bod',
+      'trustee',
+      'chapter_leader',
+      'director',
+    };
+    return privatePrayerRoles.contains(raw) ||
+        privatePrayerRoles.contains(normalized);
+  }
+
   /// Check if user has organization-wide leadership privilege
   /// (Admin, Super Admin, Board of Directors (BOD), Directors, Trustees).
   /// These roles have auto-access across all chapter and chat channels.
