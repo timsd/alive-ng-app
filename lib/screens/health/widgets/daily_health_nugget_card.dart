@@ -3,6 +3,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../config/health_nuggets_data.dart';
 import '../../../utils/responsive_utils.dart';
+import '../../../widgets/bible_reference_modal_sheet.dart';
+import '../../../widgets/scripture_rich_text.dart';
 
 /// Displays the daily rotating 365-day Seventh-day Adventist Health Nugget
 /// on `/health`, with prev/next day browsing, sharing, and a full 365-day
@@ -220,12 +222,13 @@ class _DailyHealthNuggetCardState extends State<DailyHealthNuggetCard> {
 
             const SizedBox(height: 8),
 
-            Text(
+            ScriptureRichText(
               nugget.nugget,
               style: theme.textTheme.bodyMedium?.copyWith(
                 height: 1.5,
                 color: colorScheme.onSurface.withValues(alpha: 0.88),
               ),
+              referenceColor: accent,
             ),
 
             const SizedBox(height: 12),
@@ -260,20 +263,33 @@ class _DailyHealthNuggetCardState extends State<DailyHealthNuggetCard> {
                       ),
                     ],
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.menu_book_outlined,
-                          size: 15, color: accent),
-                      const SizedBox(width: 6),
-                      Text(
-                        nugget.scripture,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: accent,
-                        ),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => BibleReferenceModalSheet.show(
+                      context,
+                      reference: nugget.scripture,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.menu_book_outlined,
+                              size: 15, color: accent),
+                          const SizedBox(width: 6),
+                          Text(
+                            nugget.scripture,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: accent,
+                              decoration: TextDecoration.underline,
+                              decorationColor: accent.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
