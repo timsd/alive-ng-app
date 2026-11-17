@@ -319,23 +319,51 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
                         children: [
                           Expanded(
                             child: FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size(0, 44),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                              ),
                               onPressed: _isBackingUp ? null : _createBackup,
                               icon: _isBackingUp
                                   ? const SizedBox(
                                       width: 16,
                                       height: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white),
                                     )
                                   : const Icon(Icons.backup_rounded, size: 18),
-                              label: Text(_isBackingUp ? 'Creating Backup...' : 'Create Backup'),
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  _isBackingUp
+                                      ? 'Creating Backup...'
+                                      : 'Create Backup',
+                                  maxLines: 1,
+                                  softWrap: false,
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: FilledButton.tonalIcon(
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size(0, 44),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                              ),
                               onPressed: _uploadBackup,
-                              icon: const Icon(Icons.upload_file_rounded, size: 18),
-                              label: const Text('Upload Backup'),
+                              icon: const Icon(Icons.upload_file_rounded,
+                                  size: 18),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Upload Backup',
+                                  maxLines: 1,
+                                  softWrap: false,
+                                ),
+                              ),
                             ),
                           ),
                         ],
