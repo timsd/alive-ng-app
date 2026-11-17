@@ -58,6 +58,7 @@ import '../screens/events/events_screen.dart';
 import '../screens/admin/admin_approval_screen.dart';
 import '../screens/admin/admin_donations_report_screen.dart';
 import '../screens/admin/admin_health_content_screen.dart';
+import '../screens/admin/admin_billboard_screen.dart';
 import '../screens/admin/admin_approval_link_handler_screen.dart';
 import '../screens/help/help_support_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
@@ -112,6 +113,8 @@ bool _isGuestAccessibleRoute(String path) {
     '/donate',
     '/project-3d-viewer',
     '/alive_ng_3d_viewer.html',
+    '/billboard',
+    '/showcase',
     '/payment/callback',
     '/payment-callback',
     '/gift-in-kind',
@@ -1038,16 +1041,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/project-3d-viewer',
         builder: (context, state) {
-          final url =
-              state.uri.queryParameters['url'] ?? 'alive_ng_3d_viewer.html';
+          final url = state.uri.queryParameters['url'] ?? '';
           return Project3DViewerScreen(viewerUrl: url);
         },
       ),
       GoRoute(
         path: '/alive_ng_3d_viewer.html',
-        builder: (context, state) => const Project3DViewerScreen(
-          viewerUrl: 'alive_ng_3d_viewer.html',
-        ),
+        builder: (context, state) => const Project3DViewerScreen(),
+      ),
+      GoRoute(
+        path: '/billboard',
+        builder: (context, state) => const Project3DViewerScreen(),
+      ),
+      GoRoute(
+        path: '/showcase',
+        builder: (context, state) => const Project3DViewerScreen(),
+      ),
+      GoRoute(
+        path: '/admin-billboard',
+        builder: (context, state) => const AdminBillboardScreen(),
       ),
     ],
 

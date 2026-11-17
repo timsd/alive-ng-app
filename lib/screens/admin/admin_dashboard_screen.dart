@@ -831,6 +831,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       ]),
       _MgmtSection('Content Management', Icons.library_books_outlined, [
         _MgmtTile('Content Pages & Projects', 'Manage app content pages, core sections, and mission projects', Icons.post_add_outlined, () => context.push(AppConstants.contentManagementRoute)),
+        _MgmtTile('Program & Project Billboard', 'Showcase flyers, videos, registration forms, or 3D previews', Icons.view_carousel_outlined, () => context.push('/admin-billboard')),
         _MgmtTile('Tract & Podcast Management', 'Manage tracts, podcasts, and categories', Icons.article_outlined, () => context.push(AppConstants.tractPodcastAdminRoute)),
         _MgmtTile('Video Content Management', 'Upload and manage videos, categories, and media playback', Icons.video_library_outlined, () => context.push(AppConstants.videoContentAdminRoute)),
         _MgmtTile('App Broadcast', 'Create and manage app broadcasts and announcements', Icons.campaign_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAnnouncementsScreen()))),
