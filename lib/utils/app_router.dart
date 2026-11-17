@@ -63,6 +63,7 @@ import '../screens/help/help_support_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
 import '../screens/testimonies/testimonies_screen.dart';
 import '../screens/donation/donation_screen.dart';
+import '../screens/donation/project_3d_viewer_screen.dart';
 import '../screens/donation/gift_in_kind_form_screen.dart';
 import '../screens/donation/non_monetary_gift_form_screen.dart';
 import '../screens/achievements/achievement_screen.dart';
@@ -109,6 +110,8 @@ bool _isGuestAccessibleRoute(String path) {
     '/help-support',
     '/donation',
     '/donate',
+    '/project-3d-viewer',
+    '/alive_ng_3d_viewer.html',
     '/payment/callback',
     '/payment-callback',
     '/gift-in-kind',
@@ -1031,6 +1034,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
           return null;
         },
+      ),
+      GoRoute(
+        path: '/project-3d-viewer',
+        builder: (context, state) {
+          final url =
+              state.uri.queryParameters['url'] ?? 'alive_ng_3d_viewer.html';
+          return Project3DViewerScreen(viewerUrl: url);
+        },
+      ),
+      GoRoute(
+        path: '/alive_ng_3d_viewer.html',
+        builder: (context, state) => const Project3DViewerScreen(
+          viewerUrl: 'alive_ng_3d_viewer.html',
+        ),
       ),
     ],
 

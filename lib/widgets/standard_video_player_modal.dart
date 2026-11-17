@@ -122,11 +122,14 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
       try {
         final startQuery = _startSeconds > 0 ? '&start=$_startSeconds' : '';
         final embedUrl =
-            'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1$startQuery';
+            'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1&rel=0&enablejsapi=1&origin=https://app.alivenigeria.org$startQuery';
         _webViewController = WebViewController()
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
           ..setBackgroundColor(Colors.black)
-          ..loadRequest(Uri.parse(embedUrl));
+          ..loadRequest(
+            Uri.parse(embedUrl),
+            headers: const {'Referer': 'https://app.alivenigeria.org/'},
+          );
       } catch (e) {
         debugPrint('Failed to initialize mobile video player: $e');
       }
@@ -473,8 +476,11 @@ class _StandardVideoPlayerModalState extends State<StandardVideoPlayerModal> {
     // YouTube on Web: embed iframe directly
     if (kIsWeb && _youTubeId != null) {
       final startQuery = _startSeconds > 0 ? '&start=$_startSeconds' : '';
+      final origin = Uri.base.scheme.startsWith('http')
+          ? Uri.encodeComponent(Uri.base.origin)
+          : 'https%3A%2F%2Fapp.alivenigeria.org';
       final embedUrl =
-          'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1&rel=0$startQuery';
+          'https://www.youtube.com/embed/$_youTubeId?autoplay=1&playsinline=1&rel=0&enablejsapi=1&origin=$origin$startQuery';
       return buildVideoEmbed(
         videoId: '${_youTubeId}_$_startSeconds',
         embedUrl: embedUrl,

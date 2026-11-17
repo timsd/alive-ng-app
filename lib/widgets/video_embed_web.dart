@@ -21,6 +21,7 @@ Widget buildPlatformVideoEmbed({
           ..style.border = 'none'
           ..style.width = '100%'
           ..style.height = '100%'
+          ..referrerPolicy = 'strict-origin-when-cross-origin'
           ..allow =
               'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
           ..allowFullscreen = true;

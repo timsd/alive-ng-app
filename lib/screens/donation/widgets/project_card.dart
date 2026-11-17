@@ -1,7 +1,6 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../models/project_model.dart';
 import '../../../services/exchange_rate_service.dart';
 import 'project_fund_update.dart';
@@ -156,18 +155,13 @@ class ProjectCard extends StatelessWidget {
                     minimumSize: const Size(0, 44),
                   ),
                 ),
-                if (viewerUrl.isNotEmpty && kIsWeb) ...[
+                if (viewerUrl.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
-                    onPressed: () async {
-                      try {
-                        await launchUrl(
-                          Uri.parse(viewerUrl),
-                          webOnlyWindowName: '_blank',
-                        );
-                      } catch (_) {
-                        // Viewer unavailable; fail silently.
-                      }
+                    onPressed: () {
+                      context.push(
+                        '/project-3d-viewer?url=${Uri.encodeComponent(viewerUrl)}',
+                      );
                     },
                     icon: const Icon(Icons.view_in_ar_rounded, size: 18),
                     label: const Text('Explore the project in 3D'),
