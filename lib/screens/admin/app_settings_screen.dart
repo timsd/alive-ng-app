@@ -590,20 +590,33 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             SizedBox(
               width: double.infinity,
               child: SegmentedButton<String>(
+                showSelectedIcon: false,
+                style: SegmentedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                ),
                 segments: const [
                   ButtonSegment(
                     value: 'youtube',
-                    label: Text('YouTube'),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('YouTube', maxLines: 1, softWrap: false),
+                    ),
                     icon: Icon(Icons.smart_display_outlined, size: 16),
                   ),
                   ButtonSegment(
                     value: 'facebook',
-                    label: Text('Facebook'),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Facebook', maxLines: 1, softWrap: false),
+                    ),
                     icon: Icon(Icons.facebook_rounded, size: 16),
                   ),
                   ButtonSegment(
                     value: 'both',
-                    label: Text('Both'),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Both', maxLines: 1, softWrap: false),
+                    ),
                     icon: Icon(Icons.cast_connected_rounded, size: 16),
                   ),
                 ],
@@ -1778,17 +1791,59 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Setting'),
-        content: Text('Are you sure you want to delete "${setting['display_name'] ?? _settingKey(setting)}"?'),
+        titlePadding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+        title: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Delete Setting',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Close',
+              onPressed: () => Navigator.pop(context, false),
+            ),
+          ],
+        ),
+        content: Text(
+            'Are you sure you want to delete "${setting['display_name'] ?? _settingKey(setting)}"?'),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+          SizedBox(
+            width: double.maxFinite,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Delete'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

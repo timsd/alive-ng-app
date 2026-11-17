@@ -64,6 +64,8 @@ class AppwriteBackendConfig {
   static const String paymentLogsCollectionId = 'payment_logs';
   static const String giftSubmissionsCollectionId = 'gift_submissions';
   static const String appSettingsCollectionId = 'app_settings';
+  static const String billboardSubmissionsCollectionId =
+      'billboard_submissions';
   static const String boardReportsCollectionId = 'board_reports';
   static const String boardDocumentsCollectionId = 'board_documents';
   static const String boardDecisionsCollectionId = 'board_decisions';

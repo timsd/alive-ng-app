@@ -320,6 +320,19 @@ export const tables = [
   { id: 'dynamic_content', name: 'Dynamic Content', columns: [s('key', 255, true), s('category', 128), mediumtext('value'), mediumtext('metadata'), dt('created_at'), dt('updated_at')] },
   { id: 'featured_content', name: 'Featured Content', columns: [s('title', 255), text('description'), s('content_id', 128), s('content_type', 128), i('priority'), b('is_active', false, true), dt('created_at'), dt('updated_at')] },
   { id: 'app_settings', name: 'App Settings', columns: [s('key', 255, true), s('setting_key', 255), s('display_name', 255), mediumtext('value'), mediumtext('setting_value'), s('type', 64), s('data_type', 64), s('category', 128), text('description'), b('is_public', false, false), b('is_active', false, true), s('updated_by', 128), dt('created_at'), dt('updated_at')], indexes: [{ key: 'app_settings_key_idx', type: 'unique', columns: ['key'] }] },
+  {
+    id: 'billboard_submissions',
+    name: 'Billboard Submissions',
+    columns: [
+      s('billboard_key', 128, true), s('program_title', 255), s('user_id', 128),
+      s('full_name', 255), s('email', 320), s('phone', 64),
+      mediumtext('answers_json'), dt('submitted_at'), dt('created_at'),
+    ],
+    indexes: [
+      { key: 'billboard_sub_key_idx', type: 'key', columns: ['billboard_key'] },
+      { key: 'billboard_sub_date_idx', type: 'key', columns: ['submitted_at'] },
+    ],
+  },
   { id: 'board_reports', name: 'Board Reports', columns: [s('title', 255, true), mediumtext('description'), mediumtext('content'), s('type', 128), s('category', 128), s('author_id', 128), s('author_name', 255), s('chapter_id', 128), s('team_id', 128), s('status', 64), mediumtext('attachments'), mediumtext('metadata'), dt('created_at'), dt('updated_at'), dt('submitted_at'), dt('reviewed_at')] },
   { id: 'board_documents', name: 'Board Documents', columns: [s('title', 255, true), mediumtext('description'), s('file_name', 255), s('file_url', 2048), s('file_path', 1024), s('file_type', 64), i('file_size'), s('uploaded_by', 128), s('uploader_id', 128), dt('uploaded_at'), s('category', 128), s('access_level', 128), s('visibility', 128), mediumtext('tags'), b('is_archived'), dt('created_at'), dt('updated_at')] },
   { id: 'board_decisions', name: 'Board Decisions', columns: [s('title', 255, true), mediumtext('description'), s('status', 64), s('created_by', 128), s('proposed_by', 255), s('proposer_id', 128), dt('proposed_at'), dt('voting_deadline'), mediumtext('votes'), text('resolution'), dt('resolved_at'), s('category', 128), b('requires_unanimous'), s('approved_by', 128, false, true), mediumtext('attachments'), dt('created_at'), dt('updated_at')] },

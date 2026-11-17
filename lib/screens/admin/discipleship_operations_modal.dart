@@ -864,15 +864,23 @@ class _OfficerFormSheetState extends State<_OfficerFormSheet> {
               Text('Office Type', style: theme.textTheme.labelMedium),
               const SizedBox(height: 6),
               SegmentedButton<String>(
+                showSelectedIcon: false,
                 segments: const [
                   ButtonSegment(
                     value: 'coordinator',
-                    label: Text('Coordinator'),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child:
+                          Text('Coordinator', maxLines: 1, softWrap: false),
+                    ),
                     icon: Icon(Icons.co_present_outlined),
                   ),
                   ButtonSegment(
                     value: 'director',
-                    label: Text('Director'),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Director', maxLines: 1, softWrap: false),
+                    ),
                     icon: Icon(Icons.shield_outlined),
                   ),
                 ],

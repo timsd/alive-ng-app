@@ -75,22 +75,68 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     final format = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Create Data Backup'),
+        titlePadding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+        title: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Create Data Backup',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Close',
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
         content: const Text(
           'Choose the export format for all database collections (profiles, prayer requests, chapters, donations, etc.). The generated archive will be stored in your system backups.',
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          OutlinedButton(
-            onPressed: () => Navigator.pop(ctx, 'csv'),
-            child: const Text('CSV Format'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, 'json'),
-            child: const Text('JSON Format'),
+          SizedBox(
+            width: double.maxFinite,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(ctx, 'csv'),
+                    child: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('CSV Format', maxLines: 1, softWrap: false),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(ctx, 'json'),
+                    child: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('JSON Format', maxLines: 1, softWrap: false),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -190,17 +236,59 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Backup'),
-        content: Text('Are you sure you want to permanently delete "$fileName"? This action cannot be undone.'),
+        titlePadding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+        title: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Delete Backup',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Close',
+              onPressed: () => Navigator.pop(ctx, false),
+            ),
+          ],
+        ),
+        content: Text(
+            'Are you sure you want to permanently delete "$fileName"? This action cannot be undone.'),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          SizedBox(
+            width: double.maxFinite,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Delete'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -261,22 +349,68 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Restore from Backup'),
+        titlePadding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+        title: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Restore from Backup',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Close',
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
         content: Text(
           'To restore "$name", download the backup file and import the records via the Appwrite CLI, database import scripts, or contact system administration for an automated restore run.',
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-          FilledButton.icon(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _downloadBackup(file);
-            },
-            icon: const Icon(Icons.download_rounded, size: 18),
-            label: const Text('Download Archive'),
+          SizedBox(
+            width: double.maxFinite,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Close'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _downloadBackup(file);
+                    },
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child:
+                          Text('Download Archive', maxLines: 1, softWrap: false),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
