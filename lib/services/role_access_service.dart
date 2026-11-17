@@ -246,6 +246,7 @@ class RoleAccessService {
       'super_admin',
       'bod',
       'trustee',
+      'coordinator',
       'chapter_leader',
       'director',
     };
