@@ -470,6 +470,8 @@ class _ModernDropdownFormFieldState<T> extends FormFieldState<T> {
                   ? const SizedBox.shrink()
                   : Text(
                       widget.decoration?.hintText ?? 'Select option',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant
                             .withValues(alpha: 0.7),
@@ -481,7 +483,10 @@ class _ModernDropdownFormFieldState<T> extends FormFieldState<T> {
     final baseDecoration = (widget.decoration ?? const InputDecoration())
         .applyDefaults(theme.inputDecorationTheme);
 
+    // Strip hintText from InputDecorator when displayChild already renders it,
+    // preventing InputDecorator from painting a duplicate overlapping hint.
     final effectiveDecoration = baseDecoration.copyWith(
+      hintText: null,
       errorText: errorText,
       enabled: isEnabled,
       filled: true,
@@ -557,7 +562,9 @@ class _ModernDropdownFormFieldState<T> extends FormFieldState<T> {
           : null,
       child: InputDecorator(
         decoration: effectiveDecoration,
-        isEmpty: selectedItem == null && widget.hint == null,
+        isEmpty: selectedItem == null &&
+            widget.hint == null &&
+            baseDecoration.hintText == null,
         isFocused: false,
         child: Align(
           alignment: widget.alignment,
