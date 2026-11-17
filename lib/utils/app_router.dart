@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/offline_bible_service.dart';
 import '../screens/splash/animated_splash_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
@@ -146,6 +147,35 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(authStateProvider, (_, __) => refresh.value++);
   ref.onDispose(refresh.dispose);
   String? lastRouterUri;
+  const String lastActiveRouteKey = 'last_active_route';
+
+  bool isPersistableRoute(String path) {
+    if (path.isEmpty || path == '/') return false;
+    const excluded = <String>{
+      AppConstants.splashRoute,
+      AppConstants.authRoute,
+      AppConstants.onboardingRoute,
+      AppConstants.resetPasswordRoute,
+      '/oath',
+      '/profile-completion',
+      '/admin-approve',
+    };
+    return !excluded.contains(path);
+  }
+
+  Future<void> saveLastActiveRoute(String uri) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(lastActiveRouteKey, uri);
+    } catch (_) {}
+  }
+
+  Future<void> clearLastActiveRoute() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(lastActiveRouteKey);
+    } catch (_) {}
+  }
 
   return GoRouter(
     refreshListenable: refresh,
@@ -163,6 +193,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthenticated = currentUser != null;
       if (isAuthenticated) {
         unawaited(OfflineBibleService().prewarmBundle());
+        if (isPersistableRoute(state.uri.path)) {
+          unawaited(saveLastActiveRoute(currentUri));
+        }
+      } else if (state.uri.path == AppConstants.authRoute) {
+        unawaited(clearLastActiveRoute());
       }
       try {
         debugPrint('Auth state: authenticated=$isAuthenticated');
@@ -294,8 +329,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             final isAuthenticated =
                 ref.read(authGatewayProvider).currentUser != null;
             if (isAuthenticated) {
+              String targetRoute = AppConstants.homeRoute;
+              try {
+                final prefs = await SharedPreferences.getInstance();
+                final savedRoute = prefs.getString(lastActiveRouteKey);
+                if (savedRoute != null &&
+                    savedRoute.isNotEmpty &&
+                    savedRoute != '/' &&
+                    savedRoute != AppConstants.splashRoute) {
+                  targetRoute = savedRoute;
+                }
+              } catch (_) {}
               if (!context.mounted) return;
-              context.go(AppConstants.homeRoute);
+              context.go(targetRoute);
               return;
             }
             bool show = true;
