@@ -838,11 +838,11 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
         _MgmtTile('Kids Missions', 'Upload PDF or type content with media', Icons.child_care_rounded, () => context.push(AppConstants.adminKidsMissionsRoute)),
         _MgmtTile('Study Guides', 'Upload PDF or type content with media', Icons.menu_book, () => context.push(AppConstants.adminStudyGuidesRoute)),
         _MgmtTile('Health+ Content', 'Manage plant-based recipes, remedies, and discussions', Icons.health_and_safety_rounded, () => context.push(AppConstants.adminHealthContentRoute)),
-        _MgmtTile('Events Management', 'Create, edit, publish, and delete community events', Icons.event_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 0)))),
-        _MgmtTile('Daily Verses', 'Create, edit, and manage daily devotionals & verses', Icons.wb_sunny_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 1)))),
-        _MgmtTile('Testimonies Moderation', 'Approve, unapprove, or delete member testimonies', Icons.verified_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 2)))),
-        _MgmtTile('Adult Missions', 'Create, edit, and manage adult outreach missions', Icons.flag_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 4)))),
-        _MgmtTile('Library Books & Articles', 'Manage books and articles in the digital library', Icons.local_library_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 5)))),
+        _MgmtTile('Events Management', 'Create, edit, publish, and delete community events', Icons.event_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 0, standalone: true)))),
+        _MgmtTile('Daily Verses', 'Create, edit, and manage daily devotionals & verses', Icons.wb_sunny_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 1, standalone: true)))),
+        _MgmtTile('Testimonies Moderation', 'Approve, unapprove, or delete member testimonies', Icons.verified_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 2, standalone: true)))),
+        _MgmtTile('Adult Missions', 'Create, edit, and manage adult outreach missions', Icons.flag_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 4, standalone: true)))),
+        _MgmtTile('Library Books & Articles', 'Manage books and articles in the digital library', Icons.local_library_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 5, standalone: true)))),
       ]),
       _MgmtSection('Chapter Management', Icons.location_city_outlined, [
         _MgmtTile('Chapter Overview', 'View all chapters and their statistics', Icons.dashboard_outlined, () => _navigateToChapterManagement()),
@@ -853,7 +853,7 @@ class _AdminDashboardContentState extends State<_AdminDashboardContent>
       if (_canAccessFinance)
         _MgmtSection('Donations & Finance', Icons.savings_outlined, [
           _MgmtTile('Donation Reports', 'Search, filter and export every gift', Icons.receipt_long_outlined, () => context.push(AppConstants.adminDonationsReportRoute)),
-          _MgmtTile('Gift Submissions Review', 'Review in-kind, material, and service gift submissions', Icons.card_giftcard_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 3)))),
+          _MgmtTile('Gift Submissions Review', 'Review in-kind, material, and service gift submissions', Icons.card_giftcard_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminOperationsHubScreen(initialTab: 3, standalone: true)))),
           _MgmtTile('Monthly Support Reminder', 'Configure reminder schedule date, status, and member opt-outs', Icons.notifications_active_outlined, () => _showMonthlyReminderControl()),
         ]),
       _MgmtSection('Discipleship Operations', Icons.groups_rounded, [

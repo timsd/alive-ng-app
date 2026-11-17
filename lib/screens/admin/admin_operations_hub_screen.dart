@@ -16,22 +16,46 @@ import '../../widgets/role_guard.dart';
 /// 3: Gift Submissions Review, 4: Adult Missions, 5: Library Books & Articles.
 class AdminOperationsHubScreen extends StatelessWidget {
   final int initialTab;
+  final bool standalone;
 
-  const AdminOperationsHubScreen({super.key, this.initialTab = 0});
+  static const List<String> _standaloneTitles = [
+    'Events Management',
+    'Daily Verses',
+    'Testimonies Moderation',
+    'Gift Submissions Review',
+    'Adult Missions',
+    'Library Books & Articles',
+  ];
+
+  const AdminOperationsHubScreen({
+    super.key,
+    this.initialTab = 0,
+    this.standalone = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final tabIndex = initialTab.clamp(0, 5);
     return RoleProtectedScreen(
       requiredRole: 'admin',
-      screenName: 'Admin Content & Moderation Hub',
-      child: _AdminOperationsHubBody(initialTab: initialTab),
+      screenName: standalone
+          ? _standaloneTitles[tabIndex]
+          : 'Admin Content & Moderation Hub',
+      child: _AdminOperationsHubBody(
+        initialTab: tabIndex,
+        standalone: standalone,
+      ),
     );
   }
 }
 
 class _AdminOperationsHubBody extends StatefulWidget {
   final int initialTab;
-  const _AdminOperationsHubBody({required this.initialTab});
+  final bool standalone;
+  const _AdminOperationsHubBody({
+    required this.initialTab,
+    required this.standalone,
+  });
 
   @override
   State<_AdminOperationsHubBody> createState() =>
@@ -99,6 +123,56 @@ class _AdminOperationsHubBodyState extends State<_AdminOperationsHubBody>
       _error = null;
     });
     try {
+      if (widget.standalone) {
+        switch (widget.initialTab) {
+          case 0:
+            _events = await _listTable(
+              AppwriteBackendConfig.eventsCollectionId,
+              orderDescField: 'created_at',
+            );
+            break;
+          case 1:
+            _dailyVerses = await _listTable(
+              AppwriteBackendConfig.dailyVersesCollectionId,
+              orderDescField: 'date',
+            );
+            break;
+          case 2:
+            _testimonies = await _listTable(
+              AppwriteBackendConfig.testimoniesCollectionId,
+              orderDescField: 'created_at',
+            );
+            break;
+          case 3:
+            _giftSubmissions = await _listTable(
+              AppwriteBackendConfig.giftSubmissionsCollectionId,
+              orderDescField: 'created_at',
+            );
+            break;
+          case 4:
+            _missions = await _listTable(
+              AppwriteBackendConfig.missionsCollectionId,
+              orderDescField: 'created_at',
+            );
+            break;
+          case 5:
+            final libResults = await Future.wait([
+              _listTable(AppwriteBackendConfig.booksCollectionId,
+                  orderDescField: 'created_at'),
+              _listTable(AppwriteBackendConfig.articlesCollectionId,
+                  orderDescField: 'created_at'),
+            ]);
+            _books = libResults[0];
+            _articles = libResults[1];
+            break;
+        }
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+        });
+        return;
+      }
+
       final results = await Future.wait([
         _listTable(AppwriteBackendConfig.eventsCollectionId,
             orderDescField: 'created_at'),
@@ -178,40 +252,66 @@ class _AdminOperationsHubBodyState extends State<_AdminOperationsHubBody>
     }
   }
 
+  Widget _buildTabByIndex(int index) {
+    switch (index) {
+      case 0:
+        return _buildEventsTab();
+      case 1:
+        return _buildDailyVersesTab();
+      case 2:
+        return _buildTestimoniesTab();
+      case 3:
+        return _buildGiftSubmissionsTab();
+      case 4:
+        return _buildMissionsTab();
+      case 5:
+        return _buildLibraryTab();
+      default:
+        return _buildEventsTab();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tabIndex = widget.initialTab.clamp(0, 5);
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Operations & Content Hub',
+        title: widget.standalone
+            ? AdminOperationsHubScreen._standaloneTitles[tabIndex]
+            : 'Operations & Content Hub',
         showBackButton: true,
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: const [
-            Tab(icon: Icon(Icons.event_outlined), text: 'Events'),
-            Tab(icon: Icon(Icons.wb_sunny_outlined), text: 'Daily Verses'),
-            Tab(icon: Icon(Icons.verified_outlined), text: 'Testimonies'),
-            Tab(icon: Icon(Icons.card_giftcard_outlined), text: 'Gifts'),
-            Tab(icon: Icon(Icons.flag_outlined), text: 'Missions'),
-            Tab(icon: Icon(Icons.local_library_outlined), text: 'Library'),
-          ],
-        ),
+        bottom: widget.standalone
+            ? null
+            : TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabs: const [
+                  Tab(icon: Icon(Icons.event_outlined), text: 'Events'),
+                  Tab(icon: Icon(Icons.wb_sunny_outlined), text: 'Daily Verses'),
+                  Tab(icon: Icon(Icons.verified_outlined), text: 'Testimonies'),
+                  Tab(icon: Icon(Icons.card_giftcard_outlined), text: 'Gifts'),
+                  Tab(icon: Icon(Icons.flag_outlined), text: 'Missions'),
+                  Tab(icon: Icon(Icons.local_library_outlined), text: 'Library'),
+                ],
+              ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!))
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildEventsTab(),
-                    _buildDailyVersesTab(),
-                    _buildTestimoniesTab(),
-                    _buildGiftSubmissionsTab(),
-                    _buildMissionsTab(),
-                    _buildLibraryTab(),
-                  ],
-                ),
+              : widget.standalone
+                  ? _buildTabByIndex(tabIndex)
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildEventsTab(),
+                        _buildDailyVersesTab(),
+                        _buildTestimoniesTab(),
+                        _buildGiftSubmissionsTab(),
+                        _buildMissionsTab(),
+                        _buildLibraryTab(),
+                      ],
+                    ),
     );
   }
 
