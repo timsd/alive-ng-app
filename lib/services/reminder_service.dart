@@ -207,6 +207,7 @@ class ReminderService {
       channelName,
       channelDescription: channelDescription,
       icon: 'ic_notification',
+      largeIcon: const DrawableResourceAndroidBitmap('ic_notification_large'),
       color: _aliveGreen,
       importance: importance,
       priority: priority,

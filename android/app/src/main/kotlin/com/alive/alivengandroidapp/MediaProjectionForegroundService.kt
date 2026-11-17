@@ -111,6 +111,7 @@ class MediaProjectionForegroundService : Service() {
             .setContentTitle("ALIVE Meet")
             .setContentText("Sharing your screen in the meeting")
             .setSmallIcon(R.drawable.ic_notification)
+            .setColor(0xFF0F9A07.toInt())
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pendingIntent)
