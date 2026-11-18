@@ -542,31 +542,86 @@ class ProfileScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                ref.read(uploadedAvatarUrlProvider.notifier).state = null;
-                await AuthService.instance.signOut();
-                ref.invalidate(currentUserProfileProvider);
-                if (context.mounted) {
-                  context.go(AppConstants.authRoute);
-                }
-              } catch (e) {
-                ToastUtils.showError(e, 'Unable to sign out');
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+        titlePadding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+        title: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Sign Out',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
-            child: const Text('Sign Out'),
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(ctx),
+              tooltip: 'Close',
+              splashRadius: 20,
+            ),
+          ],
+        ),
+        content:
+            const Text('Are you sure you want to sign out of your account?'),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          SizedBox(
+            width: double.maxFinite,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      try {
+                        // 1. Reset in-memory avatar overrides and cached permissions
+                        ref.read(uploadedAvatarUrlProvider.notifier).state =
+                            null;
+                        ref.read(pendingAvatarBytesProvider.notifier).state =
+                            null;
+                        RoleAccessService.instance.clearCache();
+
+                        // 2. Sign out via AuthGateway (flushes Appwrite session, local storage, image cache & notifies authStateChanges stream)
+                        try {
+                          await ref.read(authGatewayProvider).signOut();
+                        } catch (e) {
+                          debugPrint('authGatewayProvider.signOut error: $e');
+                        }
+
+                        // 3. Invalidate all user and auth state providers
+                        ref.invalidate(currentUserProfileProvider);
+                        ref.invalidate(currentUserProvider);
+                        ref.invalidate(authStateProvider);
+
+                        // 5. Navigate cleanly to auth route
+                        if (context.mounted) {
+                          context.go(AppConstants.authRoute);
+                        }
+                      } catch (e) {
+                        debugPrint('Sign out error: $e');
+                        if (context.mounted) {
+                          context.go(AppConstants.authRoute);
+                        }
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                      foregroundColor: Theme.of(context).colorScheme.onError,
+                      minimumSize: const Size(0, 44),
+                    ),
+                    child: const Text('Sign Out'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -597,119 +652,201 @@ class ProfileScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: Icon(Icons.warning_amber_rounded,
-            size: 48, color: Theme.of(context).colorScheme.error),
-        title: const Text('Delete Account'),
+        titlePadding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded,
+                size: 24, color: Theme.of(context).colorScheme.error),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Delete Account',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(ctx),
+              tooltip: 'Close',
+              splashRadius: 20,
+            ),
+          ],
+        ),
         content: const Text(
           'This action is permanent and cannot be undone. '
           'All your data, profile information, reading history, and '
           'achievements will be permanently deleted.\n\n'
           'Are you absolutely sure?',
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final deleteController = TextEditingController();
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx2) => StatefulBuilder(
-                  builder: (ctx2, setState) => AlertDialog(
-                    title: const Text('Final Confirmation'),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Type DELETE below to confirm account deletion. '
-                          'A confirmation email will be sent to your inbox.',
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: deleteController,
-                          autofocus: true,
-                          textCapitalization: TextCapitalization.characters,
-                          decoration: const InputDecoration(
-                            labelText: 'Type DELETE',
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: (_) => setState(() {}),
-                        ),
-                      ],
+          SizedBox(
+            width: double.maxFinite,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 44),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx2, false),
-                        child: const Text('Cancel'),
-                      ),
-                      FilledButton(
-                        onPressed:
-                            deleteController.text.trim().toUpperCase() ==
-                                    'DELETE'
-                                ? () => Navigator.pop(ctx2, true)
-                                : null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.error,
-                        ),
-                        child: const Text('Delete Forever'),
-                      ),
-                    ],
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel'),
                   ),
                 ),
-              );
-              deleteController.dispose();
-              if (confirmed == true) {
-                try {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Row(
-                          children: [
-                            SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final deleteController = TextEditingController();
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx2) => StatefulBuilder(
+                          builder: (ctx2, setState) => AlertDialog(
+                            titlePadding:
+                                const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                            title: Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'Final Confirmation',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () => Navigator.pop(ctx2, false),
+                                  tooltip: 'Close',
+                                  splashRadius: 20,
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 12),
-                            Text('Deleting account and clearing session...'),
-                          ],
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Type DELETE below to confirm account deletion. '
+                                  'A confirmation email will be sent to your inbox.',
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: deleteController,
+                                  autofocus: true,
+                                  textCapitalization:
+                                      TextCapitalization.characters,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Type DELETE',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  onChanged: (_) => setState(() {}),
+                                ),
+                              ],
+                            ),
+                            actionsPadding:
+                                const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            actions: [
+                              SizedBox(
+                                width: double.maxFinite,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        style: OutlinedButton.styleFrom(
+                                          minimumSize: const Size(0, 44),
+                                        ),
+                                        onPressed: () =>
+                                            Navigator.pop(ctx2, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: FilledButton(
+                                        onPressed: deleteController.text
+                                                    .trim()
+                                                    .toUpperCase() ==
+                                                'DELETE'
+                                            ? () => Navigator.pop(ctx2, true)
+                                            : null,
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: Theme.of(context)
+                                              .colorScheme
+                                              .error,
+                                          foregroundColor: Theme.of(context)
+                                              .colorScheme
+                                              .onError,
+                                          minimumSize: const Size(0, 44),
+                                        ),
+                                        child: const Text('Delete Forever'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        duration: Duration(seconds: 4),
-                      ),
-                    );
-                  }
-                  await AuthService.instance.deleteAccount();
+                      );
+                      deleteController.dispose();
+                      if (confirmed == true) {
+                        try {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text(
+                                        'Deleting account and clearing session...'),
+                                  ],
+                                ),
+                                duration: Duration(seconds: 4),
+                              ),
+                            );
+                          }
+                          await AuthService.instance.deleteAccount();
 
-                  // Immediately reset in-memory avatar overrides, session cache & providers
-                  ref.read(uploadedAvatarUrlProvider.notifier).state = null;
-                  ref.read(pendingAvatarBytesProvider.notifier).state = null;
-                  RoleAccessService.instance.clearCache();
-                  try {
-                    await ref.read(authGatewayProvider).signOut();
-                  } catch (_) {}
-                  ref.invalidate(currentUserProfileProvider);
-                  ref.invalidate(currentUserProvider);
-                  ref.invalidate(authStateProvider);
+                          // Immediately reset in-memory avatar overrides, session cache & providers
+                          ref.read(uploadedAvatarUrlProvider.notifier).state =
+                              null;
+                          ref.read(pendingAvatarBytesProvider.notifier).state =
+                              null;
+                          RoleAccessService.instance.clearCache();
+                          try {
+                            await ref.read(authGatewayProvider).signOut();
+                          } catch (_) {}
+                          ref.invalidate(currentUserProfileProvider);
+                          ref.invalidate(currentUserProvider);
+                          ref.invalidate(authStateProvider);
 
-                  if (context.mounted) {
-                    context.go(AppConstants.authRoute);
-                  }
-                } catch (e) {
-                  ToastUtils.showError(e, 'Unable to delete account');
-                }
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+                          if (context.mounted) {
+                            context.go(AppConstants.authRoute);
+                          }
+                        } catch (e) {
+                          ToastUtils.showError(e, 'Unable to delete account');
+                        }
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                      foregroundColor: Theme.of(context).colorScheme.onError,
+                      minimumSize: const Size(0, 44),
+                    ),
+                    child: const Text('Delete My Account'),
+                  ),
+                ),
+              ],
             ),
-            child: const Text('Delete My Account'),
           ),
         ],
       ),
