@@ -1,11 +1,20 @@
 class AppConstants {
-  // App Information
+  // App Information (single source of truth: pubspec.yaml `version:`)
   static const String appName = 'ALIVE Nigeria';
-  static const String appVersion = '2.0.7+15';
+  static const String appVersion = String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: '2.0.10+20',
+  );
+  static String get appVersionName => appVersion.split('+').first;
+  static int get appBuildNumber => appVersion.contains('+')
+      ? (int.tryParse(appVersion.split('+').last) ?? 1)
+      : 1;
 
   // Navigation Routes
   static const String splashRoute = '/';
   static const String onboardingRoute = '/onboarding';
+  static const String oathRoute = '/oath';
+  static const String profileCompletionRoute = '/profile-completion';
   static const String homeRoute = '/home';
   static const String studyRoute = '/study';
   static const String dailyRoute = '/daily';
@@ -31,8 +40,8 @@ class AppConstants {
   static const String adminApprovalRoute = '/admin-approval';
   static const String adminApprovalLinkRoute = '/admin-approve';
   static const String leadershipDirectoryRoute = '/leadership-directory';
-  static const String sampleContentAdminRoute = '/admin-sample-content';
   static const String videoContentAdminRoute = '/admin-videos';
+  static const String adminBillboardRoute = '/admin-billboard';
   static const String studyGuideRoute = '/study-guide';
   static const String tractPodcastAdminRoute = '/tract-podcast-admin';
   static const String meetingFileSharingRoute = '/meeting-file-sharing';
@@ -65,6 +74,9 @@ class AppConstants {
   static const String eventsRoute = '/events';
   static const String announcementsRoute = '/announcements';
   static const String testimoniesRoute = '/testimonies';
+  static const String achievementsRoute = '/achievements';
+  static const String billboardRoute = '/billboard';
+  static const String project3dViewerRoute = '/project-3d-viewer';
   
 
   // Support Routes

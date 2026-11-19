@@ -61,6 +61,9 @@ jobs:
             echo "storeFile=android/app/upload-keystore.jks"
           } > android/key.properties
 
+      - name: Sync version from pubspec.yaml
+        run: node scripts/sync_version_from_pubspec.mjs
+
       - name: Build app bundle
         run: flutter build appbundle --release --no-tree-shake-icons --dart-define-from-file=config/production_env.json
 

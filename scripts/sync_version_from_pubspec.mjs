@@ -24,10 +24,16 @@ console.log(`📌 Single Source of Truth version from pubspec.yaml: ${currentVer
 const appConstantsPath = resolve(rootDir, 'lib/constants/app_constants.dart');
 if (existsSync(appConstantsPath)) {
   let content = readFileSync(appConstantsPath, 'utf8');
-  const updated = content.replace(
-    /static const String appVersion = '[^']+';/,
-    `static const String appVersion = '${currentVersion}';`
+  let updated = content.replace(
+    /(static const String appVersion = String\.fromEnvironment\([\s\S]*?defaultValue:\s*')[^']+(')/,
+    `$1${currentVersion}$2`
   );
+  if (updated === content) {
+    updated = content.replace(
+      /static const String appVersion = '[^']+';/,
+      `static const String appVersion = '${currentVersion}';`
+    );
+  }
   if (content !== updated) {
     writeFileSync(appConstantsPath, updated, 'utf8');
     console.log(`✅ Synced lib/constants/app_constants.dart -> ${currentVersion}`);

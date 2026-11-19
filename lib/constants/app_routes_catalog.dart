@@ -210,7 +210,7 @@ class AppRoutesCatalog {
 
     // Giving, Showcase & Info
     AppRouteOption(
-      path: '/billboard',
+      path: AppConstants.billboardRoute,
       label: 'Impact Hub & 3D Billboard Showcase',
       category: 'Giving & Info',
       keywords: ['showcase', '3d', 'project', 'impact hub', 'building'],
@@ -234,7 +234,7 @@ class AppRoutesCatalog {
       keywords: ['volunteer', 'skills', 'gift', 'service'],
     ),
     AppRouteOption(
-      path: '/achievements',
+      path: AppConstants.achievementsRoute,
       label: 'Achievements & Badges',
       category: 'Account & Info',
       keywords: ['badges', 'streaks', 'milestones', 'rewards'],
@@ -368,7 +368,7 @@ class AppRoutesCatalog {
       keywords: ['chat', 'tags', 'roles', 'admin'],
     ),
     AppRouteOption(
-      path: '/admin-billboard',
+      path: AppConstants.adminBillboardRoute,
       label: 'Billboard Admin',
       category: 'Leadership & Admin',
       keywords: ['billboard', '3d', 'showcase', 'admin'],
@@ -405,7 +405,6 @@ class AppRoutesCatalog {
     '/meeting-files',
     '/board',
     '/admin/board-decisions',
-    '/admin-sample-content',
     '/more',
   };
 

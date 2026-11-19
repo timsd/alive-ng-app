@@ -5,6 +5,7 @@ import '../../services/appwrite_facade.dart';
 import 'package:flutter/material.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../config/payment_config.dart';
+import '../../constants/app_constants.dart';
 import '../../main.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
@@ -1193,8 +1194,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         }
       } catch (_) {}
 
-      final latestVersion = (versionMap['latest_version'] ?? '2.0.7').toString();
-      final buildNumber = (versionMap['build_number'] ?? 15).toString();
+      final latestVersion =
+          (versionMap['latest_version'] ?? AppConstants.appVersionName).toString();
+      final buildNumber =
+          (versionMap['build_number'] ?? AppConstants.appBuildNumber).toString();
       final forceUpdate = versionMap['force_update'] == true;
       final updateUrl = (versionMap['update_url'] ?? '').toString();
 

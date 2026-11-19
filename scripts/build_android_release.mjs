@@ -70,8 +70,13 @@ async function prepareProductionJson() {
     }
   }
 
+  // Read single source of truth version from pubspec.yaml
+  const pubspecText = readFileSync(resolve(process.cwd(), 'pubspec.yaml'), 'utf8');
+  const pubspecVersion = (pubspecText.match(/^version:\s*([^\s#]+)/m)?.[1] || '2.0.10+20').trim();
+
   // Ensure all critical keys are present with fallbacks
   const defaults = {
+    APP_VERSION: pubspecVersion,
     APPWRITE_ENDPOINT: 'https://api.alivenigeria.org/v1',
     APPWRITE_PROJECT_ID: '6a3bef53002f5090dedf',
     APPWRITE_DATABASE_ID: '6a089307002e54291a32',
@@ -88,7 +93,7 @@ async function prepareProductionJson() {
     RECAPTCHA_SITE_KEY: '6LcKstkrAAAAAMWfR5Ki5eBh1TdCLQD-e7ofMi4S',
     GLITCHTIP_DSN: 'https://73d0ec10487c4a92b5ea6d5f2e97da8d@glitchtip.alivenigeria.org/1',
     GLITCHTIP_ENVIRONMENT: 'production',
-    GLITCHTIP_RELEASE: 'alive-ng-app@2.0.10+20',
+    GLITCHTIP_RELEASE: `alive-ng-app@${pubspecVersion}`,
     GLITCHTIP_TRACES_SAMPLE_RATE: '0',
     FIREBASE_WEB_API_KEY: 'AIzaSyDmpl9Idp9Q0ult4BfWPg5J7A1URQOpDoU',
     FIREBASE_WEB_APP_ID: '1:234909240985:web:9d703098e9fcce3e8e3208',
@@ -111,6 +116,9 @@ async function prepareProductionJson() {
   if (envVars.GLITCHTIP_RELEASE) {
     defineMap.GLITCHTIP_RELEASE = envVars.GLITCHTIP_RELEASE;
   }
+  // Always keep APP_VERSION locked to pubspec.yaml
+  defineMap.APP_VERSION = pubspecVersion;
+  defineMap.GLITCHTIP_RELEASE = `alive-ng-app@${pubspecVersion}`;
 
   writeFileSync(configJsonPath, JSON.stringify(defineMap, null, 2), 'utf8');
   console.log(`✅ Production environment definition written to: ${configJsonPath}`);

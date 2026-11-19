@@ -437,13 +437,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(
-        path: '/oath',
+        path: AppConstants.oathRoute,
         builder: (context, state) => const OathScreen(),
       ),
 
       // Profile Completion Route — shown after Google sign-in for new users
       GoRoute(
-        path: '/profile-completion',
+        path: AppConstants.profileCompletionRoute,
         builder: (context, state) => const ProfileCompletionScreen(),
       ),
 
@@ -722,7 +722,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
-            path: '/meet',
+            path: AppConstants.meetRoute,
             builder: (context, state) {
               final room = state.uri.queryParameters['room'] ?? AliveMeetConfig.communityRoom;
               return LiveKitMeetingScreen(customRoomName: room);
@@ -945,7 +945,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
           // Achievements Route
           GoRoute(
-            path: '/achievements',
+            path: AppConstants.achievementsRoute,
             builder: (context, state) => const AchievementScreen(),
           ),
 
@@ -981,17 +981,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Admin Video Content management (single source of truth for videos)
           GoRoute(
             path: AppConstants.videoContentAdminRoute,
-            builder: (context, state) => const VideoContentAdminScreen(),
-            redirect: (context, state) {
-              final roleService = RoleAccessService.instance;
-              if (!roleService.canAccessAdmin()) {
-                return '/home';
-              }
-              return null;
-            },
-          ),
-          GoRoute(
-            path: AppConstants.sampleContentAdminRoute,
             builder: (context, state) => const VideoContentAdminScreen(),
             redirect: (context, state) {
               final roleService = RoleAccessService.instance;
@@ -1051,7 +1040,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/project-3d-viewer',
+        path: AppConstants.project3dViewerRoute,
         builder: (context, state) {
           final url = state.uri.queryParameters['url'] ?? '';
           return Project3DViewerScreen(viewerUrl: url);
@@ -1062,7 +1051,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const Project3DViewerScreen(),
       ),
       GoRoute(
-        path: '/billboard',
+        path: AppConstants.billboardRoute,
         builder: (context, state) => const Project3DViewerScreen(),
       ),
       GoRoute(
@@ -1070,7 +1059,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const Project3DViewerScreen(),
       ),
       GoRoute(
-        path: '/admin-billboard',
+        path: AppConstants.adminBillboardRoute,
         builder: (context, state) => const AdminBillboardScreen(),
       ),
     ],

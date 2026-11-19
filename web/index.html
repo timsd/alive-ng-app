@@ -57,7 +57,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="preload" as="script" href="flutter_bootstrap.js">
   <!-- Cache-busting: forces browsers to fetch fresh assets after each deploy -->
-  <meta name="version" content="2.0.9+20">
+  <meta name="version" content="2.0.10+20">
   <script>
     // Clean stale flutter service workers while protecting sqflite SQLite worker for offline Bible
     (function () {
@@ -85,7 +85,8 @@
         }
         // Bust browser HTTP disk cache for icon fonts & font manifest so newly added icons never render blank
         var fontVersionKey = 'alive_icon_font_ver';
-        var currentFontVer = '2.0.9+20';
+        var versionMeta = document.querySelector('meta[name="version"]');
+        var currentFontVer = (versionMeta && versionMeta.getAttribute('content')) || '';
         if (window.localStorage && localStorage.getItem(fontVersionKey) !== currentFontVer) {
           var fontAssets = [
             'assets/FontManifest.json',

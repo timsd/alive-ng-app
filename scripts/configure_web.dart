@@ -47,6 +47,45 @@ void main() async {
   // web/firebase-messaging-sw.js; that worker never worked (no Web app, no VAPID
   // key) and has been removed. The FIREBASE_WEB_* dart-defines are gone with it.
 
+  // Always sync app version from pubspec.yaml (single source of truth) into
+  // lib/constants/app_constants.dart and web/index.html before building web.
+  final pubspecFile = File('pubspec.yaml');
+  if (await pubspecFile.exists()) {
+    final pubspecText = await pubspecFile.readAsString();
+    final versionMatch =
+        RegExp(r'^version:\s*([^\s#]+)', multiLine: true).firstMatch(pubspecText);
+    final pubspecVersion = versionMatch?.group(1)?.trim();
+    if (pubspecVersion != null && pubspecVersion.isNotEmpty) {
+      final constantsFile = File('lib/constants/app_constants.dart');
+      if (await constantsFile.exists()) {
+        final orig = await constantsFile.readAsString();
+        final updated = orig.replaceFirstMapped(
+          RegExp(
+            r"(static const String appVersion = String\.fromEnvironment\([\s\S]*?defaultValue:\s*')[^']+(')",
+          ),
+          (m) => '${m.group(1)}$pubspecVersion${m.group(2)}',
+        );
+        if (updated != orig) {
+          await constantsFile.writeAsString(updated);
+          stdout.writeln('Synced app_constants.dart version -> $pubspecVersion');
+        }
+      }
+
+      final indexFile = File('web/index.html');
+      if (await indexFile.exists()) {
+        final orig = await indexFile.readAsString();
+        final updated = orig.replaceFirst(
+          RegExp(r'<meta name="version" content="[^"]*">'),
+          '<meta name="version" content="$pubspecVersion">',
+        );
+        if (updated != orig) {
+          await indexFile.writeAsString(updated);
+          stdout.writeln('Synced web/index.html version -> $pubspecVersion');
+        }
+      }
+    }
+  }
+
   // Files to update
   final files = [
     'web/index.html',
