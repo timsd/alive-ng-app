@@ -78,6 +78,28 @@ class AppUser {
     );
   }
 
+  /// Creates an [AppUser] from a JSON map (for offline persistence).
+  factory AppUser.fromJson(Map<String, dynamic> json) {
+    return AppUser(
+      uid: json['uid'] as String? ?? json['id'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      displayName: json['displayName'] as String? ?? json['name'] as String?,
+      photoUrl: json['photoUrl'] as String? ?? json['photoURL'] as String?,
+      isEmailVerified: json['isEmailVerified'] as bool? ?? false,
+      isAnonymous: json['isAnonymous'] as bool? ?? false,
+    );
+  }
+
+  /// Converts this [AppUser] into a JSON map (for offline persistence).
+  Map<String, dynamic> toJson() => {
+        'uid': uid,
+        'email': email,
+        'displayName': displayName,
+        'photoUrl': photoUrl,
+        'isEmailVerified': isEmailVerified,
+        'isAnonymous': isAnonymous,
+      };
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

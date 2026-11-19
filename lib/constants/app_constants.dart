@@ -63,6 +63,7 @@ class AppConstants {
   static const String prayerWallRoute = '/prayer-wall';
   static const String privatePrayerRoomRoute = '/private-prayer-room';
   static const String eventsRoute = '/events';
+  static const String announcementsRoute = '/announcements';
   static const String testimoniesRoute = '/testimonies';
   
 

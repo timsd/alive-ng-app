@@ -41,7 +41,10 @@ class NotificationService {
   static GlobalKey<NavigatorState> get navigatorKey => rootNavigatorKey;
 
   bool _isInitialized = false;
+  bool _fcmListenersAttached = false;
+  bool _isRegisteringPush = false;
   String? _currentToken;
+  String? _lastRegisteredKey;
 
   // Initialize notification service
   Future<void> initialize() async {
@@ -68,24 +71,10 @@ class NotificationService {
       );
 
       // Listen for auth state changes BEFORE the (slow) permission/token steps.
-      // The session restore on startup emits its event while those steps are
-      // still awaiting, and a broadcast stream does not replay it -- attaching
-      // the listener afterwards meant returning members never got a push target.
+      // Note: AppwriteAuthGateway also calls onAuthUserChanged() directly so
+      // login/signup/OAuth via Riverpod always registers the push target too.
       _authService.authStateChanges.listen((user) async {
-        if (user != null && _currentToken != null && _currentToken!.isNotEmpty) {
-          _logger.info('User authenticated; registering push token for ${user.uid}');
-          _safeRegister(_currentToken!);
-        }
-        if (user != null) {
-          try {
-            final profile = await _authService.getCurrentUserProfile();
-            await updateAdminTopicSubscriptions(profile?.role);
-          } catch (e) {
-            _logger.warning('Could not resolve user profile for admin topics: $e');
-          }
-        } else {
-          await updateAdminTopicSubscriptions(null);
-        }
+        await onAuthUserChanged(user);
       });
 
       // Ensure Android's default FCM notification channel exists with high importance
@@ -104,11 +93,8 @@ class NotificationService {
         );
       }
 
-      // Request notification permissions
-      await _requestPermissions();
-
-      // Register push token with Appwrite via FCM transport
-      await _registerPushToken();
+      // Auto-register push immediately on download/install (both guest & signed-in)
+      await ensurePushRegistered(requestPermission: true);
 
       _isInitialized = true;
     } catch (e) {
@@ -116,112 +102,207 @@ class NotificationService {
     }
   }
 
-  // --- Permission handling (Appwrite-native) ---
-
-  Future<bool> _requestPermissions() async {
-    final android =
-        await _localNotifications
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >()
-            ?.requestNotificationsPermission();
-    final ios =
-        await _localNotifications
-            .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin
-            >()
-            ?.requestPermissions(
-              alert: true,
-              badge: true,
-              sound: true,
-            );
-    final granted = (android == true || ios == true);
-    if (!granted) {
-      _logger.warning('Notification permissions not granted');
+  /// Called whenever authentication state changes (from AppwriteAuthGateway or
+  /// AuthService) so newly signed-up / signed-in mobile users immediately link
+  /// their device push target to their Appwrite account & `all_users` topic.
+  Future<void> onAuthUserChanged(AppUser? user) async {
+    if (kIsWeb) return;
+    try {
+      if (user != null) {
+        _logger.info(
+          'Auth user active (${user.uid}); syncing mobile push registration',
+        );
+        await ensurePushRegistered(
+          userId: user.uid,
+          userEmail: user.email,
+          force: true,
+        );
+        try {
+          final profile = await _authService.getCurrentUserProfile();
+          await updateAdminTopicSubscriptions(profile?.role);
+        } catch (e) {
+          _logger.warning('Could not resolve user profile for admin topics: $e');
+        }
+      } else {
+        await updateAdminTopicSubscriptions(null);
+        // Keep device reachable for `all_users` broadcasts even after sign-out.
+        await ensurePushRegistered(force: true);
+      }
+    } catch (e) {
+      _logger.warning('onAuthUserChanged push sync error: $e');
     }
-    return granted;
+  }
+
+  /// Idempotently ensures this mobile device has an FCM token registered with
+  /// Appwrite Messaging (`all_users` topic). Safe to call on launch, login, and
+  /// `AppLifecycleState.resumed` — retries automatically if an earlier attempt
+  /// failed due to offline startup, delayed APNs token, or newly granted permission.
+  Future<String?> ensurePushRegistered({
+    String? userId,
+    String? userEmail,
+    bool requestPermission = false,
+    bool force = false,
+  }) async {
+    if (kIsWeb) {
+      return _registerWebPushToken();
+    }
+    if (_isRegisteringPush && !force) return null;
+    _isRegisteringPush = true;
+    try {
+      return await _registerPushToken(
+        userId: userId,
+        userEmail: userEmail,
+        requestPermission: requestPermission,
+        force: force,
+      );
+    } finally {
+      _isRegisteringPush = false;
+    }
   }
 
   // --- Push token registration (Appwrite via FCM transport) ---
 
-  Future<String?> registerPushToken() => _registerPushToken();
+  Future<String?> registerPushToken() =>
+      ensurePushRegistered(requestPermission: true, force: true);
 
   /// Registers [token] with Appwrite and logs (rather than drops) any failure.
-  /// Used from stream listeners, where an unawaited throw would vanish.
-  Future<String?> _safeRegister(String token) async {
+  Future<String?> _safeRegister(
+    String token, {
+    String? userId,
+    String? userEmail,
+  }) async {
     try {
-      return await AppwritePushService.instance.registerToken(token);
+      return await AppwritePushService.instance.registerToken(
+        token,
+        userId: userId,
+        userEmail: userEmail,
+      );
     } catch (e) {
       _logger.error('Appwrite push target registration failed', e);
       return null;
     }
   }
 
-  Future<String?> _registerPushToken() async {
+  void _attachFcmListenersOnce(FirebaseMessaging fcm) {
+    if (_fcmListenersAttached) return;
+    _fcmListenersAttached = true;
+
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // Listen for token refreshes
+    fcm.onTokenRefresh.listen((newToken) async {
+      _logger.info('FCM token refreshed');
+      _currentToken = newToken;
+      _lastRegisteredKey = null;
+      final targetId = await _safeRegister(newToken);
+      if (targetId != null) {
+        _lastRegisteredKey = '${_authService.currentUser?.uid ?? 'guest'}:$newToken';
+      }
+      try {
+        await fcm.subscribeToTopic('all_users');
+      } catch (_) {}
+    });
+
+    // Listen for foreground FCM messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      _logger.info('Foreground FCM message received: ${message.messageId}');
+      final notification = message.notification;
+      final data = message.data;
+      final title =
+          notification?.title ?? (data['title'] as String?) ?? 'ALIVE Nigeria';
+      final body = notification?.body ?? (data['body'] as String?) ?? '';
+      showNotification(
+        id: message.hashCode,
+        title: title,
+        body: body,
+        payload: jsonEncode(data),
+      );
+    });
+
+    // Listen for notification open events from background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _logger.info('Notification tapped in background: ${message.messageId}');
+      handleMessageOpenedApp(message.data);
+    });
+  }
+
+  Future<String?> _registerPushToken({
+    String? userId,
+    String? userEmail,
+    bool requestPermission = false,
+    bool force = false,
+  }) async {
     if (kIsWeb) {
       return _registerWebPushToken();
     }
 
     try {
       final fcm = FirebaseMessaging.instance;
+      final firstAttach = !_fcmListenersAttached;
+      _attachFcmListenersOnce(fcm);
 
-      // Register background handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-      // Request notification permissions via FCM (critical on iOS & Android 13+)
-      final notifSettings = await fcm.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
-      _logger.info('FCM authorization status: ${notifSettings.authorizationStatus}');
-
-      // On iOS, wait for APNs token if needed
-      if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final apnsToken = await fcm.getAPNSToken();
-        _logger.info('APNs token status: ${apnsToken != null ? "obtained" : "pending"}');
+      // Request notification permissions cleanly once via FCM (handles iOS + Android 13+)
+      if (requestPermission) {
+        final notifSettings = await fcm.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+        _logger.info(
+          'FCM authorization status: ${notifSettings.authorizationStatus}',
+        );
       }
 
-      final token = await fcm.getToken();
+      // On iOS, APNs token may take a moment after first install
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        String? apnsToken = await fcm.getAPNSToken();
+        for (int attempt = 0; attempt < 3 && apnsToken == null; attempt++) {
+          await Future<void>.delayed(const Duration(seconds: 1));
+          apnsToken = await fcm.getAPNSToken();
+        }
+        _logger.info(
+          'APNs token status: ${apnsToken != null ? "obtained" : "pending"}',
+        );
+      }
+
+      String? token = _currentToken;
+      if (token == null || token.isEmpty || force) {
+        token = await fcm.getToken();
+      }
       if (token != null && token.isNotEmpty) {
         _currentToken = token;
-        _logger.info('FCM token acquired: ${token.substring(0, token.length > 8 ? 8 : token.length)}...');
-        final targetId = await _safeRegister(token);
+        _logger.info(
+          'FCM token acquired: ${token.substring(0, token.length > 8 ? 8 : token.length)}...',
+        );
 
-        // Listen for token refreshes
-        fcm.onTokenRefresh.listen((newToken) async {
-          _logger.info('FCM token refreshed');
-          _currentToken = newToken;
-          await _safeRegister(newToken);
-        });
+        final registrationScope = userId ?? _authService.currentUser?.uid ?? 'guest';
+        final registrationKey = '$registrationScope:$token';
 
-        // Listen for foreground FCM messages
-        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-          _logger.info('Foreground FCM message received: ${message.messageId}');
-          final notification = message.notification;
-          final data = message.data;
-          final title = notification?.title ?? (data['title'] as String?) ?? 'ALIVE Nigeria';
-          final body = notification?.body ?? (data['body'] as String?) ?? '';
-          showNotification(
-            id: message.hashCode,
-            title: title,
-            body: body,
-            payload: jsonEncode(data),
+        String? targetId;
+        if (force || _lastRegisteredKey != registrationKey) {
+          targetId = await _safeRegister(
+            token,
+            userId: userId,
+            userEmail: userEmail,
           );
-        });
+          if (targetId != null) {
+            _lastRegisteredKey = registrationKey;
+          }
+          try {
+            await fcm.subscribeToTopic('all_users');
+          } catch (_) {}
+        }
 
-        // Listen for notification open events from background
-        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-          _logger.info('Notification tapped in background: ${message.messageId}');
-          handleMessageOpenedApp(message.data);
-        });
-
-        // Check if launched from terminated state via notification click
-        final initialMessage = await fcm.getInitialMessage();
-        if (initialMessage != null) {
-          _logger.info('Launched from terminated state by push notification: ${initialMessage.messageId}');
-          handleMessageOpenedApp(initialMessage.data);
+        // Check if launched from terminated state via notification click (only once)
+        if (firstAttach) {
+          final initialMessage = await fcm.getInitialMessage();
+          if (initialMessage != null) {
+            _logger.info(
+              'Launched from terminated state by push notification: ${initialMessage.messageId}',
+            );
+            handleMessageOpenedApp(initialMessage.data);
+          }
         }
 
         return targetId;
@@ -349,9 +430,11 @@ class NotificationService {
     _logger.info('Notification opened: ${data.keys.toList()}');
     dismissActivePopups();
     // Navigate based on the data payload — check route first, otherwise check type/id
-    final route = data['route'] as String?;
-    if (route != null && navigatorKey.currentState != null) {
-      navigatorKey.currentState!.context.go(route);
+    final rawRoute = (data['route'] as String?)?.trim();
+    if (rawRoute != null &&
+        rawRoute.startsWith('/') &&
+        navigatorKey.currentState != null) {
+      navigatorKey.currentState!.context.go(rawRoute);
     } else {
       _navigateFromNotification(data);
     }
@@ -856,6 +939,43 @@ class NotificationService {
   // Request notification permissions
   Future<bool> requestPermissions() async {
     return await _requestPermissions();
+  }
+
+  Future<bool> _requestPermissions() async {
+    if (!kIsWeb) {
+      try {
+        final notifSettings = await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+        final status = notifSettings.authorizationStatus;
+        if (status == AuthorizationStatus.authorized ||
+            status == AuthorizationStatus.provisional) {
+          return true;
+        }
+      } catch (e) {
+        _logger.warning('FCM requestPermission fallback: $e');
+      }
+    }
+    final android = await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+    final ios = await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+    final granted = (android == true || ios == true);
+    if (!granted) {
+      _logger.warning('Notification permissions not granted');
+    }
+    return granted;
   }
 }
 

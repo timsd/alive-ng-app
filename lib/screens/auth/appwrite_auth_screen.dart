@@ -19,6 +19,7 @@ import '../../models/app_models.dart';
 import '../../models/auth_models.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../utils/error_handler.dart';
+import '../../utils/toast_utils.dart';
 import 'package:flutter/foundation.dart';
 
 class AppwriteAuthScreen extends ConsumerStatefulWidget {
@@ -190,6 +191,32 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             // Warm up offline Bible database immediately on login
             unawaited(OfflineBibleService().prewarmBundle());
             context.go(AppConstants.homeRoute);
+          } else {
+            // Check if error is network/offline related
+            final errStr = (state.error ?? '').toString().toLowerCase();
+            final isOffline = errStr.contains('network') ||
+                errStr.contains('connection') ||
+                errStr.contains('unable to connect') ||
+                errStr.contains('socketexception') ||
+                errStr.contains('failed host lookup');
+
+            if (isOffline) {
+              // Sign in offline using locally verified biometrics!
+              final email = credentials['email']!;
+              final offlineUser = AppUser(
+                uid: 'offline_${email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}',
+                email: email,
+                displayName: email.split('@').first,
+                isEmailVerified: true,
+              );
+              await authProvider.signInOffline(offlineUser);
+              if (mounted) {
+                ref.read(isGuestModeProvider.notifier).state = false;
+                unawaited(OfflineBibleService().prewarmBundle());
+                ToastUtils.showInfo('Signed in offline with Biometrics');
+                context.go(AppConstants.homeRoute);
+              }
+            }
           }
         }
       }
@@ -261,10 +288,20 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             displayMsg =
                 'This domain is not authorized for Google Sign-In. Please contact the app admin.';
           } else {
-            displayMsg = ErrorHandler.getUserFriendlyMessage(
-              error,
-              'Authentication failed. Please check your credentials and try again.',
-            );
+            final isOffline = rawError.contains('network') ||
+                rawError.contains('connection') ||
+                rawError.contains('unable to connect') ||
+                rawError.contains('socketexception') ||
+                rawError.contains('failed host lookup');
+            if (isOffline) {
+              displayMsg =
+                  'You appear to be offline. If you enabled Biometrics, tap the fingerprint icon below to sign in offline, or tap "Continue As Guest".';
+            } else {
+              displayMsg = ErrorHandler.getUserFriendlyMessage(
+                error,
+                'Authentication failed. Please check your credentials and try again.',
+              );
+            }
           }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -358,7 +395,16 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                       if (_isBiometricAvailable && !_isSignUp)
                         _buildBiometricButton(context, translate),
 
-                      const Spacer(),
+                      SizedBox(
+                        height: compactSignIn
+                            ? 12.0
+                            : ResponsiveUtils.getResponsiveValue(
+                                context: context,
+                                mobile: 18.0,
+                                tablet: 22.0,
+                                desktop: 26.0,
+                              ),
+                      ),
 
                       // Guest Access
                       _buildGuestAccessButton(context, translate, signInState),
@@ -415,12 +461,12 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
 
         SizedBox(
           height: compactSignIn
-              ? 8.0
+              ? 22.0
               : ResponsiveUtils.getResponsiveValue(
                   context: context,
-                  mobile: 16.0,
-                  tablet: 18.0,
-                  desktop: 20.0,
+                  mobile: 24.0,
+                  tablet: 28.0,
+                  desktop: 32.0,
                 ),
         ),
 
@@ -1407,31 +1453,65 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     String Function(String) translate,
   ) {
     final primaryColor = Theme.of(context).colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
-      padding: const EdgeInsets.only(top: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Center(
-        child: OutlinedButton.icon(
-          onPressed: _isLoading ? null : _authenticateWithBiometrics,
-          icon: Icon(
-            Icons.fingerprint_rounded,
-            size: 22,
-            color: primaryColor,
-          ),
-          label: Text(
-            translate('use_biometric_auth'),
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: primaryColor,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _isLoading ? null : _authenticateWithBiometrics,
+                borderRadius: BorderRadius.circular(32),
+                splashColor: primaryColor.withValues(alpha: 0.2),
+                child: Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : primaryColor.withValues(alpha: 0.08),
+                    border: Border.all(
+                      color: primaryColor.withValues(alpha: 0.45),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryColor.withValues(alpha: 0.15),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.fingerprint_rounded,
+                      size: 32,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-            side: BorderSide(color: primaryColor.withValues(alpha: 0.35)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: _isLoading ? null : _authenticateWithBiometrics,
+              child: Text(
+                translate('use_biometric_auth'),
+                style: TextStyle(
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.w600,
+                  color: primaryColor,
+                  letterSpacing: 0.2,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

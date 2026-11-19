@@ -1,34 +1,21 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../../widgets/modern_dropdown.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../widgets/custom_app_bar.dart';
-import '../../widgets/bible_reference_modal_sheet.dart';
-import '../../widgets/scripture_rich_text.dart';
-import '../../widgets/custom_image.dart';
 import '../../services/interactive_lessons_service.dart';
 import '../../services/pdf_extractor_service.dart';
-import '../../services/auth_service.dart';
-import '../../services/discipleship_service.dart';
-import '../../models/discipleship_models.dart';
-import '../../config/default_content_data.dart';
-import 'components/lesson_reader_widgets.dart';
-import 'components/reflection_input.dart';
-import 'components/verse_quote_card.dart';
 
-/// Full interactive study screen for Lesson 1: Something We Can Trust (What The Bible Says Series)
-/// as well as any dynamically extracted Tract / Interactive Bible Study uploaded by Admins.
-/// Implements dynamic brand colour palettes across sections, interactive reflection inputs,
-/// clickable Bible verse popups, decision buttons, study commitment, and Discipleship Tracker sync.
 class InteractiveLessonReaderScreen extends StatefulWidget {
-  final String lessonId;
-  final String title;
+  final InteractiveLessonItem? lesson;
+  final String? lessonId;
+  final String? title;
   final Map<String, dynamic>? lessonData;
 
   const InteractiveLessonReaderScreen({
     super.key,
-    this.lessonId = 'lesson_something_we_can_trust',
-    this.title = 'Lesson 1: Something We Can Trust',
+    this.lesson,
+    this.lessonId,
+    this.title,
     this.lessonData,
   });
 
@@ -39,844 +26,401 @@ class InteractiveLessonReaderScreen extends StatefulWidget {
 
 class _InteractiveLessonReaderScreenState
     extends State<InteractiveLessonReaderScreen> {
-  final Map<String, TextEditingController> _controllers = {};
-  final Map<String, bool> _prophecyChecked = {};
-  final Map<int, bool> _messianicStudied = {};
-  final Map<int, bool> _tipChecked = {};
-  List<ExtractedLessonSection> _dynamicSections = [];
+  // Brand Emerald & Gold Design System Colors (from Lesson HTML / Design System)
+  static const Color _brandDeep = Color(0xFF032B20);
+  static const Color _brand900 = Color(0xFF064E3B);
+  static const Color _brand800 = Color(0xFF14532D);
+  static const Color _brand700 = Color(0xFF166534);
+  static const Color _brand50 = Color(0xFFF0FDF4);
+  static const Color _gold500 = Color(0xFFEAB308);
+  static const Color _gold400 = Color(0xFFFACC15);
+  static const Color _bgSurface = Color(0xFFF5F7F5);
 
-  bool get _isLesson1 =>
-      widget.lessonId == 'lesson_something_we_can_trust' ||
-      widget.title.toLowerCase().contains('something we can trust');
+  late InteractiveLessonItem _resolvedLesson;
+  late List<ExtractedLessonSection> _sections;
+  late Map<String, dynamic> _lessonJson;
+  late String _enquiryPhone;
+  late String _heroVerse;
+  late String _heroVerseRef;
+  late String _introHeading;
+  late String _introText;
+  late String _introHighlight;
+  late List<Map<String, String>> _decisionQuestions;
+  late String _decisionQuote;
+  late String _commitmentTitle;
+  late String _commitmentText;
 
-  bool get _isLesson2 =>
-      widget.lessonId.contains('1794719347722') ||
-      widget.title.toLowerCase().contains('searching the scriptures');
-
-  String get _storagePrefix => _isLesson1
-      ? 'interactive_lesson_1_'
-      : (_isLesson2
-          ? 'interactive_lesson_2_'
-          : 'interactive_lesson_${widget.lessonId}_');
-
-  bool? _haveBible;
-  bool? _studyBible;
-  bool? _believeBible;
-  bool? _dedicateDailyStudy;
-  bool _commitmentPrayer = false;
-
+  // Interactive User State (Persisted to SharedPreferences)
+  final Map<String, TextEditingController> _textControllers = {};
+  final Map<String, bool> _checkboxStates = {};
+  final Map<String, bool?> _decisionStates = {};
+  final Map<int, String> _tableSearchQueries = {};
+  bool _commitmentChecked = false;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _prophecySearchController = TextEditingController();
 
-  DiscipleshipLevel _selectedDiscipleshipLevel = DiscipleshipLevel.prospect;
-  List<DiscipleshipContact> _userContacts = [];
-  DiscipleshipContact? _matchedContact;
-  int _matchedContactStudyCount = 0;
+  double _completionRatio = 0.0;
+  bool _showSavedBanner = false;
 
-  double _progress = 0.0;
-  bool _showSavedNotification = false;
-  bool _isSaving = false;
-
-  // Messianic prophecies table
-  final List<Map<String, String>> _allMessianicProphecies = DefaultContentData.messianicProphecies;
-
-  List<Map<String, String>> _filteredMessianicProphecies = [];
+  String get _storageKey => 'alive_nigeria_notes_${_resolvedLesson.id}';
 
   @override
   void initState() {
     super.initState();
-    _filteredMessianicProphecies = List.from(_allMessianicProphecies);
+    _resolveLessonItem();
+    _initializeLessonStructure();
+    _loadSavedUserNotes();
+  }
 
-    if (_isLesson1) {
-      for (int i = 1; i <= 7; i++) {
-        _controllers['q$i'] = TextEditingController();
-      }
-      _controllers['q8_a'] = TextEditingController();
-      _controllers['q8_b'] = TextEditingController();
-      _controllers['q8_c'] = TextEditingController();
-    } else if (_isLesson2) {
-      _dynamicSections = _buildLesson2Sections();
-      for (final sec in _dynamicSections) {
-        if (sec.hasInputTarget) {
-          _controllers['q${sec.number}'] = TextEditingController();
-        }
-      }
+  void _resolveLessonItem() {
+    if (widget.lesson != null) {
+      _resolvedLesson = widget.lesson!;
+    } else if (widget.lessonData != null) {
+      _resolvedLesson = InteractiveLessonItem.fromJson(widget.lessonData!);
     } else {
-      final metadata = widget.lessonData?['metadata'];
-      final rawInteractive = metadata is Map
-          ? metadata['interactive_sections']
-          : null;
-      if (rawInteractive != null) {
-        try {
-          final decoded = rawInteractive is String
-              ? jsonDecode(rawInteractive)
-              : rawInteractive;
-          if (decoded is List) {
-            _dynamicSections = decoded
-                .whereType<Map>()
-                .map((m) => ExtractedLessonSection.fromJson(
-                    Map<String, dynamic>.from(m)))
-                .toList();
-          }
-        } catch (e) {
-          debugPrint('Error parsing interactive_sections metadata: $e');
-        }
-      }
-
-      if (_dynamicSections.isEmpty) {
-        final storedSections =
-            widget.lessonData?['interactiveSections'] is List
-                ? widget.lessonData!['interactiveSections'] as List
-                : InteractiveLessonsService.instance.lessons
-                    .where((l) => l.id == widget.lessonId)
-                    .map((l) => l.interactiveSections)
-                    .firstOrNull;
-        if (storedSections != null && storedSections.isNotEmpty) {
-          _dynamicSections = storedSections
-              .whereType<Map>()
-              .map((m) => ExtractedLessonSection.fromJson(
-                  Map<String, dynamic>.from(m)))
-              .toList();
-        }
-      }
-
-      if (_dynamicSections.isEmpty) {
-        final rawContent = widget.lessonData?['content']?.toString() ??
-            InteractiveLessonsService.instance.lessons
-                .where((l) => l.id == widget.lessonId)
-                .map((l) => l.content)
-                .firstOrNull ??
-            widget.lessonData?['description']?.toString() ??
-            '';
-        final seed = widget.title.codeUnits
-            .fold<int>(0, (prev, elem) => prev + elem);
-        _dynamicSections = PdfExtractorService.parseInteractiveSections(
-          rawContent,
-          fallbackTitle: widget.title,
-          basePaletteIndex: seed,
-        );
-      }
-      for (final sec in _dynamicSections) {
-        if (sec.hasInputTarget) {
-          _controllers['q${sec.number}'] = TextEditingController();
-        }
-      }
-      if (_controllers.isEmpty) {
-        _controllers['q1'] = TextEditingController();
-      }
+      final serviceLessons = InteractiveLessonsService.instance.lessons;
+      final found = serviceLessons.firstWhere(
+        (l) => l.id == widget.lessonId,
+        orElse: () => InteractiveLessonItem(
+          id: widget.lessonId ?? 'lesson_something_we_can_trust',
+          title: widget.title ?? 'Lesson 1: Something We Can Trust',
+          description: '',
+          category: 'Bible Study',
+          level: 'Beginner',
+          duration: '30 min',
+          content: '',
+        ),
+      );
+      _resolvedLesson = found;
     }
-
-    _loadSavedResponses();
-    _loadDisciples();
   }
 
   @override
   void dispose() {
-    for (var c in _controllers.values) {
+    for (final c in _textControllers.values) {
       c.dispose();
     }
     _nameController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
-    _prophecySearchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadSavedResponses() async {
-    final prefs = await SharedPreferences.getInstance();
-    final prefix = _storagePrefix;
+  void _initializeLessonStructure() {
+    // 1. Load pre-parsed interactiveSections if available; otherwise parse on the fly
+    if (_resolvedLesson.interactiveSections.isNotEmpty) {
+      _sections = _resolvedLesson.interactiveSections
+          .map((m) => ExtractedLessonSection.fromJson(m))
+          .toList();
+    } else {
+      final extracted = PdfExtractorService().structureAsWordPressContent(
+        _resolvedLesson.content,
+        fallbackTitle: _resolvedLesson.title,
+      );
+      _sections = extracted.interactiveSections;
+      _lessonJson = extracted.lessonJson;
+    }
 
-    setState(() {
-      for (final key in _controllers.keys) {
-        final val = prefs.getString('$prefix$key');
-        if (val != null) _controllers[key]?.text = val;
-      }
+    _lessonJson = _resolvedLesson.lessonJson ??
+        PdfExtractorService()
+            .structureAsWordPressContent(
+              _resolvedLesson.content,
+              fallbackTitle: _resolvedLesson.title,
+            )
+            .lessonJson;
 
-      _nameController.text = prefs.getString('${prefix}name') ?? '';
-      _phoneController.text = prefs.getString('${prefix}phone') ?? '';
+    _enquiryPhone = (_lessonJson['phone'] ?? '07014331481').toString();
 
-      if (prefs.containsKey('${prefix}haveBible')) {
-        _haveBible = prefs.getBool('${prefix}haveBible');
+    final heroMap = _lessonJson['hero'] is Map
+        ? Map<String, dynamic>.from(_lessonJson['hero'] as Map)
+        : <String, dynamic>{};
+    _heroVerse = (heroMap['verse'] ??
+            (_sections.isNotEmpty && _sections.first.verseQuotes.isNotEmpty
+                ? _sections.first.verseQuotes.first['quote']
+                : 'Thy word is a lamp unto my feet, and a light unto my path.'))
+        .toString();
+    _heroVerseRef = (heroMap['verse_ref'] ??
+            (_sections.isNotEmpty && _sections.first.verseQuotes.isNotEmpty
+                ? _sections.first.verseQuotes.first['reference']
+                : 'Psalms 119:105'))
+        .toString();
+
+    final introMap = _lessonJson['intro'] is Map
+        ? Map<String, dynamic>.from(_lessonJson['intro'] as Map)
+        : <String, dynamic>{};
+    _introHeading =
+        (introMap['heading'] ?? 'The Great Question of Our Age').toString();
+    _introText = (introMap['text'] ?? _resolvedLesson.description).toString();
+    _introHighlight = (introMap['highlight'] ?? '').toString();
+
+    final decisionMap = _lessonJson['decision'] is Map
+        ? Map<String, dynamic>.from(_lessonJson['decision'] as Map)
+        : <String, dynamic>{};
+    _decisionQuote = (decisionMap['quote'] ??
+            'We have seen that the Bible is no ordinary book. It is inspired. It can change lives for it has changed my life and yours can be changed right now if you believe.')
+        .toString();
+
+    final rawDecQuestions = decisionMap['questions'];
+    if (rawDecQuestions is List && rawDecQuestions.isNotEmpty) {
+      _decisionQuestions = rawDecQuestions.whereType<Map>().map((q) {
+        return {
+          'id': (q['id'] ?? 'dec_1').toString(),
+          'text': (q['text'] ?? '').toString(),
+        };
+      }).toList();
+    } else {
+      _decisionQuestions = [
+        {'id': 'haveBible', 'text': 'Do you have a Bible?'},
+        {'id': 'studyBible', 'text': 'Do you study the Bible?'},
+        {'id': 'believeBible', 'text': 'Do you believe the Bible?'},
+      ];
+    }
+
+    for (final q in _decisionQuestions) {
+      _decisionStates[q['id']!] = null;
+    }
+
+    final commitMap = decisionMap['commitment'] is Map
+        ? Map<String, dynamic>.from(decisionMap['commitment'] as Map)
+        : <String, dynamic>{};
+    _commitmentTitle =
+        (commitMap['title'] ?? 'My Study Commitment:').toString();
+    _commitmentText = (commitMap['text'] ??
+            'You can commit to the study of the Bible from today. Would you like to ask God for power and enabling strength for a prayerful study of the Bible?')
+        .toString();
+
+    // Initialize controllers for all section reflections and QA sub-questions
+    for (final s in _sections) {
+      if (s.hasInputTarget) {
+        final ctrl = TextEditingController();
+        ctrl.addListener(_recalculateProgress);
+        _textControllers['q_${s.number}'] = ctrl;
       }
-      if (prefs.containsKey('${prefix}studyBible')) {
-        _studyBible = prefs.getBool('${prefix}studyBible');
+      for (final qa in s.qaItems) {
+        final letter = qa['letter'] ?? 'A';
+        final key = 'q_${s.number}_${letter.toLowerCase()}';
+        final ctrl = TextEditingController();
+        ctrl.addListener(_recalculateProgress);
+        _textControllers[key] = ctrl;
       }
-      if (prefs.containsKey('${prefix}believeBible')) {
-        _believeBible = prefs.getBool('${prefix}believeBible');
+      for (int i = 0; i < s.checklistItems.length; i++) {
+        _checkboxStates['chk_${s.number}_$i'] = false;
       }
-      if (prefs.containsKey('${prefix}dedicateDailyStudy')) {
-        _dedicateDailyStudy = prefs.getBool('${prefix}dedicateDailyStudy');
+      for (int i = 0; i < s.steps.length; i++) {
+        _checkboxStates['step_${s.number}_$i'] = false;
       }
-      for (int i = 0; i < 4; i++) {
-        if (prefs.containsKey('${prefix}tip_$i')) {
-          _tipChecked[i] = prefs.getBool('${prefix}tip_$i') ?? false;
+      if (s.tableData != null) {
+        final rows = (s.tableData!['rows'] as List?) ?? const [];
+        for (int r = 0; r < rows.length; r++) {
+          _checkboxStates['tbl_${s.number}_$r'] = false;
         }
       }
-      _commitmentPrayer = prefs.getBool('${prefix}commitmentPrayer') ?? false;
-      _addressController.text = prefs.getString('${prefix}address') ?? '';
-      final savedLevel = prefs.getString('${prefix}level');
-      if (savedLevel != null) {
-        _selectedDiscipleshipLevel = DiscipleshipLevel.values.firstWhere(
-          (lvl) => lvl.name == savedLevel,
-          orElse: () => DiscipleshipLevel.prospect,
-        );
-      }
-
-      _calculateProgress();
-    });
+    }
   }
 
-  Future<void> _loadDisciples() async {
+  Future<void> _loadSavedUserNotes() async {
     try {
-      final authService = AuthService.instance;
-      final user = authService.currentUser ?? await authService.getCurrentUser();
-      if (user != null) {
-        final contacts = await DiscipleshipService.instance.getContacts(
-          discipleMakerId: user.uid,
-        );
-        if (mounted) {
-          setState(() {
-            _userContacts = contacts;
-          });
-          if (_nameController.text.trim().isNotEmpty) {
-            _checkExistingDiscipleMatch(_nameController.text.trim());
-          }
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey);
+      if (raw == null || raw.isEmpty) {
+        _recalculateProgress();
+        return;
+      }
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+
+      final fields = data['fields'] as Map<String, dynamic>? ?? {};
+      fields.forEach((key, val) {
+        if (_textControllers.containsKey(key)) {
+          _textControllers[key]!.text = val?.toString() ?? '';
         }
+      });
+
+      final checks = data['checkboxes'] as Map<String, dynamic>? ?? {};
+      checks.forEach((key, val) {
+        if (_checkboxStates.containsKey(key)) {
+          _checkboxStates[key] = val == true;
+        }
+      });
+
+      final decisions = data['decisions'] as Map<String, dynamic>? ?? {};
+      decisions.forEach((key, val) {
+        if (_decisionStates.containsKey(key) && val is bool) {
+          _decisionStates[key] = val;
+        }
+      });
+
+      _commitmentChecked = data['commitment'] == true;
+      _nameController.text = (data['userName'] ?? '').toString();
+      _phoneController.text = (data['userPhone'] ?? '').toString();
+
+      if (mounted) {
+        setState(() {});
+        _recalculateProgress();
       }
     } catch (e) {
-      debugPrint('Could not load existing disciples: $e');
+      debugPrint('Could not load saved lesson notes: $e');
     }
   }
 
-  void _onNameChanged(String query) {
-    _checkExistingDiscipleMatch(query.trim());
-  }
+  void _recalculateProgress() {
+    int totalItems = _textControllers.length + _decisionStates.length + 1;
+    int completedItems = 0;
 
-  void _checkExistingDiscipleMatch(String query) {
-    if (query.isEmpty) {
-      if (_matchedContact != null) {
-        setState(() {
-          _matchedContact = null;
-          _matchedContactStudyCount = 0;
-        });
-      }
-      return;
+    for (final c in _textControllers.values) {
+      if (c.text.trim().isNotEmpty) completedItems++;
+    }
+    for (final d in _decisionStates.values) {
+      if (d != null) completedItems++;
+    }
+    if (_commitmentChecked) completedItems++;
+
+    if (_checkboxStates.isNotEmpty) {
+      totalItems += 3;
+      final checkedCount =
+          _checkboxStates.values.where((v) => v == true).length;
+      completedItems += checkedCount.clamp(0, 3);
     }
 
-    final q = query.toLowerCase();
-    DiscipleshipContact? found;
-    for (final c in _userContacts) {
-      if (c.fullName.toLowerCase() == q) {
-        found = c;
-        break;
-      }
-    }
-
-    if (found != null && found != _matchedContact) {
-      _selectContact(found);
-    } else if (found == null && _matchedContact != null) {
+    final ratio =
+        totalItems > 0 ? (completedItems / totalItems).clamp(0.0, 1.0) : 0.0;
+    if ((ratio - _completionRatio).abs() > 0.005 && mounted) {
       setState(() {
-        _matchedContact = null;
-        _matchedContactStudyCount = 0;
+        _completionRatio = ratio;
       });
+      InteractiveLessonsService.instance
+          .updateLessonProgress(_resolvedLesson.id, ratio);
     }
   }
 
-  Future<void> _selectContact(DiscipleshipContact contact) async {
-    setState(() {
-      _matchedContact = contact;
-      _nameController.text = contact.fullName;
-      if (contact.phone != null && contact.phone!.isNotEmpty) {
-        _phoneController.text = contact.phone!;
-      }
-      if (contact.address != null && contact.address!.isNotEmpty) {
-        _addressController.text = contact.address!;
-      }
-      _selectedDiscipleshipLevel = contact.currentLevel;
-    });
-
-    try {
-      final sessions = await DiscipleshipService.instance.getStudySessions(
-        contactId: contact.id,
-      );
-      if (mounted) {
-        setState(() {
-          _matchedContactStudyCount = sessions.length;
-        });
-      }
-    } catch (_) {}
-  }
-
-  void _clearMatchedContact() {
-    setState(() {
-      _matchedContact = null;
-      _matchedContactStudyCount = 0;
-      _nameController.clear();
-      _phoneController.clear();
-      _addressController.clear();
-      _selectedDiscipleshipLevel = DiscipleshipLevel.prospect;
-    });
-  }
-
-  String _formatLevelName(DiscipleshipLevel level) {
-    switch (level) {
-      case DiscipleshipLevel.prospect:
-        return 'Prospect';
-      case DiscipleshipLevel.studying:
-        return 'Studying';
-      case DiscipleshipLevel.convinced:
-        return 'Convinced';
-      case DiscipleshipLevel.committed:
-        return 'Committed';
-      case DiscipleshipLevel.baptized:
-        return 'Baptized';
-      case DiscipleshipLevel.disciple:
-        return 'Disciple';
-    }
-  }
-
-  Future<void> _saveResponses() async {
-    setState(() => _isSaving = true);
+  Future<void> _saveProgressLocally() async {
+    final payload = {
+      'lessonId': _resolvedLesson.id,
+      'lessonTitle': _resolvedLesson.title,
+      'fields': {
+        for (final entry in _textControllers.entries)
+          entry.key: entry.value.text.trim(),
+      },
+      'checkboxes': _checkboxStates,
+      'decisions': _decisionStates,
+      'commitment': _commitmentChecked,
+      'userName': _nameController.text.trim(),
+      'userPhone': _phoneController.text.trim(),
+      'timestamp': DateTime.now().toIso8601String(),
+    };
 
     final prefs = await SharedPreferences.getInstance();
-    final prefix = _storagePrefix;
+    await prefs.setString(_storageKey, jsonEncode(payload));
+    await InteractiveLessonsService.instance
+        .updateLessonProgress(_resolvedLesson.id, _completionRatio);
 
-    for (final entry in _controllers.entries) {
-      await prefs.setString('$prefix${entry.key}', entry.value.text);
-    }
-
-    await prefs.setString('${prefix}name', _nameController.text);
-    await prefs.setString('${prefix}phone', _phoneController.text);
-    await prefs.setString('${prefix}address', _addressController.text);
-    await prefs.setString('${prefix}level', _selectedDiscipleshipLevel.name);
-
-    if (_haveBible != null) {
-      await prefs.setBool('${prefix}haveBible', _haveBible!);
-    }
-    if (_studyBible != null) {
-      await prefs.setBool('${prefix}studyBible', _studyBible!);
-    }
-    if (_believeBible != null) {
-      await prefs.setBool('${prefix}believeBible', _believeBible!);
-    }
-    if (_dedicateDailyStudy != null) {
-      await prefs.setBool('${prefix}dedicateDailyStudy', _dedicateDailyStudy!);
-    }
-    for (final entry in _tipChecked.entries) {
-      await prefs.setBool('${prefix}tip_${entry.key}', entry.value);
-    }
-    await prefs.setBool('${prefix}commitmentPrayer', _commitmentPrayer);
-
-    _calculateProgress();
-
-    // Sync progress to InteractiveLessonsService
-    await InteractiveLessonsService.instance.updateLessonProgress(
-      widget.lessonId,
-      _progress,
-    );
-
-    // Sync to Discipleship Tracker if disciple name is provided
-    bool discipleshipSynced = false;
-    String discipleshipNotice = '';
-    final fullName = _nameController.text.trim();
-
-    if (fullName.isNotEmpty) {
-      try {
-        final authService = AuthService.instance;
-        final authUser = authService.currentUser ?? await authService.getCurrentUser();
-        if (authUser != null) {
-          final discipleship = DiscipleshipService.instance;
-
-          // Check if contact already exists
-          DiscipleshipContact? contact = _matchedContact;
-          if (contact == null) {
-            final existing = await discipleship.getContacts(
-              discipleMakerId: authUser.uid,
-              searchQuery: fullName,
-            );
-            for (final c in existing) {
-              if (c.fullName.toLowerCase() == fullName.toLowerCase() ||
-                  (_phoneController.text.trim().isNotEmpty &&
-                      c.phone == _phoneController.text.trim())) {
-                contact = c;
-                break;
-              }
-            }
-          }
-
-          if (contact != null) {
-            // ── EXISTING DISCIPLE ──
-            // 1. If stage / level changed, promote them in Discipleship Tracker!
-            if (contact.currentLevel != _selectedDiscipleshipLevel) {
-              contact = await discipleship.updateContactLevel(
-                contact.id,
-                _selectedDiscipleshipLevel,
-              );
-            }
-
-            // 2. Update address or phone if newly provided
-            final updatedPhone = _phoneController.text.trim().isNotEmpty
-                ? _phoneController.text.trim()
-                : contact.phone;
-            final updatedAddress = _addressController.text.trim().isNotEmpty
-                ? _addressController.text.trim()
-                : contact.address;
-
-            if (updatedPhone != contact.phone || updatedAddress != contact.address) {
-              contact = await discipleship.updateContact(contact.copyWith(
-                phone: updatedPhone,
-                address: updatedAddress,
-                lastContact: DateTime.now().toUtc(),
-              ));
-            }
-
-            // 3. Log the new study session (increments study count!)
-            await discipleship.createStudySession(
-              StudySession(
-                id: '',
-                contactId: contact.id,
-                discipleMakerId: authUser.uid,
-                type: StudyType.bibleStudy,
-                title: widget.title,
-                topic: 'What The Bible Says Series',
-                bibleTexts: '2 Tim 3:16, 2 Pet 1:21, Dan 9:26-27, John 17:17',
-                date: DateTime.now(),
-                durationMinutes: 20,
-                completed: _progress >= 0.8,
-                notes: 'Completed: ${(_progress * 100).toInt()}%. Lesson answers recorded.',
-                createdAt: DateTime.now(),
-              ),
-            );
-
-            // Fetch updated study count
-            final sessions = await discipleship.getStudySessions(contactId: contact.id);
-            _matchedContactStudyCount = sessions.length;
-            _matchedContact = contact;
-
-            discipleshipSynced = true;
-            discipleshipNotice = '✓ Logged study #${sessions.length} for ${contact.fullName} (${_formatLevelName(_selectedDiscipleshipLevel)}) in Discipleship Tracker!';
-          } else {
-            // ── NEW DISCIPLE ──
-            final nameParts = fullName.split(' ');
-            final first = nameParts.first;
-            final last = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'Disciple';
-
-            final newContact = await discipleship.createContact(
-              DiscipleshipContact(
-                id: '',
-                discipleMakerId: authUser.uid,
-                firstName: first,
-                lastName: last,
-                phone: _phoneController.text.trim().isNotEmpty
-                    ? _phoneController.text.trim()
-                    : null,
-                address: _addressController.text.trim().isNotEmpty
-                    ? _addressController.text.trim()
-                    : null,
-                currentLevel: _selectedDiscipleshipLevel,
-                firstContact: DateTime.now(),
-                lastContact: DateTime.now(),
-                notes: 'Enrolled via interactive lesson: ${widget.title}',
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              ),
-            );
-
-            // Log their first study session
-            await discipleship.createStudySession(
-              StudySession(
-                id: '',
-                contactId: newContact.id,
-                discipleMakerId: authUser.uid,
-                type: StudyType.bibleStudy,
-                title: widget.title,
-                topic: 'What The Bible Says Series',
-                bibleTexts: '2 Tim 3:16, 2 Pet 1:21, Dan 9:26-27, John 17:17',
-                date: DateTime.now(),
-                durationMinutes: 20,
-                completed: _progress >= 0.8,
-                notes: 'Initial study: 100% completed. Enrolled at ${_formatLevelName(_selectedDiscipleshipLevel)} stage.',
-                createdAt: DateTime.now(),
-              ),
-            );
-
-            _matchedContact = newContact;
-            _matchedContactStudyCount = 1;
-            _userContacts.add(newContact);
-
-            discipleshipSynced = true;
-            discipleshipNotice = '✓ Enrolled ${newContact.fullName} as ${_formatLevelName(_selectedDiscipleshipLevel)} & logged Study #1!';
-          }
-        }
-      } catch (e) {
-        debugPrint('Discipleship sync error (saved locally): $e');
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _isSaving = false;
-        _showSavedNotification = true;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            discipleshipSynced
-                ? discipleshipNotice
-                : '✓ Study responses saved to your device!',
-          ),
-          backgroundColor: const Color(0xFF166534),
-          duration: const Duration(seconds: 4),
-        ),
-      );
-
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() {
-            _showSavedNotification = false;
-          });
-        }
-      });
-    }
-  }
-
-  Future<void> _confirmResetStudy() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.refresh_rounded, color: Color(0xFF166534)),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Reset Study for New Prospect?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          'This will clear all your answers, responses, and disciple details from this screen so you can conduct this study fresh with a new prospect.\n\nAny prior study sessions logged to your Discipleship Tracker remain safely saved.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF166534)),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reset to 0%'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      final prefs = await SharedPreferences.getInstance();
-      final prefix = _storagePrefix;
-      final keys = prefs.getKeys().where((k) => k.startsWith(prefix)).toList();
-      for (final k in keys) {
-        await prefs.remove(k);
-      }
-
-      setState(() {
-        for (final controller in _controllers.values) {
-          controller.clear();
-        }
-        _nameController.clear();
-        _phoneController.clear();
-        _addressController.clear();
-        _matchedContact = null;
-        _matchedContactStudyCount = 0;
-        _haveBible = null;
-        _studyBible = null;
-        _believeBible = null;
-        _dedicateDailyStudy = null;
-        _tipChecked.clear();
-        _commitmentPrayer = false;
-        _selectedDiscipleshipLevel = DiscipleshipLevel.prospect;
-        _showSavedNotification = false;
-        _calculateProgress();
-      });
-
+    if (!mounted) return;
+    setState(() {
+      _showSavedBanner = true;
+    });
+    Future.delayed(const Duration(seconds: 4), () {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Study reset to 0%! Ready for your new prospect.'),
-            backgroundColor: Color(0xFF166534),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-
-  void _calculateProgress() {
-    int totalItems = _isLesson2
-        ? _controllers.length + 2
-        : _controllers.length + 4; // text fields + decision toggles + prayer
-    int filled = 0;
-
-    for (var c in _controllers.values) {
-      if (c.text.trim().isNotEmpty) filled++;
-    }
-    if (_isLesson2) {
-      if (_dedicateDailyStudy != null) filled++;
-    } else {
-      if (_haveBible != null) filled++;
-      if (_studyBible != null) filled++;
-      if (_believeBible != null) filled++;
-    }
-    if (_commitmentPrayer) filled++;
-
-    setState(() {
-      _progress = totalItems > 0 ? (filled / totalItems).clamp(0.0, 1.0) : 0.0;
-    });
-  }
-
-  void _filterProphecies(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredMessianicProphecies = List.from(_allMessianicProphecies);
-      } else {
-        final q = query.toLowerCase();
-        _filteredMessianicProphecies = _allMessianicProphecies.where((p) {
-          return (p['subject'] ?? '').toLowerCase().contains(q) ||
-              (p['ot'] ?? '').toLowerCase().contains(q) ||
-              (p['nt'] ?? '').toLowerCase().contains(q);
-        }).toList();
+        setState(() {
+          _showSavedBanner = false;
+        });
       }
     });
   }
 
-  void _openScripture(String reference) {
-    BibleReferenceModalSheet.show(
-      context,
-      reference: reference,
-      initialVersion: 'NKJV',
+  Future<void> _exportStudySummary() async {
+    await _saveProgressLocally();
+    final buf = StringBuffer();
+    buf.writeln('==================================================');
+    buf.writeln('ALIVE NIGERIA SERIES • WHAT THE BIBLE SAYS');
+    buf.writeln(_resolvedLesson.title.toUpperCase());
+    buf.writeln('==================================================\n');
+
+    for (final s in _sections) {
+      buf.writeln('${s.number}. ${s.title}');
+      for (final v in s.verseQuotes) {
+        buf.writeln('   "${v['quote']}" — ${v['reference']}');
+      }
+      final note = _textControllers['q_${s.number}']?.text.trim() ?? '';
+      if (note.isNotEmpty) {
+        buf.writeln('   My Reflection: $note');
+      }
+      for (final qa in s.qaItems) {
+        final letter = qa['letter'] ?? 'A';
+        final qaNote =
+            _textControllers['q_${s.number}_${letter.toLowerCase()}']
+                    ?.text
+                    .trim() ??
+                '';
+        if (qaNote.isNotEmpty) {
+          buf.writeln('   [$letter] ${qa['question']}: $qaNote');
+        }
+      }
+      buf.writeln();
+    }
+
+    buf.writeln('--- PERSONAL COMMITMENT ---');
+    for (final q in _decisionQuestions) {
+      final ans = _decisionStates[q['id']!];
+      final ansLabel = ans == null ? 'Not answered' : (ans ? 'YES' : 'NO');
+      buf.writeln('${q['text']} -> $ansLabel');
+    }
+    buf.writeln('Prayer Commitment Checked: ${_commitmentChecked ? "YES" : "NO"}');
+    if (_nameController.text.trim().isNotEmpty) {
+      buf.writeln('Name: ${_nameController.text.trim()}');
+    }
+    if (_phoneController.text.trim().isNotEmpty) {
+      buf.writeln('Phone: ${_phoneController.text.trim()}');
+    }
+
+    await Clipboard.setData(ClipboardData(text: buf.toString()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Study Summary copied to clipboard & saved to your device!',
+        ),
+        backgroundColor: _brand700,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final pct = (_completionRatio * 100).round();
 
     return Scaffold(
-      appBar: CustomAppBar(
-        title: _isLesson1
-            ? 'What The Bible Says: Lesson 1'
-            : (_isLesson2 ? 'What The Bible Says: Lesson 2' : widget.title),
-        showBackButton: true,
-      ),
-      body: Column(
-        children: [
-          // Sticky Top Progress Bar
-          LinearProgressIndicator(
-            value: _progress,
-            backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
-            minHeight: 5,
-          ),
-          Container(
-            color: isDark ? const Color(0xFF1B2E1E) : const Color(0xFFE8F5E9),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.menu_book, color: Colors.green, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Interactive Study Guide',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white70 : Colors.green[900],
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Tooltip(
-                      message: 'Reset study to 0% for a new prospect',
-                      child: InkWell(
-                        onTap: _confirmResetStudy,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.refresh_rounded, color: Colors.green, size: 14),
-                              SizedBox(width: 3),
-                              Text(
-                                'Reset',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.green,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${(_progress * 100).toInt()}% Completed',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Main Study Content Body
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildHeroBanner(isDark),
-                const SizedBox(height: 16),
-                if (_isLesson1) ...[
-                  _buildSection1(isDark),
-                  const SizedBox(height: 16),
-                  _buildSection2(isDark),
-                  const SizedBox(height: 16),
-                  _buildSection3(isDark),
-                  const SizedBox(height: 16),
-                  _buildSection4(isDark),
-                  const SizedBox(height: 16),
-                  _buildSection5(isDark),
-                  const SizedBox(height: 16),
-                  _buildSection6(isDark),
-                  const SizedBox(height: 16),
-                  _buildSection7(isDark),
-                  const SizedBox(height: 16),
-                  _buildSection8(isDark),
-                  const SizedBox(height: 16),
-                ] else ...[
-                  ..._buildDynamicExtractedSections(isDark),
-                ],
-                _buildSection9Commitment(isDark),
-                const SizedBox(height: 32),
-              ],
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F1E16) : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 10,
-              offset: const Offset(0, -3),
-            ),
-          ],
-          border: Border(
-            top: BorderSide(
-              color: isDark ? const Color(0xFF1E3D2B) : const Color(0xFFE2E8F0),
-              width: 1,
-            ),
-          ),
-        ),
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 10,
-          bottom: MediaQuery.of(context).padding.bottom + 10,
-        ),
-        child: Row(
+      backgroundColor: _bgSurface,
+      body: SafeArea(
+        child: Column(
           children: [
-            // Progress Indicator Badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF143021) : const Color(0xFFDCFCE7),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isDark ? const Color(0xFF22C55E).withValues(alpha: 0.4) : const Color(0xFF86EFAC),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+            // 1. Sticky Top Header Banner + Dynamic Progress Bar
+            _buildStickyHeader(pct),
+
+            // 2. Main Scrollable Tract Content
+            Expanded(
+              child: ListView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 children: [
-                  Icon(
-                    _progress >= 1.0 ? Icons.check_circle : Icons.trending_up,
-                    size: 16,
-                    color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    '${(_progress * 100).toInt()}%',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 860),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildHeroAndIntroSection(pct),
+                          const SizedBox(height: 24),
+                          for (final section in _sections) ...[
+                            _buildSectionCard(section),
+                            const SizedBox(height: 20),
+                          ],
+                          _buildDecisionAndCommitmentCard(),
+                          const SizedBox(height: 28),
+                          _buildFooter(),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Persistent Save Button
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveResponses,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.cloud_done_outlined, size: 18, color: Colors.white),
-                label: Text(
-                  _isSaving
-                      ? 'Saving...'
-                      : (_showSavedNotification ? 'Saved Successfully!' : 'Save Lesson Progress'),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _showSavedNotification
-                      ? const Color(0xFF047857)
-                      : const Color(0xFF166534),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
               ),
             ),
           ],
@@ -885,1968 +429,1522 @@ class _InteractiveLessonReaderScreenState
     );
   }
 
-  Widget _buildHeroBanner(bool isDark) {
-    final heroPalette = _isLesson1 || _isLesson2
-        ? LessonColorPalette.brandPalettes.first
-        : LessonColorPalette.byId(
-            _dynamicSections.firstOrNull?.paletteId,
-            fallbackIndex: widget.title.hashCode,
-          );
-    final coverUrl = (widget.lessonData?['coverImage'] ??
-                widget.lessonData?['cover_image'] ??
-                widget.lessonData?['imageUrl'])
-            ?.toString() ??
-        (_isLesson1 ? 'assets/images/series/what_the_bible_says_lesson_1.jpg' : '');
-    final categoryLabel = _isLesson2
-        ? 'INTERACTIVE SCRIPTURE TRACT GUIDE'
-        : (widget.lessonData?['category']?.toString() ?? 'ALIVE NIGERIA SERIES')
-            .toUpperCase();
-    final heroVerse = _isLesson1
-        ? 'Psalms 119:105'
-        : (_isLesson2
-            ? 'John 5:39'
-            : (_dynamicSections
-                    .expand((s) => s.scriptureReferences)
-                    .firstOrNull ??
-                '2 Timothy 3:16'));
-    final introDescription = _isLesson1
-        ? 'In these morally challenged times when billions are embezzled through corporate fraud; when trusted spiritual leaders prove false; when lying in politics seems to be the norm... is there anything left you can trust?\n\nYes! You can fully trust the Bible! Just look at the evidence:'
-        : (_isLesson2
-            ? 'Searching the scripture is a vital aspect of Christian living. It involves diligently studying and examining the Bible to gain a deeper understanding of God\'s word, His character, and His plans for humanity.'
-            : (widget.lessonData?['description']?.toString().trim().isNotEmpty == true
-                ? widget.lessonData!['description'].toString()
-                : 'Explore God\'s Word interactively through scripture references, personal reflection prompts, and practical discipleship commitment.'));
-
+  // ---------------------------------------------------------------------------
+  // Sticky Top Header (Matches Emerald & Gold Design System)
+  // ---------------------------------------------------------------------------
+  Widget _buildStickyHeader(int pct) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(heroPalette.darkGradientStartHex),
-            Color(heroPalette.darkGradientEndHex),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))
+      decoration: const BoxDecoration(
+        color: _brandDeep,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black38,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: Text(
-                        categoryLabel,
-                        style: TextStyle(
-                          color: Color(heroPalette.accentHex),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Back',
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _gold500,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'ALIVE NIGERIA',
+                    style: TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 10,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _resolvedLesson.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _brand800,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.phone, color: _gold400, size: 13),
+                      const SizedBox(width: 4),
+                      Text(
+                        _enquiryPhone,
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _isLesson1
-                          ? 'Something We Can Trust'
-                          : (_isLesson2
-                              ? 'Searching The Scriptures!'
-                              : widget.title),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (_isLesson2) ...[
-                      const SizedBox(height: 6),
-                      const Text(
-                        '"Search the Scriptures, for in them ye think ye have eternal life; and they are they which testify of Me."',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12.5,
-                          fontStyle: FontStyle.italic,
-                          height: 1.35,
+                          fontSize: 11,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 8),
-                    _buildScriptureChip(
-                      heroVerse,
-                      accentColor: Color(heroPalette.accentHex),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Gradient Progress Indicator Bar
+          SizedBox(
+            height: 6,
+            width: double.infinity,
+            child: Stack(
+              children: [
+                Container(color: const Color(0xFF022C22)),
+                FractionallySizedBox(
+                  widthFactor: _completionRatio.clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF34D399), _gold400],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Hero Banner & Intro Hook Card
+  // ---------------------------------------------------------------------------
+  Widget _buildHeroAndIntroSection(int pct) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Top Emerald Gradient Hero
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_brand900, Color(0xFF065F46), Color(0xFF134E4A)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 560;
+                final leftCol = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: const Color(0xFF6EE7B7).withValues(alpha: 0.35)),
+                      ),
+                      child: const Text(
+                        'INTERACTIVE SCRIPTURE TRACT GUIDE',
+                        style: TextStyle(
+                          color: Color(0xFFA7F3D0),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      _resolvedLesson.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                        fontFamily: 'Georgia',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '"$_heroVerse" — $_heroVerseRef',
+                      style: const TextStyle(
+                        color: Color(0xFFD1FAE5),
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        height: 1.5,
+                        fontFamily: 'Georgia',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Icon(Icons.schedule,
+                            color: Color(0xFFA7F3D0), size: 15),
+                        Text(
+                          'Estimated Study Time: ${_resolvedLesson.duration}',
+                          style: const TextStyle(
+                            color: Color(0xFFA7F3D0),
+                            fontSize: 12,
+                          ),
+                        ),
+                        const Text('•',
+                            style: TextStyle(color: Color(0xFFA7F3D0))),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: _brand800,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '$pct% Complete',
+                            style: const TextStyle(
+                              color: Color(0xFFA7F3D0),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
+                );
+
+                final rightCard = Container(
+                  width: 165,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF022C22),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0xFF6EE7B7).withValues(alpha: 0.4),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF059669).withValues(alpha: 0.25),
+                          border: Border.all(
+                            color: const Color(0xFF34D399).withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.menu_book_rounded,
+                          color: Color(0xFFA7F3D0),
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _resolvedLesson.category.toUpperCase(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFA7F3D0),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.9,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        '"Search the Scriptures daily, whether those things were so."',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFFCBD5E1),
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                          fontFamily: 'Georgia',
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (isWide) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: leftCol),
+                      const SizedBox(width: 24),
+                      rightCard,
+                    ],
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    leftCol,
+                    const SizedBox(height: 16),
+                    Center(child: rightCard),
+                  ],
+                );
+              },
+            ),
+          ),
+
+          // Bottom Parchment Intro Hook
+          if (_introText.trim().isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFFBEB),
+                border: Border(
+                  top: BorderSide(color: Color(0xFFFEF3C7)),
                 ),
               ),
-              const SizedBox(width: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: coverUrl.isNotEmpty
-                    ? (coverUrl.startsWith('assets/')
-                        ? Image.asset(
-                            coverUrl,
-                            width: 90,
-                            height: 115,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: 90,
-                              height: 115,
-                              color: Colors.white12,
-                              child: const Icon(Icons.book, color: Colors.white, size: 40),
-                            ),
-                          )
-                        : SizedBox(
-                            width: 90,
-                            height: 115,
-                            child: CustomImage(
-                              imageUrl: coverUrl,
-                              fit: BoxFit.cover,
-                            ),
-                          ))
-                    : Container(
-                        width: 90,
-                        height: 115,
-                        color: Colors.white12,
-                        child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.explore, color: _brand700, size: 19),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _introHeading,
+                          style: const TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Georgia',
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _buildFormattedText(
+                    _introText,
+                    baseStyle: const TextStyle(
+                      color: Color(0xFF334155),
+                      fontSize: 14.5,
+                      height: 1.6,
+                      fontFamily: 'Georgia',
+                    ),
+                  ),
+                  if (_introHighlight.trim().isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD1FAE5).withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.check_circle,
+                              color: _brand700, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _introHighlight,
+                              style: const TextStyle(
+                                color: Color(0xFF022C22),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13.5,
+                                height: 1.45,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Numbered Section Card
+  // ---------------------------------------------------------------------------
+  Widget _buildSectionCard(ExtractedLessonSection s) {
+    final isTips = s.title.toLowerCase().contains('practical tips') ||
+        s.title.toLowerCase().contains('helpful tips');
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Number Badge + Question Title
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: _brand700,
+                  shape: BoxShape.circle,
+                ),
+                child: isTips
+                    ? const Icon(Icons.volunteer_activism,
+                        color: Colors.white, size: 16)
+                    : Text(
+                        '${s.number}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  s.title,
+                  style: const TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    height: 1.3,
+                    fontFamily: 'Georgia',
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          if (_isLesson2) ...[
+
+          // 1. Scripture Verse Cards
+          if (s.verseQuotes.isNotEmpty) ...[
+            _buildVerseCard(s.verseQuotes),
+            const SizedBox(height: 14),
+          ],
+
+          // 2. Explanatory Commentary Text
+          if (s.bodyText.trim().isNotEmpty) ...[
+            for (final para in s.bodyText
+                .split('\n\n')
+                .map((p) => p.trim())
+                .where((p) => p.isNotEmpty)) ...[
+              _buildFormattedText(
+                para,
+                baseStyle: const TextStyle(
+                  color: Color(0xFF334155),
+                  fontSize: 14,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
+
+          // 3. Highlight Box
+          if (s.highlightNote != null && s.highlightNote!.isNotEmpty) ...[
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.25),
+                color: const Color(0xFFD1FAE5).withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white24),
+                border: Border.all(color: const Color(0xFFA7F3D0)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.search_rounded,
-                      color: Color(heroPalette.accentHex), size: 20),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.check_circle, color: _brand700, size: 18),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Searching Daily',
-                          style: TextStyle(
-                            color: Color(heroPalette.accentHex),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        const Text(
-                          '"…searched the Scriptures daily, whether those things were so." — Acts 17:11',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12.5,
-                            fontStyle: FontStyle.italic,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
+                    child: _buildFormattedText(
+                      s.highlightNote!,
+                      baseStyle: const TextStyle(
+                        color: Color(0xFF022C22),
+                        fontSize: 13.5,
+                        height: 1.5,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
           ],
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white10 : Color(heroPalette.lightTintHex),
-              borderRadius: BorderRadius.circular(8),
+
+          // 4. Interactive Fulfilled Prophecies Checklist
+          if (s.checklistItems.isNotEmpty) ...[
+            _buildChecklistBlock(s),
+            const SizedBox(height: 14),
+          ],
+
+          // 5. Scientific Facts Grid
+          if (s.factItems.isNotEmpty) ...[
+            _buildFactsGrid(s.factItems),
+            const SizedBox(height: 14),
+          ],
+
+          // 6. Dark Atomic Mystery Callout
+          if (s.darkCallout != null) ...[
+            _buildDarkCallout(s.darkCallout!),
+            const SizedBox(height: 14),
+          ],
+
+          // 7. True Life Testimony Card
+          if (s.testimony != null) ...[
+            _buildTestimonyCard(s.testimony!),
+            const SizedBox(height: 14),
+          ],
+
+          // 8. Filterable Messianic Prophecies Table
+          if (s.tableData != null) ...[
+            _buildFilterableTable(s.number, s.tableData!),
+            const SizedBox(height: 14),
+          ],
+
+          // 9. Numbered Steps / Practical Tips
+          if (s.steps.isNotEmpty) ...[
+            _buildStepsBlock(s, checkable: s.checkableSteps),
+            const SizedBox(height: 14),
+          ],
+
+          // 10. Principle Note Callout
+          if (s.principleNote != null && s.principleNote!.isNotEmpty) ...[
+            _buildPrincipleNote(s.principleNote!),
+            const SizedBox(height: 14),
+          ],
+
+          // 11. Interactive A/B/C Q&A Cards
+          if (s.qaItems.isNotEmpty) ...[
+            _buildQaCards(s),
+            const SizedBox(height: 6),
+          ],
+
+          // 12. Personal Reflection Input Box
+          if (s.hasInputTarget) _buildReflectionInput(s),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Block Renderers
+  // ---------------------------------------------------------------------------
+  Widget _buildVerseCard(List<Map<String, String>> verses) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [_brand50, Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(10),
+          bottomRight: Radius.circular(10),
+        ),
+        border: const Border(
+          left: BorderSide(color: _brand700, width: 4),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < verses.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            _buildFormattedText(
+              '${verses[i]['lead'] != null && verses[i]['lead']!.isNotEmpty ? "${verses[i]['lead']} " : ""}"${verses[i]['quote'] ?? ''}"',
+              baseStyle: const TextStyle(
+                color: Color(0xFF1E293B),
+                fontSize: 15,
+                height: 1.55,
+                fontFamily: 'Georgia',
+              ),
             ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '— ${verses[i]['reference'] ?? ''}',
+                style: const TextStyle(
+                  color: _brand700,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklistBlock(ExtractedLessonSection s) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.fact_check_outlined, color: _brand700, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'EXAMPLES OF FULFILLED BIBLE PROPHECIES:',
+                    style: TextStyle(
+                      color: _brand900,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                'Tap to check studied',
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (int i = 0; i < s.checklistItems.length; i++) ...[
+            Builder(builder: (context) {
+              final key = 'chk_${s.number}_$i';
+              final checked = _checkboxStates[key] ?? false;
+              final item = s.checklistItems[i];
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    _checkboxStates[key] = !checked;
+                  });
+                  _recalculateProgress();
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: checked
+                          ? _brand700
+                          : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: Checkbox(
+                          value: checked,
+                          activeColor: _brand700,
+                          onChanged: (v) {
+                            setState(() {
+                              _checkboxStates[key] = v ?? false;
+                            });
+                            _recalculateProgress();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: RichText(
+                          text: TextSpan(
+                            style: const TextStyle(
+                              color: Color(0xFF334155),
+                              fontSize: 12.5,
+                              height: 1.4,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: '${item['label']} ',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(text: item['text'] ?? ''),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFactsGrid(List<Map<String, String>> facts) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: facts.map((f) {
+        return Container(
+          width: 360,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _brand50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFD1FAE5)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _brand800,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  (f['tag'] ?? 'FACT').toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                f['title'] ?? '',
+                style: const TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                f['quote'] ?? '',
+                style: const TextStyle(
+                  color: Color(0xFF334155),
+                  fontStyle: FontStyle.italic,
+                  fontSize: 13,
+                  fontFamily: 'Georgia',
+                ),
+              ),
+              if ((f['text'] ?? '').isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  f['text']!,
+                  style: const TextStyle(
+                    color: Color(0xFF475569),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildDarkCallout(Map<String, String> callout) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF334155)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF083344),
+              border: Border.all(
+                  color: const Color(0xFF22D3EE).withValues(alpha: 0.4)),
+            ),
+            child: const Icon(
+              Icons.hub_outlined,
+              color: Color(0xFF67E8F9),
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_isLesson2) ...[
-                  Row(
-                    children: [
-                      Icon(Icons.menu_book_rounded,
-                          size: 16,
-                          color: isDark
-                              ? Color(heroPalette.accentHex)
-                              : Color(heroPalette.primaryHex)),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Why Search the Scriptures?',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.bold,
-                          color: isDark
-                              ? Colors.white
-                              : Color(heroPalette.primaryHex),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                ],
                 Text(
-                  introDescription,
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.45,
-                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  callout['title'] ?? 'The Riddle of Nuclear Physics',
+                  style: const TextStyle(
+                    color: Color(0xFF67E8F9),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                 ),
-                if (_isLesson2) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF14532D).withValues(alpha: 0.4)
-                          : const Color(0xFFDCFCE7),
+                const SizedBox(height: 4),
+                _buildFormattedText(
+                  callout['text'] ?? '',
+                  baseStyle: const TextStyle(
+                    color: Color(0xFFCBD5E1),
+                    fontSize: 12.5,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTestimonyCard(Map<String, String> testimony) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFFBEB), _brand50],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.format_quote, color: _brand700, size: 20),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  testimony['title'] ?? 'True Life Testimony',
+                  style: const TextStyle(
+                    color: _brand900,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '"${testimony['text'] ?? ''}"',
+            style: const TextStyle(
+              color: Color(0xFF1E293B),
+              fontSize: 13,
+              fontStyle: FontStyle.italic,
+              height: 1.55,
+              fontFamily: 'Georgia',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterableTable(int sectionNum, Map<String, dynamic> tableData) {
+    final title = (tableData['title'] ?? 'Fulfilled Prophecies').toString();
+    final columns = (tableData['columns'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        const ['Prophecy Subject', 'OT Prediction', 'NT Fulfillment'];
+    final rawRows = (tableData['rows'] as List?) ?? const [];
+    final query = (_tableSearchQueries[sectionNum] ?? '').toLowerCase();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  color: _brand900,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
+              SizedBox(
+                width: 210,
+                height: 34,
+                child: TextField(
+                  onChanged: (val) {
+                    setState(() {
+                      _tableSearchQueries[sectionNum] = val;
+                    });
+                  },
+                  style: const TextStyle(fontSize: 12),
+                  decoration: InputDecoration(
+                    hintText: 'Filter prophecy...',
+                    prefixIcon: const Icon(Icons.search, size: 16),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFF16A34A).withValues(alpha: 0.35),
-                      ),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(_brand900),
+              headingTextStyle: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+              dataRowMinHeight: 38,
+              dataRowMaxHeight: 48,
+              columns: [
+                for (final col in columns) DataColumn(label: Text(col)),
+                const DataColumn(label: Text('Studied')),
+              ],
+              rows: [
+                for (int r = 0; r < rawRows.length; r++)
+                  if (query.isEmpty ||
+                      rawRows[r]
+                          .toString()
+                          .toLowerCase()
+                          .contains(query))
+                    DataRow(
+                      cells: [
+                        for (int c = 0; c < columns.length; c++)
+                          DataCell(
+                            Text(
+                              c < (rawRows[r] as List).length
+                                  ? rawRows[r][c].toString()
+                                  : '',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: c == 0
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                                color: c == 1
+                                    ? _brand700
+                                    : const Color(0xFF334155),
+                              ),
+                            ),
+                          ),
+                        DataCell(
+                          Checkbox(
+                            value: _checkboxStates['tbl_${sectionNum}_$r'] ??
+                                false,
+                            activeColor: _brand700,
+                            onChanged: (v) {
+                              setState(() {
+                                _checkboxStates['tbl_${sectionNum}_$r'] =
+                                    v ?? false;
+                              });
+                              _recalculateProgress();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepsBlock(ExtractedLessonSection s, {required bool checkable}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (checkable) ...[
+            const Text(
+              'Tick each one you will practise:',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          for (int i = 0; i < s.steps.length; i++) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFA7F3D0),
+                      borderRadius: BorderRadius.circular(5),
                     ),
                     child: Text(
-                      'The Bible is an incredible resource, offering guidance, wisdom, comfort, and instruction for everyday life. Through Bible study, we deepen our relationship with God.',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        height: 1.4,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white : const Color(0xFF14532D),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static const Map<int, String> _lesson2Placeholders = {
-    1: "Write what you learned from Jesus' words in John 5:39...",
-    2: "How did Abraham's faith point to the gospel?",
-    3: "Why did the word not profit those who heard it?",
-    4: "What does Moses' choice teach you about true riches?",
-    5: "Where do you see Christ in the Old Testament story?",
-    6: "Is Christ the cornerstone of your faith? Write how.",
-    7: "How eagerly do you search the Scriptures?",
-    8: "Who guides you as you study God's Word?",
-    9: "Try it: pick a verse and find another that explains it.",
-    10: "What does it mean to be made wise unto salvation?",
-    11: "How can you search the Scriptures daily like the Bereans?",
-    12: "What does living by every word of God look like for you?",
-    13: "How will you show reverence for God's Word this week?",
-  };
-
-  List<ExtractedLessonSection> _buildLesson2Sections() {
-    String pal(int idx) =>
-        LessonColorPalette.brandPalettes[idx % LessonColorPalette.brandPalettes.length].id;
-
-    ExtractedLessonSection makeSec({
-      required int number,
-      required String title,
-      String bodyText = '',
-      List<String> scriptureReferences = const [],
-      List<Map<String, String>> verseQuotes = const [],
-      List<Map<String, String>> steps = const [],
-      String? highlightNote,
-      bool isQuestion = true,
-      bool hasInputTarget = true,
-      String reflectionPrompt = 'Your note:',
-      required int paletteIndex,
-    }) {
-      return ExtractedLessonSection(
-        number: number,
-        title: title,
-        bodyText: bodyText,
-        scriptureReferences: scriptureReferences,
-        verseQuotes: verseQuotes,
-        steps: steps,
-        highlightNote: highlightNote,
-        isQuestion: isQuestion,
-        hasInputTarget: hasInputTarget,
-        reflectionPrompt: reflectionPrompt,
-        paletteId: pal(paletteIndex),
-      );
-    }
-
-    return [
-      makeSec(
-        number: 1,
-        title: 'What did Christ say to the people of His day concerning the Scriptures?',
-        bodyText:
-            'When this was spoken, not a word of the New Testament had been written. It was to the Old Testament that the Jews looked as their guide to eternal life; and although they would not accept Christ, He said that these very books which they esteemed so highly, testified of Him. If the Old Testament points to Christ, it is worthy …',
-        scriptureReferences: const ['John 5:39'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"Search the Scriptures, for in them ye think ye have eternal life; and they are they which testify of Me."',
-            'reference': 'John 5:39',
-          },
-        ],
-        reflectionPrompt:
-            'What does it mean to you that the Old Testament testifies of Christ?',
-        paletteIndex: 0,
-      ),
-      makeSec(
-        number: 2,
-        title:
-            'Do the Scriptures furnish positive evidence that the gospel was known in the patriarchal age?',
-        bodyText:
-            'It was through gospel faith that Abraham rejoiced to see the day of Christ (John 8:56). So with all the faithful who lived in the patriarchal age. All these had a practical knowledge of the gospel, as appears from their godly lives and sacrificial offerings.',
-        scriptureReferences: const ['Galatians 3:8', 'John 8:56'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"And the Scripture, foreseeing that God would justify the heathen through faith, preached before the gospel unto Abraham."',
-            'reference': 'Galatians 3:8',
-          },
-        ],
-        paletteIndex: 1,
-      ),
-      makeSec(
-        number: 3,
-        title:
-            'Does Holy Writ contain unmistakable evidence that the Hebrews were taught the gospel under the former dispensation?',
-        bodyText:
-            'The persons here referred to by "them" are the Israelites when on their journey from Egypt to the promised land, as will be seen by the Scripture connection. Paul says the gospel was preached unto us, as well as unto them, putting "them" ahead, and letting "us" have the gospel afterward.',
-        scriptureReferences: const ['Hebrews 4:2'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"For unto us was the gospel preached, as well as unto them; but the word preached did not profit them, not being mixed with faith in them that heard it,"',
-            'reference': 'Hebrews 4:2',
-          },
-        ],
-        paletteIndex: 2,
-      ),
-      makeSec(
-        number: 4,
-        title: 'Why did Moses give up the riches of Egypt?',
-        bodyText:
-            'People in that age, even as now, were influenced by the riches of Christ to give up the world.',
-        scriptureReferences: const ['Hebrews 11:26'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"Esteeming the reproach of Christ greater riches than the treasures in Egypt."',
-            'reference': 'Hebrews 11:26',
-          },
-        ],
-        paletteIndex: 3,
-      ),
-      makeSec(
-        number: 5,
-        title:
-            'Whence came the spiritual meat and drink of the Israelites while in the wilderness?',
-        scriptureReferences: const ['1 Corinthians 10:2-4'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"And were all baptized unto Moses in the cloud and in the sea; and did all eat the same spiritual meat; and did all drink the same spiritual drink; for they drank of that spiritual Rock that followed them: and that Rock was Christ."',
-            'reference': '1 Corinthians 10:2-4',
-          },
-        ],
-        paletteIndex: 4,
-      ),
-      makeSec(
-        number: 6,
-        title:
-            'What was the chief corner-stone of the faith of both apostles and prophets?',
-        scriptureReferences: const ['Ephesians 2:20'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"And are built upon the foundation of the apostles and prophets, Jesus Christ Himself being the chief cornerstone."',
-            'reference': 'Ephesians 2:20',
-          },
-        ],
-        highlightNote:
-            'The Bible, from Genesis to Revelation, is a unified narrative that reveals the person, work, and glory of Jesus Christ. Jesus is the central theme, the thread that weaves through every book, chapter, and verse of scripture.',
-        paletteIndex: 5,
-      ),
-      makeSec(
-        number: 7,
-        title:
-            'What part of the Scriptures did Philip hear a certain eunuch reading?',
-        bodyText:
-            'Before Jesus\' incarnation, the people of old searched the scriptures with great diligence and eagerness, seeking evidence of the Messiah who was to come. They understood that the Scriptures were the primary source of knowledge about God\'s plan of salvation and the coming Messiah.\n\nThe Bible (Old and New Testament) contained promises and prophecies about a future Redeemer who would save God\'s people from their sins. The people of old yearned for deliverance from their spiritual and physical bondage, and they saw the scriptures as the key to understanding God\'s plan for their redemption.',
-        scriptureReferences: const ['Acts 8:30'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"And Philip ran thither to him, and heard him read the prophet Esaias, and said, Understandest thou what thou readest?"',
-            'reference': 'Acts 8:30',
-          },
-        ],
-        paletteIndex: 0,
-      ),
-      makeSec(
-        number: 8,
-        title:
-            'When asked if he understood what he was reading, what reply did the eunuch make?',
-        scriptureReferences: const ['Acts 8:31'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"And he said, How can I, except some man should guide me? And he desired Philip that he would come up and sit with him."',
-            'reference': 'Acts 8:31',
-          },
-        ],
-        paletteIndex: 1,
-      ),
-      makeSec(
-        number: 9,
-        title: 'What did Philip then do?',
-        bodyText:
-            'Comparing scripture with scripture is a powerful tool for understanding the Bible and its teachings. This pattern helps to clarify and deepen our understanding of biblical teachings, concepts and themes.',
-        scriptureReferences: const ['Acts 8:35'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"Then Philip opened his mouth, and began at the same scripture, and preached unto him Jesus."',
-            'reference': 'Acts 8:35',
-          },
-        ],
-        paletteIndex: 2,
-      ),
-      makeSec(
-        number: 10,
-        title: 'What are the Scriptures able to do?',
-        scriptureReferences: const ['2 Timothy 3:15'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"Hast thou not known the Holy Scriptures, which are able to make thee wise unto salvation through faith which is in Christ Jesus."',
-            'reference': '2 Timothy 3:15',
-          },
-        ],
-        paletteIndex: 3,
-      ),
-      makeSec(
-        number: 11,
-        title:
-            'What was said of the Bereans because they searched the Scriptures daily?',
-        scriptureReferences: const ['Acts 17:11'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"These were more noble than those in Thessalonica, in that they received the word with all readiness of mind, and searched the Scriptures daily, whether those things were so."',
-            'reference': 'Acts 17:11',
-          },
-        ],
-        paletteIndex: 4,
-      ),
-      makeSec(
-        number: 12,
-        title: 'By what is man to live?',
-        scriptureReferences: const ['Matthew 4:4'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"Man shall not live by bread alone, but by every word that proceedeth out of the mouth of God."',
-            'reference': 'Matthew 4:4',
-          },
-        ],
-        paletteIndex: 5,
-      ),
-      makeSec(
-        number: 13,
-        title: 'How greatly has God magnified His word?',
-        bodyText:
-            'God holds His word in higher esteem than His own name, and He takes pleasure when we treat the Bible with the same reverence. To maintain a thriving Christian life, we must prioritize a consistent, prayerful study of scripture. The word of God is our spiritual sustenance, providing the nourishment we need to grow in our faith and deepen our relationship with Him.',
-        scriptureReferences: const ['Psalms 138:2'],
-        verseQuotes: const [
-          {
-            'quote':
-                '"I will worship toward Thy holy temple, and praise Thy name for Thy lovingkindness and for Thy truth; for Thou hast magnified Thy word above all Thy name."',
-            'reference': 'Psalms 138:2',
-          },
-        ],
-        paletteIndex: 0,
-      ),
-      makeSec(
-        number: 14,
-        title: 'Practical Tips for Prayerful Bible Study',
-        steps: const [
-          {
-            'title': 'Start with prayer:',
-            'text':
-                'Begin your Bible study with prayer, asking God to guide, illuminate, and apply His Word to your life.',
-          },
-          {
-            'title': 'Seek the Holy Spirit\'s presence:',
-            'text':
-                'Invite the Holy Spirit to be present, teaching, guiding, and applying God\'s Word to your life.',
-          },
-          {
-            'title': 'Read with reverence and expectation:',
-            'text':
-                'Approach God\'s Word with reverence, expectation, and a willingness to learn and obey.',
-          },
-          {
-            'title': 'Reflect and respond:',
-            'text':
-                'Take time to reflect on what you\'ve read, asking God to help you …',
-          },
-        ],
-        isQuestion: false,
-        hasInputTarget: false,
-        reflectionPrompt: '',
-        paletteIndex: 1,
-      ),
-    ];
-  }
-
-  List<Widget> _buildDynamicExtractedSections(bool isDark) {
-    if (_dynamicSections.isEmpty) {
-      return [
-        _buildSectionCard(
-          number: 1,
-          title: widget.title,
-          isDark: isDark,
-          children: [
-            Text(
-              widget.lessonData?['description']?.toString() ??
-                  'Study content extracted from tract.',
-              style: const TextStyle(fontSize: 14, height: 1.5),
-            ),
-            _buildReflectionInput(
-              label: 'Your Study Notes & Reflection',
-              hint: 'Write your insights and personal response...',
-              controller: _controllers.putIfAbsent('q1', () => TextEditingController()),
-              isDark: isDark,
-              sectionNumber: 1,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-      ];
-    }
-
-    final widgets = <Widget>[];
-    for (final sec in _dynamicSections) {
-      final palette = LessonColorPalette.byId(
-        sec.paletteId,
-        fallbackIndex: sec.number - 1,
-      );
-      final controller = _controllers.putIfAbsent(
-        'q${sec.number}',
-        () => TextEditingController(),
-      );
-
-      widgets.add(
-        _buildSectionCard(
-          number: sec.number,
-          title: sec.title,
-          isDark: isDark,
-          palette: palette,
-          children: [
-            for (final q in sec.verseQuotes)
-              _buildVerseQuoteCard(
-                quote: q['quote'] ?? '',
-                reference: q['reference'] ?? '',
-                isDark: isDark,
-                palette: palette,
-              ),
-            if (sec.bodyText.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              ScriptureRichText(
-                sec.bodyText,
-                style: const TextStyle(fontSize: 13.5, height: 1.5),
-              ),
-            ],
-            if (sec.highlightNote != null && sec.highlightNote!.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Color(palette.lightTintHex),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: Color(palette.primaryHex).withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.check_circle_rounded,
-                      size: 18,
-                      color: Color(palette.primaryHex),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        sec.highlightNote!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.45,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.black87 : const Color(0xFF0F172A),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (sec.principleNote != null &&
-                sec.principleNote!.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.amber.withValues(alpha: 0.14)
-                      : Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: Colors.amber.withValues(alpha: 0.45),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.lightbulb_rounded,
-                      size: 18,
-                      color: Colors.amber.shade700,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        sec.principleNote!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.45,
-                          fontWeight: FontWeight.w500,
-                          color: isDark
-                              ? Colors.amber.shade100
-                              : const Color(0xFF451A03),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (sec.qaItems.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              for (int qIdx = 0; qIdx < sec.qaItems.length; qIdx++) ...[
-                if (qIdx > 0) const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.04)
-                        : Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isDark ? Colors.white12 : Colors.grey.shade200,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 22,
-                            height: 22,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: Color(palette.primaryHex),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              sec.qaItems[qIdx]['letter'] ??
-                                  String.fromCharCode(65 + qIdx),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              sec.qaItems[qIdx]['question'] ?? '',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.bold,
-                                color: Color(palette.primaryHex),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if ((sec.qaItems[qIdx]['text'] ?? '').isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          sec.qaItems[qIdx]['text']!,
-                          style: const TextStyle(fontSize: 13, height: 1.45),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ],
-            if (sec.checklistItems.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark ? Colors.white12 : Colors.grey.shade200,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Examples of Fulfilled Bible Prophecies',
-                      style: TextStyle(
+                      '${i + 1}',
+                      style: const TextStyle(
+                        color: _brand900,
+                        fontWeight: FontWeight.bold,
                         fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Color(palette.primaryHex),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    for (final item in sec.checklistItems) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.check_box_outlined,
-                              size: 16,
-                              color: Color(palette.primaryHex),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: RichText(
-                                text: TextSpan(
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    height: 1.4,
-                                    color: isDark
-                                        ? Colors.white70
-                                        : const Color(0xFF334155),
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                      text: '${item['label'] ?? ''} ',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    TextSpan(text: item['text'] ?? ''),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-            if (sec.factItems.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              for (final fact in sec.factItems) ...[
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Color(palette.lightTintHex),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Color(palette.primaryHex).withValues(alpha: 0.2),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Color(palette.primaryHex),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          (fact['tag'] ?? 'FACT').toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        fact['title'] ?? '',
-                        style: TextStyle(
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          color: Color(0xFF334155),
                           fontSize: 13.5,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.black87 : const Color(0xFF0F172A),
+                          height: 1.45,
                         ),
-                      ),
-                      if ((fact['quote'] ?? '').isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          fact['quote']!,
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontStyle: FontStyle.italic,
-                            color: isDark
-                                ? Colors.black87
-                                : const Color(0xFF334155),
+                        children: [
+                          TextSpan(
+                            text: '${s.steps[i]['title']} ',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                        ),
-                      ],
-                      if ((fact['text'] ?? '').isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          fact['text']!,
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: isDark
-                                ? Colors.black54
-                                : const Color(0xFF475569),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ],
-            if (sec.darkCallout != null) ...[
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF334155)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.science_rounded,
-                            size: 18, color: Color(0xFF67E8F9)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            sec.darkCallout!['title'] ?? 'Key Insight',
-                            style: const TextStyle(
-                              color: Color(0xFF67E8F9),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      sec.darkCallout!['text'] ?? '',
-                      style: const TextStyle(
-                        color: Color(0xFFCBD5E1),
-                        fontSize: 12.5,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (sec.testimony != null) ...[
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.amber.shade50,
-                      Color(palette.lightTintHex),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Color(palette.primaryHex).withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.format_quote_rounded,
-                            size: 18, color: Color(palette.primaryHex)),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            sec.testimony!['title'] ?? 'Testimony',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13.5,
-                              color: Color(palette.primaryHex),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '"${sec.testimony!['text'] ?? ''}"',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.5,
-                        fontStyle: FontStyle.italic,
-                        color: Color(0xFF1E293B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (sec.tableData != null &&
-                sec.tableData!['rows'] is List &&
-                (sec.tableData!['rows'] as List).isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark ? Colors.white12 : Colors.grey.shade200,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sec.tableData!['title']?.toString() ?? 'Reference Table',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.bold,
-                        color: Color(palette.primaryHex),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        headingRowColor: WidgetStateProperty.all(
-                          Color(palette.primaryHex),
-                        ),
-                        columns: [
-                          for (final col
-                              in (sec.tableData!['columns'] as List? ??
-                                  const ['Subject', 'OT', 'NT']))
-                            DataColumn(
-                              label: Text(
-                                col.toString(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                        ],
-                        rows: [
-                          for (final row
-                              in (sec.tableData!['rows'] as List))
-                            if (row is List)
-                              DataRow(
-                                cells: [
-                                  for (int ci = 0; ci < 3; ci++)
-                                    DataCell(
-                                      Text(
-                                        ci < row.length
-                                            ? row[ci].toString()
-                                            : '',
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                    ),
-                                ],
-                              ),
+                          TextSpan(text: s.steps[i]['text'] ?? ''),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ],
-            if (sec.steps.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              if (sec.checkableSteps || !sec.hasInputTarget)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text(
-                    'Tick each one you will practise.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(palette.primaryHex),
-                    ),
                   ),
-                ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark ? Colors.white12 : Colors.grey.shade200,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (int sIdx = 0; sIdx < sec.steps.length; sIdx++) ...[
-                      if (sIdx > 0) const SizedBox(height: 8),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: !sec.hasInputTarget
-                            ? () {
-                                setState(() {
-                                  _tipChecked[sIdx] = !(_tipChecked[sIdx] ?? false);
-                                });
-                              }
-                            : null,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (!sec.hasInputTarget) ...[
-                              SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: Checkbox(
-                                  value: _tipChecked[sIdx] ?? false,
-                                  activeColor: Color(palette.primaryHex),
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  onChanged: (v) {
-                                    setState(() {
-                                      _tipChecked[sIdx] = v ?? false;
-                                    });
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ] else ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 7, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Color(palette.primaryHex)
-                                      .withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '${sIdx + 1}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(palette.primaryHex),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            Expanded(
-                              child: RichText(
-                                text: TextSpan(
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    height: 1.4,
-                                    color: isDark ? Colors.white70 : Colors.black87,
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                      text: '${sec.steps[sIdx]['title'] ?? ''} ',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    TextSpan(text: sec.steps[sIdx]['text'] ?? ''),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                  if (checkable)
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Checkbox(
+                        value:
+                            _checkboxStates['step_${s.number}_$i'] ?? false,
+                        activeColor: _brand700,
+                        onChanged: (v) {
+                          setState(() {
+                            _checkboxStates['step_${s.number}_$i'] =
+                                v ?? false;
+                          });
+                          _recalculateProgress();
+                        },
                       ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-            if (sec.scriptureReferences.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: sec.scriptureReferences
-                    .map((ref) => _buildScriptureChip(
-                          ref,
-                          accentColor: Color(palette.primaryHex),
-                        ))
-                    .toList(),
-              ),
-            ],
-            if (sec.hasInputTarget)
-              _buildReflectionInput(
-                label: sec.reflectionPrompt,
-                hint: _isLesson2
-                    ? (_lesson2Placeholders[sec.number] ??
-                        'Write your answer or personal reflection on Section ${sec.number}...')
-                    : 'Write your answer or personal reflection on Section ${sec.number}...',
-                controller: controller,
-                isDark: isDark,
-                sectionNumber: sec.number,
-                palette: palette,
-              ),
-          ],
-        ),
-      );
-      widgets.add(const SizedBox(height: 16));
-    }
-    return widgets;
-  }
-
-  Widget _buildSectionCard({
-    required int number,
-    required String title,
-    required List<Widget> children,
-    required bool isDark,
-    LessonColorPalette? palette,
-  }) {
-    return LessonSectionCard(
-      number: number,
-      title: title,
-      isDark: isDark,
-      palette: palette,
-      children: children,
-    );
-  }
-
-  Widget _buildVerseQuoteCard({
-    required String quote,
-    required String reference,
-    required bool isDark,
-    LessonColorPalette? palette,
-  }) {
-    return LessonVerseQuoteCard(
-      quote: quote,
-      reference: reference,
-      isDark: isDark,
-      palette: palette,
-      onOpenScripture: _openScripture,
-    );
-  }
-
-  Widget _buildScriptureChip(String reference, {Color? accentColor}) {
-    return LessonScriptureChip(
-      reference: reference,
-      accentColor: accentColor,
-      onTap: () => _openScripture(reference),
-    );
-  }
-
-  Widget _buildReflectionInput({
-    required String label,
-    required String hint,
-    required TextEditingController controller,
-    required bool isDark,
-    int maxLines = 2,
-    int sectionNumber = 1,
-    LessonColorPalette? palette,
-  }) {
-    return LessonReflectionInput(
-      label: label,
-      hint: hint,
-      controller: controller,
-      isDark: isDark,
-      maxLines: maxLines,
-      sectionNumber: sectionNumber,
-      palette: palette,
-    );
-  }
-
-  Widget _buildSection1(bool isDark) {
-    return _buildSectionCard(
-      number: 1,
-      title: 'What does the Bible claim about itself?',
-      isDark: isDark,
-      children: [
-        _buildVerseQuoteCard(
-          quote: 'All scripture is given by inspiration of God.',
-          reference: '2 Timothy 3:16',
-          isDark: isDark,
-        ),
-        _buildVerseQuoteCard(
-          quote:
-              'Prophecy came not in old time by the will of man: but holy men of God spake as they were moved by the Holy Ghost.',
-          reference: '2 Peter 1:21',
-          isDark: isDark,
-        ),
-        _buildVerseQuoteCard(
-          quote: 'The scripture cannot be broken.',
-          reference: 'John 10:35',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'It claims to be inspired. It was written by men who were guided by the Holy Ghost. It cannot be broken or fail.',
-          style: TextStyle(fontSize: 13, height: 1.4),
-        ),
-        _buildReflectionInput(
-          label: 'Your Personal Reflection / Summary',
-          hint: 'What does divine inspiration mean to your confidence in Scripture?',
-          controller: _controllers['q1']!,
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSection2(bool isDark) {
-    return _buildSectionCard(
-      number: 2,
-      title: 'How did Jesus demonstrate His confidence and belief in Scripture?',
-      isDark: isDark,
-      children: [
-        _buildVerseQuoteCard(
-          quote:
-              'Jesus said, "It is written, Man shall not live by bread alone." "It is written again, Thou shalt not tempt the Lord thy God." "It is written, Thou shalt worship the Lord thy God, and him only shalt thou serve."',
-          reference: 'Matthew 4:4, 7, 10',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Jesus quoted Scripture when meeting the temptations of Satan. He also stated that the Bible is truth (John 17:17). Jesus often quoted Scripture as authority for the truth He taught.',
-          style: TextStyle(fontSize: 13, height: 1.4),
-        ),
-        _buildReflectionInput(
-          label: 'Practical Application',
-          hint: 'How can you apply "It is written" in your daily temptations?',
-          controller: _controllers['q2']!,
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSection3(bool isDark) {
-    final prophecies = [
-      {'title': 'Four world empires', 'detail': 'Babylon, Medo-Persia, Greece, and Rome (Daniel 2, 7, 8)'},
-      {'title': 'Cyrus named', 'detail': 'Named 150 years beforehand to conquer Babylon (Isaiah 45:1-3)'},
-      {'title': 'Babylon destroyed', 'detail': 'Never to be inhabited again (Isaiah 13:19, 20; Jeremiah 51:37)'},
-      {'title': "Egypt's status", 'detail': 'Never again to rule among nations (Ezekiel 29:14, 15)'},
-      {'title': 'End-time fear', 'detail': 'Earth-shaking distress of nations with perplexity (Luke 21:25, 26)'},
-      {'title': 'Moral decline', 'detail': 'Spiritual decay in the last days (2 Timothy 3:1-5)'},
-    ];
-
-    return _buildSectionCard(
-      number: 3,
-      title: 'Do Bible prophecies confirm inspiration?',
-      isDark: isDark,
-      children: [
-        _buildVerseQuoteCard(
-          quote: 'I am the Lord... new things do I declare: before they spring forth I tell you of them.',
-          reference: 'Isaiah 42:8, 9',
-          isDark: isDark,
-        ),
-        _buildVerseQuoteCard(
-          quote: 'Declaring the end from the beginning, and from ancient times the things that are not yet done.',
-          reference: 'Isaiah 46:9, 10',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Bible predictions confirm inspiration as they come to pass. Check the fulfilled prophecies you have studied:',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        ...prophecies.map((p) {
-          final isChecked = _prophecyChecked[p['title']] ?? false;
-          return CheckboxListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            activeColor: Colors.green,
-            title: Text(p['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            subtitle: Text(p['detail']!, style: const TextStyle(fontSize: 12)),
-            value: isChecked,
-            onChanged: (val) {
-              setState(() {
-                _prophecyChecked[p['title']!] = val ?? false;
-              });
-            },
-          );
-        }),
-        _buildReflectionInput(
-          label: 'Fulfilled Prophecy Reflection',
-          hint: 'Which fulfilled prophecy gives you the greatest conviction?',
-          controller: _controllers['q3']!,
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSection4(bool isDark) {
-    return _buildSectionCard(
-      number: 4,
-      title: 'Can we expect scientific statements in the Bible to be accurate?',
-      isDark: isDark,
-      children: [
-        _buildVerseQuoteCard(
-          quote: 'Thy word is true from the beginning.',
-          reference: 'Psalms 119:160',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Scientific Facts Confirmed by the Bible:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 6),
-              const Text('• Earth hung on nothing: Job 26:7', style: TextStyle(fontSize: 13)),
-              const Text('• Earth is a sphere: Isaiah 40:22', style: TextStyle(fontSize: 13)),
-              const Text('• Why the atom holds together: Colossians 1:17 ("By Him all things hold together")',
-                  style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        _buildReflectionInput(
-          label: 'Science & Faith Reflection',
-          hint: 'How does scientific foreknowledge strengthen your trust in Scripture?',
-          controller: _controllers['q4']!,
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSection5(bool isDark) {
-    return _buildSectionCard(
-      number: 5,
-      title: 'What evidence of Bible inspiration is found in transformed lives?',
-      isDark: isDark,
-      children: [
-        _buildVerseQuoteCard(
-          quote:
-              'Therefore if any man be in Christ, he is a new creature: old things are passed away; behold, all things are become new.',
-          reference: '2 Corinthians 5:17',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF262314) : const Color(0xFFFEF3C7),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.format_quote, color: Colors.amber, size: 20),
-                  SizedBox(width: 6),
-                  Text('A Father Transformed (1998 Testimony)',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
                 ],
               ),
-              const SizedBox(height: 6),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrincipleNote(String noteText) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.lightbulb, color: Color(0xFFD97706), size: 16),
+              SizedBox(width: 6),
               Text(
-                '"For many years our father lived a drunkard and traditional community leader. In 1998 the truth of the Bible was revealed to our family. Everything changed. He became a faithful preacher of the Gospel until his death. The Bible truly does change people."',
+                'The Principle of "Apparent Age":',
                 style: TextStyle(
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                  color: isDark ? Colors.white70 : const Color(0xFF78350F),
-                  height: 1.4,
+                  color: Color(0xFF78350F),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12.5,
                 ),
               ),
             ],
           ),
-        ),
-        _buildReflectionInput(
-          label: 'Your Personal Experience',
-          hint: 'Have you witnessed God\'s Word transform a life or your own habits?',
-          controller: _controllers['q5']!,
-          isDark: isDark,
-        ),
-      ],
+          const SizedBox(height: 6),
+          Text(
+            noteText,
+            style: const TextStyle(
+              color: Color(0xFF78350F),
+              fontSize: 12.5,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSection6(bool isDark) {
-    return _buildSectionCard(
-      number: 6,
-      title: 'What evidence for Bible inspiration emerges from Messianic prophecies?',
-      isDark: isDark,
-      children: [
-        _buildVerseQuoteCard(
-          quote:
-              'And beginning at Moses and all the prophets, He expounded unto them in all the Scriptures the things concerning Himself.',
-          reference: 'Luke 24:27',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'More than 125 Old Testament prophecies were fulfilled in Jesus Christ down to exact detail.',
-          style: TextStyle(fontSize: 13),
-        ),
-        const SizedBox(height: 10),
-
-        // Filter search field
-        TextField(
-          controller: _prophecySearchController,
-          onChanged: _filterProphecies,
-          decoration: InputDecoration(
-            hintText: 'Filter prophecy (e.g. Bethlehem, Virgin, 30 silver)...',
-            prefixIcon: const Icon(Icons.search, size: 18),
-            isDense: true,
-            filled: true,
-            fillColor: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-          ),
-          style: const TextStyle(fontSize: 12),
-        ),
-        const SizedBox(height: 10),
-
-        // Prophecies Table Card
-        Container(
+  Widget _buildQaCards(ExtractedLessonSection s) {
+    return Column(
+      children: s.qaItems.map((qa) {
+        final letter = qa['letter'] ?? 'A';
+        final key = 'q_${s.number}_${letter.toLowerCase()}';
+        final ctrl = _textControllers[key];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            border: Border.all(color: isDark ? Colors.white12 : Colors.grey[300]!),
-            borderRadius: BorderRadius.circular(8),
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: Column(
-            children: _filteredMessianicProphecies.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final p = entry.value;
-              final isStudied = _messianicStudied[idx] ?? false;
-
-              return Container(
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isDark ? Colors.white10 : Colors.grey[200]!,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: _brand800,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      letter,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      qa['question'] ?? '',
+                      style: const TextStyle(
+                        color: _brand900,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                qa['text'] ?? '',
+                style: const TextStyle(
+                  color: Color(0xFF334155),
+                  fontSize: 13.5,
+                  height: 1.5,
+                  fontFamily: 'Georgia',
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                child: Row(
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: ctrl,
+                style: const TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: qa['placeholder'] ?? 'Enter your response...',
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: _brand700, width: 1.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildReflectionInput(ExtractedLessonSection s) {
+    final ctrl = _textControllers['q_${s.number}'];
+    final isMultiline = s.number == 1 || s.number == 5 || s.number == 13;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: 12),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.edit_note, color: _brand700, size: 17),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  s.reflectionPrompt.toUpperCase(),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: ctrl,
+            maxLines: isMultiline ? 3 : 1,
+            style: const TextStyle(fontSize: 13.5, color: Color(0xFF1E293B)),
+            decoration: InputDecoration(
+              hintText: s.reflectionPlaceholder,
+              hintStyle:
+                  const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: _brand700, width: 1.8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Personal Response & Commitment Section
+  // ---------------------------------------------------------------------------
+  Widget _buildDecisionAndCommitmentCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [_brandDeep, _brand900],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+            color: const Color(0xFF059669).withValues(alpha: 0.35)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'PERSONAL RESPONSE & COMMITMENT',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _gold400,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Making God's Word Your Foundation",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Georgia',
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '"$_decisionQuote"',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFD1FAE5),
+              fontSize: 13,
+              height: 1.5,
+              fontFamily: 'Georgia',
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // YES / NO Decision Toggle Cards
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.center,
+            children: _decisionQuestions.map((q) {
+              final qId = q['id']!;
+              final currentVal = _decisionStates[qId];
+              return Container(
+                width: _decisionQuestions.length == 1 ? 520 : 250,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Column(
                   children: [
-                    Expanded(
-                      flex: 4,
-                      child: Text(
-                        p['subject']!,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                    Text(
+                      q['text'] ?? '',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.5,
                       ),
                     ),
-                    Expanded(
-                      flex: 3,
-                      child: InkWell(
-                        onTap: () => _openScripture(p['ot']!),
-                        child: Text(
-                          p['ot']!,
-                          style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildYesNoButton(
+                          label: 'YES',
+                          isSelected: currentVal == true,
+                          activeColor: const Color(0xFF10B981),
+                          onTap: () {
+                            setState(() {
+                              _decisionStates[qId] = true;
+                            });
+                            _recalculateProgress();
+                          },
                         ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 3,
-                      child: InkWell(
-                        onTap: () => _openScripture(p['nt']!),
-                        child: Text(
-                          p['nt']!,
-                          style: TextStyle(
-                            color: isDark ? Colors.blue[300] : Colors.blue[800],
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        const SizedBox(width: 10),
+                        _buildYesNoButton(
+                          label: 'NO',
+                          isSelected: currentVal == false,
+                          activeColor: const Color(0xFFDC2626),
+                          onTap: () {
+                            setState(() {
+                              _decisionStates[qId] = false;
+                            });
+                            _recalculateProgress();
+                          },
                         ),
-                      ),
-                    ),
-                    Checkbox(
-                      value: isStudied,
-                      activeColor: Colors.green,
-                      visualDensity: VisualDensity.compact,
-                      onChanged: (val) {
-                        setState(() {
-                          _messianicStudied[idx] = val ?? false;
-                        });
-                      },
+                      ],
                     ),
                   ],
                 ),
               );
             }).toList(),
           ),
-        ),
-        _buildReflectionInput(
-          label: 'Conclusion Regarding Jesus',
-          hint: 'Does mathematical and historical fulfillment prove Jesus is the Son of God?',
-          controller: _controllers['q6']!,
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
+          const SizedBox(height: 20),
 
-  Widget _buildSection7(bool isDark) {
-    return _buildSectionCard(
-      number: 7,
-      title: 'What advantage does a person have who accepts the Bible as God\'s Word?',
-      isDark: isDark,
-      children: [
-        _buildVerseQuoteCard(
-          quote: 'I understand more than the ancients, because I keep thy precepts.',
-          reference: 'Psalms 119:100',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Answers to life\'s foundational questions:\n1. Creation in 6 literal days (Exodus 20:11)\n2. Universal Flood answering geological mysteries (Genesis 7)\n3. Origin of languages at Babel (Genesis 11)',
-          style: TextStyle(fontSize: 13, height: 1.45),
-        ),
-        _buildReflectionInput(
-          label: 'Biblical Worldview Reflection',
-          hint: 'Which area of God\'s revelation guides your worldview most?',
-          controller: _controllers['q7']!,
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSection8(bool isDark) {
-    return _buildSectionCard(
-      number: 8,
-      title: 'What is the Bible\'s universal appeal to life\'s 3 puzzling questions?',
-      isDark: isDark,
-      children: [
-        _buildVerseQuoteCard(
-          quote: 'Thy word is a lamp unto my feet, and a light unto my path.',
-          reference: 'Psalms 119:105',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 8),
-        _buildSubQuestion(
-          letter: 'A',
-          title: 'Where did I come from?',
-          answer:
-              'God created us in His image. We are sons and daughters of God (Galatians 3:26).',
-          controller: _controllers['q8_a']!,
-          isDark: isDark,
-        ),
-        const SizedBox(height: 10),
-        _buildSubQuestion(
-          letter: 'B',
-          title: 'Why am I here?',
-          answer:
-              'To discover God\'s truth and accept Jesus\' offer to restore us into His image (Romans 8:29).',
-          controller: _controllers['q8_b']!,
-          isDark: isDark,
-        ),
-        const SizedBox(height: 10),
-        _buildSubQuestion(
-          letter: 'C',
-          title: 'What does the future hold for me?',
-          answer:
-              'Jesus will return very soon to take His redeemed home to heaven for eternity (John 14:1-3; Revelation 21:3, 4).',
-          controller: _controllers['q8_c']!,
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSubQuestion({
-    required String letter,
-    required String title,
-    required String answer,
-    required TextEditingController controller,
-    required bool isDark,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white10 : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 10,
-                backgroundColor: Colors.green[800],
-                child: Text(letter,
-                    style: const TextStyle(color: Colors.white, fontSize: 10)),
-              ),
-              const SizedBox(width: 8),
-              Text(title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(answer, style: const TextStyle(fontSize: 12, height: 1.4)),
-          const SizedBox(height: 6),
-          TextField(
-            controller: controller,
-            onChanged: (_) => _calculateProgress(),
-            decoration: InputDecoration(
-              hintText: 'Enter your note on this question...',
-              isDense: true,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-              contentPadding: const EdgeInsets.all(8),
-            ),
-            style: const TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSection9Commitment(bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [const Color(0xFF0F3D24), const Color(0xFF072415)]
-              : [const Color(0xFF14532D), const Color(0xFF064E3B)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Personal Response & Commitment',
-            style: TextStyle(
-              color: Colors.amberAccent,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _isLesson2
-                ? 'Making Daily Bible Study Your Habit'
-                : 'Making God\'s Word Your Foundation',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 14),
-          if (_isLesson2) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: const Text(
-                'Jesus yearns to share His heart and plans with you through the pages of His word. He wants to impart wisdom that leads to salvation and a deeper relationship with Him. His word is the key to unlocking this wisdom.',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  height: 1.45,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            _buildYesNoDecision(
-              'Will you dedicate yourself to a consistent, daily study of His word, trusting in its power to transform your life and equip you for His purpose?',
-              _dedicateDailyStudy,
-              (v) {
-                setState(() => _dedicateDailyStudy = v);
-                _calculateProgress();
-              },
-            ),
-            const SizedBox(height: 14),
-          ] else ...[
-            // Three Yes/No buttons
-            _buildYesNoDecision('Do you have a Bible?', _haveBible, (v) {
-              setState(() => _haveBible = v);
-              _calculateProgress();
-            }),
-            const SizedBox(height: 8),
-            _buildYesNoDecision('Do you study the Bible?', _studyBible, (v) {
-              setState(() => _studyBible = v);
-              _calculateProgress();
-            }),
-            const SizedBox(height: 8),
-            _buildYesNoDecision('Do you believe the Bible?', _believeBible, (v) {
-              setState(() => _believeBible = v);
-              _calculateProgress();
-            }),
-            const SizedBox(height: 14),
-          ],
-
-          // Prayer commitment
-          CheckboxListTile(
-            dense: true,
-            activeColor: Colors.amber,
-            contentPadding: EdgeInsets.zero,
-            value: _commitmentPrayer,
-            onChanged: (val) {
-              setState(() => _commitmentPrayer = val ?? false);
-              _calculateProgress();
-            },
-            title: Text(
-              _isLesson2 ? 'My Study Commitment:' : 'My Study Commitment',
-              style: const TextStyle(
-                color: Colors.amberAccent,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-            subtitle: Text(
-              _isLesson2
-                  ? 'I will begin my Bible study with prayer, asking God to guide, illuminate, and apply His Word to my life.'
-                  : 'I commit to prayerful study of the Bible from today. Lord, grant me the enabling power of Your Holy Spirit.',
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // ── Discipleship Tracker Integration Card ──
+          // Prayer Commitment & Contact Box
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.15),
-              ),
+              color: const Color(0xFF022C22).withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _gold400.withValues(alpha: 0.35)),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.people_alt, color: Colors.amberAccent, size: 18),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Disciple Details (Discipleship Tracker)',
-                        style: TextStyle(
-                          color: Colors.amberAccent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _commitmentChecked = !_commitmentChecked;
+                    });
+                    _recalculateProgress();
+                  },
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: _commitmentChecked,
+                        activeColor: _gold400,
+                        checkColor: Colors.black,
+                        onChanged: (v) {
+                          setState(() {
+                            _commitmentChecked = v ?? false;
+                          });
+                          _recalculateProgress();
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _commitmentTitle,
+                              style: const TextStyle(
+                                color: _gold400,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '"$_commitmentText"',
+                              style: const TextStyle(
+                                color: Color(0xFFD1FAE5),
+                                fontSize: 13,
+                                height: 1.45,
+                                fontFamily: 'Georgia',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    if (_matchedContact != null)
-                      IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.white70, size: 18),
-                        tooltip: 'Clear selection',
-                        onPressed: _clearMatchedContact,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Record who you studied with. Existing disciples will be updated with this new study; new persons will be enrolled into your Discipleship Tracker.',
-                  style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.3),
-                ),
-                const SizedBox(height: 12),
-
-                // Match status pill/badge if existing disciple is matched
-                if (_matchedContact != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF14532D),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.6)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.verified, color: Colors.greenAccent, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Matched: ${_matchedContact!.fullName}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Text(
-                                '$_matchedContactStudyCount prior studies logged • Current Stage: ${_formatLevelName(_matchedContact!.currentLevel)}',
-                                style: const TextStyle(color: Colors.white70, fontSize: 11),
-                              ),
-                            ],
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _nameController,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 12.5),
+                        decoration: InputDecoration(
+                          hintText: 'Your Name',
+                          hintStyle: const TextStyle(
+                              color: Colors.white54, fontSize: 12),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.1),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Colors.white24),
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                // Name field with live suggestions from existing disciples
-                _buildDiscipleNameAutocomplete(),
-                const SizedBox(height: 10),
-
-                // Phone and Address Row
-                Row(
-                  children: [
+                    const SizedBox(width: 10),
                     Expanded(
                       child: TextField(
                         controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Phone / WhatsApp',
-                          labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
-                          hintText: 'e.g. 08012345678',
-                          hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
-                          isDense: true,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 12.5),
+                        decoration: InputDecoration(
+                          hintText: 'Phone Number / WhatsApp',
+                          hintStyle: const TextStyle(
+                              color: Colors.white54, fontSize: 12),
                           filled: true,
-                          fillColor: Colors.black26,
-                          border: OutlineInputBorder(),
-                        ),
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _addressController,
-                        decoration: const InputDecoration(
-                          labelText: 'Campus / Location',
-                          labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
-                          hintText: 'e.g. UNILAG / Hall 3',
-                          hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
-                          isDense: true,
-                          filled: true,
-                          fillColor: Colors.black26,
-                          border: OutlineInputBorder(),
-                        ),
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Discipleship Stage / Level Dropdown
-                Row(
-                  children: [
-                    const Text(
-                      'Stage / Level:',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.black38,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.white30),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: ModernDropdownButton<DiscipleshipLevel>(
-                            value: _selectedDiscipleshipLevel,
-                            dropdownColor: const Color(0xFF14241B),
-                            isExpanded: true,
-                            icon: const Icon(Icons.arrow_drop_down, color: Colors.amberAccent),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            items: DiscipleshipLevel.values.map((lvl) {
-                              return DropdownMenuItem<DiscipleshipLevel>(
-                                value: lvl,
-                                child: Text(_formatLevelName(lvl)),
-                              );
-                            }).toList(),
-                            onChanged: (lvl) {
-                              if (lvl != null) {
-                                setState(() => _selectedDiscipleshipLevel = lvl);
-                              }
-                            },
+                          fillColor: Colors.white.withValues(alpha: 0.1),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Colors.white24),
                           ),
                         ),
                       ),
@@ -2855,133 +1953,185 @@ class _InteractiveLessonReaderScreenState
                 ),
               ],
             ),
-          )
+          ),
+          const SizedBox(height: 18),
+
+          // Save & Export Action Buttons
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 10,
+            children: [
+              ElevatedButton.icon(
+                onPressed: _saveProgressLocally,
+                icon: const Icon(Icons.save, size: 16),
+                label: const Text('SAVE MY ANSWERS LOCALLY'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _gold500,
+                  foregroundColor: const Color(0xFF0F172A),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    letterSpacing: 0.6,
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: _exportStudySummary,
+                icon: const Icon(Icons.download, size: 16),
+                label: const Text('COPY / EXPORT STUDY SUMMARY'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Color(0xFF34D399)),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    letterSpacing: 0.6,
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+
+          if (_showSavedBanner) ...[
+            const SizedBox(height: 12),
+            const Text(
+              '✓ Your study notes and responses have been saved successfully to your device!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _gold400,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildDiscipleNameAutocomplete() {
-    final query = _nameController.text.trim().toLowerCase();
-    final matches = (query.isEmpty || _matchedContact != null)
-        ? const <DiscipleshipContact>[]
-        : _userContacts.where((c) {
-            return c.fullName.toLowerCase().contains(query) ||
-                (c.phone != null && c.phone!.contains(query));
-          }).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TextField(
-          controller: _nameController,
-          onChanged: (val) {
-            setState(() {});
-            _onNameChanged(val);
-          },
-          decoration: InputDecoration(
-            labelText: 'Disciple Name (or search existing)',
-            labelStyle: const TextStyle(color: Colors.white70, fontSize: 12),
-            hintText: 'Type name — existing disciples appear if matched',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 11),
-            prefixIcon: const Icon(Icons.person_search, color: Colors.amberAccent, size: 20),
-            suffixIcon: _nameController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear, color: Colors.white54, size: 18),
-                    tooltip: 'Clear name',
-                    onPressed: _clearMatchedContact,
-                  )
-                : null,
-            isDense: true,
-            filled: true,
-            fillColor: Colors.black26,
-            border: const OutlineInputBorder(),
-          ),
-          style: const TextStyle(color: Colors.white, fontSize: 12),
+  Widget _buildYesNoButton({
+    required String label,
+    required bool isSelected,
+    required Color activeColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? activeColor
+              : Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(20),
         ),
-        if (matches.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 180),
-            decoration: BoxDecoration(
-              color: const Color(0xFF162E20),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4)),
-            ),
-            child: ListView.separated(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              itemCount: matches.length,
-              separatorBuilder: (_, __) => Divider(
-                height: 1,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-              itemBuilder: (context, index) {
-                final contact = matches[index];
-                return ListTile(
-                  dense: true,
-                  visualDensity: VisualDensity.compact,
-                  title: Text(
-                    contact.fullName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${_formatLevelName(contact.currentLevel)}${contact.phone != null && contact.phone!.isNotEmpty ? ' • ${contact.phone}' : ''}',
-                    style: const TextStyle(color: Colors.white60, fontSize: 10),
-                  ),
-                  trailing: const Icon(Icons.add_task, color: Colors.greenAccent, size: 16),
-                  onTap: () => _selectContact(contact),
-                );
-              },
-            ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 11.5,
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        const Divider(color: Color(0xFFCBD5E1)),
+        const SizedBox(height: 12),
+        const Text(
+          'ALIVE NIGERIA SERIES  •  WHAT THE BIBLE SAYS',
+          style: TextStyle(
+            color: _brand900,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            letterSpacing: 0.8,
+            fontFamily: 'Georgia',
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '"$_heroVerse" — $_heroVerseRef',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFF475569),
+            fontSize: 12,
+            fontFamily: 'Georgia',
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'For Enquiry, Study Guides & Prayer: $_enquiryPhone',
+          style: const TextStyle(
+            color: Color(0xFF1E293B),
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildYesNoDecision(
-      String question, bool? currentVal, Function(bool) onSelect) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            question,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+  /// Renders inline markup (__underlined__, **bold**, *italic*).
+  Widget _buildFormattedText(String input, {required TextStyle baseStyle}) {
+    final spans = <InlineSpan>[];
+    final tokenRegex = RegExp(r'__(.+?)__|\*\*(.+?)\*\*|\*(.+?)\*');
+    int lastIdx = 0;
+
+    for (final match in tokenRegex.allMatches(input)) {
+      if (match.start > lastIdx) {
+        spans.add(TextSpan(text: input.substring(lastIdx, match.start)));
+      }
+      if (match.group(1) != null) {
+        spans.add(
+          TextSpan(
+            text: match.group(1),
+            style: baseStyle.copyWith(
+              fontWeight: FontWeight.bold,
+              color: _brand900,
+              decoration: TextDecoration.underline,
+              decorationColor: _gold500,
+              decorationThickness: 2,
+            ),
           ),
-        ),
-        Row(
-          children: [
-            ElevatedButton(
-              onPressed: () => onSelect(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: currentVal == true ? Colors.green : Colors.white24,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                minimumSize: const Size(50, 32),
-              ),
-              child: const Text('YES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: () => onSelect(false),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: currentVal == false ? Colors.red : Colors.white24,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                minimumSize: const Size(50, 32),
-              ),
-              child: const Text('NO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        )
-      ],
+        );
+      } else if (match.group(2) != null) {
+        spans.add(
+          TextSpan(
+            text: match.group(2),
+            style: baseStyle.copyWith(fontWeight: FontWeight.bold),
+          ),
+        );
+      } else if (match.group(3) != null) {
+        spans.add(
+          TextSpan(
+            text: match.group(3),
+            style: baseStyle.copyWith(fontStyle: FontStyle.italic),
+          ),
+        );
+      }
+      lastIdx = match.end;
+    }
+
+    if (lastIdx < input.length) {
+      spans.add(TextSpan(text: input.substring(lastIdx)));
+    }
+
+    return RichText(
+      text: TextSpan(style: baseStyle, children: spans),
     );
   }
 }
-

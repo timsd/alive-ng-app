@@ -134,7 +134,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   if (context.mounted) {
                     await context.push(AppConstants.eventsRoute);
                   }
-                  ref.read(newsFeedUnreadProvider.notifier).refresh();
+                  if (context.mounted) {
+                    ref.read(newsFeedUnreadProvider.notifier).refresh();
+                  }
                 },
                 icon: Badge(
                   isLabelVisible: unread > 0,

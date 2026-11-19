@@ -449,6 +449,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Main Navigation Shell Route
       ShellRoute(
+        navigatorKey: shellNavigatorKey,
         builder: (context, state, child) {
           return MainNavigationScreen(child: child);
         },
@@ -889,10 +890,21 @@ final routerProvider = Provider<GoRouter>((ref) {
             redirect: (context, state) => AppConstants.homeRoute,
           ),
 
-          // Events Route
+          // Events & Announcements Routes
           GoRoute(
             path: AppConstants.eventsRoute,
-            builder: (context, state) => const EventsScreen(),
+            builder: (context, state) => EventsScreen(
+              initialTab: state.uri.queryParameters['tab'] ?? 'events',
+            ),
+          ),
+          GoRoute(
+            path: AppConstants.announcementsRoute,
+            builder: (context, state) =>
+                const EventsScreen(initialTab: 'announcements'),
+          ),
+          GoRoute(
+            path: '/announcement',
+            redirect: (context, state) => AppConstants.announcementsRoute,
           ),
 
           // Help & Support Route

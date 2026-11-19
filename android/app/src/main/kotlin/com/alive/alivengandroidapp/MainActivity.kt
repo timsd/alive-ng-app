@@ -1,9 +1,8 @@
 package com.alive.alivengandroidapp
 
-import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import com.ryanheise.audioservice.AudioServicePlugin
+import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -22,7 +21,7 @@ import androidx.annotation.NonNull
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 
-class MainActivity: FlutterFragmentActivity() {
+class MainActivity: AudioServiceFragmentActivity() {
     private val CHANNEL = "com.alive.alivengandroidapp/native"
     private val PIP_CHANNEL = "com.alive.alivengandroidapp/pip"
     private val ACTION_PIP_TOGGLE_MIC = "com.alive.alivengandroidapp.PIP_TOGGLE_MIC"
@@ -36,10 +35,6 @@ class MainActivity: FlutterFragmentActivity() {
     private var isAudioMuted: Boolean = false
     private var isRequestingScreenShare: Boolean = false
     private var pipReceiver: BroadcastReceiver? = null
-
-    override fun provideFlutterEngine(context: Context): FlutterEngine? {
-        return AudioServicePlugin.getFlutterEngine(context)
-    }
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -108,8 +103,18 @@ class MainActivity: FlutterFragmentActivity() {
                     "startScreenShareService" -> {
                         isRequestingScreenShare = true
                         try {
-                            MediaProjectionForegroundService.start(this@MainActivity)
-                            result.success(true)
+                            MediaProjectionForegroundService.start(this@MainActivity) { ready ->
+                                if (ready) {
+                                    result.success(true)
+                                } else {
+                                    isRequestingScreenShare = false
+                                    result.error(
+                                        "SCREEN_SHARE_SERVICE_ERROR",
+                                        "MediaProjection foreground service did not become ready",
+                                        null
+                                    )
+                                }
+                            }
                         } catch (e: Exception) {
                             isRequestingScreenShare = false
                             Log.e("MainActivity", "Failed to start screen share service", e)

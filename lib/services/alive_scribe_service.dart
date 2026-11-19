@@ -146,6 +146,7 @@ class AliveScribeService {
   bool _isSttInitialized = false;
   bool _isListening = false;
   bool _isRestarting = false;
+  bool _isStartingStt = false;
   String _currentSessionWords = '';
   List<String> _committedSessionWords = [];
   int _consecutiveSttErrors = 0;
@@ -416,20 +417,22 @@ class AliveScribeService {
     _nativeChannel.invokeMethod<bool>('configureAudioSession').catchError((_) => false);
   }
 
-  void _startSttSession() {
+  Future<void> _startSttSession() async {
     if (!_isListening ||
         !_isLocalMicActive ||
         !_isSttInitialized ||
+        _isStartingStt ||
         _speechToText.isListening) {
       return;
     }
 
+    _isStartingStt = true;
     _ensureIosSharedAudioSession();
 
     try {
       _currentSessionWords = '';
       _committedSessionWords = [];
-      _speechToText.listen(
+      await _speechToText.listen(
         onResult: (result) {
           if (!_isListening || !_isLocalMicActive) return;
           final rawText = result.recognizedWords;
@@ -477,11 +480,21 @@ class AliveScribeService {
         ),
       );
     } catch (e) {
+      final errLower = e.toString().toLowerCase();
+      // Web SpeechRecognition (Chrome & Mobile Safari) throws InvalidStateError
+      // when recognition is already starting/running — treat as benign no-op.
+      if (errLower.contains('invalidstateerror') ||
+          errLower.contains('already started')) {
+        debugPrint('[AliveScribeService] STT already active: $e');
+        return;
+      }
       debugPrint('[AliveScribeService] Start STT session error: $e');
       _consecutiveSttErrors++;
       if (_isListening) {
         _restartListening(fromError: true);
       }
+    } finally {
+      _isStartingStt = false;
     }
   }
 

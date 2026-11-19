@@ -15,6 +15,7 @@ import '../../services/auth_service.dart';
 import '../../utils/docx_report_generator.dart';
 import '../../utils/toast_utils.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../services/email_service.dart';
 
 // Backwards compatibility classes for synthesizer and references
 enum TranscriptEntryType {
@@ -350,7 +351,7 @@ class _LeaderMeetingTranscriptionScreenState
           '';
 
       final meetingTitle = _meetingTitleController.text.trim();
-      final bytes = DocxReportGenerator.generateMeetingMinutesDocx(
+      final bytes = await DocxReportGenerator.generateMeetingMinutesDocx(
         meetingTitle: meetingTitle,
         meetingType: _meetingType,
         markdownContent: markdown,
@@ -373,9 +374,33 @@ class _LeaderMeetingTranscriptionScreenState
         uploadedBy: uploaderName,
       );
 
-      if (!mounted) return;
+      // If this session is on a Board Meeting channel, automatically copy aliveng.bod@alivenigeria.org
+      final isBoard = _meetingType.toLowerCase().contains('board') ||
+          _meetingTitleController.text.toLowerCase().contains('board') ||
+          (widget.initialRoomName?.toLowerCase().contains('board') ?? false);
 
-      ToastUtils.showSuccess('Saved "$fileName" to Meeting Files!');
+      if (isBoard) {
+        try {
+          await EmailService.instance.sendBoardMeetingMinutesEmail(
+            meetingTitle: meetingTitle,
+            markdownMinutes: markdown,
+            docxFileName: fileName,
+          );
+          if (mounted) {
+            ToastUtils.showSuccess(
+                'Saved "$fileName" & emailed Board & Leadership!');
+          }
+        } catch (emailErr) {
+          debugPrint('Note sending Board copy email: $emailErr');
+          if (mounted) {
+            ToastUtils.showSuccess('Saved "$fileName" to Meeting Files!');
+          }
+        }
+      } else {
+        if (mounted) {
+          ToastUtils.showSuccess('Saved "$fileName" to Meeting Files!');
+        }
+      }
     } catch (e) {
       if (mounted) {
         ToastUtils.showError('Note saving file: $e');

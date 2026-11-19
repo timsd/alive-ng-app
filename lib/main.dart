@@ -203,7 +203,11 @@ class _AliveAppState extends ConsumerState<AliveApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // Whenever the user switches back into the app, check for Play Store updates
+      // and ensure mobile push registration succeeded (retries if offline/permission changed).
       InAppUpdateService.checkForUpdates();
+      if (!kIsWeb) {
+        unawaited(NotificationService.instance.ensurePushRegistered());
+      }
     }
   }
 
@@ -269,7 +273,27 @@ class MainNavigationScreen extends ConsumerWidget {
     ref.watch(authStateProvider);
     final translator = ref.watch(languageProvider);
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final shellNav = shellNavigatorKey.currentState;
+        if (shellNav != null && shellNav.canPop()) {
+          shellNav.pop();
+          return;
+        }
+        final rootNav = rootNavigatorKey.currentState;
+        if (rootNav != null && rootNav.canPop()) {
+          rootNav.pop();
+          return;
+        }
+        if (currentLocation != AppConstants.homeRoute) {
+          context.go(AppConstants.homeRoute);
+        } else if (!kIsWeb) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
       drawerEnableOpenDragGesture: false,
       body: Stack(
         fit: StackFit.expand,
@@ -319,6 +343,7 @@ class MainNavigationScreen extends ConsumerWidget {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -351,6 +376,7 @@ class MainNavigationScreen extends ConsumerWidget {
       case AppConstants.chaptersRoute:
       case AppConstants.recipeSubmissionRoute:
       case AppConstants.eventsRoute:
+      case AppConstants.announcementsRoute:
       case AppConstants.podcastsRoute:
       case AppConstants.libraryRoute:
       case AppConstants.booksTractsRoute:

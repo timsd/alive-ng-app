@@ -1,9 +1,13 @@
+import { createHash } from 'node:crypto';
 import { Client, Databases, ID, Messaging, Query, Users } from 'node-appwrite';
 
 const DEFAULT_ENDPOINT = 'https://api.alivenigeria.org/v1';
 const DEFAULT_DATABASE_ID = '6a089307002e54291a32';
+const DEFAULT_FCM_PROVIDER_ID = '6a0cbd1600215f960c03';
 const USERS_COLLECTION_ID = '6a08943100226f5b4963';
 const ORG_OFFICE_HOLDERS_COLLECTION_ID = 'org_office_holders';
+const PUSH_TOKENS_COLLECTION_ID = 'push_tokens';
+const GUEST_PUSH_USER_ID = 'guest_push_devices';
 
 const ALLOWED_ROLES = new Set([
   'admin',
@@ -13,6 +17,236 @@ const ALLOWED_ROLES = new Set([
   'board',
   'editor',
 ]);
+
+function sha1Hex(input) {
+  return createHash('sha1').update(String(input)).digest('hex');
+}
+
+function guestTargetIdFor(token) {
+  return `guest_${sha1Hex(token).slice(0, 26)}`;
+}
+
+function subscriberIdFor(topicId, targetId) {
+  return `sub_${sha1Hex(`${topicId}:${targetId}`).slice(0, 28)}`;
+}
+
+/**
+ * Low-level Appwrite REST helper so target/subscriber operations never break
+ * across node-appwrite minor parameter signature changes.
+ */
+async function appwriteRest({ endpoint, projectId, apiKey, method, path, body }) {
+  const base = endpoint.replace(/\/+$/, '');
+  const res = await fetch(`${base}${path}`, {
+    method,
+    headers: {
+      'X-Appwrite-Project': projectId,
+      'X-Appwrite-Key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  const text = await res.text();
+  let json = {};
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch (_) {}
+  return { status: res.status, ok: res.ok, json, text };
+}
+
+/**
+ * Ensures the shared server-managed Appwrite user for guest / pre-login mobile
+ * installs exists so freshly installed mobile devices can subscribe to `all_users`.
+ */
+async function ensureGuestPushUser({ endpoint, projectId, apiKey, log }) {
+  const existing = await appwriteRest({
+    endpoint,
+    projectId,
+    apiKey,
+    method: 'GET',
+    path: `/users/${GUEST_PUSH_USER_ID}`,
+  });
+  if (existing.ok) return true;
+
+  const created = await appwriteRest({
+    endpoint,
+    projectId,
+    apiKey,
+    method: 'POST',
+    path: '/users',
+    body: {
+      userId: GUEST_PUSH_USER_ID,
+      name: 'ALIVE Mobile Guest Devices',
+    },
+  });
+  if (!created.ok && created.status !== 409) {
+    throw new Error(`Could not create guest push user (${created.status}): ${created.text}`);
+  }
+  log(`Initialized guest push bucket user: ${GUEST_PUSH_USER_ID}`);
+  return true;
+}
+
+/**
+ * Registers an unauthenticated / newly installed mobile device's FCM token
+ * under `guest_push_devices` and subscribes it to the `all_users` topic.
+ */
+async function handleRegisterGuestDevice({
+  endpoint,
+  projectId,
+  apiKey,
+  databaseId,
+  fcmProviderId,
+  body,
+  log,
+  res,
+}) {
+  const token = String(body.token || '').trim();
+  const platform = String(body.platform || 'android').trim().toLowerCase().slice(0, 32);
+
+  if (token.length < 40 || token.length > 4096 || /\s/.test(token)) {
+    return res.json({ error: 'Invalid FCM device token.' }, 400);
+  }
+
+  await ensureGuestPushUser({ endpoint, projectId, apiKey, log });
+
+  const targetId = guestTargetIdFor(token);
+  const createTarget = await appwriteRest({
+    endpoint,
+    projectId,
+    apiKey,
+    method: 'POST',
+    path: `/users/${GUEST_PUSH_USER_ID}/targets`,
+    body: {
+      targetId,
+      providerType: 'push',
+      identifier: token,
+      providerId: fcmProviderId,
+      name: `guest_${platform}`,
+    },
+  });
+
+  if (!createTarget.ok && createTarget.status === 409) {
+    await appwriteRest({
+      endpoint,
+      projectId,
+      apiKey,
+      method: 'PUT',
+      path: `/users/${GUEST_PUSH_USER_ID}/targets/${targetId}`,
+      body: {
+        identifier: token,
+        providerId: fcmProviderId,
+        name: `guest_${platform}`,
+      },
+    });
+  } else if (!createTarget.ok) {
+    throw new Error(
+      `Failed to create guest push target (${createTarget.status}): ${createTarget.text}`,
+    );
+  }
+
+  const subscriberId = subscriberIdFor('all_users', targetId);
+  const subscribeRes = await appwriteRest({
+    endpoint,
+    projectId,
+    apiKey,
+    method: 'POST',
+    path: '/messaging/topics/all_users/subscribers',
+    body: {
+      subscriberId,
+      targetId,
+    },
+  });
+
+  if (!subscribeRes.ok && subscribeRes.status !== 409) {
+    throw new Error(
+      `Failed to subscribe guest device to all_users (${subscribeRes.status}): ${subscribeRes.text}`,
+    );
+  }
+
+  // Record in push_tokens for observability (best-effort)
+  try {
+    const now = new Date().toISOString();
+    const docData = {
+      user_id: GUEST_PUSH_USER_ID,
+      token,
+      provider: 'fcm',
+      platform,
+      updated_at: now,
+    };
+    const upd = await appwriteRest({
+      endpoint,
+      projectId,
+      apiKey,
+      method: 'PATCH',
+      path: `/databases/${databaseId}/collections/${PUSH_TOKENS_COLLECTION_ID}/documents/${targetId}`,
+      body: { data: docData },
+    });
+    if (upd.status === 404) {
+      await appwriteRest({
+        endpoint,
+        projectId,
+        apiKey,
+        method: 'POST',
+        path: `/databases/${databaseId}/collections/${PUSH_TOKENS_COLLECTION_ID}/documents`,
+        body: {
+          documentId: targetId,
+          data: { ...docData, created_at: now },
+        },
+      });
+    }
+  } catch (e) {
+    log(`Guest push_tokens log skipped: ${e.message}`);
+  }
+
+  log(`Registered guest mobile device: targetId=${targetId}, platform=${platform}`);
+  return res.json({
+    success: true,
+    targetId,
+    topic: 'all_users',
+  });
+}
+
+/**
+ * Removes a guest push target once the device signs into a real member account
+ * so the device does not receive duplicate push notifications.
+ */
+async function handleUnregisterGuestDevice({
+  endpoint,
+  projectId,
+  apiKey,
+  databaseId,
+  body,
+  log,
+  res,
+}) {
+  const token = String(body.token || '').trim();
+  const rawTargetId = String(body.targetId || '').trim();
+  const targetId = rawTargetId.startsWith('guest_')
+    ? rawTargetId
+    : (token.length >= 40 ? guestTargetIdFor(token) : '');
+
+  if (!targetId || !targetId.startsWith('guest_')) {
+    return res.json({ success: true, removed: false });
+  }
+
+  await appwriteRest({
+    endpoint,
+    projectId,
+    apiKey,
+    method: 'DELETE',
+    path: `/users/${GUEST_PUSH_USER_ID}/targets/${targetId}`,
+  });
+
+  await appwriteRest({
+    endpoint,
+    projectId,
+    apiKey,
+    method: 'DELETE',
+    path: `/databases/${databaseId}/collections/${PUSH_TOKENS_COLLECTION_ID}/documents/${targetId}`,
+  });
+
+  log(`Removed prior guest push target after login: ${targetId}`);
+  return res.json({ success: true, removed: true, targetId });
+}
 
 /**
  * Verifies that the invoking Appwrite user is an admin, coordinator, director,
@@ -67,6 +301,7 @@ export default async ({ req, res, log, error }) => {
     const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID;
     const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || req.headers['x-appwrite-key'];
     const databaseId = process.env.APPWRITE_DATABASE_ID || DEFAULT_DATABASE_ID;
+    const fcmProviderId = process.env.APPWRITE_FCM_PROVIDER_ID || DEFAULT_FCM_PROVIDER_ID;
 
     if (!projectId || !apiKey) {
       error('Missing APPWRITE_FUNCTION_PROJECT_ID or APPWRITE_FUNCTION_API_KEY.');
@@ -83,6 +318,36 @@ export default async ({ req, res, log, error }) => {
       body = JSON.parse(raw || '{}');
     }
 
+    const action = String(body.action || '').trim().toLowerCase();
+
+    // Device auto-registration endpoints for fresh mobile installs / guest mode.
+    // Strictly limited to adding/removing a single device FCM token on `all_users`;
+    // cannot read data or send any push messages.
+    if (action === 'register_guest_device') {
+      return await handleRegisterGuestDevice({
+        endpoint,
+        projectId,
+        apiKey,
+        databaseId,
+        fcmProviderId,
+        body,
+        log,
+        res,
+      });
+    }
+
+    if (action === 'unregister_guest_device') {
+      return await handleUnregisterGuestDevice({
+        endpoint,
+        projectId,
+        apiKey,
+        databaseId,
+        body,
+        log,
+        res,
+      });
+    }
+
     const client = new Client()
       .setEndpoint(endpoint)
       .setProject(projectId)
@@ -92,10 +357,13 @@ export default async ({ req, res, log, error }) => {
     const usersApi = new Users(client);
     const messaging = new Messaging(client);
 
-    // Require an authenticated admin/office-holder caller (unless invoked with
-    // an explicit server API key header without a user context).
-    const callerUserId = req.headers['x-appwrite-user-id'] || '';
-    const triggerType = req.headers['x-appwrite-trigger'] || '';
+    // Require an authenticated admin/office-holder caller for sending pushes.
+    // Note: Appwrite always injects its dynamic `x-appwrite-key` header into
+    // function executions, so we must NOT treat `x-appwrite-key` as proof of
+    // caller authentication. Only an authenticated admin `x-appwrite-user-id`
+    // (or internal `schedule`/`event` trigger) may dispatch push broadcasts.
+    const callerUserId = String(req.headers['x-appwrite-user-id'] || '').trim();
+    const triggerType = String(req.headers['x-appwrite-trigger'] || '').trim().toLowerCase();
     if (callerUserId) {
       const allowed = await isAuthorizedSender({
         databases,
@@ -107,7 +375,7 @@ export default async ({ req, res, log, error }) => {
       if (!allowed) {
         return res.json({ error: 'Unauthorized: admin or office-holder access required.' }, 403);
       }
-    } else if (triggerType === 'http' && !req.headers['x-appwrite-key']) {
+    } else if (triggerType !== 'schedule' && triggerType !== 'event') {
       return res.json({ error: 'Authentication required.' }, 401);
     }
 

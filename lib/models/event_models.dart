@@ -73,6 +73,8 @@ class Announcement {
   });
 
   factory Announcement.fromJson(Map<String, dynamic> json) {
+    final rawActionText = json['action_text']?.toString().trim();
+    final rawActionUrl = json['action_url']?.toString().trim();
     return Announcement(
       id: json['id'] as String,
       title: json['title'] as String? ?? '',
@@ -80,8 +82,10 @@ class Announcement {
           .toString(),
       audience: json['audience'] as String? ?? 'all',
       priority: json['priority'] as String? ?? 'normal',
-      actionText: json['action_text'] as String?,
-      actionUrl: json['action_url'] as String?,
+      actionText:
+          (rawActionText != null && rawActionText.isNotEmpty) ? rawActionText : null,
+      actionUrl:
+          (rawActionUrl != null && rawActionUrl.isNotEmpty) ? rawActionUrl : null,
       createdAt: _tryParseDate(
         json['created_at'] ?? json['published_at'],
       ),

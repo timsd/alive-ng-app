@@ -39,3 +39,14 @@
 -dontwarn io.appwrite.**
 -keep class com.linusu.flutter_web_auth_2.** { *; }
 -dontwarn com.linusu.flutter_web_auth_2.**
+
+# Paystack Android PaymentSheet (Jetpack Compose) — prevent R8 from stripping
+# or renaming AnimatedContent / Compose UI methods at runtime.
+-keep class com.paystack.** { *; }
+-dontwarn com.paystack.**
+-keep class androidx.compose.** { *; }
+-dontwarn androidx.compose.**
+
+# AudioService / just_audio_background lifecycle
+-keep class com.ryanheise.** { *; }
+-dontwarn com.ryanheise.**

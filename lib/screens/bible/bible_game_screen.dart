@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../../widgets/modern_dropdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
+import '../../services/user_statistics_service.dart';
 import '../../services/bible_source.dart';
 import '../../constants/bible_verses.dart';
 import '../../widgets/star_animation_widget.dart';
@@ -298,6 +299,13 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
         state.currentVerse!.reference
       ];
 
+      // Keep achievements and user statistics in sync with game progress
+      unawaited(UserStatisticsService.instance.recordQuizCompleted(
+        'bible_game_${state.gameMode.name}_${state.currentVerse!.reference}',
+        newScore,
+        newCompleted.length,
+      ));
+
       // Show star animation for correct answer
       state = state.copyWith(
         score: newScore,
@@ -308,9 +316,9 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
         showHintButton: false,
       );
 
-      // Keep the celebration brief so the feedback feels immediate.
+      // Keep the celebration brief and snappy so feedback is instant
       final generation = _verseGeneration;
-      Future.delayed(const Duration(milliseconds: 1400), () {
+      Future.delayed(const Duration(milliseconds: 1050), () {
         // Skip if the verse changed or the notifier was disposed meanwhile.
         if (generation != _verseGeneration || !mounted) return;
         state = state.copyWith(
@@ -323,7 +331,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
         loadNewVerse();
       });
     } else {
-      final attempts = state.attemptCount + 1;
+      final attempts = min(3, state.attemptCount + 1);
       final isVoice = state.gameMode == GameMode.voiceRecitation;
       final autoShowHint = attempts >= 3 && !isVoice;
 
@@ -466,7 +474,7 @@ class BibleGameNotifier extends StateNotifier<BibleGameState> {
 
       // Show star animation and move to next verse after delay
       final generation = _verseGeneration;
-      Future.delayed(const Duration(seconds: 2), () {
+      Future.delayed(const Duration(milliseconds: 1050), () {
         // Skip if the verse changed or the notifier was disposed meanwhile.
         if (generation != _verseGeneration || !mounted) return;
         loadNewVerse();
@@ -509,9 +517,12 @@ String _cleanVoiceTranscript(String text, {int? maxWords}) {
   cleaned = dedupedWords.join(' ');
 
   // 3. Remove repeated multi-word phrases (e.g. "for God so loved the world for God so loved the world")
-  final tokens = cleaned.split(' ');
-  if (tokens.length >= 4) {
-    for (int phraseLen = tokens.length ~/ 2; phraseLen >= 2; phraseLen--) {
+  // Checks phrases from length 1 up to tokens.length ~/ 2, collapsing repeats immediately
+  final tokens = List<String>.from(dedupedWords);
+  bool phraseFound = true;
+  while (phraseFound && tokens.length >= 2) {
+    phraseFound = false;
+    for (int phraseLen = tokens.length ~/ 2; phraseLen >= 1; phraseLen--) {
       for (int i = 0; i <= tokens.length - 2 * phraseLen; i++) {
         final phrase1 =
             tokens.sublist(i, i + phraseLen).join(' ').toLowerCase();
@@ -522,21 +533,23 @@ String _cleanVoiceTranscript(String text, {int? maxWords}) {
         if (phrase1 == phrase2) {
           tokens.removeRange(i + phraseLen, i + 2 * phraseLen);
           cleaned = tokens.join(' ');
+          phraseFound = true;
           break;
         }
       }
+      if (phraseFound) break;
     }
   }
 
   // 4. Cap to reasonable verse length without cutting off legitimate expanded tokens.
   if (maxWords != null && maxWords > 0) {
-    final cap = (maxWords * 1.5).ceil() + 6;
+    final cap = (maxWords * 1.5).ceil() + 4;
     if (tokens.length > cap) {
       return tokens.take(cap).join(' ').trim();
     }
   }
 
-  return cleaned.trim();
+  return tokens.join(' ').trim();
 }
 
 /// Levenshtein edit distance between two strings.
@@ -652,13 +665,17 @@ class BibleGameScreen extends ConsumerStatefulWidget {
 }
 
 class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   late stt.SpeechToText _speech;
   late FlutterTts _tts;
+  late AnimationController _pulseController;
+  late AnimationController _flipController;
+  late Animation<double> _flipAnimation;
   final TextEditingController _textController = TextEditingController();
   final Map<int, TextEditingController> _blankControllers = {};
   String _blankControllerKey = '';
   String _bufferedTranscript = '';
+  bool _isProcessingVoiceFinal = false;
   bool _speechEnabled = false;
   bool _speechReady = false;
   bool _ttsReady = false;
@@ -685,6 +702,22 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+
+    _flipController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _flipAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _flipController,
+        curve: Curves.easeInOutBack,
+      ),
+    );
+
     _initializeSpeech();
     _initializeTts();
   }
@@ -790,6 +823,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     );
 
     if (confirmed == true && mounted) {
+      _flipController.forward();
       ref.read(bibleGameProvider.notifier).flipCardWithDeduction();
       final updatedScore = ref.read(bibleGameProvider).score;
       if (updatedScore <= 0) {
@@ -856,6 +890,11 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   }
 
   void _submitFillGaps() {
+    final currentGs = ref.read(bibleGameProvider);
+    if (currentGs.attemptCount >= 3 && !currentGs.showHint) {
+      _confirmFillGapsHint(context, currentGs);
+      return;
+    }
     _hintAutoAdvanceTimer?.cancel();
     _hintAutoAdvanceTimer = null;
     ref.read(bibleGameProvider.notifier).checkAnswer();
@@ -871,14 +910,15 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           .toList();
       _updateFillInTheGapInput(gs, words);
 
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             gs.attemptCount < 3
                 ? 'Incorrect word(s). Try again! (Attempt ${gs.attemptCount} of 3)'
-                : '3 failed attempts. You can now use Hint (-2 pts).',
+                : '3 failed attempts. Tap below to use Hint (-2 pts).',
           ),
-          duration: const Duration(seconds: 2),
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -967,6 +1007,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     }
     if (_speechEnabled && _speechReady) {
       _bufferedTranscript = '';
+      _isProcessingVoiceFinal = false;
       ref.read(bibleGameProvider.notifier).resetVoicePrompt();
       ref.read(bibleGameProvider.notifier).updateUserInput('');
       ref.read(bibleGameProvider.notifier).setListening(true);
@@ -982,7 +1023,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                   _cleanVoiceTranscript(result.recognizedWords),
                 );
           }
-          if (result.finalResult) {
+          if (result.finalResult && !_isProcessingVoiceFinal) {
             _stopListening();
           }
         },
@@ -1005,6 +1046,8 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   }
 
   void _stopListening() async {
+    if (_isProcessingVoiceFinal) return;
+    _isProcessingVoiceFinal = true;
     if (_speechReady) {
       await _speech.stop();
     }
@@ -1031,7 +1074,10 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
         _bufferedTranscript,
         maxWords: targetWords > 0 ? targetWords : null,
       );
-      if (cleaned.isEmpty) return;
+      if (cleaned.isEmpty) {
+        _isProcessingVoiceFinal = false;
+        return;
+      }
       ref.read(bibleGameProvider.notifier).updateUserInput(cleaned);
       _textController.value = TextEditingValue(
         text: cleaned,
@@ -1040,7 +1086,10 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
       ref.read(bibleGameProvider.notifier).checkAnswer();
       final updated = ref.read(bibleGameProvider);
       if (!updated.showStarAnimation) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).clearSnackBars();
         if (updated.attemptCount < 3) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1054,7 +1103,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                '3 failed attempts. "Flip (-2 pts)" is now unlocked above!',
+                '3 failed attempts. "TAP TO REVEAL VERSE (-2 PTS)" is now unlocked above!',
               ),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
@@ -1065,25 +1114,45 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           _checkGameOver();
         }
       }
+      // Keep _isProcessingVoiceFinal locked until user starts a new listening session
+      // via _startListening(), which completely prevents duplicate triggers.
     }
   }
 
   void _speakVerse(String text) async {
-    if (_ttsReady) {
+    if (text.trim().isEmpty) return;
+    try {
+      if (!_ttsReady) {
+        _tts = FlutterTts();
+        _ttsReady = true;
+      }
+      await _tts.stop();
       await _tts.speak(text);
+    } catch (e) {
+      debugPrint('TTS speak error: $e');
     }
   }
 
   void _playSuccessSound() async {
-    if (_ttsReady) {
+    try {
+      if (!_ttsReady) {
+        _tts = FlutterTts();
+        _ttsReady = true;
+      }
       await _tts.stop();
-      await _tts.speak('Word Perfect! Well Done!');
+      // Fast, snappy speech rate so sound is immediate and concludes in ~500ms
+      await _tts.setSpeechRate(0.85);
+      await _tts.speak('Word Perfect!');
+    } catch (e) {
+      debugPrint('TTS success sound error: $e');
     }
   }
 
   @override
   void dispose() {
     _hintAutoAdvanceTimer?.cancel();
+    _pulseController.dispose();
+    _flipController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     if (_speechReady) {
       _speech.stop();
@@ -1104,6 +1173,16 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
       if (next.showStarAnimation && !(previous?.showStarAnimation ?? false)) {
         _playSuccessSound();
       }
+      if (next.hasCheckedAnswer && !(previous?.hasCheckedAnswer ?? false)) {
+        if (!_flipController.isAnimating && _flipController.value < 0.5) {
+          _flipController.forward();
+        }
+      } else if (!next.hasCheckedAnswer &&
+          (previous?.hasCheckedAnswer ?? false)) {
+        if (_flipController.value > 0.0) {
+          _flipController.reset();
+        }
+      }
     });
 
     final gameState = ref.watch(bibleGameProvider);
@@ -1117,8 +1196,12 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             showBackButton: true,
             actions: [
               IconButton(
-                onPressed: () =>
-                    ref.read(bibleGameProvider.notifier).loadNewVerse(),
+                onPressed: () {
+                  if (_flipController.value > 0.0) {
+                    _flipController.reset();
+                  }
+                  ref.read(bibleGameProvider.notifier).loadNewVerse();
+                },
                 icon: const Icon(Icons.refresh),
                 tooltip: 'New Verse',
               ),
@@ -1137,10 +1220,11 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                         _buildCompactControlHeader(gameState),
                         const SizedBox(height: 10),
                         if (isVoice) ...[
-                          if (gameState.hasCheckedAnswer)
-                            _buildVerseBackCardReal(gameState)
-                          else
-                            _buildVoiceRecitationStage(gameState),
+                          _build3DFlipCard(
+                            gameState: gameState,
+                            front: _buildVoiceRecitationStage(gameState),
+                            back: _buildVerseBackCardReal(gameState),
+                          ),
                         ] else ...[
                           _buildVerseCard(gameState),
                           const SizedBox(height: 10),
@@ -1438,11 +1522,12 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                   ],
                 ),
               ),
-              IconButton.filledTonal(
-                onPressed: () => _speakVerse(correctText),
-                icon: const Icon(Icons.volume_up, size: 20),
-                tooltip: 'Listen to verse',
-              ),
+              if (gameState.showAnswer || gameState.hasCheckedAnswer)
+                IconButton.filledTonal(
+                  onPressed: () => _speakVerse(correctText),
+                  icon: const Icon(Icons.volume_up, size: 20),
+                  tooltip: 'Listen to verse',
+                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1485,33 +1570,115 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
           ),
           const SizedBox(height: 6),
 
-          // Flip Button
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton.icon(
-                onPressed: canFlip ? () => _confirmFlipCard(context) : null,
-                icon: Icon(
-                  Icons.flip_to_back,
-                  size: 16,
-                  color: canFlip
-                      ? cs.tertiary
-                      : cs.onSurfaceVariant.withValues(alpha: 0.5),
+          // Flip to Reveal Button with Animated Flashing Indicator Line & Glow
+          AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, child) {
+              final pulseVal = _pulseController.value;
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: canFlip
+                    ? BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: (Color.lerp(
+                                Colors.amber.shade500,
+                                Colors.lightGreenAccent.shade400,
+                                pulseVal,
+                              ) ??
+                              Colors.amber)
+                              .withValues(alpha: 0.85 + 0.15 * pulseVal),
+                          width: 2.0,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (Color.lerp(
+                                  Colors.amber.shade600,
+                                  Colors.green.shade500,
+                                  pulseVal,
+                                ) ??
+                                Colors.amber)
+                                .withValues(alpha: 0.3 + 0.35 * pulseVal),
+                            blurRadius: 10 + 6 * pulseVal,
+                            spreadRadius: 1 + 2 * pulseVal,
+                          ),
+                        ],
+                        color: (Color.lerp(
+                              Colors.amber.shade900,
+                              Colors.green.shade900,
+                              pulseVal,
+                            ) ??
+                            Colors.amber.shade900)
+                            .withValues(alpha: 0.22),
+                      )
+                    : null,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (canFlip)
+                      Container(
+                        height: 3,
+                        margin: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(2),
+                          color: Color.lerp(
+                            Colors.amberAccent,
+                            Colors.lightGreenAccent,
+                            pulseVal,
+                          ),
+                        ),
+                      ),
+                    TextButton.icon(
+                      onPressed: canFlip ? () => _confirmFlipCard(context) : null,
+                      icon: Icon(
+                        canFlip ? Icons.auto_awesome : Icons.flip_to_back,
+                        size: canFlip ? 18 : 16,
+                        color: canFlip
+                            ? (Color.lerp(
+                                  Colors.amber.shade300,
+                                  Colors.greenAccent,
+                                  pulseVal,
+                                ) ??
+                                Colors.amber.shade300)
+                            : cs.onSurfaceVariant.withValues(alpha: 0.5),
+                      ),
+                      label: Text(
+                        canFlip
+                            ? 'TAP TO REVEAL VERSE (-2 PTS)'
+                            : 'Reveal unlocks after ${3 - gameState.attemptCount} attempt(s)',
+                        style: TextStyle(
+                          fontSize: canFlip ? 13 : 12,
+                          fontWeight:
+                              canFlip ? FontWeight.w900 : FontWeight.normal,
+                          letterSpacing: canFlip ? 0.6 : 0.0,
+                          color: canFlip
+                              ? (Color.lerp(
+                                    Colors.amber.shade200,
+                                    Colors.white,
+                                    pulseVal,
+                                  ) ??
+                                  Colors.white)
+                              : cs.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                    if (canFlip)
+                      Container(
+                        height: 3,
+                        margin: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(2),
+                          color: Color.lerp(
+                            Colors.lightGreenAccent,
+                            Colors.amberAccent,
+                            pulseVal,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                label: Text(
-                  canFlip
-                      ? 'Flip to reveal verse (-2 pts)'
-                      : 'Flip unlocks after ${3 - gameState.attemptCount} attempt(s)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: canFlip ? FontWeight.bold : FontWeight.normal,
-                    color: canFlip
-                        ? cs.tertiary
-                        : cs.onSurfaceVariant.withValues(alpha: 0.6),
-                  ),
-                ),
-              ),
-            ],
+              );
+            },
           ),
           const SizedBox(height: 6),
 
@@ -1672,14 +1839,44 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
   }
 
   Widget _buildFlipCard(BibleGameState gameState) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      transitionBuilder: (Widget child, Animation<double> animation) {
-        return FadeTransition(opacity: animation, child: child);
+    return _build3DFlipCard(
+      gameState: gameState,
+      front: _buildVersePromptCard(gameState),
+      back: _buildVerseBackCardReal(gameState),
+    );
+  }
+
+  /// 3D Perspective Card Flip with depth and smooth rotation
+  Widget _build3DFlipCard({
+    required BibleGameState gameState,
+    required Widget front,
+    required Widget back,
+  }) {
+    return AnimatedBuilder(
+      animation: _flipAnimation,
+      builder: (context, child) {
+        // Angle goes from 0 to pi (180 degrees)
+        final angle = _flipAnimation.value * math.pi;
+        final isBackVisible = angle >= (math.pi / 2);
+
+        // Build 3D perspective matrix with depth 0.0015
+        final transform = Matrix4.identity()
+          ..setEntry(3, 2, 0.0015) // Perspective depth
+          ..rotateY(angle);
+
+        return Transform(
+          transform: transform,
+          alignment: Alignment.center,
+          child: isBackVisible
+              // Counter-rotate the back face by pi so text isn't mirrored
+              ? Transform(
+                  transform: Matrix4.identity()..rotateY(math.pi),
+                  alignment: Alignment.center,
+                  child: back,
+                )
+              : front,
+        );
       },
-      child: gameState.hasCheckedAnswer
-          ? _buildVerseBackCardReal(gameState)
-          : _buildVersePromptCard(gameState),
     );
   }
 
@@ -1782,38 +1979,72 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                 ),
               const SizedBox(height: 4),
               Center(
-                child: ElevatedButton.icon(
-                  onPressed: canFlip ? () => _confirmFlipCard(context) : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: canFlip
-                        ? Colors.green.shade600
-                        : Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest
-                            .withValues(alpha: 0.5),
-                    foregroundColor: canFlip
-                        ? Colors.white
-                        : Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant
-                            .withValues(alpha: 0.5),
-                    disabledBackgroundColor: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-                    disabledForegroundColor: Theme.of(context)
-                        .colorScheme
-                        .onSurfaceVariant
-                        .withValues(alpha: 0.5),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                  ),
-                  icon: const Icon(Icons.flip_to_back),
-                  label: Text(
-                    canFlip
-                        ? 'Flip (-2 pts)'
-                        : 'Flip (${3 - gameState.attemptCount} attempts left)',
-                  ),
+                child: AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    final pulseVal = _pulseController.value;
+                    return Container(
+                      decoration: canFlip
+                          ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.green.withValues(
+                                    alpha: 0.35 + 0.35 * pulseVal,
+                                  ),
+                                  blurRadius: 10 + 6 * pulseVal,
+                                  spreadRadius: 1 + 2 * pulseVal,
+                                ),
+                              ],
+                            )
+                          : null,
+                      child: ElevatedButton.icon(
+                        onPressed:
+                            canFlip ? () => _confirmFlipCard(context) : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: canFlip
+                              ? Color.lerp(
+                                    Colors.green.shade600,
+                                    Colors.lightGreen.shade600,
+                                    pulseVal,
+                                  ) ??
+                                  Colors.green.shade600
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest
+                                  .withValues(alpha: 0.5),
+                          foregroundColor: canFlip
+                              ? Colors.white
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.5),
+                          disabledBackgroundColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .withValues(alpha: 0.5),
+                          disabledForegroundColor: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant
+                              .withValues(alpha: 0.5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                        icon: Icon(
+                            canFlip ? Icons.auto_awesome : Icons.flip_to_back),
+                        label: Text(
+                          canFlip
+                              ? 'TAP TO REVEAL VERSE (-2 PTS)'
+                              : 'Flip (${3 - gameState.attemptCount} attempts left)',
+                          style: TextStyle(
+                            fontWeight:
+                                canFlip ? FontWeight.w900 : FontWeight.normal,
+                            letterSpacing: canFlip ? 0.5 : 0.0,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -1963,12 +2194,25 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
             children: [
               ElevatedButton.icon(
                 onPressed: () {
-                  ref.read(bibleGameProvider.notifier).flipCardBack();
-                  final currentScore = ref.read(bibleGameProvider).score;
-                  if (currentScore <= 0) {
-                    _checkGameOver();
+                  if (_flipController.value > 0.0) {
+                    _flipController.reverse().then((_) {
+                      if (!mounted) return;
+                      ref.read(bibleGameProvider.notifier).flipCardBack();
+                      final currentScore = ref.read(bibleGameProvider).score;
+                      if (currentScore <= 0) {
+                        _checkGameOver();
+                      } else {
+                        ref.read(bibleGameProvider.notifier).loadNewVerse();
+                      }
+                    });
                   } else {
-                    ref.read(bibleGameProvider.notifier).loadNewVerse();
+                    ref.read(bibleGameProvider.notifier).flipCardBack();
+                    final currentScore = ref.read(bibleGameProvider).score;
+                    if (currentScore <= 0) {
+                      _checkGameOver();
+                    } else {
+                      ref.read(bibleGameProvider.notifier).loadNewVerse();
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(

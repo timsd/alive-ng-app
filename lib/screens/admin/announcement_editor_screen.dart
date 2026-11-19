@@ -6,10 +6,12 @@ import '../../config/appwrite_backend_config.dart';
 import '../../main.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
+import '../../constants/app_routes_catalog.dart';
 import '../../utils/smart_link_helper.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/route_autocomplete_field.dart';
 
 class AnnouncementEditorScreen extends StatefulWidget {
   final Map<String, dynamic>? announcement;
@@ -453,37 +455,84 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                       const SizedBox(height: 24),
 
                       // Action Button (Optional)
-                      const Text(
-                        'Action Button (Optional)',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Action Button (Optional)',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (_actionTextController.text.trim().isNotEmpty ||
+                              _actionUrlController.text.trim().isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _actionTextController.clear();
+                                  _actionUrlController.clear();
+                                });
+                              },
+                              icon: const Icon(Icons.delete_outline, size: 18),
+                              label: const Text('Remove Button'),
+                              style: TextButton.styleFrom(
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 16),
 
                       TextFormField(
                         controller: _actionTextController,
-                        decoration: const InputDecoration(
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
                           labelText: 'Button Text (Optional)',
                           hintText:
                               'e.g., "Learn More" (leave empty for smart auto-name)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.smart_button),
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.smart_button),
+                          suffixIcon: _actionTextController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  tooltip: 'Clear button text',
+                                  onPressed: () {
+                                    setState(() {
+                                      _actionTextController.clear();
+                                    });
+                                  },
+                                )
+                              : null,
                         ),
                       ),
 
                       const SizedBox(height: 16),
 
-                      TextFormField(
+                      RouteAutocompleteField(
                         controller: _actionUrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'Button URL',
-                          hintText:
-                              'https://alivenigeria.org or /internal-page',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.link),
-                        ),
+                        labelText: 'Button URL',
+                        hintText:
+                            'https://alivenigeria.org or /announcements',
+                        prefixIcon: Icons.link,
+                        allowExternalUrls: true,
+                        onChanged: (_) => setState(() {}),
+                        validator: (value) {
+                          final v = value?.trim() ?? '';
+                          if (v.isEmpty) {
+                            if (_actionTextController.text.trim().isNotEmpty) {
+                              return 'Enter a Button URL, or clear Button Text to remove the button';
+                            }
+                            return null;
+                          }
+                          if (v.startsWith('/') &&
+                              !AppRoutesCatalog.isValidAppRoute(v)) {
+                            return 'Unknown app route. Pick one from the suggestions.';
+                          }
+                          return null;
+                        },
                       ),
 
                       const SizedBox(height: 24),
@@ -573,6 +622,12 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                       child: Text('Home Dashboard (/home)'),
                                     ),
                                     DropdownMenuItem(
+                                      value: '/announcements',
+                                      child: Text(
+                                        'Announcements (/announcements)',
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
                                       value: '/daily',
                                       child: Text(
                                         'Daily Verse & Devotion (/daily)',
@@ -619,20 +674,22 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
                                 ),
                                 if (_pushRoute == 'custom') ...[
                                   const SizedBox(height: 12),
-                                  TextFormField(
+                                  RouteAutocompleteField(
                                     controller: _customPushRouteController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Custom Route Path',
-                                      hintText: '/missions',
-                                      border: OutlineInputBorder(),
-                                      prefixIcon: Icon(Icons.alt_route),
-                                    ),
+                                    labelText: 'Custom Route Path',
+                                    hintText:
+                                        'Type to search routes, e.g. /announcements',
+                                    prefixIcon: Icons.alt_route,
                                     validator: (value) {
                                       if (_sendPushBroadcast &&
                                           _pushRoute == 'custom') {
                                         final v = value?.trim() ?? '';
                                         if (v.isEmpty || !v.startsWith('/')) {
                                           return 'Enter a valid route starting with /';
+                                        }
+                                        if (!AppRoutesCatalog.isValidAppRoute(
+                                            v)) {
+                                          return 'Unknown route. Pick an available route from the list.';
                                         }
                                       }
                                       return null;
@@ -806,10 +863,10 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
         'is_active': _isActive,
         'published_at': _scheduledFor?.toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
-        if (normalizedActionUrl.isNotEmpty) ...{
-          'action_url': normalizedActionUrl,
-          'action_text': resolvedActionText,
-        },
+        // Always include action_url & action_text so clearing them on edit
+        // explicitly removes the button in Appwrite instead of leaving stale values.
+        'action_url': normalizedActionUrl.isNotEmpty ? normalizedActionUrl : null,
+        'action_text': normalizedActionUrl.isNotEmpty ? resolvedActionText : null,
       };
 
       Future<void> writeRow(Map<String, dynamic> payload) async {
@@ -854,15 +911,30 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
         await writeRow(Map<String, dynamic>.from(announcementData));
       } catch (e) {
         final err = e.toString().toLowerCase();
-        if (normalizedActionUrl.isNotEmpty &&
-            (err.contains('action_url') || err.contains('action_text'))) {
-          final fallbackData = Map<String, dynamic>.from(announcementData)
-            ..remove('action_url')
-            ..remove('action_text');
-          if (!rawContent.contains(normalizedActionUrl)) {
-            fallbackData['content'] = '$rawContent\n$normalizedActionUrl';
+        if (err.contains('action_url') || err.contains('action_text')) {
+          if (normalizedActionUrl.isEmpty) {
+            // If Appwrite rejects null for action_url/action_text (non-nullable string),
+            // retry with empty strings; only strip if the attributes do not exist.
+            try {
+              final emptyFallback = Map<String, dynamic>.from(announcementData)
+                ..['action_url'] = ''
+                ..['action_text'] = '';
+              await writeRow(emptyFallback);
+            } catch (_) {
+              final strippedFallback = Map<String, dynamic>.from(announcementData)
+                ..remove('action_url')
+                ..remove('action_text');
+              await writeRow(strippedFallback);
+            }
+          } else {
+            final fallbackData = Map<String, dynamic>.from(announcementData)
+              ..remove('action_url')
+              ..remove('action_text');
+            if (!rawContent.contains(normalizedActionUrl)) {
+              fallbackData['content'] = '$rawContent\n$normalizedActionUrl';
+            }
+            await writeRow(fallbackData);
           }
-          await writeRow(fallbackData);
         } else {
           rethrow;
         }

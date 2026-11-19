@@ -214,6 +214,19 @@ class SignInController extends StateNotifier<AsyncValue<void>> {
 
   SignInController(this._gateway) : super(const AsyncValue.data(null));
 
+  Future<void> signInOffline(AppUser user) async {
+    state = const AsyncValue.loading();
+    try {
+      final result = await _gateway.signInOffline(user);
+      if (!result.isSuccess) {
+        throw Exception(result.error ?? 'Offline sign in failed');
+      }
+      state = const AsyncValue.data(null);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+    }
+  }
+
   Future<void> signInWithEmailAndPassword(String email, String password) async {
     state = const AsyncValue.loading();
 

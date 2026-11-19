@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/enums.dart' as appwrite_enums;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
+import 'leadership_email_settings_service.dart';
 
 /// Unified email service using Resend via Appwrite Functions.
 ///
@@ -23,13 +25,14 @@ class EmailService {
   ///
   /// [replyTo] defaults to the monitored support mailbox so replies from
   /// recipients always land in a human inbox. Every mail is also CC'd to
-  /// that same address for a complete archive.
+  /// [cc] (or replyTo if cc is omitted) for a complete archive.
   Future<void> sendCustomEmail({
     required String toEmail,
     required String toName,
     required String subject,
     required String html,
     String replyTo = AppwriteBackendConfig.supportEmail,
+    String? cc,
   }) async {
     try {
       final execution = await _functions.createExecution(
@@ -39,7 +42,7 @@ class EmailService {
           'subject': subject,
           'html': html,
           'reply_to': replyTo,
-          'cc': replyTo,
+          'cc': cc ?? replyTo,
         }),
         xasync: false,
         method: appwrite_enums.ExecutionMethod.pOST,
@@ -53,6 +56,205 @@ class EmailService {
       _logger.error('Unexpected error sending email', e);
       throw NetworkException('Email send failed', originalError: e);
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Board Meeting Minutes Email — Duplicate Prevention
+  // ---------------------------------------------------------------------------
+
+  /// In-memory set of keys for which a board email was already dispatched
+  /// during this app session.  Prevents the same meeting from being emailed
+  /// twice when both auto-save (livekit) and manual save (transcription screen)
+  /// trigger the call.
+  final Set<String> _sentBoardEmailKeys = {};
+
+  /// Persistent SharedPreferences prefix so we don't re-send even after an
+  /// app restart (e.g. user opens the transcription screen for a past meeting
+  /// and presses save again).
+  static const String _boardEmailSentPrefix = 'board_email_sent_';
+
+  /// Generates a stable deduplication key from the meeting title + date.
+  String _boardEmailKey(String meetingTitle) {
+    final now = DateTime.now();
+    final dateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final cleanTitle = meetingTitle
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+    return '${cleanTitle}_$dateStr';
+  }
+
+  /// Returns `true` if board meeting minutes email was already sent for this
+  /// meeting today.
+  Future<bool> wasBoardEmailAlreadySent(String meetingTitle) async {
+    final key = _boardEmailKey(meetingTitle);
+    if (_sentBoardEmailKeys.contains(key)) return true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('$_boardEmailSentPrefix$key') == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Marks a board email as sent so it won't be dispatched again.
+  Future<void> _markBoardEmailSent(String meetingTitle) async {
+    final key = _boardEmailKey(meetingTitle);
+    _sentBoardEmailKeys.add(key);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('$_boardEmailSentPrefix$key', true);
+    } catch (_) {}
+  }
+
+  /// Send Board & Leadership Meeting Minutes to ALIVE leadership team.
+  /// Automatically called whenever minutes of a Board or Leadership Meeting channel are saved.
+  /// Reads editable recipients from [LeadershipEmailSettingsService].
+  ///
+  /// **Duplicate prevention**: The same meeting (by title + date) is never
+  /// emailed twice—both in the same session and across app restarts.
+  /// Pass [force] = true to bypass the guard (e.g. user explicitly re-sends).
+  Future<void> sendBoardMeetingMinutesEmail({
+    required String meetingTitle,
+    required String markdownMinutes,
+    String? docxFileName,
+    List<String>? toEmails,
+    bool force = false,
+  }) async {
+    // ── Deduplication guard ──────────────────────────────────────────────
+    if (!force) {
+      final alreadySent = await wasBoardEmailAlreadySent(meetingTitle);
+      if (alreadySent) {
+        _logger.info(
+            'Board/Leadership minutes email for "$meetingTitle" already sent today — skipping.');
+        return;
+      }
+    }
+
+    final recipients = toEmails ??
+        await LeadershipEmailSettingsService.instance.getLeadershipRecipients();
+    if (recipients.isEmpty) return;
+
+    final now = DateTime.now();
+    final dateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final subject = 'ALIVE Board Meeting Minutes: $meetingTitle ($dateStr)';
+
+    final safeTitle = htmlEscape.convert(meetingTitle);
+    final htmlBody = _convertMarkdownToHtml(markdownMinutes);
+
+    final html = '<!DOCTYPE html><html><body style="font-family:Arial,Helvetica,sans-serif;'
+        'color:#17263B;max-width:760px;margin:0 auto;padding:24px;line-height:1.6;">'
+        '<div style="background-color:#032B20;color:#FACC15;padding:18px 24px;border-radius:10px 10px 0 0;">'
+        '<span style="font-size:11px;font-weight:900;letter-spacing:1px;background:#EAB308;color:#0F172A;padding:3px 8px;border-radius:4px;">ALIVE NIGERIA</span>'
+        '<h2 style="color:#FFFFFF;margin:12px 0 4px;font-size:22px;">$safeTitle</h2>'
+        '<p style="color:#A7F3D0;margin:0;font-size:12px;">Board of Directors Council Minutes &amp; Resolutions • $dateStr</p>'
+        '</div>'
+        '<div style="border:1px solid #E2E8F0;border-top:none;padding:24px;border-radius:0 0 10px 10px;background:#FFFFFF;">'
+        '<p style="color:#334155;font-size:14px;">Dear Board Member,</p>'
+        '<p style="color:#334155;font-size:14px;">The minutes and synthesized resolutions for <strong>$safeTitle</strong> '
+        'have been officially recorded and archived in the Meeting Files repository${docxFileName != null ? " ($docxFileName)" : ""}. '
+        'Below is the full synthesized record of the session:</p>'
+        '<hr style="border:none;border-top:1px solid #E2E8F0;margin:16px 0;">'
+        '<div style="font-size:13.5px;color:#1E293B;">$htmlBody</div>'
+        '<hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0 16px;">'
+        '<p style="color:#64748B;font-size:12px;">This document was automatically compiled and verified via <strong>ALIVE Scribe</strong> on ALIVE Meet.</p>'
+        '</div>'
+        '</body></html>';
+
+    final primary = recipients.first;
+    final ccRecipients = recipients.length > 1
+        ? recipients.sublist(1).join(', ')
+        : primary;
+
+    await sendCustomEmail(
+      toEmail: primary,
+      toName: 'ALIVE Board of Directors',
+      subject: subject,
+      html: html,
+      cc: ccRecipients,
+    );
+
+    // Mark as sent so neither auto-save nor manual save sends it again
+    await _markBoardEmailSent(meetingTitle);
+  }
+
+  /// Converts simple Markdown syntax from Scribe into clean HTML.
+  static String _convertMarkdownToHtml(String markdown) {
+    if (markdown.trim().isEmpty) {
+      return '<p><em>No transcript content available.</em></p>';
+    }
+    final lines = markdown.split('\n');
+    final buf = StringBuffer();
+    bool inList = false;
+
+    for (final rawLine in lines) {
+      final line = rawLine.trim();
+      if (line.isEmpty) {
+        if (inList) {
+          buf.writeln('</ul>');
+          inList = false;
+        }
+        continue;
+      }
+
+      if (line.startsWith('# ')) {
+        if (inList) {
+          buf.writeln('</ul>');
+          inList = false;
+        }
+        buf.writeln(
+            '<h1 style="color:#064E3B;margin:18px 0 8px;font-size:20px;">${htmlEscape.convert(line.substring(2).trim())}</h1>');
+      } else if (line.startsWith('## ')) {
+        if (inList) {
+          buf.writeln('</ul>');
+          inList = false;
+        }
+        buf.writeln(
+            '<h2 style="color:#14532D;margin:16px 0 6px;font-size:17px;border-bottom:1px solid #E2E8F0;padding-bottom:4px;">${htmlEscape.convert(line.substring(3).trim())}</h2>');
+      } else if (line.startsWith('### ')) {
+        if (inList) {
+          buf.writeln('</ul>');
+          inList = false;
+        }
+        buf.writeln(
+            '<h3 style="color:#166534;margin:12px 0 4px;font-size:15px;">${htmlEscape.convert(line.substring(4).trim())}</h3>');
+      } else if (line.startsWith('* ') || line.startsWith('- ')) {
+        if (!inList) {
+          buf.writeln('<ul style="margin:6px 0 12px 20px;padding:0;">');
+          inList = true;
+        }
+        final itemText = _formatInline(line.substring(2).trim());
+        buf.writeln('<li style="margin-bottom:4px;">$itemText</li>');
+      } else {
+        if (inList) {
+          buf.writeln('</ul>');
+          inList = false;
+        }
+        buf.writeln('<p style="margin:6px 0 10px;">${_formatInline(line)}</p>');
+      }
+    }
+    if (inList) {
+      buf.writeln('</ul>');
+    }
+    return buf.toString();
+  }
+
+  static String _formatInline(String text) {
+    var escaped = htmlEscape.convert(text);
+    // Bold
+    escaped = escaped.replaceAllMapped(
+      RegExp(r'\*\*(.+?)\*\*'),
+      (m) => '<strong>${m.group(1)}</strong>',
+    );
+    // Italic
+    escaped = escaped.replaceAllMapped(
+      RegExp(r'\*(.+?)\*'),
+      (m) => '<em>${m.group(1)}</em>',
+    );
+    return escaped;
   }
 
   /// Notify a member that their account and profile data were deleted.

@@ -10,12 +10,15 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:appwrite/models.dart' as sdk;
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/auth_models.dart';
 import '../appwrite_auth_service.dart';
+import '../notification_service.dart';
 import '../ports/auth_gateway.dart';
 
 /// Concrete [AuthGateway] backed by Appwrite.
@@ -64,16 +67,58 @@ class AppwriteAuthGateway implements AuthGateway {
     );
   }
 
+  static const String _offlineUserKey = 'appwrite_auth_offline_user';
+
+  Future<void> _persistOfflineUser(AppUser user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_offlineUserKey, jsonEncode(user.toJson()));
+    } catch (_) {}
+  }
+
+  Future<AppUser?> _loadPersistedOfflineUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_offlineUserKey);
+      if (raw != null && raw.isNotEmpty) {
+        return AppUser.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _clearPersistedOfflineUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_offlineUserKey);
+    } catch (_) {}
+  }
+
+  /// Emits [user] to listeners and triggers mobile push registration sync so
+  /// newly signed-up or signed-in users immediately link their device token.
+  void _emitAuthState(AppUser? user) {
+    _authStateController.add(user);
+    if (!kIsWeb) {
+      unawaited(NotificationService.instance.onAuthUserChanged(user));
+    }
+  }
+
   /// Refreshes [_cachedUser] from the service and emits on the stream.
   Future<void> _refreshCachedUser() async {
     try {
       final sdkUser = await _service.getCurrentUser();
-      _cachedUser = sdkUser != null ? _mapSdkUserToAppUser(sdkUser) : null;
+      if (sdkUser != null) {
+        _cachedUser = _mapSdkUserToAppUser(sdkUser);
+        unawaited(_persistOfflineUser(_cachedUser!));
+      } else {
+        _cachedUser = null;
+      }
     } catch (e) {
       debugPrint('AppwriteAuthGateway: failed to refresh cached user: $e');
-      _cachedUser = null;
+      // If network failed, fall back to persisted offline user
+      _cachedUser ??= await _loadPersistedOfflineUser();
     }
-    _authStateController.add(_cachedUser);
+    _emitAuthState(_cachedUser);
   }
 
   // ──────────────────────────────────────────────────────────
@@ -82,8 +127,18 @@ class AppwriteAuthGateway implements AuthGateway {
 
   @override
   Future<AppUser?> getCurrentUser() async {
-    final sdkUser = await _service.getCurrentUser();
-    _cachedUser = sdkUser != null ? _mapSdkUserToAppUser(sdkUser) : null;
+    try {
+      final sdkUser = await _service.getCurrentUser();
+      if (sdkUser != null) {
+        _cachedUser = _mapSdkUserToAppUser(sdkUser);
+        unawaited(_persistOfflineUser(_cachedUser!));
+      } else {
+        _cachedUser = null;
+      }
+    } catch (_) {
+      // Offline fallback
+      _cachedUser ??= await _loadPersistedOfflineUser();
+    }
     return _cachedUser;
   }
 
@@ -95,6 +150,14 @@ class AppwriteAuthGateway implements AuthGateway {
 
   @override
   Stream<AppUser?> get authStateChanges => _authStateController.stream;
+
+  @override
+  Future<AppAuthResult> signInOffline(AppUser user) async {
+    _cachedUser = user;
+    await _persistOfflineUser(user);
+    _emitAuthState(_cachedUser);
+    return AppAuthResult.success(user);
+  }
 
   // ──────────────────────────────────────────────────────────
   //  AuthGateway — Email / password
@@ -115,7 +178,8 @@ class AppwriteAuthGateway implements AuthGateway {
         profileData: profile?.toMap(),
       );
       _cachedUser = _mapSdkUserToAppUser(sdkUser);
-      _authStateController.add(_cachedUser);
+      unawaited(_persistOfflineUser(_cachedUser!));
+      _emitAuthState(_cachedUser);
       return AppAuthResult.success(_cachedUser!);
     } catch (e) {
       debugPrint('AppwriteAuthGateway.signUpWithEmail error: $e');
@@ -135,7 +199,8 @@ class AppwriteAuthGateway implements AuthGateway {
         return AppAuthResult.failure('Sign in succeeded but user was null.');
       }
       _cachedUser = _mapSdkUserToAppUser(sdkUser);
-      _authStateController.add(_cachedUser);
+      unawaited(_persistOfflineUser(_cachedUser!));
+      _emitAuthState(_cachedUser);
       return AppAuthResult.success(_cachedUser!);
     } catch (e) {
       debugPrint('AppwriteAuthGateway.signInWithEmail error: $e');
@@ -165,7 +230,8 @@ class AppwriteAuthGateway implements AuthGateway {
             'Google sign-in succeeded but user was null.');
       }
       _cachedUser = _mapSdkUserToAppUser(sdkUser);
-      _authStateController.add(_cachedUser);
+      unawaited(_persistOfflineUser(_cachedUser!));
+      _emitAuthState(_cachedUser);
       return AppAuthResult.success(_cachedUser!);
     } catch (e) {
       debugPrint('AppwriteAuthGateway.signInWithGoogle error: $e');
@@ -219,8 +285,11 @@ class AppwriteAuthGateway implements AuthGateway {
 
   @override
   Future<void> signOut() async {
-    await _service.logout();
+    try {
+      await _service.logout();
+    } catch (_) {}
     _cachedUser = null;
-    _authStateController.add(null);
+    await _clearPersistedOfflineUser();
+    _emitAuthState(null);
   }
 }

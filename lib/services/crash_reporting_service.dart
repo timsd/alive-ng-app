@@ -69,14 +69,22 @@ class CrashReportingService {
           return null;
         }
 
-        // 6. Filter out Web SpeechRecognition background tab cancellation
-        if (fullStr.contains('speechrecognition') && fullStr.contains('invalidstateerror')) {
+        // 6. Filter out Web SpeechRecognition (Chrome & Mobile Safari) double-start / background notices
+        if (fullStr.contains('invalidstateerror') &&
+            (fullStr.contains('speechrecognition') ||
+                fullStr.contains('recognition is being started') ||
+                fullStr.contains('already started'))) {
           return null;
         }
 
         // 7. Filter out LiveKit non-fatal signal permissions & timeouts
         if (fullStr.contains('signal request failed: not_allowed') ||
             (fullStr.contains('livekit exception') && fullStr.contains('timeout'))) {
+          return null;
+        }
+
+        // 8. Filter out third-party browser Google reCAPTCHA script timeouts
+        if (fullStr.contains('recaptcha timeout')) {
           return null;
         }
 

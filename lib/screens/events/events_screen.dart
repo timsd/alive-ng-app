@@ -16,7 +16,12 @@ import '../../widgets/loading_widget.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class EventsScreen extends ConsumerStatefulWidget {
-  const EventsScreen({super.key});
+  final String initialTab;
+
+  const EventsScreen({
+    super.key,
+    this.initialTab = 'events',
+  });
 
   @override
   ConsumerState<EventsScreen> createState() => _EventsScreenState();
@@ -27,12 +32,27 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
   List<Announcement> _announcements = [];
   bool _isLoading = true;
   String? _error;
-  String _selectedTab = 'events';
+  late String _selectedTab;
 
   @override
   void initState() {
     super.initState();
+    _selectedTab = widget.initialTab == 'announcements'
+        ? 'announcements'
+        : 'events';
     _loadData();
+  }
+
+  @override
+  void didUpdateWidget(covariant EventsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTab != widget.initialTab) {
+      setState(() {
+        _selectedTab = widget.initialTab == 'announcements'
+            ? 'announcements'
+            : 'events';
+      });
+    }
   }
 
   Future<void> _loadData() async {

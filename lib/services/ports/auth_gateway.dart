@@ -38,6 +38,10 @@ abstract class AuthGateway {
   /// auth state changes (sign in, sign out, token refresh, etc.).
   Stream<AppUser?> get authStateChanges;
 
+  /// Signs in a user using cached offline credentials/session, e.g. after
+  /// device biometric verification when network is unreachable.
+  Future<AppAuthResult> signInOffline(AppUser user);
+
   // ──────────────────────────────────────────────────────────
   //  Email / password
   // ──────────────────────────────────────────────────────────

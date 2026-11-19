@@ -50,8 +50,10 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
 
   void _loadFromService() {
     setState(() {
-      _allLessons =
-          _lessonsService.activeLessons.map((l) => l.toJson()).toList();
+      _allLessons = InteractiveLessonsService.deduplicateLessons(
+              _lessonsService.activeLessons)
+          .map((l) => l.toJson())
+          .toList();
       _updateFilteredLessons();
     });
   }
@@ -595,15 +597,14 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              final lessonId = lesson['id']?.toString() ??
-                  'lesson_${(lesson['title'] ?? '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+              final lessonItem = _lessonsService.lessons.firstWhere(
+                (l) => l.id == lesson['id'],
+                orElse: () => InteractiveLessonItem.fromJson(lesson),
+              );
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => InteractiveLessonReaderScreen(
-                    lessonId: lessonId,
-                    title: lesson['title']?.toString() ??
-                        'Lesson 1: Something We Can Trust',
-                    lessonData: lesson,
+                    lesson: lessonItem,
                   ),
                 ),
               );

@@ -11,6 +11,7 @@ import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../services/leadership_email_settings_service.dart';
 
 class AppSettingsScreen extends StatefulWidget {
   const AppSettingsScreen({super.key});
@@ -54,6 +55,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _showFacebookStreamKey = false;
   bool _isSavingStreaming = false;
 
+  // Leadership & Board Meeting Minutes Distribution recipients
+  final TextEditingController _boardEmailInputController =
+      TextEditingController();
+  List<String> _boardRecipients = [LeadershipEmailSettingsService.defaultEmail];
+  bool _isSavingBoardRecipients = false;
+
   @override
   void initState() {
     super.initState();
@@ -83,6 +90,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     _youtubeStreamKeyController.dispose();
     _facebookStreamUrlController.dispose();
     _facebookStreamKeyController.dispose();
+    _boardEmailInputController.dispose();
     super.dispose();
   }
 
@@ -91,6 +99,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
     try {
       final settings = await _listSettings();
+      _boardRecipients = List.from(
+          await LeadershipEmailSettingsService.instance.getLeadershipRecipients());
 
       // Group settings by category
       _settingsByCategory.clear();
@@ -136,6 +146,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         }
         if (key == 'monthly_reminder') {
           // Managed exclusively under Admin Dashboard -> Donations & Finance -> Monthly Support Reminder
+          continue;
+        }
+        if (key == LeadershipEmailSettingsService.settingKey ||
+            key == LeadershipEmailSettingsService.legacySettingKey) {
+          // Managed exclusively by the Board & Leadership Meeting Minutes Distribution card
           continue;
         }
         if (key == 'paystack_live_public_key' && val.startsWith('pk_live_')) {
@@ -330,6 +345,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
           // Live Streaming (YouTube & Facebook) Card
           _buildStreamingSettingsCard(),
+
+          // Board & Leadership Meeting Minutes Distribution Card
+          _buildBoardMeetingEmailsCard(),
 
           // Settings by category
           ..._settingsByCategory.entries.map((entry) {
@@ -776,6 +794,221 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       await _loadSettings();
     } catch (e) {
       ToastUtils.showError('Failed to update Paystack mode: $e');
+    }
+  }
+
+  Widget _buildBoardMeetingEmailsCard() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: const Color(0xFF10B981).withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+      ),
+      color: isDark ? const Color(0xFF06281E) : const Color(0xFFF0FDF4),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: const Color(0xFF064E3B),
+                  radius: 18,
+                  child: const Icon(
+                    Icons.groups_rounded,
+                    color: Color(0xFFFACC15),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Board & Leadership Minutes Distribution',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Emails automatically copied when Board Meeting minutes are saved',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isDark
+                              ? const Color(0xFFA7F3D0)
+                              : const Color(0xFF065F46),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Recipient chips
+            if (_boardRecipients.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  'No recipient emails configured yet.',
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _boardRecipients.map((email) {
+                  final isDefault =
+                      email == LeadershipEmailSettingsService.defaultEmail;
+                  return Chip(
+                    backgroundColor: isDark
+                        ? const Color(0xFF064E3B)
+                        : const Color(0xFFD1FAE5),
+                    side: BorderSide(
+                      color: isDark
+                          ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                          : const Color(0xFFA7F3D0),
+                    ),
+                    avatar: Icon(
+                      isDefault
+                          ? Icons.admin_panel_settings
+                          : Icons.email_outlined,
+                      size: 16,
+                      color: isDark
+                          ? const Color(0xFFFACC15)
+                          : const Color(0xFF065F46),
+                    ),
+                    label: Text(
+                      email,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? Colors.white
+                            : const Color(0xFF022C22),
+                      ),
+                    ),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    deleteIconColor: Colors.redAccent,
+                    onDeleted: () async {
+                      setState(() {
+                        _boardRecipients.remove(email);
+                      });
+                      await LeadershipEmailSettingsService.instance
+                          .saveRecipients(_boardRecipients);
+                      ToastUtils.showSuccess('Removed $email');
+                    },
+                  );
+                }).toList(),
+              ),
+
+            const SizedBox(height: 14),
+
+            // Input to add a new leader email
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _boardEmailInputController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Add leader email (e.g. secretary@alivenigeria.org)',
+                      hintStyle: const TextStyle(fontSize: 13),
+                      prefixIcon:
+                          const Icon(Icons.add_circle_outline, size: 18),
+                      filled: true,
+                      fillColor: isDark ? Colors.black26 : Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            const BorderSide(color: Color(0xFFCBD5E1)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF10B981), width: 1.5),
+                      ),
+                    ),
+                    onSubmitted: (val) => _addBoardRecipientFromInput(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: _isSavingBoardRecipients
+                      ? null
+                      : _addBoardRecipientFromInput,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF065F46),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addBoardRecipientFromInput() async {
+    final text = _boardEmailInputController.text.trim().toLowerCase();
+    if (text.isEmpty) return;
+
+    final emails =
+        text.split(RegExp(r'[,;\s]+')).where((e) => e.isNotEmpty).toList();
+    bool addedAny = false;
+
+    for (final email in emails) {
+      if (!email.contains('@') || !email.contains('.')) {
+        ToastUtils.showError('Invalid email: $email');
+        return;
+      }
+      if (!_boardRecipients.contains(email)) {
+        _boardRecipients.add(email);
+        addedAny = true;
+      }
+    }
+
+    if (addedAny) {
+      setState(() => _isSavingBoardRecipients = true);
+      try {
+        await LeadershipEmailSettingsService.instance
+            .saveRecipients(_boardRecipients);
+        _boardEmailInputController.clear();
+        ToastUtils.showSuccess('Updated Leadership & Board email list!');
+      } catch (e) {
+        ToastUtils.showError('Error saving email: $e');
+      } finally {
+        if (mounted) setState(() => _isSavingBoardRecipients = false);
+      }
+    } else {
+      ToastUtils.showInfo('Email already in distribution list');
+      _boardEmailInputController.clear();
     }
   }
 

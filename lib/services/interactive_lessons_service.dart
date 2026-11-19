@@ -170,20 +170,27 @@ class InteractiveLessonsService extends ChangeNotifier {
             l.id.contains('_demo_') ||
             l.title.toLowerCase().contains('demo'));
 
-        // Ensure standard default lessons (like Lesson 1) are present even for existing local storage
+        // Deduplicate loaded lessons by ID, tractId, or Lesson #
+        _lessons = deduplicateLessons(_lessons);
+
+        // Ensure standard default lessons (like Lesson 1) are present only if no matching lesson exists
         for (final defaultLesson in _defaultLessons.reversed) {
-          final existingIdx = _lessons.indexWhere((l) => l.id == defaultLesson.id);
+          final existingIdx =
+              _lessons.indexWhere((l) => isSameLesson(l, defaultLesson));
           if (existingIdx == -1) {
             _lessons.insert(0, defaultLesson);
           } else {
-            // Update tractId or metadata if changed
-            _lessons[existingIdx] = _lessons[existingIdx].copyWith(
-              tractId: defaultLesson.tractId,
-              title: defaultLesson.title,
-              category: defaultLesson.category,
+            // Update tractId or metadata if changed, but keep remote / admin custom content
+            final existing = _lessons[existingIdx];
+            _lessons[existingIdx] = existing.copyWith(
+              tractId: existing.tractId ?? defaultLesson.tractId,
+              category: existing.category.isNotEmpty
+                  ? existing.category
+                  : defaultLesson.category,
             );
           }
         }
+        _lessons = deduplicateLessons(_lessons);
       } else {
         _lessons = List.from(_defaultLessons);
         await _persistLessons();
@@ -365,7 +372,7 @@ class InteractiveLessonsService extends ChangeNotifier {
         }
       }
 
-      final result = merged.values.toList();
+      final result = deduplicateLessons(merged.values.toList());
       for (int i = 0; i < result.length; i++) {
         final prog = prefs.getDouble('$_progressPrefix${result[i].id}');
         if (prog != null) {
@@ -385,6 +392,59 @@ class InteractiveLessonsService extends ChangeNotifier {
     } finally {
       _isSyncing = false;
     }
+  }
+
+  /// Identifies whether two lesson items refer to the same logical study lesson
+  /// by comparing their ID, tractId, exact title, or Lesson number (e.g. Lesson 1).
+  static bool isSameLesson(InteractiveLessonItem a, InteractiveLessonItem b) {
+    if (a.id == b.id) return true;
+    if (a.tractId != null && b.tractId != null && a.tractId == b.tractId) {
+      return true;
+    }
+    final tA = a.title.trim().toLowerCase();
+    final tB = b.title.trim().toLowerCase();
+    if (tA == tB) return true;
+    final numA = RegExp(r'^Lesson\s+(\d+)', caseSensitive: false)
+        .firstMatch(tA)
+        ?.group(1);
+    final numB = RegExp(r'^Lesson\s+(\d+)', caseSensitive: false)
+        .firstMatch(tB)
+        ?.group(1);
+    if (numA != null && numB != null && numA == numB) return true;
+    return false;
+  }
+
+  /// Removes duplicate lessons, preserving the richest item (with pre-parsed
+  /// sections or custom content) while preserving progress and favorites.
+  static List<InteractiveLessonItem> deduplicateLessons(
+      List<InteractiveLessonItem> list) {
+    final result = <InteractiveLessonItem>[];
+    for (final item in list) {
+      final existingIdx = result.indexWhere((r) => isSameLesson(r, item));
+      if (existingIdx == -1) {
+        result.add(item);
+      } else {
+        final existing = result[existingIdx];
+        final richer = (item.interactiveSections.isNotEmpty &&
+                existing.interactiveSections.isEmpty) ||
+            (item.content.length > existing.content.length) ||
+            (item.lessonJson != null && existing.lessonJson == null);
+        final base = richer ? item : existing;
+        final other = richer ? existing : item;
+        result[existingIdx] = base.copyWith(
+          progress: base.progress > 0 ? base.progress : other.progress,
+          isCompleted: base.isCompleted || other.isCompleted,
+          isFavorite: base.isFavorite || other.isFavorite,
+          tractId: base.tractId ?? other.tractId,
+          coverImage: base.coverImage ?? other.coverImage,
+          interactiveSections: base.interactiveSections.isNotEmpty
+              ? base.interactiveSections
+              : other.interactiveSections,
+          lessonJson: base.lessonJson ?? other.lessonJson,
+        );
+      }
+    }
+    return result;
   }
 
   Future<void> _persistLessons() async {

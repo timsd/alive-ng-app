@@ -219,7 +219,7 @@
             "path": "appwrite_functions/sendPush",
             "entrypoint": "src/main.js",
             "execute": [
-                "users"
+                "any"
             ],
             "enabled": true,
             "logging": true,
@@ -229,9 +229,18 @@
             "commands": "npm install",
             "scopes": [
                 "users.read",
+                "users.write",
+                "targets.read",
+                "targets.write",
+                "topics.read",
+                "topics.write",
+                "subscribers.read",
+                "subscribers.write",
                 "messages.write",
                 "databases.read",
-                "documents.read"
+                "databases.write",
+                "documents.read",
+                "documents.write"
             ]
         }
     ]

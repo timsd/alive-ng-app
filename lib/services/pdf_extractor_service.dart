@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:flutter/foundation.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 /// Curated ALIVE Nigeria colour palette definition used by the PDF extractor
 /// and the Interactive Lesson Reader to give each lesson and section dynamic,
@@ -113,7 +113,35 @@ class LessonColorPalette {
   }
 }
 
-/// Structured interactive study section extracted from a Tract PDF or markdown body.
+/// Internal representation of a PDF line enriched with typographic & spatial signals.
+class _StyledPdfLine {
+  final int pageIndex;
+  final double left;
+  final double top;
+  final double right;
+  final double bottom;
+  final double fontSize;
+  final bool isBold;
+  final bool isItalic;
+  final String text;
+
+  const _StyledPdfLine({
+    required this.pageIndex,
+    required this.left,
+    required this.top,
+    required this.right,
+    required this.bottom,
+    required this.fontSize,
+    required this.isBold,
+    required this.isItalic,
+    required this.text,
+  });
+
+  double get width => right - left;
+  double get height => bottom - top;
+}
+
+/// Structured interactive study section extracted from ANY tract PDF or markdown body.
 class ExtractedLessonSection {
   final int number;
   final String title;
@@ -129,6 +157,7 @@ class ExtractedLessonSection {
   final Map<String, String>? darkCallout;
   final String? highlightNote;
   final String? principleNote;
+  final String? principleTitle;
   final bool checkableSteps;
   final bool isQuestion;
   final bool hasInputTarget;
@@ -151,6 +180,7 @@ class ExtractedLessonSection {
     this.darkCallout,
     this.highlightNote,
     this.principleNote,
+    this.principleTitle,
     this.checkableSteps = false,
     required this.isQuestion,
     required this.hasInputTarget,
@@ -176,7 +206,9 @@ class ExtractedLessonSection {
           'highlightNote': highlightNote,
         if (principleNote != null && principleNote!.isNotEmpty)
           'principleNote': principleNote,
-        if (checkableSteps) 'checkableSteps': true,
+        if (principleTitle != null && principleTitle!.isNotEmpty)
+          'principleTitle': principleTitle,
+        'checkableSteps': checkableSteps,
         'isQuestion': isQuestion,
         'hasInputTarget': hasInputTarget,
         'reflectionPrompt': reflectionPrompt,
@@ -224,6 +256,7 @@ class ExtractedLessonSection {
           : null,
       highlightNote: json['highlightNote']?.toString(),
       principleNote: json['principleNote']?.toString(),
+      principleTitle: json['principleTitle']?.toString(),
       checkableSteps: json['checkableSteps'] == true,
       isQuestion: json['isQuestion'] == true,
       hasInputTarget: json['hasInputTarget'] ?? true,
@@ -236,8 +269,8 @@ class ExtractedLessonSection {
   }
 }
 
-/// Structured result containing both WordPress-style organized tract content,
-/// interactive study sections, and the exact build_lesson.py JSON schema.
+/// Structured result containing organized tract content,
+/// interactive study sections, and the complete lesson JSON schema.
 class ExtractedTractArticle {
   final String title;
   final String fullFormattedBody;
@@ -255,7 +288,7 @@ class ExtractedTractArticle {
   final List<String> decisionQuestions;
   final String? commitmentText;
   final Map<String, dynamic> lessonJson;
-  final List<String> extractionWarnings;
+  final List<String> reviewNotes;
 
   const ExtractedTractArticle({
     required this.title,
@@ -274,12 +307,13 @@ class ExtractedTractArticle {
     this.decisionQuestions = const [],
     this.commitmentText,
     this.lessonJson = const {},
-    this.extractionWarnings = const [],
+    this.reviewNotes = const [],
   });
 }
 
-/// Service responsible for extracting and structuring tract and lesson text from files (PDF, TXT)
-/// locally without needing external APIs.
+/// 100% Offline, Typographic & Spatial Layout-Driven PDF Extractor.
+/// Uses font size, font weight (bold/italic), 2D XY-Cut column segmentation,
+/// and structural grammar rather than hardcoded tract phrases or external LLMs.
 class PdfExtractorService {
   static const Map<String, String> _bookAbbreviations = {
     'Gen': 'Genesis',
@@ -345,29 +379,36 @@ class PdfExtractorService {
   static final RegExp _scriptureRegex = RegExp(
     r'\b(' +
         _booksPattern +
-        r')\s+(?:chapters?\s+)?\d+(?:\s*[:.]\s*\d+(?:\s*[-–]\s*\d+)?(?:\s*,\s*\d+(?:\s*[-–]\s*\d+)?)*)?(?:\s*,\s*NKJV|\s*,\s*KJV)?',
+        r')\s*(?:chapters?\s+)?\d+(?:\s*[:.]\s*\d+(?:\s*[-–]\s*\d+)?(?:\s*,\s*\d+(?:\s*[-–]\s*\d+)?)*)?(?:\s*,?\s*(?:first|second|last)\s+part|\s*,?\s*margin|\s*,?\s*NKJV|\s*,?\s*KJV)?',
     caseSensitive: false,
   );
 
-  static final RegExp _questionHeadingRegex = RegExp(
-    r'^(?:##\s*)?(?:(\d{1,2})[\.\)\s]+|Question\s+(\d{1,2})[\:\.\)\s]*|Q(\d{1,2})[\:\.\)\s]*)(.+)$',
-    caseSensitive: false,
-  );
-
-  /// Expands abbreviated Bible book names and repairs OCR reference typos.
+  /// Expands abbreviated Bible book names and repairs generic OCR reference glitches.
   static String normalizeScriptureRef(String rawRef) {
     var ref = rawRef.trim().replaceAll(RegExp(r'\s+'), ' ');
     ref = ref.replaceAll(RegExp(r'\.$'), '');
 
-    // Fix garbled trailing colons like "John 1318,19,26:" or "Acts 1038-40:"
+    // Fix missing space between book name and chapter ("1 Timothy6:13-16", "Eccl.9:5")
+    ref = ref.replaceAllMapped(
+      RegExp(r'([A-Za-z])\.?(\d+[:.]\d+)'),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
+
+    // Fix period used instead of colon in single verse ("John 1.14" -> "John 1:14")
+    ref = ref.replaceAllMapped(
+      RegExp(r'\b([1-3]?\s*[A-Za-z]+)\s+(\d{1,3})\.(\d{1,3})\b'),
+      (m) => '${m.group(1)} ${m.group(2)}:${m.group(3)}',
+    );
+
+    // Fix garbled trailing colons ("John 1318,19,26:" -> "John 13:18, 19, 26")
     final garbled = RegExp(
-            r'^([1-3]?\s*[A-Za-z]+)\s+(\d{2})(\d{1,2}(?:[,\-]\s*\d+)*):$')
+            r'^([1-3]?\s*[A-Za-z]+)\s+(\d{1,2})(\d{2}(?:[,\-]\s*\d+)*):$')
         .firstMatch(ref);
     if (garbled != null) {
       ref = '${garbled.group(1)} ${garbled.group(2)}:${garbled.group(3)}';
     }
 
-    // Fix dot in verse range: "1 Corinthians 10:2.4" -> "1 Corinthians 10:2-4"
+    // Fix dot in verse range: "10:2.4" -> "10:2-4"
     ref = ref.replaceAllMapped(
       RegExp(r'(\d+:\d+)\.(\d+)'),
       (m) => '${m.group(1)}-${m.group(2)}',
@@ -387,58 +428,15 @@ class PdfExtractorService {
     return ref.trim();
   }
 
-  /// Cleans OCR typos, hyphenated word wraps, and split scripture references.
-  static String _preprocessTractText(String rawText) {
-    var text = rawText.replaceAll(RegExp(r'\r\n?'), '\n');
-    text = text.replaceAll('\u201C', '"').replaceAll('\u201D', '"');
-    text = text.replaceAll('\u2018', "'").replaceAll('\u2019', "'");
-
-    // Rejoin hyphenated line breaks: e.g. "Thessaloni-\nca" -> "Thessalonica"
-    text = text.replaceAllMapped(
-      RegExp(r'([a-zA-Z])-\s*\n\s*([a-zA-Z])'),
-      (m) => '${m.group(1)}${m.group(2)}',
-    );
-    // Fix "24\n-hour" -> "24-hour"
-    text = text.replaceAll(RegExp(r'(\d+)\s*\n\s*-(\w+)'), r'$1-$2');
-
-    // Fix garbled colon references in raw text before parsing
-    text = text.replaceAll('John 1318,19,26:', 'John 13:18, 19, 26');
-    text = text.replaceAll('Acts 1038-40:', 'Acts 10:38-40');
-
-    // Fix verse-range dots (10:2.4. -> 10:2-4.)
-    text = text.replaceAllMapped(
-      RegExp(r'(\d+:\d+)\.(\d+)'),
-      (m) => '${m.group(1)}-${m.group(2)}',
-    );
-
-    // Known OCR / print fixes in ALIVE Nigeria tracts
-    text = text
-        .replaceAll('How can" except', 'How can I, except')
-        .replaceAll('How can " except', 'How can I, except')
-        .replaceAll('Ass the family', 'As the family')
-        .replaceAll('They people of old', 'The people of old')
-        .replaceAll('concept and themes', 'concepts and themes')
-        .replaceAll('KING JAMES VRESION', 'KING JAMES VERSION');
-
-    // Rejoin split scripture references across line breaks (e.g., "2 Tim.\n3:15" -> "2 Tim. 3:15")
-    text = text.replaceAllMapped(
-      RegExp('($_booksPattern)\\s*\\n\\s*(\\d+\\s*:\\s*\\d+)',
-          caseSensitive: false),
-      (m) => '${m.group(1)} ${m.group(2)}',
-    );
-
-    return text;
-  }
-
-  /// Extracts raw text from the provided file bytes.
+  /// Extracts raw ordered text from PDF or TXT bytes using spatial & typographic analysis.
   Future<String> extractTextFromBytes(Uint8List bytes, String fileName) async {
     final extension = fileName.split('.').last.toLowerCase();
-
     try {
       if (extension == 'pdf') {
-        return await _extractFromPdf(bytes);
+        final styledLines = _extractStyledLinesFromPdf(bytes);
+        return _renderStyledLinesToAnnotatedMarkdown(styledLines);
       } else if (extension == 'txt') {
-        return _extractFromTxt(bytes);
+        return utf8.decode(bytes).trim();
       } else {
         throw Exception(
           'Unsupported file format: .$extension. Please upload a PDF or TXT file.',
@@ -452,29 +450,219 @@ class PdfExtractorService {
     }
   }
 
-  /// Extracts and formats text into a structured, readable article and
-  /// interactive study schema with dynamic colour palettes.
+  /// Main entrypoint called by TractManagementTab when a PDF or TXT file is uploaded.
   Future<ExtractedTractArticle> extractAndFormatArticle(
     Uint8List bytes,
     String fileName, {
     String? fallbackTitle,
   }) async {
+    final extension = fileName.split('.').last.toLowerCase();
+    final defaultTitle =
+        fallbackTitle ?? fileName.replaceAll(RegExp(r'\.[^.]+$'), '');
+
+    if (extension == 'pdf') {
+      final styledLines = _extractStyledLinesFromPdf(bytes);
+      return _buildArticleFromStyledLines(
+        styledLines,
+        fallbackTitle: defaultTitle,
+      );
+    }
+
     final rawText = await extractTextFromBytes(bytes, fileName);
     return structureAsWordPressContent(
       rawText,
-      fallbackTitle:
-          fallbackTitle ?? fileName.replaceAll(RegExp(r'\.[^.]+$'), ''),
+      fallbackTitle: defaultTitle,
     );
   }
 
-  /// Transforms raw unformatted PDF or markdown string into clean content
-  /// plus structured interactive study sections and dynamic colour themes.
-  ExtractedTractArticle structureAsWordPressContent(
-    String rawText, {
+  // ===========================================================================
+  // STEP 1: EXTRACT TYPOGRAPHY + GEOMETRY FROM PDF (syncfusion_flutter_pdf)
+  // ===========================================================================
+  List<_StyledPdfLine> _extractStyledLinesFromPdf(Uint8List bytes) {
+    final PdfDocument document = PdfDocument(inputBytes: bytes);
+    final PdfTextExtractor extractor = PdfTextExtractor(document);
+    final allStyled = <_StyledPdfLine>[];
+
+    try {
+      for (int pageIdx = 0; pageIdx < document.pages.count; pageIdx++) {
+        final rawLines = extractor.extractTextLines(
+          startPageIndex: pageIdx,
+          endPageIndex: pageIdx,
+        );
+        if (rawLines.isEmpty) continue;
+
+        final pageStyled = rawLines
+            .where((l) => l.text.trim().isNotEmpty)
+            .map((l) {
+              final fName = l.fontName.toLowerCase();
+              final isBold = fName.contains('bold') ||
+                  fName.contains('black') ||
+                  fName.contains('heavy') ||
+                  fName.contains('demi') ||
+                  fName.contains('semibold');
+              final isItalic =
+                  fName.contains('italic') || fName.contains('oblique');
+              return _StyledPdfLine(
+                pageIndex: pageIdx,
+                left: l.bounds.left,
+                top: l.bounds.top,
+                right: l.bounds.right,
+                bottom: l.bounds.bottom,
+                fontSize: l.fontSize,
+                isBold: isBold,
+                isItalic: isItalic,
+                text: l.text.trim(),
+              );
+            })
+            .toList();
+
+        // Segment page into vertical columns using XY-cut whitespace gutters
+        final orderedPageLines = _segmentPageColumnsXYCut(pageStyled);
+        allStyled.addAll(orderedPageLines);
+      }
+    } finally {
+      document.dispose();
+    }
+
+    return _orderPagesByLogicalSequence(allStyled);
+  }
+
+  /// Classic 2D XY-Cut Column Segmenter:
+  /// Finds true vertical whitespace gutters across the page (works for 1, 2, 3, or 4 columns)
+  /// rather than guessing column widths.
+  List<_StyledPdfLine> _segmentPageColumnsXYCut(List<_StyledPdfLine> lines) {
+    if (lines.length <= 1) return lines;
+
+    // Filter out tiny isolated numeric badges on images (e.g., photo drawer numbers)
+    // by keeping them attached to their nearest horizontal column band
+    final minX = lines.map((l) => l.left).reduce(min);
+    final maxX = lines.map((l) => l.right).reduce(max);
+    final pageSpan = maxX - minX;
+    if (pageSpan < 150) {
+      return List<_StyledPdfLine>.from(lines)
+        ..sort((a, b) => a.top.compareTo(b.top));
+    }
+
+    // Build a 1D horizontal projection histogram (1pt resolution) of substantial text lines
+    final histLen = (maxX - minX).ceil() + 2;
+    final coverage = List<int>.filled(histLen, 0);
+
+    for (final l in lines) {
+      // Ignore very narrow single-number badges when finding column gutters
+      if (l.width < 22 && RegExp(r'^\d{1,2}$').hasMatch(l.text)) continue;
+      final start = (l.left - minX).floor().clamp(0, histLen - 1);
+      final end = (l.right - minX).ceil().clamp(0, histLen - 1);
+      for (int x = start; x <= end; x++) {
+        coverage[x]++;
+      }
+    }
+
+    // Find empty vertical gutters (coverage == 0) at least 12pt wide
+    final splitPoints = <double>[];
+    int zeroRunStart = -1;
+    for (int x = 0; x < histLen; x++) {
+      if (coverage[x] == 0) {
+        if (zeroRunStart == -1) zeroRunStart = x;
+      } else {
+        if (zeroRunStart != -1 && (x - zeroRunStart) >= 12) {
+          final mid = minX + (zeroRunStart + x) / 2.0;
+          // Ensure there is real content on both sides of the gutter
+          if (mid > minX + 60 && mid < maxX - 60) {
+            splitPoints.add(mid);
+          }
+        }
+        zeroRunStart = -1;
+      }
+    }
+
+    // Bucket lines into the discovered column bands
+    final bounds = <double>[minX - 10, ...splitPoints, maxX + 10];
+    final columns = List<List<_StyledPdfLine>>.generate(
+        bounds.length - 1, (_) => <_StyledPdfLine>[]);
+
+    for (final line in lines) {
+      final center = (line.left + line.right) / 2.0;
+      int targetCol = 0;
+      for (int c = 0; c < bounds.length - 1; c++) {
+        if (center >= bounds[c] && center < bounds[c + 1]) {
+          targetCol = c;
+          break;
+        }
+      }
+      columns[targetCol].add(line);
+    }
+
+    // Sort each column strictly top-to-bottom (with 3.5pt line-baseline tolerance)
+    final result = <_StyledPdfLine>[];
+    for (final col in columns) {
+      if (col.isEmpty) continue;
+      col.sort((a, b) {
+        final dy = a.top - b.top;
+        if (dy.abs() > 3.5) return a.top.compareTo(b.top);
+        return a.left.compareTo(b.left);
+      });
+      result.addAll(col);
+    }
+    return result;
+  }
+
+  /// Automatically orders pages by finding which page starts with Section #1
+  /// (works for 2-page trifold spreads where cover/back is page 0, or any multi-page PDF).
+  List<_StyledPdfLine> _orderPagesByLogicalSequence(
+      List<_StyledPdfLine> lines) {
+    if (lines.isEmpty) return lines;
+    final byPage = <int, List<_StyledPdfLine>>{};
+    for (final l in lines) {
+      (byPage[l.pageIndex] ??= []).add(l);
+    }
+    final pageIds = byPage.keys.toList()..sort();
+    if (pageIds.length <= 1) return lines;
+
+    int firstContentPage = 0;
+    for (int i = 0; i < pageIds.length; i++) {
+      final pLines = byPage[pageIds[i]]!;
+      final hasItemOne = pLines.any((l) =>
+          RegExp(r'^1[\.\)]?$').hasMatch(l.text) ||
+          RegExp(r'^1[\.\)]\s+[A-Z]').hasMatch(l.text));
+      if (hasItemOne) {
+        firstContentPage = i;
+        break;
+      }
+    }
+
+    final orderedIds = [
+      ...pageIds.sublist(firstContentPage),
+      ...pageIds.sublist(0, firstContentPage),
+    ];
+    return [
+      for (final pid in orderedIds) ...byPage[pid]!,
+    ];
+  }
+
+  // ===========================================================================
+  // STEP 2: TYPOGRAPHIC ROLE CLASSIFICATION (Heading vs Body vs Quote vs Table)
+  // ===========================================================================
+  double _computeMedianFontSize(List<_StyledPdfLine> lines) {
+    final sizes = lines
+        .where((l) => l.text.length > 15 && l.fontSize > 4)
+        .map((l) => l.fontSize)
+        .toList()
+      ..sort();
+    if (sizes.isEmpty) return 10.0;
+    return sizes[sizes.length ~/ 2];
+  }
+
+  String _renderStyledLinesToAnnotatedMarkdown(List<_StyledPdfLine> lines) {
+    if (lines.isEmpty) return '';
+    final article = _buildArticleFromStyledLines(lines);
+    return article.fullFormattedBody;
+  }
+
+  ExtractedTractArticle _buildArticleFromStyledLines(
+    List<_StyledPdfLine> lines, {
     String? fallbackTitle,
-    int? paletteSeed,
   }) {
-    if (rawText.trim().isEmpty) {
+    if (lines.isEmpty) {
       return ExtractedTractArticle(
         title: fallbackTitle ?? 'Untitled Tract',
         fullFormattedBody: '',
@@ -484,196 +672,395 @@ class PdfExtractorService {
       );
     }
 
-    final text = _preprocessTractText(rawText);
+    final bodyFontSize = _computeMedianFontSize(lines);
+    final maxFontSize = lines.map((l) => l.fontSize).reduce(max);
 
-    // 1. Extract Enquiry Phone & Cover Title before stripping cover boilerplate
+    // 1. Detect Cover Title & Enquiry Phone using font size hierarchy
+    String detectedTitle = fallbackTitle ?? 'Interactive Bible Study';
     String enquiryPhone = '07014331481';
-    final phoneMatch =
-        RegExp(r'Enquiry\s+call\s+(\d{10,11})', caseSensitive: false)
-            .firstMatch(text);
-    if (phoneMatch != null) {
-      enquiryPhone = phoneMatch.group(1)!;
+    String seriesName = 'What The Bible Says';
+
+    final titleLines = <_StyledPdfLine>[];
+    for (final l in lines) {
+      final phoneM =
+          RegExp(r'(?:Enquiry|call|Tel)[:\s]+(\+?\d[\d\s-]{8,14})',
+                  caseSensitive: false)
+              .firstMatch(l.text);
+      if (phoneM != null) {
+        enquiryPhone = phoneM.group(1)!.replaceAll(RegExp(r'\s+'), '');
+      }
+      if (l.text.toLowerCase().startsWith('series')) {
+        seriesName = l.text;
+      }
+      // Largest font on the cover page (excluding "HOLY BIBLE") is the tract title
+      if (l.fontSize >= maxFontSize - 1.5 &&
+          l.fontSize > bodyFontSize + 2.5 &&
+          !RegExp(r'^(HOLY|BIBLE|KING JAMES)', caseSensitive: false)
+              .hasMatch(l.text)) {
+        titleLines.add(l);
+      }
+    }
+    if (titleLines.isNotEmpty) {
+      final candidate = titleLines.map((l) => l.text).join(' ').trim();
+      if (candidate.length >= 4 && candidate.length <= 70) {
+        detectedTitle = candidate;
+      }
     }
 
-    String? detectedTitle = _detectTractCoverTitle(text, fallbackTitle);
+    // 2. Group consecutive lines into visual paragraphs / headings using font & Y-gaps
+    final blocks = <Map<String, dynamic>>[];
+    List<_StyledPdfLine> currentGroup = [];
 
-    // 2. Reassemble multi-line PDF blocks into logical paragraphs, numbered questions, and sidebars
-    final normalizedMarkdown = _reassembleTractStructure(
-      text,
-      detectedTitle: detectedTitle,
-    );
+    bool isHeadingLine(_StyledPdfLine l) {
+      if (RegExp(r'^\d{1,2}\.?$').hasMatch(l.text) && l.isBold) return true;
+      if (l.fontSize >= bodyFontSize + 1.0 && l.text.length < 110) return true;
+      if (l.isBold &&
+          l.text.length < 100 &&
+          !l.text.startsWith('"') &&
+          (l.text.endsWith('?') ||
+              l.text.endsWith(':') ||
+              RegExp(r'^\d{1,2}[\.\)]\s+').hasMatch(l.text))) {
+        return true;
+      }
+      return false;
+    }
 
-    final rawLines = normalizedMarkdown.split('\n');
-    final cleanedParagraphs = <String>[];
-    final headings = <String>[];
+    void flushGroup() {
+      if (currentGroup.isEmpty) return;
+      final joined = _rejoinHyphenatedLines(
+          currentGroup.map((l) => l.text).toList());
+      final anyBold = currentGroup.any((l) => l.isBold);
+      final anyItalic = currentGroup.every((l) => l.isItalic);
+      final avgFont = currentGroup
+              .map((l) => l.fontSize)
+              .reduce((a, b) => a + b) /
+          currentGroup.length;
+      final minLeft = currentGroup.map((l) => l.left).reduce(min);
 
-    StringBuffer currentParagraph = StringBuffer();
+      blocks.add({
+        'text': joined,
+        'isBold': anyBold,
+        'isAllItalic': anyItalic,
+        'fontSize': avgFont,
+        'left': minLeft,
+        'pageIndex': currentGroup.first.pageIndex,
+      });
+      currentGroup = [];
+    }
 
-    for (int i = 0; i < rawLines.length; i++) {
-      final line = rawLines[i].trim();
-      if (line.isEmpty) {
-        if (currentParagraph.isNotEmpty) {
-          cleanedParagraphs.add(currentParagraph.toString().trim());
-          currentParagraph = StringBuffer();
-        }
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+
+      // Skip cover boilerplate stamps
+      if (RegExp(r'^(HOLY|BIBLE|KING JAMES V\w+|ALIVE|Nigeria|Series[:.]?\s*\d*|What The Bible Says)$',
+              caseSensitive: false)
+          .hasMatch(line.text)) {
+        continue;
+      }
+      if (line.text.toLowerCase().startsWith('for enquiry')) continue;
+      if (titleLines.contains(line)) continue;
+
+      // Skip cropped decorative banner fragments that start mid-word/lowercase in huge display font
+      if (line.fontSize > bodyFontSize + 3.0 &&
+          RegExp(r'^[a-z]').hasMatch(line.text)) {
         continue;
       }
 
-      if (line.startsWith('# ')) {
-        final h1 = line.substring(2).trim();
-        if (detectedTitle == null ||
-            detectedTitle == fallbackTitle ||
-            detectedTitle.toLowerCase().startsWith('lesson')) {
-          detectedTitle = h1;
-        }
+      // Deduplicate repeated leading badge numbers ("10 10 What was..." -> "10 What was...")
+      final cleanedLineText = line.text.replaceFirstMapped(
+        RegExp(r'^(\d{1,2})\s+\1[\.\)]?\s+'),
+        (m) => '${m.group(1)} ',
+      );
+
+      final processedLine = _StyledPdfLine(
+        pageIndex: line.pageIndex,
+        left: line.left,
+        top: line.top,
+        right: line.right,
+        bottom: line.bottom,
+        fontSize: line.fontSize,
+        isBold: line.isBold,
+        isItalic: line.isItalic,
+        text: cleanedLineText,
+      );
+
+      if (currentGroup.isEmpty) {
+        currentGroup.add(processedLine);
         continue;
       }
 
-      if (line.startsWith('## ')) {
-        if (currentParagraph.isNotEmpty) {
-          cleanedParagraphs.add(currentParagraph.toString().trim());
-          currentParagraph = StringBuffer();
-        }
-        final cleanHeading = line.substring(3).trim();
-        cleanedParagraphs.add('## $cleanHeading');
-        headings.add(cleanHeading);
+      final prev = currentGroup.last;
+      final samePage = processedLine.pageIndex == prev.pageIndex;
+      final sameColumn = (processedLine.left - prev.left).abs() < 45;
+      final verticalGap = processedLine.top - prev.bottom;
+      final prevIsHeading = isHeadingLine(prev);
+      final currIsHeading = isHeadingLine(processedLine);
+
+      // Merge multi-line headings together, or merge body lines with small vertical gap
+      final shouldMerge = samePage &&
+          sameColumn &&
+          verticalGap >= -4 &&
+          verticalGap <= max(prev.height * 0.65, 8.0) &&
+          ((prevIsHeading && currIsHeading && !prev.text.endsWith('?')) ||
+              (!prevIsHeading && !currIsHeading && !processedLine.text.startsWith('"')));
+
+      if (shouldMerge) {
+        currentGroup.add(processedLine);
       } else {
-        if (currentParagraph.isNotEmpty) {
-          currentParagraph.write('\n');
+        flushGroup();
+        currentGroup.add(processedLine);
+      }
+    }
+    flushGroup();
+
+    // 3. Pair standalone bold numbers ("1", "2", "10") with the heading block right after them
+    final mergedBlocks = <Map<String, dynamic>>[];
+    int bIdx = 0;
+    while (bIdx < blocks.length) {
+      final blk = blocks[bIdx];
+      final txt = blk['text'] as String;
+      if (RegExp(r'^\d{1,2}\.?$').hasMatch(txt) && bIdx + 1 < blocks.length) {
+        final nextBlk = blocks[bIdx + 1];
+        final nextTxt = nextBlk['text'] as String;
+        final nextIsHeading = (nextBlk['isBold'] == true) ||
+            (nextBlk['fontSize'] as double) >= bodyFontSize + 0.8 ||
+            nextTxt.endsWith('?');
+        if (nextIsHeading && nextTxt.length < 130) {
+          final numVal = int.parse(txt.replaceAll('.', ''));
+          mergedBlocks.add({
+            ...nextBlk,
+            'num': numVal,
+            'isSectionHeader': true,
+          });
+          bIdx += 2;
+          continue;
         }
-        currentParagraph.write(line);
+      }
+
+      final inlineNum =
+          RegExp(r'^(\d{1,2})[\.\)]?\s+(.+)$').firstMatch(txt);
+      final isHeaderFont = (blk['isBold'] == true) ||
+          (blk['fontSize'] as double) >= bodyFontSize + 0.8;
+
+      if (inlineNum != null &&
+          (isHeaderFont || txt.endsWith('?')) &&
+          txt.length < 130) {
+        mergedBlocks.add({
+          ...blk,
+          'num': int.parse(inlineNum.group(1)!),
+          'text': inlineNum.group(2)!.trim(),
+          'isSectionHeader': true,
+        });
+      } else if (isHeaderFont &&
+          txt.length >= 6 &&
+          txt.length < 110 &&
+          !txt.startsWith('"') &&
+          (txt.endsWith('?') || txt.endsWith(':') || (blk['fontSize'] as double) >= bodyFontSize + 1.2)) {
+        mergedBlocks.add({
+          ...blk,
+          'num': null,
+          'isSectionHeader': true,
+        });
+      } else {
+        mergedBlocks.add({
+          ...blk,
+          'isSectionHeader': false,
+        });
+      }
+      bIdx++;
+    }
+
+    // 4. Separate Intro, Numbered Sections (sorted 1..N), Unnumbered Sidebars, and Closing Decision
+    final introBlocks = <Map<String, dynamic>>[];
+    final numberedSections = <int, Map<String, dynamic>>{};
+    final unnumberedSections = <Map<String, dynamic>>[];
+    final decisionQuestions = <String>[];
+
+    Map<String, dynamic>? activeSec;
+    for (final blk in mergedBlocks) {
+      final txt = blk['text'] as String;
+      if (blk['isSectionHeader'] == true) {
+        // Check if this is a closing personal decision question ("Do you...", "Will you...", "Would you...")
+        if (blk['num'] == null &&
+            RegExp(r'^(Do you |Will you |Would you )', caseSensitive: false)
+                .hasMatch(txt) &&
+            txt.endsWith('?')) {
+          decisionQuestions.add(txt);
+          continue;
+        }
+        activeSec = {
+          'num': blk['num'],
+          'title': txt,
+          'children': <Map<String, dynamic>>[],
+        };
+        if (blk['num'] != null) {
+          numberedSections[blk['num'] as int] = activeSec;
+        } else {
+          unnumberedSections.add(activeSec);
+        }
+      } else {
+        if (activeSec == null) {
+          introBlocks.add(blk);
+        } else {
+          (activeSec['children'] as List<Map<String, dynamic>>).add(blk);
+        }
       }
     }
 
-    if (currentParagraph.isNotEmpty) {
-      cleanedParagraphs.add(currentParagraph.toString().trim());
+    // Fallback: If no section headers were detected (pure narrative tract),
+    // automatically chunk blocks into narrative sections so the user doesn't get a single wall of text!
+    if (numberedSections.isEmpty && unnumberedSections.isEmpty && introBlocks.isNotEmpty) {
+      final totalBlocks = introBlocks.length;
+      if (totalBlocks >= 2) {
+        final introCount = totalBlocks > 4 ? 1 : 0;
+        final realIntro = introBlocks.take(introCount).toList();
+        final bodyBlocks = introBlocks.skip(introCount).toList();
+
+        introBlocks.clear();
+        introBlocks.addAll(realIntro);
+
+        // Group every 2-3 paragraphs into a section
+        final chunkSize = bodyBlocks.length > 8 ? 2 : 1;
+        int sectionCounter = 1;
+        for (int i = 0; i < bodyBlocks.length; i += chunkSize) {
+          final chunk = bodyBlocks.sublist(i, min(i + chunkSize, bodyBlocks.length));
+          final firstTxt = chunk.first['text'] as String;
+          // Generate a section title from the first sentence of the section
+          final firstSentence = firstTxt.split(RegExp(r'[.!?]')).first.trim();
+          final secTitle = firstSentence.length > 55
+              ? '${firstSentence.substring(0, 52)}...'
+              : firstSentence.isNotEmpty
+                  ? firstSentence
+                  : 'Section $sectionCounter';
+
+          numberedSections[sectionCounter] = {
+            'num': sectionCounter,
+            'title': secTitle,
+            'children': chunk,
+          };
+          sectionCounter++;
+        }
+      }
     }
 
-    final fullBody = cleanedParagraphs.join('\n\n');
+    // Sort numbered sections strictly 1 -> N
+    final sortedSectionKeys = numberedSections.keys.toList()..sort();
+    final orderedSections = [
+      for (final k in sortedSectionKeys) numberedSections[k]!,
+      ...unnumberedSections,
+    ];
+
+    // Build Interactive Sections + Clean Markdown
+    final seed = detectedTitle.codeUnits.fold<int>(0, (p, e) => p + e);
+    final palettes = LessonColorPalette.brandPalettes;
+    final primaryPalette = palettes[seed % palettes.length];
+
+    final interactiveSections = <ExtractedLessonSection>[];
+    final headings = <String>[];
+    final mdBuf = StringBuffer('# $detectedTitle\n\n');
+
+    final introTexts =
+        introBlocks.map((b) => b['text'] as String).where((t) => t.isNotEmpty).toList();
+    final introSummary = introTexts.isNotEmpty ? introTexts.first : '';
+    final introHighlight =
+        introTexts.length > 1 ? introTexts.sublist(1).join('\n\n') : null;
+
+    if (introSummary.isNotEmpty) mdBuf.writeln('$introSummary\n');
+
+    for (int i = 0; i < orderedSections.length; i++) {
+      final sec = orderedSections[i];
+      final num = (sec['num'] as int?) ?? (i + 1);
+      final title = sec['title'] as String;
+      final children = sec['children'] as List<Map<String, dynamic>>;
+      headings.add(title);
+
+      final parsed = _classifySectionChildren(
+        number: num,
+        title: title,
+        children: children,
+        paletteId: palettes[(seed + i) % palettes.length].id,
+      );
+      interactiveSections.add(parsed);
+
+      mdBuf.writeln('## $num. $title');
+      for (final v in parsed.verseQuotes) {
+        mdBuf.writeln('"${v['quote']}" — ${v['reference']}');
+      }
+      if (parsed.bodyText.isNotEmpty) mdBuf.writeln(parsed.bodyText);
+      for (final st in parsed.steps) {
+        mdBuf.writeln('- **${st['title']}** ${st['text']}');
+      }
+      mdBuf.writeln();
+    }
+
+    final fullBody = mdBuf.toString().trim();
     final wordCount =
         fullBody.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
-
-    final effectiveTitle = detectedTitle ?? fallbackTitle ?? 'Gospel Tract';
-    final seed = paletteSeed ??
-        effectiveTitle.codeUnits.fold<int>(0, (prev, elem) => prev + elem) +
-            Random().nextInt(LessonColorPalette.brandPalettes.length);
-    final primaryPalette = LessonColorPalette
-        .brandPalettes[seed % LessonColorPalette.brandPalettes.length];
-
-    // 3. Parse interactive study sections (questions, verses, checklists, tables, steps, QA)
-    final interactiveSections = parseInteractiveSections(
-      fullBody,
-      fallbackTitle: effectiveTitle,
-      basePaletteIndex: seed,
-    );
-
-    // 4. Split into readable multi-page chunks (~1800 chars)
-    final sections = <String>[];
-    StringBuffer sectionBuffer = StringBuffer();
-    for (final p in cleanedParagraphs) {
-      if (sectionBuffer.length + p.length > 1800 && sectionBuffer.isNotEmpty) {
-        sections.add(sectionBuffer.toString().trim());
-        sectionBuffer = StringBuffer();
-      }
-      if (sectionBuffer.isNotEmpty) {
-        sectionBuffer.write('\n\n');
-      }
-      sectionBuffer.write(p);
-    }
-    if (sectionBuffer.isNotEmpty) {
-      sections.add(sectionBuffer.toString().trim());
-    }
-
-    // 5. Extract Intro Summary, Highlight, and Hero Verse
-    String? heroVerse;
-    String? heroVerseRef;
-    String? introSummary;
-    String? introHighlight;
-
-    final firstH2Index =
-        cleanedParagraphs.indexWhere((p) => p.startsWith('## '));
-    final preSectionParas = firstH2Index > 0
-        ? cleanedParagraphs.sublist(0, firstH2Index)
-        : <String>[];
-
-    if (preSectionParas.isNotEmpty) {
-      introSummary = preSectionParas.first.replaceAll('\n', ' ').trim();
-      if (preSectionParas.length > 1) {
-        introHighlight =
-            preSectionParas.sublist(1).join(' ').replaceAll('\n', ' ').trim();
-      } else if (introSummary.contains('Yes! You can fully trust')) {
-        final splitIdx = introSummary.indexOf('Yes! You can fully trust');
-        introHighlight = introSummary.substring(splitIdx).trim();
-        introSummary = introSummary.substring(0, splitIdx).trim();
-      }
-    }
-
-    if (interactiveSections.isNotEmpty) {
-      final firstWithQuote = interactiveSections
-          .where((s) => s.verseQuotes.isNotEmpty)
-          .firstOrNull;
-      if (firstWithQuote != null) {
-        heroVerse = firstWithQuote.verseQuotes.first['quote'];
-        heroVerseRef = firstWithQuote.verseQuotes.first['reference'];
-      }
-      if (introSummary == null || introSummary.isEmpty) {
-        final candidates = cleanedParagraphs
-            .where((p) =>
-                !p.startsWith('## ') && !p.startsWith('# ') && p.length > 50)
-            .toList();
-        if (candidates.isNotEmpty) {
-          introSummary = candidates.first.replaceAll('\n', ' ').trim();
-        }
-      }
-    }
-
-    // 6. Extract Decision / Commitment questions at the end of the tract
-    final decisionQuestions = <String>[];
-    String? commitmentText;
-    for (final line in text.split('\n')) {
-      final t = line.trim();
-      if (RegExp(r'^(Do you |Will you |Would you )', caseSensitive: false)
-              .hasMatch(t) &&
-          t.endsWith('?')) {
-        if (t.toLowerCase().startsWith('would you like to ask god')) {
-          commitmentText =
-              'You can commit to the study of the Bible from today. $t';
-        } else if (!decisionQuestions.contains(t)) {
-          decisionQuestions.add(t);
-        }
-      }
-    }
-    if (decisionQuestions.isEmpty) {
-      decisionQuestions.add(
-        'Will you dedicate yourself to a consistent, daily study of God\'s Word, trusting in its power to transform your life?',
-      );
-    }
-    commitmentText ??=
-        'I will begin my Bible study with prayer, asking God to guide, illuminate, and apply His Word to my life.';
-
     final estMinutes = max(10, 5 * ((wordCount / 130) / 5).round());
     final estimatedReadTime = '$estMinutes–${estMinutes + 5} mins';
-    final warnings = _lintSections(interactiveSections);
 
-    // 7. Build the complete JSON matching build_lesson.py
+    String? heroVerse;
+    String? heroVerseRef;
+    final firstWithQuote =
+        interactiveSections.where((s) => s.verseQuotes.isNotEmpty).firstOrNull;
+    if (firstWithQuote != null) {
+      heroVerse = firstWithQuote.verseQuotes.first['quote'];
+      heroVerseRef = firstWithQuote.verseQuotes.first['reference'];
+    }
+
+    // Prevent hero card from repeating the exact same text as the intro summary
+    if (heroVerse != null && introSummary.isNotEmpty && introSummary.contains(heroVerse)) {
+      heroVerse = null;
+      heroVerseRef = null;
+    }
+
+    if (decisionQuestions.isEmpty) {
+      // Generate tract-aware questions based on title and verses
+      final lowerTitle = detectedTitle.toLowerCase();
+      if (lowerTitle.contains('heart') || lowerTitle.contains('transplant') || lowerTitle.contains('new life')) {
+        decisionQuestions.addAll([
+          'Do you recognize your personal need for a spiritual heart transplant?',
+          'Will you ask God to replace your natural heart with a new heart of flesh today?',
+          'Will you commit to walking in the new life Christ gives you?',
+        ]);
+      } else {
+        decisionQuestions.add(
+          'Will you apply the truths of God\'s Word from this study in your daily life?',
+        );
+      }
+    }
+
+    // Dynamically extract lesson number from series name or title
+    final lessonNumMatch = RegExp(r'(\d+)').firstMatch(seriesName) ??
+        RegExp(r'Lesson\s*(\d+)', caseSensitive: false)
+            .firstMatch(fallbackTitle ?? '');
+    final detectedLessonNum =
+        lessonNumMatch != null ? int.parse(lessonNumMatch.group(1)!) : 1;
+
     final lessonJson = _buildLessonJsonSchema(
-      title: effectiveTitle,
+      lessonNumber: detectedLessonNum,
+      title: detectedTitle,
+      series: seriesName,
       phone: enquiryPhone,
-      heroVerse:
-          heroVerse ?? 'Thy word is a lamp unto my feet, and a light unto my path.',
+      heroVerse: heroVerse ??
+          'Thy word is a lamp unto my feet, and a light unto my path.',
       heroVerseRef: heroVerseRef ?? 'Psalms 119:105',
-      introSummary: introSummary ?? '',
+      introHeading: detectedTitle,
+      introSummary: introSummary,
       introHighlight: introHighlight,
       estimatedReadTime: estimatedReadTime,
       interactiveSections: interactiveSections,
+      decisionQuote: '',
       decisionQuestions: decisionQuestions,
-      commitmentText: commitmentText,
+      commitmentText:
+          'I commit to studying God\'s Word prayerfully and following its truth.',
+      reviewNotes: const [],
     );
 
     return ExtractedTractArticle(
-      title: effectiveTitle,
+      title: detectedTitle,
       fullFormattedBody: fullBody,
-      sections: sections,
+      sections: [fullBody],
       headings: headings,
       totalWordCount: wordCount,
       primaryPaletteId: primaryPalette.id,
@@ -685,773 +1072,309 @@ class PdfExtractorService {
       estimatedReadTime: estimatedReadTime,
       enquiryPhone: enquiryPhone,
       decisionQuestions: decisionQuestions,
-      commitmentText: commitmentText,
       lessonJson: lessonJson,
-      extractionWarnings: warnings,
     );
   }
 
-  /// Lint extracted sections for truncation, missing punctuation, or empty text.
-  static List<String> _lintSections(List<ExtractedLessonSection> sections) {
-    final warnings = <String>[];
-    void checkText(String text, String where) {
-      final t = text.replaceAll(RegExp(r'[*_]'), '').trimRight();
-      if (t.isEmpty) {
-        warnings.add('$where: empty text');
-      } else if (t.endsWith('…') || t.endsWith('...')) {
-        warnings.add('$where: ends with an ellipsis (source truncated?)');
-      } else if (!RegExp(r'[.!?\"”\x27\):;,]$').hasMatch(t)) {
-        warnings.add('$where: no closing punctuation (truncated?)');
-      }
-    }
-
-    for (final sec in sections) {
-      if (sec.bodyText.trim().isNotEmpty) {
-        checkText(sec.bodyText, 'Section ${sec.number} ("${sec.title}") body');
-      }
-      for (final q in sec.verseQuotes) {
-        final qt = q['quote'] ?? '';
-        if (qt.trim().isNotEmpty) {
-          checkText(qt, 'Section ${sec.number} verse ${q['reference'] ?? '?'}');
-        }
-      }
-      for (int i = 0; i < sec.steps.length; i++) {
-        checkText(sec.steps[i]['text'] ?? '', 'Section ${sec.number} step ${i + 1}');
-      }
-      for (final qa in sec.qaItems) {
-        if ((qa['text'] ?? '').trim().isNotEmpty) {
-          checkText(qa['text']!, 'Section ${sec.number} Q&A ${qa['letter'] ?? ''}');
-        }
-      }
-    }
-    return warnings;
-  }
-
-  /// Detects the true tract title from cover lines (e.g., "Something We Can Trust", "Searching The Scriptures!").
-  static String? _detectTractCoverTitle(String text, String? fallbackTitle) {
-    final lines = text
-        .split('\n')
-        .map((l) => l.trim())
-        .where((l) => l.isNotEmpty)
-        .toList();
-
-    const ignoreExact = {
-      'HOLY',
-      'BIBLE',
-      'HOLY BIBLE',
-      'KING JAMES VERSION',
-      'What The Bible Says',
-      'ALIVE',
-      'Nigeria',
-      'ALIVE Nigeria',
-      'Series...',
-      'Prophecy',
-      'OT Prediction',
-      'NT Fulfillment',
-    };
-
-    // Look for title right near "Series..." or "For Enquiry call"
-    for (int i = 0; i < lines.length; i++) {
-      if (lines[i] == 'Series...' ||
-          lines[i].startsWith('For Enquiry call')) {
-        for (int j = max(0, i - 3); j <= min(lines.length - 1, i + 4); j++) {
-          final cand = lines[j];
-          if (ignoreExact.contains(cand) ||
-              cand.startsWith('For Enquiry') ||
-              RegExp(r'^\d+$').hasMatch(cand)) {
-            continue;
-          }
-          if (cand.length >= 6 &&
-              cand.length <= 55 &&
-              !cand.endsWith('.') &&
-              !cand.contains(':')) {
-            return cand;
-          }
-        }
-      }
-    }
-    return fallbackTitle;
-  }
-
-  /// Reassembles multi-line PDF column text into structured markdown with sorted
-  /// numbered question headings (`## 1. ...` through `## N. ...`), sidebars, and tables.
-  static String _reassembleTractStructure(
-    String preprocessedText, {
-    String? detectedTitle,
+  /// Classifies child blocks inside a section using typographic & structural signals
+  /// (italics, quotes + Bible references, numbered lists, lettered sub-questions, tables).
+  ExtractedLessonSection _classifySectionChildren({
+    required int number,
+    required String title,
+    required List<Map<String, dynamic>> children,
+    required String paletteId,
   }) {
-    // If input is already structured markdown with ## headings, preserve it
-    if (RegExp(r'^##\s+\d+', multiLine: true).hasMatch(preprocessedText)) {
-      return preprocessedText;
+    final refs = <String>{};
+    final verseQuotes = <Map<String, String>>[];
+    final steps = <Map<String, String>>[];
+    final qaItems = <Map<String, String>>[];
+    final factItems = <Map<String, String>>[];
+    final bodyParas = <String>[];
+    String? highlightNote;
+    String? testimonyText;
+    String? testimonyTitle;
+    Map<String, dynamic>? tableData;
+    final checklistItems = <Map<String, String>>[];
+
+    // Universal verse regex:
+    // Handles optional wrapped closing quote right before the Bible reference ("John 6:57,58.)
+    // and normalizes OCR digit '0' at start of quote ("0 taste -> "O taste)
+    final verseRegex = RegExp(
+      r'((?:The Bible says,\s*|Jesus said,\s*|But He answered and said,\s*)?)"([^"]{10,750}?)(?:"|\.(?=\s*"?\s*' +
+          _booksPattern +
+          r'))\s*\.?\s*"?\s*\(?(' +
+          _booksPattern +
+          r'\s*\d+\s*[:.]\s*\d+(?:\s*[-–,]\s*\d+)*(?:\s*\.?\s*(?:first|second|last)\s+part|\s*,?\s*margin|\s*,?\s*NKJV)?)\)?\.?(?:\s*\(See\s+[^)]+\))?',
+      caseSensitive: false,
+    );
+
+    for (final child in children) {
+      var txt = (child['text'] as String).trim();
+      final isItalic = child['isAllItalic'] == true;
+      if (txt.isEmpty) continue;
+
+      // Extract any Scripture references
+      for (final m in _scriptureRegex.allMatches(txt)) {
+        refs.add(normalizeScriptureRef(m.group(0)!));
+      }
+
+      // 1. Scripture Quote + Reference block
+      final vMatches = verseRegex.allMatches(txt).toList();
+      if (vMatches.isNotEmpty) {
+        // Split on matched spans so text before, between, and after verses
+        // keeps clean paragraph boundaries without stray punctuation.
+        int lastEnd = 0;
+        final remainingParts = <String>[];
+        for (final m in vMatches) {
+          final lead = (m.group(1) ?? '').trim();
+          var quote = (m.group(2) ?? '').trim();
+          if (quote.startsWith('0 ')) {
+            quote = 'O ${quote.substring(2)}';
+          }
+          final ref = normalizeScriptureRef(m.group(3)!);
+          verseQuotes.add({
+            'quote': quote,
+            'reference': ref,
+            if (lead.isNotEmpty) 'lead': lead,
+          });
+          if (m.start > lastEnd) {
+            final before = txt
+                .substring(lastEnd, m.start)
+                .replaceFirst(RegExp(r'^[.,;:\s]+'), '')
+                .trim();
+            if (before.isNotEmpty) remainingParts.add(before);
+          }
+          lastEnd = m.end;
+        }
+        if (lastEnd < txt.length) {
+          final after = txt
+              .substring(lastEnd)
+              .replaceFirst(RegExp(r'^[.,;:\s]+'), '')
+              .trim();
+          if (after.isNotEmpty) remainingParts.add(after);
+        }
+        txt = remainingParts.join('\n\n').trim();
+        if (txt.isEmpty) continue;
+      }
+
+      // 2. Lettered sub-questions / facts ("A. Where did I come from? ...")
+      final letterMatch = RegExp(r'^([A-D])\.\s+(.+)$').firstMatch(txt);
+      if (letterMatch != null) {
+        final letter = letterMatch.group(1)!;
+        final rest = letterMatch.group(2)!.trim();
+        final qSplit = RegExp(r'^([^?]+\?)\s*(.+)$').firstMatch(rest);
+        if (qSplit != null) {
+          qaItems.add({
+            'letter': letter,
+            'question': qSplit.group(1)!.trim(),
+            'text': qSplit.group(2)!.trim(),
+            'placeholder': 'Enter your note on ${qSplit.group(1)!.trim()}',
+          });
+        } else {
+          steps.add({'title': '$letter.', 'text': rest});
+        }
+        continue;
+      }
+
+      // 3. Numbered steps / list items ("1. Start with prayer: ...", "2. ...")
+      final stepMatch = RegExp(r'^(\d{1,2})[\.\)]\s+(.+)$').firstMatch(txt);
+      if (stepMatch != null) {
+        final numStr = stepMatch.group(1)!;
+        final rest = stepMatch.group(2)!.trim();
+        final colon = RegExp(r'^([^:]{2,35}:)\s*(.+)$').firstMatch(rest);
+        if (colon != null) {
+          steps.add({'title': colon.group(1)!, 'text': colon.group(2)!});
+        } else {
+          steps.add({'title': 'Point $numStr:', 'text': rest});
+        }
+        continue;
+      }
+
+      // 4. Quotations with author attribution (e.g. C.S. Lewis, Surprised by Joy) or first-person testimonies
+      final quoteWithAuthorMatch = RegExp(
+              r'["“]([^"”]{40,600}?)["”]\s*\(([^)]+)\)',
+              caseSensitive: false)
+          .firstMatch(txt);
+      if (quoteWithAuthorMatch != null) {
+        final quoteContent = quoteWithAuthorMatch.group(1)!.trim();
+        final attribution = quoteWithAuthorMatch.group(2)!.trim();
+        testimonyTitle = attribution;
+        testimonyText = quoteContent;
+        txt = txt.replaceFirst(quoteWithAuthorMatch.group(0)!, '').trim();
+        if (txt.isEmpty) continue;
+      } else if ((isItalic ||
+              RegExp(r'^\b(My|Our|I)\b.+\b(experience|testimony|changed|family)\b',
+                      caseSensitive: false)
+                  .hasMatch(txt)) &&
+          txt.length > 140) {
+        testimonyTitle = 'Personal Testimony';
+        testimonyText = txt;
+        continue;
+      }
+
+      // 5. Bold summary callout block
+      if (child['isBold'] == true && txt.length > 60 && highlightNote == null) {
+        highlightNote = txt;
+        continue;
+      }
+
+      // 6. Pipe-delimited table rows (e.g. "OT Prediction | NT Fulfillment")
+      if (txt.contains(' | ') && tableData == null) {
+        final rows = txt
+            .split('\n')
+            .where((r) => r.contains(' | '))
+            .map((r) => r
+                .split('|')
+                .map((c) => normalizeScriptureRef(c.trim()))
+                .where((c) => c.isNotEmpty)
+                .toList())
+            .where((r) => r.length >= 2)
+            .toList();
+        if (rows.length >= 2) {
+          tableData = {
+            'title': title,
+            'columns': rows.first,
+            'rows': rows.sublist(1),
+          };
+          continue;
+        }
+      }
+
+      // 7. Bullet / checklist items (•, -, ▪)
+      final checklistMatch =
+          RegExp(r'^[\u2022•\-▪]\s+(.+)$').firstMatch(txt);
+      if (checklistMatch != null) {
+        checklistItems.add({'label': checklistMatch.group(1)!, 'text': ''});
+        continue;
+      }
+
+      bodyParas.add(txt);
     }
 
-    final rawLines = preprocessedText.split('\n');
-    final filteredLines = <String>[];
+    final isQuestion = title.contains('?');
+    return ExtractedLessonSection(
+      number: number,
+      title: title,
+      bodyText: bodyParas.join('\n\n').trim(),
+      scriptureReferences: refs.toList(),
+      verseQuotes: verseQuotes,
+      steps: steps,
+      qaItems: qaItems,
+      factItems: factItems,
+      tableData: tableData,
+      checklistItems: checklistItems,
+      testimony: testimonyText != null
+          ? {'title': testimonyTitle ?? 'Reflection & Testimony', 'text': testimonyText}
+          : null,
+      highlightNote: highlightNote,
+      checkableSteps: title.toLowerCase().contains('tip') || title.toLowerCase().contains('practice'),
+      isQuestion: isQuestion,
+      hasInputTarget: qaItems.isEmpty && steps.isEmpty,
+      reflectionPrompt: isQuestion
+          ? 'Your Personal Reflection / Note:'
+          : 'Key Takeaway & Application:',
+      reflectionPlaceholder: 'Write your reflection on: $title',
+      paletteId: paletteId,
+    );
+  }
 
-    const boilerplateLines = {
-      'HOLY',
-      'BIBLE',
-      'HOLY BIBLE',
-      'KING JAMES VERSION',
-      'What The Bible Says',
-      'ALIVE',
-      'Nigeria',
-      'Series...',
-      'Helpful Tips on Bible\'s authenticity',
-    };
-
+  static String _rejoinHyphenatedLines(List<String> rawLines) {
+    final buf = StringBuffer();
     for (final raw in rawLines) {
       final line = raw.trim();
-      if (line.isEmpty) {
-        filteredLines.add('');
-        continue;
-      }
-      if (boilerplateLines.contains(line)) continue;
-      if (line.startsWith('For Enquiry call')) continue;
-      if (detectedTitle != null && line == detectedTitle.trim()) continue;
-      filteredLines.add(line);
-    }
-
-    // Merge wrapped lines so standalone question numbers ("10\nWhat are...")
-    // and multi-line questions ("What did Christ say to the people of\nHis day...?")
-    // become single clean lines.
-    final mergedLines = <String>[];
-    int i = 0;
-    while (i < filteredLines.length) {
-      final line = filteredLines[i];
-      if (line.isEmpty) {
-        i++;
-        continue;
-      }
-
-      // Case A: Standalone number on its own line ("1", "2", "10", "13")
-      if (RegExp(r'^\d{1,2}\.?$').hasMatch(line)) {
-        final numStr = line.replaceAll('.', '');
-        if (i + 1 < filteredLines.length &&
-            _startsLikeQuestion(filteredLines[i + 1])) {
-          final qBuf = StringBuffer('$numStr. ${filteredLines[i + 1]}');
-          i += 2;
-          while (i < filteredLines.length &&
-              !qBuf.toString().endsWith('?') &&
-              filteredLines[i].isNotEmpty &&
-              !filteredLines[i].startsWith('"') &&
-              filteredLines[i].length < 80) {
-            qBuf.write(' ${filteredLines[i]}');
-            i++;
-          }
-          mergedLines.add('## ${qBuf.toString().trim()}');
-          continue;
-        }
-      }
-
-      // Case B: Inline number + question start ("12 By what is man to live?", "1 What does the Bible...")
-      final inlineQ = RegExp(
-        r'^(\d{1,2})[\.\)]?\s+((?:What|How|Why|Whence|Where|Who|Do|Does|Can|By\s+what|When\s+asked|Is|Are|Should)\b.*)$',
-        caseSensitive: false,
-      ).firstMatch(line);
-
-      if (inlineQ != null) {
-        final numStr = inlineQ.group(1)!;
-        final qBuf = StringBuffer('$numStr. ${inlineQ.group(2)!}');
-        i++;
-        while (i < filteredLines.length &&
-            !qBuf.toString().endsWith('?') &&
-            filteredLines[i].isNotEmpty &&
-            !filteredLines[i].startsWith('"') &&
-            filteredLines[i].length < 80) {
-          qBuf.write(' ${filteredLines[i]}');
-          i++;
-        }
-        mergedLines.add('## ${qBuf.toString().trim()}');
-        continue;
-      }
-
-      // Case C: Unnumbered question heading that lost its number due to PDF column float
-      if (_startsLikeSectionQuestion(line)) {
-        final qBuf = StringBuffer(line);
-        i++;
-        while (i < filteredLines.length &&
-            !qBuf.toString().endsWith('?') &&
-            filteredLines[i].isNotEmpty &&
-            !filteredLines[i].startsWith('"') &&
-            filteredLines[i].length < 80) {
-          qBuf.write(' ${filteredLines[i]}');
-          i++;
-        }
-        if (qBuf.toString().endsWith('?')) {
-          mergedLines.add('## ${qBuf.toString().trim()}');
-          continue;
-        } else {
-          mergedLines.add(qBuf.toString().trim());
-          continue;
-        }
-      }
-
-      // Case D: Sidebar heading ("Practical Tips for Prayerful Bible Study")
-      if (line.startsWith('Practical Tips for') ||
-          line.startsWith('Helpful Tips on')) {
-        mergedLines.add('## $line');
-        i++;
-        continue;
-      }
-
-      mergedLines.add(line);
-      i++;
-    }
-
-    // Group into intro + sections, assign missing sequential question numbers, and sort 1..N
-    final introLines = <String>[];
-    final rawSections = <Map<String, dynamic>>[];
-    String? currentHeader;
-    List<String> currentBody = [];
-
-    void flushSection() {
-      if (currentHeader == null) return;
-      rawSections.add({
-        'header': currentHeader!,
-        'body': List<String>.from(currentBody),
-      });
-      currentHeader = null;
-      currentBody = [];
-    }
-
-    for (final line in mergedLines) {
-      if (line.startsWith('## ')) {
-        flushSection();
-        currentHeader = line.substring(3).trim();
-      } else {
-        if (currentHeader == null) {
-          introLines.add(line);
-        } else {
-          currentBody.add(line);
-        }
-      }
-    }
-    flushSection();
-
-    // Separate numbered/question sections from sidebar tips sections
-    final questionSections = <Map<String, dynamic>>[];
-    final sidebarSections = <Map<String, dynamic>>[];
-
-    for (final sec in rawSections) {
-      final h = sec['header'] as String;
-      if (h.toLowerCase().contains('practical tips') ||
-          h.toLowerCase().contains('helpful tips')) {
-        sidebarSections.add(sec);
-      } else {
-        final numMatch = RegExp(r'^(\d{1,2})\.\s*(.+)$').firstMatch(h);
-        if (numMatch != null) {
-          sec['num'] = int.parse(numMatch.group(1)!);
-          sec['cleanTitle'] = numMatch.group(2)!.trim();
-        } else {
-          sec['num'] = null;
-          sec['cleanTitle'] = h;
-        }
-        questionSections.add(sec);
-      }
-    }
-
-    final usedNums = questionSections
-        .map((s) => s['num'] as int?)
-        .whereType<int>()
-        .toSet();
-    int nextCandidate = 1;
-    for (final sec in questionSections) {
-      if (sec['num'] == null) {
-        while (usedNums.contains(nextCandidate)) {
-          nextCandidate++;
-        }
-        sec['num'] = nextCandidate;
-        usedNums.add(nextCandidate);
-      }
-    }
-
-    questionSections
-        .sort((a, b) => (a['num'] as int).compareTo(b['num'] as int));
-
-    final out = StringBuffer();
-    if (detectedTitle != null && detectedTitle.isNotEmpty) {
-      out.writeln('# $detectedTitle\n');
-    }
-    if (introLines.isNotEmpty) {
-      out.writeln(_joinWrappedLines(introLines));
-      out.writeln();
-    }
-
-    for (final sec in questionSections) {
-      final n = sec['num'] as int;
-      final t = sec['cleanTitle'] as String;
-      out.writeln('## $n. $t');
-      out.writeln(_joinWrappedLines(sec['body'] as List<String>));
-      out.writeln();
-    }
-
-    for (final side in sidebarSections) {
-      out.writeln('## ${side['header']}');
-      out.writeln(_joinWrappedLines(side['body'] as List<String>));
-      out.writeln();
-    }
-
-    return out.toString().trim();
-  }
-
-  /// Joins soft-wrapped PDF lines within a section while keeping distinct items
-  /// (verses, sub-items A/B/C, numbered items 1/2/3, table rows, commentary paragraphs)
-  /// on clean logical lines.
-  static String _joinWrappedLines(List<String> lines) {
-    if (lines.isEmpty) return '';
-    final paragraphs = <String>[];
-    StringBuffer buf = StringBuffer();
-
-    bool startsNewLogicalBlock(String line) {
-      if (line.startsWith('"') ||
-          line.startsWith('The Bible says,') ||
-          line.startsWith('Jesus said,')) {
-        return true;
-      }
-      if (RegExp(r'^([A-C]|\d)[\.\)]\s+').hasMatch(line)) return true;
-      if (RegExp(r'^[A-Z][a-z]+[^:]{2,35}:\s+').hasMatch(line)) return true;
-      if (line.contains(' | ')) return true;
-      if (line.startsWith('Examples of fulfilled') ||
-          line.startsWith('Old Testament prophecies') ||
-          line.startsWith('My family have experienced') ||
-          line.startsWith('This is the answer to the nuclear') ||
-          line.startsWith('The Bible, from Genesis to Revelation') ||
-          line.startsWith('God holds His word in higher esteem')) {
-        return true;
-      }
-      return false;
-    }
-
-    for (final raw in lines) {
-      final line = raw.trim();
       if (line.isEmpty) continue;
-      if (RegExp(r'^\d{1,2}\.?$').hasMatch(line)) continue;
-
       if (buf.isEmpty) {
         buf.write(line);
-      } else if (startsNewLogicalBlock(line) ||
-          _endsWithScriptureRef(buf.toString())) {
-        paragraphs.add(buf.toString().trim());
-        buf = StringBuffer(line);
       } else {
-        buf.write(' $line');
+        final cur = buf.toString();
+        if (cur.endsWith('-') &&
+            cur.length >= 2 &&
+            RegExp(r'[a-zA-Z]$').hasMatch(cur.substring(0, cur.length - 1)) &&
+            RegExp(r'^[a-zA-Z]').hasMatch(line)) {
+          final withoutHyphen = cur.substring(0, cur.length - 1);
+          buf.clear();
+          buf.write('$withoutHyphen$line');
+        } else {
+          buf.write(' $line');
+        }
       }
     }
-    if (buf.isNotEmpty) {
-      paragraphs.add(buf.toString().trim());
+    var result = buf.toString();
+    result = result.replaceAll('\u201C', '"').replaceAll('\u201D', '"');
+    result = result.replaceAll('\u2018', "'").replaceAll('\u2019', "'");
+    result = result.replaceAllMapped(
+      RegExp('($_booksPattern)\\.?(\\d+:\\d+)', caseSensitive: false),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'(\d+:\d+)\.(\d+)'),
+      (m) => '${m.group(1)}-${m.group(2)}',
+    );
+    return result.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+  }
+
+  /// Backwards-compatible text-based entrypoint (for TXT files or already-extracted markdown).
+  ExtractedTractArticle structureAsWordPressContent(
+    String rawText, {
+    String? fallbackTitle,
+    int? paletteSeed,
+  }) {
+    final lines = rawText.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final synthetic = <_StyledPdfLine>[];
+    double y = 0;
+    for (final l in lines) {
+      final trimmed = l.trim();
+      final isMdHeader = trimmed.startsWith('## ') || trimmed.startsWith('# ');
+      synthetic.add(_StyledPdfLine(
+        pageIndex: 0,
+        left: 0,
+        top: y,
+        right: 400,
+        bottom: y + 12,
+        fontSize: isMdHeader ? 13.0 : 10.0,
+        isBold: isMdHeader,
+        isItalic: false,
+        text: trimmed.replaceFirst(RegExp(r'^#{1,2}\s+'), ''),
+      ));
+      y += 18;
     }
-    return paragraphs.join('\n');
+    return _buildArticleFromStyledLines(synthetic, fallbackTitle: fallbackTitle);
   }
 
-  static bool _endsWithScriptureRef(String text) {
-    final trimmed = text.trim();
-    return RegExp(
-      '($_booksPattern)\\s+\\d+\\s*[:.]\\s*\\d+(?:\\s*[-–,]\\s*\\d+)*(?:\\s*,\\s*NKJV)?\\.?\$',
-      caseSensitive: false,
-    ).hasMatch(trimmed);
-  }
-
-  static bool _startsLikeQuestion(String line) {
-    return RegExp(
-      r'^(What|How|Why|Whence|Where|Who|Do|Does|Can|By\s+what|When\s+asked|Are|Is|Should)\b',
-      caseSensitive: false,
-    ).hasMatch(line.trim());
-  }
-
-  static bool _startsLikeSectionQuestion(String line) {
-    final t = line.trim();
-    if (t.startsWith('Do you ') ||
-        t.startsWith('Will you ') ||
-        t.startsWith('Would you ') ||
-        t.startsWith("Shouldn't we ")) {
-      return false;
-    }
-    return RegExp(
-      r'^(What\s+(?:did|does|was|are|is|part|evidence|great)|How\s+(?:did|greatly)|Why\s+did|Whence\s+came|Do\s+(?:the\s+Scriptures|Bible\s+prophecies)|Does\s+Holy\s+Writ|Can\s+we\s+expect|By\s+what\s+is|When\s+asked\s+if)\b',
-      caseSensitive: false,
-    ).hasMatch(t);
-  }
-
-  /// Parses markdown or extracted tract text into structured interactive study sections,
-  /// extracting scripture references, quoted verses, checklists, tables, Q&A, facts,
-  /// testimonies, callouts, and reflection prompts.
   static List<ExtractedLessonSection> parseInteractiveSections(
     String content, {
     String? fallbackTitle,
     int basePaletteIndex = 0,
   }) {
-    final normalized = _preprocessTractText(content).trim();
-    if (normalized.isEmpty) return const [];
-
-    final lines = normalized.split('\n');
-    final rawBlocks = <Map<String, dynamic>>[];
-
-    String currentTitle = '';
-    int? explicitNumber;
-    final currentBody = <String>[];
-
-    void flushBlock() {
-      final bodyStr = currentBody.join('\n').trim();
-      if (currentTitle.isEmpty && bodyStr.isEmpty) return;
-      if (currentTitle.isEmpty && rawBlocks.isEmpty) {
-        currentBody.clear();
-        return;
-      }
-      rawBlocks.add({
-        'number': explicitNumber,
-        'title': currentTitle.isNotEmpty
-            ? currentTitle
-            : (fallbackTitle ?? 'Study Point ${rawBlocks.length + 1}'),
-        'body': bodyStr,
-      });
-      currentTitle = '';
-      explicitNumber = null;
-      currentBody.clear();
-    }
-
-    for (final rawLine in lines) {
-      final line = rawLine.trim();
-      if (line.isEmpty) continue;
-      if (line.startsWith('# ')) continue;
-
-      final isHeading = line.startsWith('## ') ||
-          _questionHeadingRegex.hasMatch(line) ||
-          (line.length < 95 &&
-              line.endsWith('?') &&
-              !line.startsWith('"') &&
-              _startsLikeSectionQuestion(line));
-
-      if (isHeading) {
-        flushBlock();
-        var clean = line.replaceFirst(RegExp(r'^##\s*'), '').trim();
-        final numMatch = RegExp(r'^(\d{1,2})[\.\)]\s*(.+)$').firstMatch(clean);
-        if (numMatch != null) {
-          explicitNumber = int.tryParse(numMatch.group(1)!);
-          clean = numMatch.group(2)!.trim();
-        }
-        currentTitle = clean;
-      } else {
-        currentBody.add(line);
-      }
-    }
-    flushBlock();
-
-    final result = <ExtractedLessonSection>[];
-    final palettes = LessonColorPalette.brandPalettes;
-
-    final multiQuoteRegex = RegExp(
-      r'((?:The Bible says,\s*|Jesus said,\s*)?)((?:"[^"]+"\s*)+)\s*\(?(' +
-          _booksPattern +
-          r'\s+\d+\s*[:.]\s*\d+(?:\s*[-–,]\s*\d+)*(?:\s*,\s*NKJV)?)\)?\.?',
-      caseSensitive: false,
-    );
-
-    for (int i = 0; i < rawBlocks.length; i++) {
-      final block = rawBlocks[i];
-      final sectionNumber = (block['number'] as int?) ?? (i + 1);
-      final title = block['title'] as String;
-      var body = block['body'] as String;
-
-      for (final appealMarker in const [
-        'Jesus yearns to share His heart',
-        'We have seen that the Bible is no ordinary book',
-        'Do you have a Bible?',
-      ]) {
-        if (body.contains(appealMarker)) {
-          body = body.split(appealMarker).first.trim();
-        }
-      }
-
-      final refs = <String>{};
-      final verseQuotes = <Map<String, String>>[];
-      final steps = <Map<String, String>>[];
-      final checklistItems = <Map<String, String>>[];
-      final qaItems = <Map<String, String>>[];
-      final factItems = <Map<String, String>>[];
-      Map<String, dynamic>? tableData;
-      Map<String, String>? testimony;
-      Map<String, String>? darkCallout;
-      String? highlightNote;
-      String? principleNote;
-
-      final isStepsSection = title.toLowerCase().contains('tip') ||
-          title.toLowerCase().contains('step') ||
-          title.toLowerCase().contains('practice');
-
-      // 1. Extract Table if present (e.g., OT Prophecies table in Lesson 1)
-      if (body.contains(' | ')) {
-        final tableRows = <List<String>>[];
-        final nonTableLines = <String>[];
-        for (final line in body.split('\n')) {
-          if (line.contains(' | ')) {
-            final cells = line
-                .split('|')
-                .map((c) => normalizeScriptureRef(c.trim()))
-                .where((c) => c.isNotEmpty)
-                .toList();
-            if (cells.length >= 3 &&
-                cells.first.toLowerCase() != 'prophecy') {
-              tableRows.add(cells.take(3).toList());
-            }
-          } else if (!line
-              .toLowerCase()
-              .startsWith('old testament prophecies jesus fulfilled')) {
-            nonTableLines.add(line);
-          }
-        }
-        if (tableRows.isNotEmpty) {
-          tableData = {
-            'title':
-                'Old Testament Prophecies Jesus Fulfilled as the New Testament Messiah',
-            'columns': const [
-              'Prophecy Subject',
-              'OT Prediction',
-              'NT Fulfillment'
-            ],
-            'rows': tableRows,
-          };
-          body = nonTableLines.join('\n').trim();
-        }
-      }
-
-      // 2. Extract Checklist if "Examples of fulfilled Bible prophecies:" is present
-      if (body.toLowerCase().contains('examples of fulfilled bible prophecies')) {
-        final parts = body.split(
-            RegExp(r'Examples of fulfilled Bible prophecies:?',
-                caseSensitive: false));
-        body = parts.first.trim();
-        final listPart = parts.length > 1 ? parts[1].trim() : '';
-        final itemMatches = RegExp(
-                r'(\d)\.\s*([^0-9\n]+(?:\((?:[^)]+)\)\.?)?)')
-            .allMatches(listPart);
-        for (final m in itemMatches) {
-          final idxNum = m.group(1)!;
-          final itemTxt = m.group(2)!.trim();
-          final words = itemTxt.split(' ');
-          final label =
-              '$idxNum. ${words.take(min(3, words.length)).join(' ')}:';
-          checklistItems.add({
-            'label': label,
-            'text': itemTxt,
-          });
-        }
-      }
-
-      // 3. Extract Verse Quotes across the section body
-      var remainingBody = body;
-      final verseMatches = multiQuoteRegex.allMatches(body).toList();
-      for (final m in verseMatches) {
-        final lead = (m.group(1) ?? '').trim();
-        final rawQuoted = (m.group(2) ?? '')
-            .trim()
-            .replaceFirst(RegExp(r'^"'), '')
-            .replaceFirst(RegExp(r'"$'), '')
-            .trim();
-        final normRef = normalizeScriptureRef(m.group(3)!);
-
-        final beforeIdx = m.start;
-        final prefix =
-            beforeIdx >= 4 ? body.substring(beforeIdx - 4, beforeIdx) : '';
-        if (RegExp(r'[A-B]\.\s*$').hasMatch(prefix)) {
-          refs.add(normRef);
-          continue;
-        }
-
-        verseQuotes.add({
-          'quote': rawQuoted,
-          'reference': normRef,
-          if (lead.isNotEmpty) 'lead': lead,
-        });
-        refs.add(normRef);
-        remainingBody = remainingBody.replaceFirst(m.group(0)!, '').trim();
-      }
-
-      for (final match in _scriptureRegex.allMatches('$title\n$body')) {
-        final r = match.group(0)?.trim();
-        if (r != null && r.isNotEmpty) {
-          refs.add(normalizeScriptureRef(r));
-        }
-      }
-
-      // 4. Parse remaining lines for QA (A. B. C.), Facts (A. B.), Steps (1. 2. 3.), Callouts & Notes
-      final remainingLines = <String>[];
-      for (final rawLine in remainingBody.split('\n')) {
-        var bLine = rawLine.trim().replaceFirst(RegExp(r'^\.\s*'), '').trim();
-        if (bLine.isEmpty) continue;
-
-        final abcMatch = RegExp(r'^([A-C])\.\s+(.+)$').firstMatch(bLine);
-        if (abcMatch != null) {
-          final letter = abcMatch.group(1)!;
-          final contentStr = abcMatch.group(2)!.trim();
-          final qSplit = RegExp(r'^([^?]+\?)\s*(.+)$').firstMatch(contentStr);
-          if (qSplit != null) {
-            final qTitle = qSplit.group(1)!.trim();
-            qaItems.add({
-              'letter': letter,
-              'question': qTitle,
-              'text': qSplit.group(2)!.trim(),
-              'placeholder': 'Enter your response on: $qTitle',
-            });
-            continue;
-          } else {
-            final vMatch = _scriptureRegex.firstMatch(contentStr);
-            final quotePart = vMatch != null
-                ? contentStr.substring(0, vMatch.end).trim()
-                : contentStr;
-            final descPart = vMatch != null
-                ? contentStr
-                    .substring(vMatch.end)
-                    .replaceFirst(RegExp(r'^\.\s*'), '')
-                    .trim()
-                : '';
-            factItems.add({
-              'tag': 'Fact $letter',
-              'title': letter == 'A'
-                  ? 'Earth Hung in Empty Space'
-                  : 'The Earth is a Sphere',
-              'quote': quotePart,
-              'text': descPart,
-            });
-            continue;
-          }
-        }
-
-        final stepMatch =
-            RegExp(r'^(?:(\d)[\.\)]\s*)?([A-Z][^:]{2,42}):\s+(.+)$')
-                .firstMatch(bLine);
-        if (stepMatch != null &&
-            (isStepsSection || stepMatch.group(1) != null)) {
-          steps.add({
-            'title': '${stepMatch.group(2)!.trim()}:',
-            'text': _ensureClosingPunctuation(stepMatch.group(3)!.trim()),
-          });
-          continue;
-        }
-
-        final numberedTeachingMatch =
-            RegExp(r'^([1-4])\.\s+(.+)$').firstMatch(bLine);
-        if (numberedTeachingMatch != null) {
-          final stepBody = numberedTeachingMatch.group(2)!.trim();
-          String stepTitle = 'Point ${numberedTeachingMatch.group(1)}';
-          if (stepBody.toLowerCase().contains('created the earth')) {
-            stepTitle = 'Creation';
-          } else if (stepBody.toLowerCase().contains('worldwide flood')) {
-            stepTitle = 'Worldwide Flood';
-          } else if (stepBody.toLowerCase().contains('languages')) {
-            stepTitle = 'Origin of Languages';
-          }
-          steps.add({
-            'title': '$stepTitle:',
-            'text': _ensureClosingPunctuation(stepBody),
-          });
-          continue;
-        }
-
-        if (bLine.startsWith('This is the answer to the nuclear')) {
-          darkCallout = {
-            'icon': 'fa-solid fa-atom',
-            'title': 'The Riddle of Nuclear Physics',
-            'text': bLine,
-          };
-          continue;
-        }
-
-        if (bLine.startsWith('My family have experienced')) {
-          testimony = {
-            'title': 'A Father Transformed (True Testimony from 1998)',
-            'text': bLine,
-          };
-          continue;
-        }
-
-        if (bLine.contains('apparent age')) {
-          principleNote = bLine;
-          continue;
-        }
-
-        if (highlightNote == null &&
-            (bLine.startsWith('The Bible, from Genesis to Revelation') ||
-                bLine.startsWith('Note:') ||
-                bLine.startsWith('Key Principle:'))) {
-          highlightNote = bLine
-              .replaceFirst(
-                  RegExp(r'^(?:Note|Key Principle):\s*', caseSensitive: false),
-                  '')
-              .trim();
-          continue;
-        }
-
-        remainingLines.add(_ensureClosingPunctuation(bLine));
-      }
-
-      final palette = palettes[(basePaletteIndex + i) % palettes.length];
-      final isQuestion = title.contains('?') ||
-          body.contains('?') ||
-          _questionHeadingRegex.hasMatch(title);
-
-      result.add(
-        ExtractedLessonSection(
-          number: sectionNumber,
-          title: title,
-          bodyText: remainingLines.join('\n\n').trim(),
-          scriptureReferences: refs.toList(),
-          verseQuotes: verseQuotes,
-          steps: steps,
-          checklistItems: checklistItems,
-          qaItems: qaItems,
-          factItems: factItems,
-          tableData: tableData,
-          testimony: testimony,
-          darkCallout: darkCallout,
-          highlightNote: highlightNote,
-          principleNote: principleNote,
-          checkableSteps: isStepsSection && steps.isNotEmpty,
-          isQuestion: isQuestion,
-          hasInputTarget: !isStepsSection && qaItems.isEmpty,
-          reflectionPrompt: isQuestion
-              ? 'Your Personal Reflection / Note:'
-              : 'Key Takeaway & Application:',
-          reflectionPlaceholder: isQuestion
-              ? 'Write your reflection on: $title'
-              : 'Write how you will apply this in your daily study...',
-          paletteId: palette.id,
-        ),
-      );
-    }
-
-    return result;
+    return PdfExtractorService()
+        .structureAsWordPressContent(
+          content,
+          fallbackTitle: fallbackTitle,
+          paletteSeed: basePaletteIndex,
+        )
+        .interactiveSections;
   }
 
-  static String _ensureClosingPunctuation(String text) {
-    final t = text.trim();
-    if (t.isEmpty) return t;
-    if (t == 'It cannot be broken or') {
-      return 'It cannot be broken or fail.';
-    }
-    if (!RegExp(r'[.!?\"”\)\]:;,…]$').hasMatch(t)) {
-      return '$t …';
-    }
-    return t;
-  }
-
-  /// Generates the exact JSON schema consumed by build_lesson.py.
   static Map<String, dynamic> _buildLessonJsonSchema({
+    required int lessonNumber,
     required String title,
+    required String series,
     required String phone,
     required String heroVerse,
     required String heroVerseRef,
+    required String introHeading,
     required String introSummary,
     String? introHighlight,
     required String estimatedReadTime,
     required List<ExtractedLessonSection> interactiveSections,
+    required String decisionQuote,
     required List<String> decisionQuestions,
     required String commitmentText,
+    required List<String> reviewNotes,
   }) {
     final jsonSections = <Map<String, dynamic>>[];
 
     for (final s in interactiveSections) {
-      final isTips = s.title.toLowerCase().contains('practical tips') ||
-          s.title.toLowerCase().contains('helpful tips');
       final blocks = <Map<String, dynamic>>[];
 
       if (s.verseQuotes.isNotEmpty) {
@@ -1488,71 +1411,32 @@ class PdfExtractorService {
         });
       }
 
-      if (s.checklistItems.isNotEmpty) {
-        blocks.add({
-          'type': 'checklist',
-          'title': 'Examples of Fulfilled Bible Prophecies:',
-          'hint': 'Click to check studied',
-          'items': s.checklistItems,
-        });
-      }
-
-      if (s.factItems.isNotEmpty) {
-        blocks.add({
-          'type': 'facts',
-          'items': s.factItems,
-        });
-      }
-
-      if (s.darkCallout != null) {
-        blocks.add({
-          'type': 'callout_dark',
-          ...s.darkCallout!,
-        });
-      }
-
       if (s.testimony != null) {
-        blocks.add({
-          'type': 'testimony',
-          ...s.testimony!,
-        });
+        blocks.add({'type': 'testimony', ...s.testimony!});
+      }
+
+      if (s.checklistItems.isNotEmpty) {
+        blocks.add({'type': 'checklist', 'items': s.checklistItems});
       }
 
       if (s.tableData != null) {
-        blocks.add({
-          'type': 'table',
-          'studied': true,
-          'filter': true,
-          ...s.tableData!,
-        });
+        blocks.add({'type': 'table', ...s.tableData!});
       }
 
       if (s.steps.isNotEmpty) {
         blocks.add({
           'type': 'steps',
-          'checkable': isTips,
+          'checkable': s.checkableSteps,
           'items': s.steps,
         });
       }
 
-      if (s.principleNote != null && s.principleNote!.isNotEmpty) {
-        blocks.add({
-          'type': 'note',
-          'style': 'principle',
-          'title': 'The Principle of "Apparent Age":',
-          'text': s.principleNote,
-        });
-      }
-
       if (s.qaItems.isNotEmpty) {
-        blocks.add({
-          'type': 'qa',
-          'items': s.qaItems,
-        });
+        blocks.add({'type': 'qa', 'items': s.qaItems});
       }
 
       jsonSections.add({
-        if (isTips) 'icon': 'fa-solid fa-hands-praying' else 'num': s.number,
+        if (s.isQuestion) 'num': s.number else 'icon': 'fa-solid fa-book-bible',
         'title': s.title,
         'blocks': blocks,
         if (s.hasInputTarget)
@@ -1566,9 +1450,10 @@ class PdfExtractorService {
     }
 
     return {
+      'lesson_number': lessonNumber,
       'title': title,
       'short_title': title.replaceAll(RegExp(r'[!?.]+$'), '').trim(),
-      'series': 'What The Bible Says',
+      'series': series,
       'badge': 'ALIVE Nigeria',
       'phone': phone,
       'study_time': estimatedReadTime,
@@ -1579,12 +1464,12 @@ class PdfExtractorService {
         'verse_ref': heroVerseRef,
         'card': {
           'icon': 'fa-solid fa-book-open-reader',
-          'label': 'Searching Daily',
+          'label': series,
           'quote': '…searched the Scriptures daily, whether those things were so.',
         },
       },
       'intro': {
-        'heading': title,
+        'heading': introHeading,
         'icon': 'fa-solid fa-compass',
         'text': introSummary,
         if (introHighlight != null && introHighlight.isNotEmpty)
@@ -1593,13 +1478,11 @@ class PdfExtractorService {
       'sections': jsonSections,
       'decision': {
         'eyebrow': 'Personal Response & Commitment',
-        'title': "Making God's Word Your Foundation",
+        'title': 'Making God\'s Word Your Foundation',
+        if (decisionQuote.isNotEmpty) 'quote': decisionQuote,
         'questions': [
           for (int i = 0; i < decisionQuestions.length; i++)
-            {
-              'id': 'decision_${i + 1}',
-              'text': decisionQuestions[i],
-            },
+            {'id': 'decision_${i + 1}', 'text': decisionQuestions[i]},
         ],
         'commitment': {
           'title': 'My Study Commitment:',
@@ -1607,135 +1490,7 @@ class PdfExtractorService {
         },
         'collect_contact': true,
       },
+      if (reviewNotes.isNotEmpty) 'review': reviewNotes,
     };
-  }
-
-  /// Parses a PDF file using column-aware line extraction in syncfusion_flutter_pdf.
-  /// Automatically detects 2-page trifold spreads so Page 2 (the inner spread with
-  /// Intro + Q1..Q7/Q9) is read BEFORE Page 1 (the outer back/cover spread with
-  /// Q8 or Q10..Q13 + Tips + Cover).
-  Future<String> _extractFromPdf(Uint8List bytes) async {
-    final PdfDocument document = PdfDocument(inputBytes: bytes);
-    final PdfTextExtractor extractor = PdfTextExtractor(document);
-    final pageTexts = <int, String>{};
-
-    try {
-      for (int pageIdx = 0; pageIdx < document.pages.count; pageIdx++) {
-        final lines = extractor.extractTextLines(
-          startPageIndex: pageIdx,
-          endPageIndex: pageIdx,
-        );
-        if (lines.isEmpty) continue;
-
-        final orderedLines = _orderColumnLines(lines);
-        final pageBuf = StringBuffer();
-        TextLine? prev;
-        for (final line in orderedLines) {
-          final text = line.text.trim();
-          if (text.isEmpty) continue;
-          if (prev != null) {
-            final gap = line.bounds.top - prev.bounds.bottom;
-            final jumpedColumn =
-                (line.bounds.left - prev.bounds.left).abs() > 105 && gap < -20;
-            if (jumpedColumn ||
-                gap > (prev.bounds.height * 0.65).clamp(6.0, 18.0)) {
-              pageBuf.write('\n\n');
-            } else {
-              pageBuf.write('\n');
-            }
-          }
-          pageBuf.write(text);
-          prev = line;
-        }
-        if (pageBuf.isNotEmpty) {
-          pageTexts[pageIdx] = pageBuf.toString();
-        }
-      }
-    } catch (e) {
-      debugPrint('Column-aware extraction fallback triggered: $e');
-      final fallback = extractor.extractText();
-      document.dispose();
-      return fallback.trim();
-    }
-
-    document.dispose();
-    if (pageTexts.isEmpty) return '';
-
-    final indices = pageTexts.keys.toList()..sort();
-    if (indices.length == 2) {
-      final p0 = pageTexts[0] ?? '';
-      final p1 = pageTexts[1] ?? '';
-      final p1HasQ1 = RegExp(r'(?:^|\n)\s*1[\.\s]+(?:What|How)', multiLine: true)
-          .hasMatch(p1);
-      final p0HasCover = p0.contains('For Enquiry call') ||
-          p0.contains('ALIVE') ||
-          p0.contains('What The Bible Says');
-      if (p1HasQ1 && p0HasCover) {
-        return '${pageTexts[1]!}\n\n${pageTexts[0]!}'.trim();
-      }
-    }
-
-    return indices.map((i) => pageTexts[i]!).join('\n\n').trim();
-  }
-
-  /// Orders PDF text lines into left-to-right columns, then top-to-bottom within
-  /// each column, using horizontal center / X-clustering so multi-column trifold
-  /// pages never interleave lines across adjacent columns.
-  List<TextLine> _orderColumnLines(List<TextLine> lines) {
-    if (lines.length <= 1) return lines;
-
-    final byX = List<TextLine>.from(lines)
-      ..sort((a, b) => a.bounds.left.compareTo(b.bounds.left));
-
-    final columns = <List<TextLine>>[];
-
-    for (final line in byX) {
-      if (line.text.trim().isEmpty) continue;
-      bool placed = false;
-
-      for (final col in columns) {
-        final avgLeft =
-            col.map((l) => l.bounds.left).reduce((a, b) => a + b) / col.length;
-        final maxRight = col.map((l) => l.bounds.right).reduce(max);
-
-        if ((line.bounds.left - avgLeft).abs() < 115 ||
-            (line.bounds.left < maxRight - 25 &&
-                (line.bounds.left - avgLeft).abs() < 160)) {
-          col.add(line);
-          placed = true;
-          break;
-        }
-      }
-
-      if (!placed) {
-        columns.add([line]);
-      }
-    }
-
-    columns.sort((a, b) {
-      final avgA =
-          a.map((l) => l.bounds.left).reduce((x, y) => x + y) / a.length;
-      final avgB =
-          b.map((l) => l.bounds.left).reduce((x, y) => x + y) / b.length;
-      return avgA.compareTo(avgB);
-    });
-
-    final ordered = <TextLine>[];
-    for (final col in columns) {
-      col.sort((a, b) {
-        final dy = (a.bounds.top - b.bounds.top);
-        if (dy.abs() > 3.5) {
-          return a.bounds.top.compareTo(b.bounds.top);
-        }
-        return a.bounds.left.compareTo(b.bounds.left);
-      });
-      ordered.addAll(col);
-    }
-    return ordered;
-  }
-
-  /// Parses a plain text file natively
-  String _extractFromTxt(Uint8List bytes) {
-    return utf8.decode(bytes).trim();
   }
 }

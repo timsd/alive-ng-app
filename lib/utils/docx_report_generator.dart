@@ -1,13 +1,155 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
 
 import '../models/board_models.dart';
 import '../models/discipleship_models.dart';
 import '../screens/discipleship/components/discipleship_officer_inbox.dart';
+
+/// Structured row for the 4-column Attendance table in Official Minutes.
+class MinutesAttendee {
+  final String name;
+  final String role;
+  final String status; // e.g., 'Present', 'Absent', 'Excused'
+
+  const MinutesAttendee({
+    required this.name,
+    required this.role,
+    this.status = 'Present',
+  });
+}
+
+/// Structured row for the 6-column Official Minutes & Action Matrix.
+class MinutesAgendaRow {
+  /// Leave empty (`''`) to vertically merge (`vMerge`) with the previous row's S/N & Agenda.
+  final String sn;
+  final String agenda;
+
+  /// Chronological span from the transcript, e.g., "00:00 – 18:33" or "Audio 1 • 18:34"
+  final String timestampRange;
+
+  /// Used for strict chronological ordering from transcript timestamps.
+  final int startSeconds;
+
+  final String discussion;
+  final String action;
+  final String responsibility;
+  final String deadline;
+
+  const MinutesAgendaRow({
+    this.sn = '',
+    this.agenda = '',
+    this.timestampRange = '',
+    this.startSeconds = 0,
+    required this.discussion,
+    this.action = '',
+    this.responsibility = '',
+    this.deadline = '',
+  });
+}
+
+/// Complete structured payload produced by ALIVE Scribe from a timestamped transcript.
+class OfficialMeetingMinutesData {
+  final String documentTitle; // e.g., 'ALIVE-NG NOVEMBER 2026 BOARD OF DIRECTORS MEETING'
+  final String status; // e.g., 'Draft' or 'Final'
+  final String date; // e.g., '16-11-2026'
+  final String issuer;
+  final String checker;
+  final String approver;
+  final String mode; // e.g., 'Zoom Conference call'
+  final List<MinutesAttendee> attendance;
+  final String startTime;
+  final String openingPrayerAndRemark;
+  final String devotionDetails;
+  final List<String> agendaItems;
+  final List<MinutesAgendaRow> minutesRows;
+  final String closingRemarks;
+
+  const OfficialMeetingMinutesData({
+    required this.documentTitle,
+    this.status = 'Draft',
+    required this.date,
+    this.issuer = '',
+    this.checker = '',
+    this.approver = '',
+    this.mode = 'Zoom Conference call',
+    this.attendance = const [],
+    this.startTime = '',
+    this.openingPrayerAndRemark = '',
+    this.devotionDetails = '',
+    this.agendaItems = const [],
+    this.minutesRows = const [],
+    this.closingRemarks = '',
+  });
+
+  factory OfficialMeetingMinutesData.fromJson(Map<String, dynamic> json) {
+    final indexedRows = (json['minutes_rows'] as List<dynamic>? ?? [])
+        .asMap()
+        .entries
+        .map((entry) => MapEntry(
+              entry.key,
+              Map<String, dynamic>.from(entry.value as Map),
+            ))
+        .toList();
+
+    // Sort rows strictly by chronological transcript timestamp (`start_seconds`),
+    // preserving original order when timestamps tie.
+    indexedRows.sort((a, b) {
+      final aSec = (a.value['start_seconds'] as num?)?.toInt() ?? 0;
+      final bSec = (b.value['start_seconds'] as num?)?.toInt() ?? 0;
+      final cmp = aSec.compareTo(bSec);
+      return cmp != 0 ? cmp : a.key.compareTo(b.key);
+    });
+
+    final rawRows = indexedRows.map((entry) => entry.value).toList();
+
+    return OfficialMeetingMinutesData(
+      documentTitle: (json['document_title'] ??
+              'ALIVE-NG BOARD OF DIRECTORS MEETING')
+          .toString(),
+      status: (json['status'] ?? 'Draft').toString(),
+      date: (json['date'] ?? DateFormat('dd-MM-yyyy').format(DateTime.now()))
+          .toString(),
+      issuer: (json['issuer'] ?? '').toString(),
+      checker: (json['checker'] ?? '').toString(),
+      approver: (json['approver'] ?? '').toString(),
+      mode: (json['mode'] ?? 'Zoom Conference call').toString(),
+      attendance: (json['attendance'] as List<dynamic>? ?? [])
+          .map((e) => MinutesAttendee(
+                name: (e['name'] ?? '').toString(),
+                role: (e['role'] ?? '').toString(),
+                status: (e['status'] ?? 'Present').toString(),
+              ))
+          .toList(),
+      startTime: (json['start_time'] ?? '').toString(),
+      openingPrayerAndRemark:
+          (json['opening_prayer_and_remark'] ?? '').toString(),
+      devotionDetails: (json['devotion_details'] ?? '').toString(),
+      agendaItems: (json['agenda_items'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList(),
+      minutesRows: rawRows
+          .map((e) => MinutesAgendaRow(
+                sn: (e['sn'] ?? '').toString(),
+                agenda: (e['agenda'] ?? '').toString(),
+                timestampRange: (e['timestamp_range'] ?? '').toString(),
+                startSeconds: (e['start_seconds'] as num?)?.toInt() ?? 0,
+                discussion: (e['discussion'] ?? '').toString(),
+                action: (e['action'] ?? '').toString(),
+                responsibility: (e['responsibility'] ?? '').toString(),
+                deadline: (e['deadline'] ?? '').toString(),
+              ))
+          .toList(),
+      closingRemarks: (json['closing_remarks'] ?? '').toString(),
+    );
+  }
+}
 
 /// Resolved reporter / chapter / mission-field metadata attached to each
 /// exported report so directors know exactly who sent it and from where.
@@ -368,23 +510,192 @@ class DocxReportGenerator {
     return _buildDocxArchive(body.toString());
   }
 
-  /// Generates a formatted Word (`.docx`) document from ALIVE Scribe
-  /// synthesized meeting minutes markdown.
-  static Uint8List generateMeetingMinutesDocx({
+  static const String aliveLogoAssetPath = 'assets/images/alive_logo.svg';
+
+  /// Loads `assets/images/alive_logo.svg` from Flutter assets and renders it to PNG bytes.
+  /// Falls back to programmatic mosaic rendering if run outside a Flutter asset bundle.
+  static Future<Uint8List> loadAliveLogoPngBytes({
+    String assetPath = aliveLogoAssetPath,
+    int maxDimensionPx = 200,
+  }) async {
+    try {
+      final svgString = await rootBundle.loadString(assetPath);
+      final pictureInfo =
+          await vg.loadPicture(SvgStringLoader(svgString), null);
+
+      final srcW = pictureInfo.size.width > 0 ? pictureInfo.size.width : 100.0;
+      final srcH =
+          pictureInfo.size.height > 0 ? pictureInfo.size.height : 100.0;
+      final scale = maxDimensionPx / (srcW > srcH ? srcW : srcH);
+      final outW = (srcW * scale).round().clamp(1, maxDimensionPx);
+      final outH = (srcH * scale).round().clamp(1, maxDimensionPx);
+
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      canvas.scale(scale, scale);
+      canvas.drawPicture(pictureInfo.picture);
+      pictureInfo.picture.dispose();
+
+      final image = await recorder.endRecording().toImage(outW, outH);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+
+      if (byteData != null) {
+        return byteData.buffer.asUint8List();
+      }
+    } catch (_) {
+      // Fallback for pure-Dart unit tests without Flutter asset bundle
+    }
+    return _generateAliveLogoPngBytes();
+  }
+
+  /// Generates a formatted Word (`.docx`) document in the official ALIVE-NG
+  /// Board of Directors Meeting Minutes format using timestamp-ordered data.
+  static Future<Uint8List> generateOfficialMeetingMinutesDocx({
+    required OfficialMeetingMinutesData data,
+    String logoAssetPath = aliveLogoAssetPath,
+  }) async {
+    final logoBytes = await loadAliveLogoPngBytes(assetPath: logoAssetPath);
+    final body = StringBuffer();
+
+    // 1. Centered ALIVE Logo + Centered All-Caps Bold Title
+    body.writeln(_centeredLogoAndTitle(
+      title: data.documentTitle.toUpperCase(),
+      logoWidthEmu: 762000, // ~60pt
+      logoHeightEmu: 838200, // preserves natural vertical Africa emblem aspect ratio
+    ));
+    body.writeln(_spacer(120));
+
+    // 2. 5-Column Document Control Table
+    body.writeln(_styledGridTable(
+      columnWidthsDxa: const [1500, 1800, 2260, 2260, 2260],
+      headers: const ['Status', 'Date', 'Issuer', 'Checker', 'Approver'],
+      rows: [
+        [data.status, data.date, data.issuer, data.checker, data.approver],
+      ],
+    ));
+    body.writeln(_spacer(160));
+
+    // 3. INTRODUCTION & MODE
+    body.writeln(_sectionHeading('INTRODUCTION'));
+    body.writeln(_richParagraph('**MODE:** ${data.mode}', fontSizeHalfPt: 21));
+    body.writeln(_spacer(80));
+
+    // 4. 4-Column ATTENDANCE Table
+    if (data.attendance.isNotEmpty) {
+      body.writeln(_richParagraph(
+        '**ATTENDANCE**',
+        fontSizeHalfPt: 21,
+        colorHex: '1B365D',
+      ));
+      body.writeln(_styledGridTable(
+        columnWidthsDxa: const [800, 4380, 3100, 1800],
+        headers: const ['S/N', 'Name', 'Role', 'Status'],
+        rows: [
+          for (int i = 0; i < data.attendance.length; i++)
+            [
+              '${i + 1}',
+              data.attendance[i].name,
+              data.attendance[i].role,
+              data.attendance[i].status,
+            ],
+        ],
+      ));
+      body.writeln(_spacer(140));
+    }
+
+    // 5. OPENING DETAILS
+    body.writeln(_richParagraph(
+      '**OPENING DETAILS:**',
+      fontSizeHalfPt: 21,
+      colorHex: '1B365D',
+    ));
+    if (data.startTime.trim().isNotEmpty) {
+      body.writeln(_richParagraph(
+        '**Start time:** ${data.startTime.trim()}',
+        fontSizeHalfPt: 20,
+      ));
+    }
+    if (data.openingPrayerAndRemark.trim().isNotEmpty) {
+      body.writeln(_richParagraph(
+        '**Opening prayer and Remark:** ${data.openingPrayerAndRemark.trim()}',
+        fontSizeHalfPt: 20,
+      ));
+    }
+    if (data.devotionDetails.trim().isNotEmpty) {
+      body.writeln(_richParagraph(
+        data.devotionDetails.trim(),
+        fontSizeHalfPt: 20,
+      ));
+    }
+    body.writeln(_spacer(100));
+
+    // 6. AGENDA LIST (Chronological Timestamp Order)
+    if (data.agendaItems.isNotEmpty) {
+      body.writeln(_sectionHeading('AGENDA'));
+      for (final item in data.agendaItems) {
+        body.writeln(_richParagraph(
+          '• ${item.trim()}',
+          fontSizeHalfPt: 20,
+          colorHex: '1E293B',
+          leftIndent: 240,
+          spacingBefore: 20,
+          spacingAfter: 30,
+        ));
+      }
+      body.writeln(_spacer(140));
+    }
+
+    // 7. 6-Column Minutes & Action Matrix
+    if (data.minutesRows.isNotEmpty) {
+      body.writeln(_minutesActionMatrixTable(data.minutesRows));
+      body.writeln(_spacer(160));
+    }
+
+    // 8. CLOSING
+    body.writeln(_sectionHeading('CLOSING'));
+    if (data.closingRemarks.trim().isNotEmpty) {
+      body.writeln(_richParagraph(
+        data.closingRemarks.trim(),
+        fontSizeHalfPt: 20,
+      ));
+    }
+
+    return _buildDocxArchive(body.toString(), customLogoBytes: logoBytes);
+  }
+
+  /// Backward-compatible wrapper: accepts either ALIVE Scribe JSON string
+  /// (rendering the full official BoD format) or fallback markdown text.
+  static Future<Uint8List> generateMeetingMinutesDocx({
     required String meetingTitle,
     required String meetingType,
     required String markdownContent,
     DateTime? generatedAt,
-  }) {
+    String logoAssetPath = aliveLogoAssetPath,
+  }) async {
+    final trimmed = markdownContent.trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        final decoded = jsonDecode(trimmed) as Map<String, dynamic>;
+        final data = OfficialMeetingMinutesData.fromJson(decoded);
+        return await generateOfficialMeetingMinutesDocx(
+          data: data,
+          logoAssetPath: logoAssetPath,
+        );
+      } catch (_) {
+        // Fall through to legacy markdown renderer if JSON parsing fails
+      }
+    }
+
+    final logoBytes = await loadAliveLogoPngBytes(assetPath: logoAssetPath);
     final now = generatedAt ?? DateTime.now();
     final generatedDate = DateFormat('MMMM dd, yyyy HH:mm').format(now);
     final body = StringBuffer();
 
-    body.writeln(_documentHeaderBanner(
-      title: 'ALIVE NIGERIA • ALIVE SCRIBE',
-      subtitle: meetingTitle.trim().isNotEmpty
-          ? meetingTitle.trim()
-          : 'Meeting Minutes',
+    body.writeln(_centeredLogoAndTitle(
+      title: meetingTitle.trim().isNotEmpty
+          ? meetingTitle.trim().toUpperCase()
+          : 'ALIVE-NG MEETING MINUTES',
     ));
     body.writeln(_spacer(100));
     body.writeln(_twoColumnTable(
@@ -395,7 +706,6 @@ class DocxReportGenerator {
     ));
     body.writeln(_spacer(120));
 
-    String cleanBoldMarkers(String s) => s.replaceAll('**', '').trim();
     for (final rawLine in markdownContent.split(RegExp(r'\r?\n'))) {
       final line = rawLine.trim();
       if (line.isEmpty) {
@@ -403,14 +713,14 @@ class DocxReportGenerator {
         continue;
       }
       if (line.startsWith('# ')) {
-        body.writeln(_sectionHeading(cleanBoldMarkers(line.substring(2))));
+        body.writeln(_sectionHeading(line.substring(2).replaceAll('**', '').trim()));
       } else if (line.startsWith('## ')) {
-        body.writeln(_sectionHeading(cleanBoldMarkers(line.substring(3))));
+        body.writeln(_sectionHeading(line.substring(3).replaceAll('**', '').trim()));
       } else if (line.startsWith('### ')) {
-        body.writeln(_subHeading(cleanBoldMarkers(line.substring(4))));
+        body.writeln(_subHeading(line.substring(4).replaceAll('**', '').trim()));
       } else if (line.startsWith('- ') || line.startsWith('* ')) {
-        body.writeln(_paragraph(
-          '• ${cleanBoldMarkers(line.substring(2))}',
+        body.writeln(_richParagraph(
+          '• ${line.substring(2).trim()}',
           fontSizeHalfPt: 20,
           colorHex: '1E293B',
           leftIndent: 240,
@@ -420,25 +730,17 @@ class DocxReportGenerator {
       } else if (line.startsWith('---')) {
         body.writeln(_spacer(80));
       } else {
-        body.writeln(_bodyText(cleanBoldMarkers(line)));
+        body.writeln(_richParagraph(line, fontSizeHalfPt: 20));
       }
     }
 
-    body.writeln(_spacer(160));
-    body.writeln(_paragraph(
-      'ALIVE Nigeria • ALIVE Scribe Official Record • Generated on $generatedDate',
-      italic: true,
-      fontSizeHalfPt: 18,
-      colorHex: '64748B',
-      topBorderColor: 'CBD5E1',
-      spacingBefore: 160,
-      spacingAfter: 0,
-    ));
-
-    return _buildDocxArchive(body.toString());
+    return _buildDocxArchive(body.toString(), customLogoBytes: logoBytes);
   }
 
-  static Uint8List _buildDocxArchive(String bodyXml) {
+  static Uint8List _buildDocxArchive(
+    String bodyXml, {
+    Uint8List? customLogoBytes,
+  }) {
     final documentXml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
   <w:body>
@@ -456,13 +758,252 @@ $bodyXml
     _addFile(archive, 'word/_rels/document.xml.rels', _documentRelsXml);
     _addFile(archive, 'word/styles.xml', _stylesXml);
     _addFile(archive, 'word/document.xml', documentXml);
-    final logoBytes = _generateAliveLogoPngBytes();
+    final logoBytes = customLogoBytes ?? _generateAliveLogoPngBytes();
     archive.addFile(
       ArchiveFile('word/media/alive_logo.png', logoBytes.length, logoBytes),
     );
 
     final encoded = ZipEncoder().encode(archive);
     return Uint8List.fromList(encoded);
+  }
+
+  static String _centeredLogoAndTitle({
+    required String title,
+    int logoWidthEmu = 762000,
+    int logoHeightEmu = 838200,
+  }) {
+    return '''<w:p>
+  <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="100"/></w:pPr>
+  <w:r>
+    <w:drawing>
+      <wp:inline distT="0" distB="0" distL="0" distR="0">
+        <wp:extent cx="$logoWidthEmu" cy="$logoHeightEmu"/>
+        <wp:docPr id="1" name="ALIVE Logo"/>
+        <wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>
+        <a:graphic>
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+            <pic:pic>
+              <pic:nvPicPr>
+                <pic:cNvPr id="0" name="alive_logo.png"/>
+                <pic:cNvPicPr/>
+              </pic:nvPicPr>
+              <pic:blipFill>
+                <a:blip r:embed="rId2"/>
+                <a:stretch><a:fillRect/></a:stretch>
+              </pic:blipFill>
+              <pic:spPr>
+                <a:xfrm><a:off x="0" y="0"/><a:ext cx="$logoWidthEmu" cy="$logoHeightEmu"/></a:xfrm>
+                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+              </pic:spPr>
+            </pic:pic>
+          </a:graphicData>
+        </a:graphic>
+      </wp:inline>
+    </w:drawing>
+  </w:r>
+</w:p>
+<w:p>
+  <w:pPr>
+    <w:jc w:val="center"/>
+    <w:spacing w:before="40" w:after="140"/>
+    <w:pBdr><w:bottom w:val="single" w:sz="12" w:space="8" w:color="1B365D"/></w:pBdr>
+  </w:pPr>
+  <w:r>
+    <w:rPr>
+      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>
+      <w:b/>
+      <w:color w:val="1B365D"/>
+      <w:sz w:val="28"/>
+      <w:szCs w:val="28"/>
+    </w:rPr>
+    <w:t xml:space="preserve">${_xmlEscape(title)}</w:t>
+  </w:r>
+</w:p>''';
+  }
+
+  /// Parses `**bold**` markers into proper Word `<w:b/>` runs instead of stripping them.
+  static String _richParagraph(
+    String text, {
+    int fontSizeHalfPt = 20,
+    String colorHex = '0F172A',
+    bool defaultBold = false,
+    int leftIndent = 0,
+    int spacingBefore = 30,
+    int spacingAfter = 60,
+  }) {
+    final lines = text.split(RegExp(r'\r?\n'));
+    return lines.map((line) {
+      final runs = StringBuffer();
+      final segments = line.split('**');
+      for (int i = 0; i < segments.length; i++) {
+        if (segments[i].isEmpty) continue;
+        final isBold = defaultBold || (i % 2 == 1);
+        runs.write('''<w:r>
+  <w:rPr>
+    <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>
+    ${isBold ? '<w:b/>' : ''}
+    <w:color w:val="$colorHex"/>
+    <w:sz w:val="$fontSizeHalfPt"/>
+    <w:szCs w:val="$fontSizeHalfPt"/>
+  </w:rPr>
+  <w:t xml:space="preserve">${_xmlEscape(segments[i])}</w:t>
+</w:r>''');
+      }
+      if (runs.isEmpty) {
+        runs.write('<w:r><w:t xml:space="preserve"></w:t></w:r>');
+      }
+      final indXml = leftIndent > 0 ? '<w:ind w:left="$leftIndent"/>' : '';
+      return '<w:p><w:pPr><w:spacing w:before="$spacingBefore" w:after="$spacingAfter"/>$indXml</w:pPr>$runs</w:p>';
+    }).join('\n');
+  }
+
+  static String _styledGridTable({
+    required List<int> columnWidthsDxa,
+    required List<String> headers,
+    required List<List<String>> rows,
+    String headerShadeHex = '1B365D',
+  }) {
+    final totalW = columnWidthsDxa.fold<int>(0, (a, b) => a + b);
+    final sb = StringBuffer();
+    sb.writeln('''<w:tbl>
+  <w:tblPr>
+    <w:tblW w:w="$totalW" w:type="dxa"/>
+    <w:tblBorders>
+      <w:top w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>
+      <w:left w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>
+      <w:bottom w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>
+      <w:right w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>
+      <w:insideH w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:insideV w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+    </w:tblBorders>
+  </w:tblPr>''');
+
+    sb.writeln('  <w:tr><w:trPr><w:tblHeader/></w:trPr>');
+    for (int c = 0; c < headers.length; c++) {
+      sb.writeln('''    <w:tc>
+      <w:tcPr>
+        <w:tcW w:w="${columnWidthsDxa[c]}" w:type="dxa"/>
+        <w:shd w:val="clear" w:color="auto" w:fill="$headerShadeHex"/>
+        <w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar>
+      </w:tcPr>
+      ${_richParagraph(headers[c], fontSizeHalfPt: 18, colorHex: 'FFFFFF', defaultBold: true, spacingBefore: 0, spacingAfter: 0)}
+    </w:tc>''');
+    }
+    sb.writeln('  </w:tr>');
+
+    for (int r = 0; r < rows.length; r++) {
+      final shade = r.isEven ? 'FFFFFF' : 'F8FAFC';
+      sb.writeln('  <w:tr>');
+      for (int c = 0; c < headers.length; c++) {
+        final val = c < rows[r].length ? rows[r][c] : '';
+        sb.writeln('''    <w:tc>
+      <w:tcPr>
+        <w:tcW w:w="${columnWidthsDxa[c]}" w:type="dxa"/>
+        <w:shd w:val="clear" w:color="auto" w:fill="$shade"/>
+        <w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar>
+      </w:tcPr>
+      ${_richParagraph(val, fontSizeHalfPt: 18, colorHex: '0F172A', spacingBefore: 0, spacingAfter: 0)}
+    </w:tc>''');
+      }
+      sb.writeln('  </w:tr>');
+    }
+    sb.writeln('</w:tbl>');
+    return sb.toString();
+  }
+
+  /// 6-column table: S/N (550) | AGENDA (1550) | DISCUSSION (3880) | ACTION (1800) | RESPONSIBILITY (1250) | DEADLINE (1050)
+  static String _minutesActionMatrixTable(List<MinutesAgendaRow> rows) {
+    const widths = [550, 1550, 3880, 1800, 1250, 1050];
+    const headers = [
+      'S/N',
+      'AGENDA',
+      'DISCUSSION',
+      'ACTION',
+      'RESPONSIBILITY',
+      'DEADLINE',
+    ];
+
+    final sb = StringBuffer();
+    sb.writeln('''<w:tbl>
+  <w:tblPr>
+    <w:tblW w:w="10080" w:type="dxa"/>
+    <w:tblBorders>
+      <w:top w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>
+      <w:left w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>
+      <w:bottom w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>
+      <w:right w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>
+      <w:insideH w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:insideV w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+    </w:tblBorders>
+  </w:tblPr>''');
+
+    sb.writeln('  <w:tr><w:trPr><w:tblHeader/></w:trPr>');
+    for (int c = 0; c < headers.length; c++) {
+      sb.writeln('''    <w:tc>
+      <w:tcPr>
+        <w:tcW w:w="${widths[c]}" w:type="dxa"/>
+        <w:shd w:val="clear" w:color="auto" w:fill="1B365D"/>
+        <w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar>
+      </w:tcPr>
+      ${_richParagraph(headers[c], fontSizeHalfPt: 17, colorHex: 'FFFFFF', defaultBold: true, spacingBefore: 0, spacingAfter: 0)}
+    </w:tc>''');
+    }
+    sb.writeln('  </w:tr>');
+
+    for (int i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      final isNewAgenda =
+          i == 0 || row.sn.trim().isNotEmpty || row.agenda.trim().isNotEmpty;
+      final vMergeTag =
+          isNewAgenda ? '<w:vMerge w:val="restart"/>' : '<w:vMerge/>';
+      final trimmedAgenda = row.agenda.trim();
+      final trimmedRange = row.timestampRange.trim();
+      final agendaLabel = (isNewAgenda && trimmedRange.isNotEmpty)
+          ? (trimmedAgenda.isNotEmpty
+              ? '$trimmedAgenda\n[$trimmedRange]'
+              : '[$trimmedRange]')
+          : trimmedAgenda;
+
+      sb.writeln('  <w:tr><w:trPr><w:cantSplit/></w:trPr>');
+      sb.writeln('''    <w:tc>
+      <w:tcPr>
+        <w:tcW w:w="${widths[0]}" w:type="dxa"/>
+        $vMergeTag
+        <w:shd w:val="clear" w:color="auto" w:fill="F8FAFC"/>
+        <w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="70" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="70" w:type="dxa"/></w:tcMar>
+      </w:tcPr>
+      ${_richParagraph(row.sn, fontSizeHalfPt: 18, defaultBold: true, spacingBefore: 0, spacingAfter: 0)}
+    </w:tc>''');
+      sb.writeln('''    <w:tc>
+      <w:tcPr>
+        <w:tcW w:w="${widths[1]}" w:type="dxa"/>
+        $vMergeTag
+        <w:shd w:val="clear" w:color="auto" w:fill="F8FAFC"/>
+        <w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar>
+      </w:tcPr>
+      ${_richParagraph(agendaLabel, fontSizeHalfPt: 18, colorHex: '1B365D', defaultBold: true, spacingBefore: 0, spacingAfter: 0)}
+    </w:tc>''');
+
+      final trailing = [
+        row.discussion,
+        row.action,
+        row.responsibility,
+        row.deadline,
+      ];
+      for (int c = 0; c < trailing.length; c++) {
+        sb.writeln('''    <w:tc>
+      <w:tcPr>
+        <w:tcW w:w="${widths[c + 2]}" w:type="dxa"/>
+        <w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar>
+      </w:tcPr>
+      ${_richParagraph(trailing[c], fontSizeHalfPt: 18, spacingBefore: 20, spacingAfter: 40)}
+    </w:tc>''');
+      }
+      sb.writeln('  </w:tr>');
+    }
+
+    sb.writeln('</w:tbl>');
+    return sb.toString();
   }
 
   /// Renders a crisp transparent-background PNG of the ALIVE Africa mosaic

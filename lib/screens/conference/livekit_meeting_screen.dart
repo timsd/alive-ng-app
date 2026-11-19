@@ -20,6 +20,7 @@ import '../../services/alive_scribe_service.dart';
 import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
+import '../../services/email_service.dart';
 import '../../services/platform/app_store_helper.dart';
 import '../../services/platform/media_permission_adapter.dart';
 import '../../services/ports/meeting_gateway.dart';
@@ -360,7 +361,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       setState(() => _isScribeRecording = false);
     }
 
-    if (!isRemoteTrigger) {
+    if (!isRemoteTrigger && mounted) {
       final gateway = ref.read(meetingGatewayProvider);
       gateway.sendDataChannelMessage({
         'type': 'alive_scribe_control',
@@ -379,6 +380,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   }
 
   void _openScribeScreen() {
+    if (!mounted) return;
     final gateway = ref.read(meetingGatewayProvider);
     _ensureScribeInitialized(gateway);
 
@@ -398,9 +400,15 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   }
 
   void _showAlreadySavedNotesNotice() {
+    if (!mounted) return;
     final messenger =
         rootScaffoldMessengerKey.currentState ?? ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
+    final capturedScribe = _scribeService;
+    final capturedTitle =
+        widget.meetingType?.displayName ?? _roomController.text;
+    final capturedRoom = _roomController.text.trim();
+    final capturedType = widget.meetingType?.displayName;
     messenger.clearSnackBars();
     final controller = messenger.showSnackBar(
       SnackBar(
@@ -413,7 +421,20 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
           textColor: const Color(0xFF38BDF8),
           onPressed: () {
             messenger.hideCurrentSnackBar();
-            _openScribeScreen();
+            if (mounted) {
+              _openScribeScreen();
+            } else {
+              rootNavigatorKey.currentState?.push(
+                MaterialPageRoute(
+                  builder: (_) => LeaderMeetingTranscriptionScreen(
+                    initialMeetingTitle: capturedTitle,
+                    initialRoomName: capturedRoom,
+                    initialMeetingType: capturedType,
+                    scribeService: capturedScribe,
+                  ),
+                ),
+              );
+            }
           },
         ),
         duration: const Duration(seconds: 4),
@@ -480,7 +501,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       return;
     }
 
-    final bytes = DocxReportGenerator.generateMeetingMinutesDocx(
+    final bytes = await DocxReportGenerator.generateMeetingMinutesDocx(
       meetingTitle: roomTitle,
       meetingType: meetingTypeStr,
       markdownContent: markdown,
@@ -504,6 +525,26 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       _hasSavedMinutesForSession = true;
       _savedMinutesFileName = fileName;
       debugPrint('[ALIVE Scribe] Meeting minutes auto-saved to files: $fileName');
+
+      // Auto-copy ALIVE Board of Directors if this session was on a Board Meeting channel
+      final isBoard = widget.meetingType == MeetingType.board ||
+          meetingTypeStr.toLowerCase().contains('board') ||
+          roomTitle.toLowerCase().contains('board') ||
+          _roomController.text.toLowerCase().contains('board');
+
+      if (isBoard) {
+        try {
+          await EmailService.instance.sendBoardMeetingMinutesEmail(
+            meetingTitle: roomTitle,
+            markdownMinutes: markdown,
+            docxFileName: fileName,
+          );
+          debugPrint(
+              '[ALIVE Scribe] Board meeting minutes emailed to aliveng.bod@alivenigeria.org');
+        } catch (emailErr) {
+          debugPrint('[ALIVE Scribe] Note sending board email: $emailErr');
+        }
+      }
     } catch (e) {
       debugPrint('[ALIVE Scribe] Note saving minutes to files: $e');
     } finally {
