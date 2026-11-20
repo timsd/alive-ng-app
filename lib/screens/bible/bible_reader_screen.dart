@@ -113,6 +113,19 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
     });
   }
 
+  @override
+  void didUpdateWidget(covariant BibleReaderScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTab != oldWidget.initialTab) {
+      _tabController.animateTo(widget.initialTab.clamp(0, 2));
+    }
+    if (widget.initialReference != null &&
+        widget.initialReference!.trim().isNotEmpty &&
+        widget.initialReference != oldWidget.initialReference) {
+      _openReference(widget.initialReference!);
+    }
+  }
+
   /// Auto-scroll to the form section so users see the input immediately
   void _scrollToForm() {
     if (_scrollController.hasClients && _formKey.currentContext != null) {
@@ -1968,8 +1981,14 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen>
                     label: 'Share',
                     onTap: () {
                       Navigator.pop(ctx);
+                      final url =
+                          'https://app.alivenigeria.org/bible?ref=${Uri.encodeComponent(reference)}';
                       SharePlus.instance.share(
-                        ShareParams(text: '$reference\n$verseText'),
+                        ShareParams(
+                          text:
+                              '"$verseText"\n— $reference ($_selectedVersion)\n\nRead in ALIVE Nigeria Bible:\n$url',
+                          subject: reference,
+                        ),
                       );
                     },
                   ),

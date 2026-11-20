@@ -325,6 +325,62 @@ class AppwritePushService {
     return decoded;
   }
 
+  /// Sends a targeted push notification to the author of a prayer request when
+  /// another member prays for their request.
+  Future<void> sendPrayerSupportPush({
+    required String requestId,
+    required String ownerUserId,
+    required String requestTitle,
+    String? intercessorName,
+    int? prayerCount,
+  }) async {
+    final trimmedOwner = ownerUserId.trim();
+    final trimmedReqId = requestId.trim();
+    if (trimmedOwner.isEmpty || trimmedReqId.isEmpty) return;
+
+    final actor = (intercessorName?.trim().isNotEmpty == true)
+        ? intercessorName!.trim()
+        : 'A fellow believer';
+    final safeTitle =
+        requestTitle.trim().isNotEmpty ? requestTitle.trim() : 'your prayer request';
+    final count = prayerCount ?? 1;
+    final route = '/prayer-wall?prayerId=${Uri.encodeComponent(trimmedReqId)}';
+    final pushTitle = '🙏 Someone Prayed for Your Request';
+    final pushBody = count > 1
+        ? '$actor just prayed for "$safeTitle" ($count prayers lifted).'
+        : '$actor just prayed for your request: "$safeTitle".';
+
+    try {
+      await _functions.createExecution(
+        functionId: AppwriteBackendConfig.sendPushFunctionId,
+        body: jsonEncode({
+          'action': 'notify_prayer_support',
+          'requestId': trimmedReqId,
+          'intercessorName': actor,
+          // Fallback fields if the deployed function handles direct user array pushes:
+          'title': pushTitle,
+          'body': pushBody,
+          'users': [trimmedOwner],
+          'topics': <String>[],
+          'type': 'prayer_request',
+          'route': route,
+          'data': {
+            'type': 'prayer_request',
+            'id': trimmedReqId,
+            'route': route,
+          },
+          'priority': 'high',
+        }),
+        xasync: true,
+      );
+      _logger.info(
+        'Dispatched prayer support push notification for request $trimmedReqId to owner $trimmedOwner',
+      );
+    } catch (e) {
+      _logger.warning('Could not dispatch prayer support push notification: $e');
+    }
+  }
+
   Future<void> _upsertPushTokenRecord(
     String userId,
     String token,

@@ -10,7 +10,9 @@ import '../../../widgets/scripture_rich_text.dart';
 /// on `/health`, with prev/next day browsing, sharing, and a full 365-day
 /// searchable NEWSTART directory sheet.
 class DailyHealthNuggetCard extends StatefulWidget {
-  const DailyHealthNuggetCard({super.key});
+  final int? initialDay;
+
+  const DailyHealthNuggetCard({super.key, this.initialDay});
 
   @override
   State<DailyHealthNuggetCard> createState() => _DailyHealthNuggetCardState();
@@ -23,11 +25,26 @@ class _DailyHealthNuggetCardState extends State<DailyHealthNuggetCard> {
   @override
   void initState() {
     super.initState();
+    final total = HealthNuggetsData.allNuggets.length;
     _todayDay =
-        ((HealthNuggetsData.dayOfYear(DateTime.now()) - 1) %
-            HealthNuggetsData.allNuggets.length) +
-        1;
-    _selectedDay = _todayDay;
+        ((HealthNuggetsData.dayOfYear(DateTime.now()) - 1) % total) + 1;
+    final requested = widget.initialDay;
+    _selectedDay = (requested != null && requested >= 1 && requested <= total)
+        ? requested
+        : _todayDay;
+  }
+
+  @override
+  void didUpdateWidget(covariant DailyHealthNuggetCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final total = HealthNuggetsData.allNuggets.length;
+    final requested = widget.initialDay;
+    if (requested != oldWidget.initialDay &&
+        requested != null &&
+        requested >= 1 &&
+        requested <= total) {
+      setState(() => _selectedDay = requested);
+    }
   }
 
   HealthNugget get _currentNugget =>
@@ -93,7 +110,7 @@ class _DailyHealthNuggetCardState extends State<DailyHealthNuggetCard> {
         '${nugget.nugget}\n\n'
         '_Source: ${nugget.speaker} (${nugget.scripture})_\n\n'
         'Read more on ALIVE Nigeria:\n'
-        'https://app.alivenigeria.org/health';
+        'https://app.alivenigeria.org/health?day=${nugget.day}';
     SharePlus.instance.share(
       ShareParams(
         text: text,

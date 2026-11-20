@@ -106,6 +106,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
   // Transcript Sync State (Spotify-style)
   List<_PodcastTranscriptLine> _transcriptLines = [];
+  bool _hasExplicitTimestamps = false;
   bool _wasTimelineNormalized = false;
   int _lastKnownDurationMs = 0;
   int _activeTranscriptIndex = -1;
@@ -559,6 +560,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
         defaultSpeaker.isNotEmpty ? defaultSpeaker : 'Speaker';
 
     if (raw.isEmpty) {
+      _hasExplicitTimestamps = false;
       _wasTimelineNormalized = false;
       return [
         _PodcastTranscriptLine(
@@ -767,6 +769,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
       }
     }
 
+    _hasExplicitTimestamps = hasExplicitTimestamps;
     _wasTimelineNormalized = false;
 
     if (rawSegments.isEmpty) {

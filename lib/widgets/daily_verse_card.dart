@@ -359,7 +359,8 @@ class _DailyVerseCardState extends ConsumerState<DailyVerseCard> {
   }
 
   void _shareVerse(BuildContext context, DailyVerse verse) {
-    const webAppUrl = 'https://app.alivenigeria.org/daily';
+    final encodedRef = Uri.encodeComponent(verse.reference);
+    final webAppUrl = 'https://app.alivenigeria.org/bible?ref=$encodedRef';
     final shareText =
         '"${verse.verse}"\n— ${verse.reference}\n\nRead more on the ALIVE Nigeria app:\n$webAppUrl';
     SharePlus.instance.share(

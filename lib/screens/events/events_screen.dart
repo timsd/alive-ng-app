@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,10 +18,12 @@ import '../../widgets/custom_app_bar.dart';
 
 class EventsScreen extends ConsumerStatefulWidget {
   final String initialTab;
+  final String? initialItemId;
 
   const EventsScreen({
     super.key,
     this.initialTab = 'events',
+    this.initialItemId,
   });
 
   @override
@@ -214,14 +217,22 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       );
     }
 
+    final targetId = widget.initialItemId?.trim() ?? '';
+    final orderedEvents = targetId.isEmpty
+        ? _events
+        : [
+            ..._events.where((e) => e.id == targetId),
+            ..._events.where((e) => e.id != targetId),
+          ];
+
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
-        itemCount: _events.length,
+        itemCount: orderedEvents.length,
         itemBuilder: (context, index) {
-          final event = _events[index];
+          final event = orderedEvents[index];
           return _buildEventCard(context, event, translate);
         },
       ),
@@ -251,14 +262,22 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       );
     }
 
+    final targetId = widget.initialItemId?.trim() ?? '';
+    final orderedAnnouncements = targetId.isEmpty
+        ? _announcements
+        : [
+            ..._announcements.where((a) => a.id == targetId),
+            ..._announcements.where((a) => a.id != targetId),
+          ];
+
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: ResponsiveUtils.getResponsivePaddingWithBase(context, 16),
-        itemCount: _announcements.length,
+        itemCount: orderedAnnouncements.length,
         itemBuilder: (context, index) {
-          final announcement = _announcements[index];
+          final announcement = orderedAnnouncements[index];
           return _buildAnnouncementCard(context, announcement, translate);
         },
       ),
@@ -299,6 +318,23 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
+                IconButton(
+                  icon: const Icon(Icons.share_outlined, size: 18),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Share Event',
+                  onPressed: () {
+                    final url = event.id.isNotEmpty
+                        ? 'https://app.alivenigeria.org/events?tab=events&id=${Uri.encodeComponent(event.id)}'
+                        : 'https://app.alivenigeria.org/events?tab=events';
+                    SharePlus.instance.share(
+                      ShareParams(
+                        text:
+                            '📅 *${event.title}*\n\n${event.description}\n\nView event on ALIVE Nigeria:\n$url',
+                        subject: event.title,
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -397,6 +433,23 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
+                IconButton(
+                  icon: const Icon(Icons.share_outlined, size: 18),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Share Announcement',
+                  onPressed: () {
+                    final url = announcement.id.isNotEmpty
+                        ? 'https://app.alivenigeria.org/events?tab=announcements&id=${Uri.encodeComponent(announcement.id)}'
+                        : 'https://app.alivenigeria.org/events?tab=announcements';
+                    SharePlus.instance.share(
+                      ShareParams(
+                        text:
+                            '📢 *${announcement.title}*\n\n$message\n\nRead on ALIVE Nigeria:\n$url',
+                        subject: announcement.title,
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
             const SizedBox(height: 12),

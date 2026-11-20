@@ -94,7 +94,9 @@ final todayHealthActivitiesProvider =
 });
 
 class HealthScreen extends ConsumerWidget {
-  const HealthScreen({super.key});
+  final int? initialDay;
+
+  const HealthScreen({super.key, this.initialDay});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -162,7 +164,7 @@ class HealthScreen extends ConsumerWidget {
 
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
 
-            const DailyHealthNuggetCard(),
+            DailyHealthNuggetCard(initialDay: initialDay),
 
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
 

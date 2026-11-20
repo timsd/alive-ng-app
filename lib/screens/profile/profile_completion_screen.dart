@@ -12,6 +12,7 @@ import '../../services/appwrite_profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/channel_membership_sync_service.dart';
 import '../../services/role_access_service.dart';
+import '../../utils/web_launch_params.dart';
 import '../../widgets/profile_page_cues.dart';
 import '../../widgets/custom_app_bar.dart';
 
@@ -180,7 +181,7 @@ class _ProfileCompletionScreenState
     } catch (e) {
       debugPrint('Could not record skipped profile setup: $e');
     }
-    if (mounted) context.go('/home');
+    if (mounted) context.go(consumePostAuthRedirectOrHome('/home'));
   }
 
   // Pre-fill fields from any existing profile data so returning users (e.g.
@@ -393,7 +394,7 @@ class _ProfileCompletionScreenState
             behavior: SnackBarBehavior.floating,
           ),
         );
-        context.go('/home');
+        context.go(consumePostAuthRedirectOrHome('/home'));
       }
     } catch (e) {
       if (mounted) {

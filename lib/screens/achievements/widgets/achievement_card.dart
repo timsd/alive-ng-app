@@ -77,7 +77,7 @@ class AchievementCard extends StatelessWidget {
     SharePlus.instance.share(
       ShareParams(
         text:
-            '🏆 I unlocked the "${achievement.title}" badge (${achievement.tier.displayName} Tier) in ALIVE Nigeria!\n\n"${achievement.description}"\n\nJoin me in study and mission on ALIVE Nigeria: https://app.alivenigeria.org',
+            '🏆 I unlocked the "${achievement.title}" badge (${achievement.tier.displayName} Tier) in ALIVE Nigeria!\n\n"${achievement.description}"\n\nJoin me in study and mission on ALIVE Nigeria:\nhttps://app.alivenigeria.org/achievements',
         subject: 'ALIVE Nigeria Achievement: ${achievement.title}',
       ),
     );

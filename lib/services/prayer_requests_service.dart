@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
@@ -5,6 +6,7 @@ import '../main.dart';
 import '../models/app_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
+import 'appwrite_push_service.dart';
 import 'auth_service.dart';
 
 class PrayerRequestsService {
@@ -185,15 +187,41 @@ class PrayerRequestsService {
         },
       );
 
+      final newCount = count + 1;
       await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
         rowId: requestId,
         data: {
-          'prayer_count': count + 1,
+          'prayer_count': newCount,
           'updated_at': now,
         },
       );
+
+      // Notify the prayer request owner via push notification when someone else prays for their request
+      final ownerId = (doc.data['user_id'] ??
+              doc.data['userId'] ??
+              doc.data['requestedById'] ??
+              '')
+          .toString()
+          .trim();
+      if (ownerId.isNotEmpty && ownerId != userId) {
+        final requestTitle =
+            (doc.data['title'] ?? 'Prayer Request').toString().trim();
+        final intercessorName = _authService.currentUser?.displayName?.trim();
+        unawaited(
+          AppwritePushService.instance.sendPrayerSupportPush(
+            requestId: requestId,
+            ownerUserId: ownerId,
+            requestTitle: requestTitle,
+            intercessorName:
+                (intercessorName != null && intercessorName.isNotEmpty)
+                    ? intercessorName
+                    : 'A fellow believer',
+            prayerCount: newCount,
+          ),
+        );
+      }
     } catch (e) {
       _logger.error('Error praying for request', e);
       throw DatabaseException('Failed to record prayer', originalError: e);
@@ -204,6 +232,7 @@ class PrayerRequestsService {
     required String id,
     String? title,
     String? description,
+    String? category,
     bool? isAnonymous,
   }) async {
     try {
@@ -212,6 +241,7 @@ class PrayerRequestsService {
       };
       if (title != null) updates['title'] = title;
       if (description != null) updates['description'] = description;
+      if (category != null) updates['category'] = category;
       if (isAnonymous != null) updates['is_anonymous'] = isAnonymous;
 
       await _tables.updateRow(

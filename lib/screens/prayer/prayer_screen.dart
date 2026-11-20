@@ -1054,8 +1054,11 @@ class _PrayerRequestCardState extends State<PrayerRequestCard> {
                 IconButton(
                   tooltip: 'Share prayer',
                   onPressed: () {
+                    final link = request.id.isNotEmpty
+                        ? 'https://app.alivenigeria.org/prayer-wall?prayerId=${Uri.encodeComponent(request.id)}'
+                        : 'https://app.alivenigeria.org/prayer-wall';
                     final text =
-                        '🙏 *${request.title}*\n\n${request.description}\n\n— Shared from ALIVE Nigeria Prayer';
+                        '🙏 *${request.title}*\n\n${request.description}\n\n— Shared from ALIVE Nigeria Prayer\n$link';
                     SharePlus.instance.share(ShareParams(text: text));
                   },
                   icon: Icon(Icons.share,

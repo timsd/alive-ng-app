@@ -36,12 +36,100 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   String _searchQuery = '';
   String _selectedCategory = 'all';
   final List<Map<String, dynamic>> _downloadedEpisodes = const [];
+  String? _handledDeepLinkKey;
+  bool _isResolvingDeepLink = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _audioService.addListener(_onAudioUpdate);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeHandleInitialDeepLink();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant PodcastsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialEpisodeId != widget.initialEpisodeId ||
+        oldWidget.initialPodcastId != widget.initialPodcastId) {
+      _handledDeepLinkKey = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _maybeHandleInitialDeepLink();
+      });
+    }
+  }
+
+  Future<void> _maybeHandleInitialDeepLink([List<Podcast>? loadedPodcasts]) async {
+    final epId = widget.initialEpisodeId?.trim() ?? '';
+    final podId = widget.initialPodcastId?.trim() ?? '';
+    if (epId.isEmpty && podId.isEmpty) return;
+
+    final key = '$podId|$epId';
+    if (_handledDeepLinkKey == key || _isResolvingDeepLink) return;
+
+    final podcasts = loadedPodcasts ?? ref.read(podcastProvider) ?? const <Podcast>[];
+    if (podcasts.isEmpty) return;
+
+    _isResolvingDeepLink = true;
+    try {
+      final notifier = ref.read(podcastProvider.notifier);
+      Podcast? targetPodcast;
+      if (podId.isNotEmpty) {
+        for (final p in podcasts) {
+          if (p.id == podId) {
+            targetPodcast = p;
+            break;
+          }
+        }
+      }
+
+      if (epId.isNotEmpty) {
+        PodcastEpisode? targetEpisode;
+        if (targetPodcast != null) {
+          final eps = await notifier.getEpisodesForPodcast(targetPodcast.id);
+          for (final e in eps) {
+            if (e.id == epId) {
+              targetEpisode = e;
+              break;
+            }
+          }
+        }
+        // Fallback: search across all podcasts if podcastId wasn't provided or matched
+        if (targetEpisode == null) {
+          for (final p in podcasts) {
+            final eps = await notifier.getEpisodesForPodcast(p.id);
+            for (final e in eps) {
+              if (e.id == epId) {
+                targetPodcast = p;
+                targetEpisode = e;
+                break;
+              }
+            }
+            if (targetEpisode != null) break;
+          }
+        }
+
+        if (targetEpisode != null && mounted) {
+          _handledDeepLinkKey = key;
+          final epMap = _episodeToMap(targetEpisode, podcast: targetPodcast);
+          await _playEpisode(
+            context,
+            epMap,
+            coverImage: targetPodcast?.coverImage,
+          );
+          return;
+        }
+      }
+
+      if (targetPodcast != null && mounted) {
+        _handledDeepLinkKey = key;
+        _showPodcastDetails(context, targetPodcast);
+      }
+    } finally {
+      _isResolvingDeepLink = false;
+    }
   }
 
   void _onAudioUpdate() {
@@ -201,6 +289,15 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
 
         if (backendPodcasts.isEmpty) {
           return _buildEmptyPodcastState(context);
+        }
+
+        if ((widget.initialEpisodeId?.isNotEmpty == true ||
+                widget.initialPodcastId?.isNotEmpty == true) &&
+            _handledDeepLinkKey !=
+                '${widget.initialPodcastId?.trim() ?? ''}|${widget.initialEpisodeId?.trim() ?? ''}') {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _maybeHandleInitialDeepLink(backendPodcasts);
+          });
         }
 
         return Builder(
@@ -1024,6 +1121,12 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   Map<String, dynamic> _episodeToMap(PodcastEpisode episode, {Podcast? podcast}) {
     return {
       'id': episode.id,
+      'podcastId': episode.podcastId.isNotEmpty
+          ? episode.podcastId
+          : (podcast?.id ?? ''),
+      'podcast_id': episode.podcastId.isNotEmpty
+          ? episode.podcastId
+          : (podcast?.id ?? ''),
       'title': episode.title,
       'podcastTitle': episode.podcastTitle.isNotEmpty
           ? episode.podcastTitle

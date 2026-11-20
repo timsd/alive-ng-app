@@ -19,10 +19,12 @@ import '../../providers/language_provider.dart';
 
 class TractsScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
+  final String? initialTractId;
 
   const TractsScreen({
     super.key,
     this.initialTabIndex = 0,
+    this.initialTractId,
   });
 
   @override
@@ -38,6 +40,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
   String _viewMode = 'grid'; // 'grid' or 'list'
   late Future<List<Tract>> _tractsFuture;
   late Future<List<UserDownload>> _downloadsFuture;
+  String? _handledInitialTractId;
 
   @override
   void initState() {
@@ -49,6 +52,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
     );
     _tractsFuture = TractService().getAllTracts();
     _downloadsFuture = DonationService().getUserDownloads();
+    _maybeOpenInitialTract();
   }
 
   @override
@@ -60,6 +64,33 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
         _downloadsFuture = DonationService().getUserDownloads();
       });
     }
+    if (widget.initialTractId != oldWidget.initialTractId) {
+      _handledInitialTractId = null;
+      _maybeOpenInitialTract();
+    }
+  }
+
+  Future<void> _maybeOpenInitialTract() async {
+    final targetId = widget.initialTractId?.trim() ?? '';
+    if (targetId.isEmpty || _handledInitialTractId == targetId) return;
+    try {
+      final tracts = await _tractsFuture;
+      if (!mounted) return;
+      Tract? matched;
+      for (final t in tracts) {
+        if (t.id == targetId ||
+            t.title.toLowerCase() == targetId.toLowerCase()) {
+          matched = t;
+          break;
+        }
+      }
+      if (matched != null) {
+        _handledInitialTractId = targetId;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _openTractReader(context, matched!);
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -1025,6 +1056,8 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
           .trim()
           .replaceAll(RegExp(r'\s+'), '_');
       final fileName = '${safeTitle.isNotEmpty ? safeTitle : "tract"}.pdf';
+      final deepLinkUrl =
+          'https://app.alivenigeria.org/tracts?tractId=${Uri.encodeComponent(tract.id)}';
 
       if (downloadUrl != null && downloadUrl.isNotEmpty) {
         try {
@@ -1040,7 +1073,8 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
                     mimeType: 'application/pdf',
                   ),
                 ],
-                text: 'Read "${tract.title}" - Gospel Tract from ALIVE Nigeria',
+                text:
+                    'Read "${tract.title}" - Gospel Tract from ALIVE Nigeria\n$deepLinkUrl',
                 subject: tract.title,
               ),
             );
@@ -1051,11 +1085,11 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
         }
       }
 
-      // Fallback if bytes couldn't be fetched: share tract title and URL
+      // Fallback if bytes couldn't be fetched: share tract title and deep link URL
       await SharePlus.instance.share(
         ShareParams(
           text:
-              'Read "${tract.title}" - Gospel Tract from ALIVE Nigeria\n${downloadUrl ?? "https://app.alivenigeria.org/tracts"}',
+              'Read "${tract.title}" - Gospel Tract from ALIVE Nigeria\n$deepLinkUrl',
           subject: tract.title,
         ),
       );

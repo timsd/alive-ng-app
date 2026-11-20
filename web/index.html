@@ -1464,7 +1464,7 @@
           setLoadingProgress(20, 'Preparing app');
         } catch (_) { }
         try {
-          if (startRoute && !sessionStorage.getItem('start_route')) {
+          if (startRoute && (startRoute !== '/' || !sessionStorage.getItem('start_route'))) {
             sessionStorage.setItem('start_route', startRoute);
           }
         } catch (_) { }
@@ -1606,16 +1606,20 @@
         try {
           var hash = window.location.hash || '';
           var path = window.location.pathname || '/';
+          var search = window.location.search || '';
           var appPath = null;
 
-          // Hash strategy deep links, e.g. /#/admin
+          // Hash strategy deep links, e.g. /#/admin or /#/podcasts?episodeId=...
           if (hash.indexOf('#/') === 0) {
             appPath = hash.substring(1);
+            if (search && appPath.indexOf('?') === -1) {
+              appPath += search;
+            }
           }
 
-          // Path strategy deep links, e.g. /admin
+          // Path strategy deep links, e.g. /podcasts?episodeId=...
           if (!appPath && path !== '/' && !path.endsWith('.html')) {
-            appPath = path;
+            appPath = path + search;
           }
 
           if (appPath) {

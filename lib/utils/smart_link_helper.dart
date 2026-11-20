@@ -185,6 +185,44 @@ class SmartLinkHelper {
     }
   }
 
+  /// Extracts an internal GoRouter route (e.g. `/podcasts?episodeId=...`) if
+  /// [rawUrl] points to an in-app route or an `app.alivenigeria.org` deep link.
+  static String? extractInternalRoute(String rawUrl) {
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) return null;
+    if (trimmed.startsWith('/')) {
+      if (trimmed.endsWith('.html') && trimmed != '/alive_ng_3d_viewer.html') {
+        return null;
+      }
+      if (trimmed.startsWith('/downloads/')) return null;
+      return trimmed;
+    }
+
+    final normalized = normalizeUrl(trimmed);
+    final uri = Uri.tryParse(normalized);
+    if (uri == null || !uri.hasAuthority) return null;
+
+    final host = uri.host.toLowerCase();
+    final isAppHost = host == 'app.alivenigeria.org' ||
+        (Uri.base.hasAuthority &&
+            Uri.base.host.isNotEmpty &&
+            host == Uri.base.host.toLowerCase());
+    if (!isAppHost) return null;
+
+    if (uri.fragment.startsWith('/')) {
+      return uri.fragment;
+    }
+
+    final path = uri.path.isEmpty ? '/' : uri.path;
+    if (path == '/' && !uri.hasQuery) return null;
+    if (path.endsWith('.html') && path != '/alive_ng_3d_viewer.html') {
+      return null;
+    }
+    if (path.startsWith('/downloads/')) return null;
+
+    return uri.hasQuery ? '$path?${uri.query}' : path;
+  }
+
   /// Opens an internal route via GoRouter or an external URL via `url_launcher`.
   static Future<void> openSmartLink(
     BuildContext context,
@@ -193,12 +231,13 @@ class SmartLinkHelper {
     final target = normalizeUrl(rawUrl);
     if (target.isEmpty) return;
 
-    if (target.startsWith('/')) {
+    final internalRoute = extractInternalRoute(target);
+    if (internalRoute != null && internalRoute.isNotEmpty) {
       try {
-        GoRouter.of(context).push(target);
+        GoRouter.of(context).push(internalRoute);
       } catch (_) {
         if (context.mounted) {
-          context.go(target);
+          context.go(internalRoute);
         }
       }
       return;

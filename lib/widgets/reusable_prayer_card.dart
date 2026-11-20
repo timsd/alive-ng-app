@@ -49,6 +49,7 @@ class ReusablePrayerCard extends StatelessWidget {
   final PrayerCardViewModel model;
   final VoidCallback? onPray;
   final VoidCallback? onShare;
+  final VoidCallback? onEdit;
   final VoidCallback? onMarkAnswered;
   final VoidCallback? onDelete;
   final VoidCallback? onViewHistory;
@@ -58,6 +59,7 @@ class ReusablePrayerCard extends StatelessWidget {
     required this.model,
     this.onPray,
     this.onShare,
+    this.onEdit,
     this.onMarkAnswered,
     this.onDelete,
     this.onViewHistory,
@@ -201,7 +203,7 @@ class ReusablePrayerCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Answered badge or overflow
+                // Answered badge and/or overflow menu
                 if (model.isAnswered)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -225,8 +227,11 @@ class ReusablePrayerCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                  )
-                else if (onDelete != null || onViewHistory != null || onMarkAnswered != null)
+                  ),
+                if (onEdit != null ||
+                    onDelete != null ||
+                    onViewHistory != null ||
+                    (onMarkAnswered != null && !model.isAnswered))
                   PopupMenuButton<String>(
                     icon: Icon(
                       Icons.more_vert_rounded,
@@ -234,6 +239,17 @@ class ReusablePrayerCard extends StatelessWidget {
                       color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                     ),
                     itemBuilder: (context) => [
+                      if (onEdit != null && model.isOwner)
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: 18),
+                              SizedBox(width: 8),
+                              Text('Edit Request'),
+                            ],
+                          ),
+                        ),
                       if (onMarkAnswered != null && !model.isAnswered)
                         const PopupMenuItem(
                           value: 'answer',
@@ -269,6 +285,7 @@ class ReusablePrayerCard extends StatelessWidget {
                         ),
                     ],
                     onSelected: (val) {
+                      if (val == 'edit' && onEdit != null) onEdit!();
                       if (val == 'answer' && onMarkAnswered != null) onMarkAnswered!();
                       if (val == 'history' && onViewHistory != null) onViewHistory!();
                       if (val == 'delete' && onDelete != null) onDelete!();

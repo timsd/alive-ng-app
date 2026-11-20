@@ -442,8 +442,14 @@ class _BibleStudyTabState extends State<BibleStudyTab> {
                         tooltip: 'Share Highlight',
                         visualDensity: VisualDensity.compact,
                         onPressed: () {
+                          final url =
+                              'https://app.alivenigeria.org/bible?ref=${Uri.encodeComponent(reference)}';
                           SharePlus.instance.share(
-                            ShareParams(text: '$reference\n$text'),
+                            ShareParams(
+                              text:
+                                  '"$text"\n— $reference\n\nRead in ALIVE Nigeria Bible:\n$url',
+                              subject: reference,
+                            ),
                           );
                         },
                       ),
@@ -554,8 +560,14 @@ class _BibleStudyTabState extends State<BibleStudyTab> {
                         tooltip: 'Share',
                         visualDensity: VisualDensity.compact,
                         onPressed: () {
+                          final url =
+                              'https://app.alivenigeria.org/bible?ref=${Uri.encodeComponent(reference)}';
                           SharePlus.instance.share(
-                            ShareParams(text: '$reference\n$text'),
+                            ShareParams(
+                              text:
+                                  '"$text"\n— $reference\n\nRead in ALIVE Nigeria Bible:\n$url',
+                              subject: reference,
+                            ),
                           );
                         },
                       ),

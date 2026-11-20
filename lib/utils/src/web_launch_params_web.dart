@@ -32,6 +32,12 @@ String? getInitialRoute() {
   }
 }
 
+void clearInitialRoute() {
+  try {
+    web.window.sessionStorage.removeItem('start_route');
+  } catch (_) {}
+}
+
 String? _inMemoryPostAuthRedirect;
 
 String? getPostAuthRedirect() {
@@ -54,6 +60,29 @@ void clearPostAuthRedirect() {
   try {
     web.window.sessionStorage.removeItem('post_auth_redirect');
   } catch (_) {}
+}
+
+String consumePostAuthRedirectOrHome([String defaultRoute = '/home']) {
+  final pending = getPostAuthRedirect();
+  if (pending != null &&
+      pending.trim().isNotEmpty &&
+      pending.trim() != '/' &&
+      pending.trim() != '/auth' &&
+      pending.trim() != '/onboarding') {
+    clearPostAuthRedirect();
+    clearInitialRoute();
+    return pending.trim();
+  }
+  final initial = getInitialRoute();
+  if (initial != null &&
+      initial.trim().isNotEmpty &&
+      initial.trim() != '/' &&
+      initial.trim() != '/auth' &&
+      initial.trim() != '/onboarding') {
+    clearInitialRoute();
+    return initial.trim();
+  }
+  return defaultRoute;
 }
 
 /// Clears Appwrite's `cookieFallback` key from localStorage.

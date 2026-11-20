@@ -20,6 +20,7 @@ import '../../models/auth_models.dart';
 import '../../utils/layout_fix_utils.dart';
 import '../../utils/error_handler.dart';
 import '../../utils/toast_utils.dart';
+import '../../utils/web_launch_params.dart';
 import 'package:flutter/foundation.dart';
 
 class AppwriteAuthScreen extends ConsumerStatefulWidget {
@@ -190,7 +191,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             ref.read(isGuestModeProvider.notifier).state = false;
             // Warm up offline Bible database immediately on login
             unawaited(OfflineBibleService().prewarmBundle());
-            context.go(AppConstants.homeRoute);
+            context.go(consumePostAuthRedirectOrHome(AppConstants.homeRoute));
           } else {
             // Check if error is network/offline related
             final errStr = (state.error ?? '').toString().toLowerCase();
@@ -214,7 +215,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
                 ref.read(isGuestModeProvider.notifier).state = false;
                 unawaited(OfflineBibleService().prewarmBundle());
                 ToastUtils.showInfo('Signed in offline with Biometrics');
-                context.go(AppConstants.homeRoute);
+                context.go(consumePostAuthRedirectOrHome(AppConstants.homeRoute));
               }
             }
           }
@@ -260,7 +261,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             _isEmailPasswordSignIn = false;
             // Warm up offline Bible database immediately on login
             unawaited(OfflineBibleService().prewarmBundle());
-            context.go(AppConstants.homeRoute);
+            context.go(consumePostAuthRedirectOrHome(AppConstants.homeRoute));
           }
         },
         error: (error, _) {
@@ -1815,7 +1816,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     ref.read(isGuestModeProvider.notifier).state = true;
     unawaited(OfflineBibleService().prewarmBundle());
     if (mounted) {
-      context.go('/home');
+      context.go(consumePostAuthRedirectOrHome('/home'));
     }
   }
 

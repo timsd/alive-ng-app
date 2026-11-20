@@ -7,6 +7,8 @@ const DEFAULT_FCM_PROVIDER_ID = '6a0cbd1600215f960c03';
 const USERS_COLLECTION_ID = '6a08943100226f5b4963';
 const ORG_OFFICE_HOLDERS_COLLECTION_ID = 'org_office_holders';
 const PUSH_TOKENS_COLLECTION_ID = 'push_tokens';
+const PRAYER_REQUESTS_COLLECTION_ID = 'prayer_requests';
+const NOTIFICATION_SETTINGS_COLLECTION_ID = 'notification_settings';
 const GUEST_PUSH_USER_ID = 'guest_push_devices';
 
 const ALLOWED_ROLES = new Set([
@@ -357,13 +359,107 @@ export default async ({ req, res, log, error }) => {
     const usersApi = new Users(client);
     const messaging = new Messaging(client);
 
-    // Require an authenticated admin/office-holder caller for sending pushes.
+    const callerUserId = String(req.headers['x-appwrite-user-id'] || '').trim();
+    const triggerType = String(req.headers['x-appwrite-trigger'] || '').trim().toLowerCase();
+
+    // Dedicated action for any authenticated member praying for another member's prayer request.
+    // Looks up the prayer request owner server-side and sends a targeted push notification only to that owner.
+    if (action === 'notify_prayer_support') {
+      if (!callerUserId) {
+        return res.json({ error: 'Authentication required.' }, 401);
+      }
+      const requestId = String(body.requestId || '').trim();
+      if (!requestId) {
+        return res.json({ error: 'requestId is required.' }, 400);
+      }
+
+      let prayerDoc;
+      try {
+        prayerDoc = await databases.getDocument(
+          databaseId,
+          PRAYER_REQUESTS_COLLECTION_ID,
+          requestId,
+        );
+      } catch (e) {
+        return res.json({ error: 'Prayer request not found.' }, 404);
+      }
+
+      const ownerId = String(
+        prayerDoc.user_id || prayerDoc.userId || prayerDoc.requestedById || '',
+      ).trim();
+      if (!ownerId || ownerId === callerUserId) {
+        return res.json({
+          success: true,
+          skipped: true,
+          reason: 'Self-prayer or missing owner.',
+        });
+      }
+
+      // Check recipient notification preferences if configured
+      try {
+        const settingsDoc = await databases.getDocument(
+          databaseId,
+          NOTIFICATION_SETTINGS_COLLECTION_ID,
+          ownerId,
+        );
+        if (
+          settingsDoc.push_notifications_enabled === false ||
+          settingsDoc.prayer_requests === false
+        ) {
+          return res.json({
+            success: true,
+            skipped: true,
+            reason: 'Recipient disabled prayer notifications.',
+          });
+        }
+      } catch (_) {
+        // Default is enabled if no settings document exists
+      }
+
+      const requestTitle = String(prayerDoc.title || 'your prayer request').trim();
+      const intercessorName = String(body.intercessorName || '').trim() || 'A fellow believer';
+      const prayerCount = Number(prayerDoc.prayer_count || 1);
+      const route = `/prayer-wall?prayerId=${encodeURIComponent(requestId)}`;
+      const pushTitle = '🙏 Someone Prayed for Your Request';
+      const pushBody =
+        prayerCount > 1
+          ? `${intercessorName} just prayed for "${requestTitle}" (${prayerCount} prayers lifted).`
+          : `${intercessorName} just prayed for your request: "${requestTitle}".`;
+
+      const message = await messaging.createPush({
+        messageId: ID.unique(),
+        title: pushTitle,
+        body: pushBody,
+        topics: [],
+        users: [ownerId],
+        targets: [],
+        data: {
+          type: 'prayer_request',
+          id: requestId,
+          route,
+        },
+        icon: 'ic_notification',
+        color: '#0F9A07',
+        sound: 'default',
+        priority: 'high',
+        draft: false,
+      });
+
+      log(`Prayer support push dispatched: msg=${message.$id}, owner=${ownerId}, request=${requestId}`);
+      return res.json({
+        success: true,
+        messageId: message.$id,
+        ownerId,
+        requestId,
+        route,
+      });
+    }
+
+    // Require an authenticated admin/office-holder caller for general push broadcasts.
     // Note: Appwrite always injects its dynamic `x-appwrite-key` header into
     // function executions, so we must NOT treat `x-appwrite-key` as proof of
     // caller authentication. Only an authenticated admin `x-appwrite-user-id`
     // (or internal `schedule`/`event` trigger) may dispatch push broadcasts.
-    const callerUserId = String(req.headers['x-appwrite-user-id'] || '').trim();
-    const triggerType = String(req.headers['x-appwrite-trigger'] || '').trim().toLowerCase();
     if (callerUserId) {
       const allowed = await isAuthorizedSender({
         databases,

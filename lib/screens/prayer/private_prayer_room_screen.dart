@@ -487,6 +487,7 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
           return ReusablePrayerCard(
             model: model,
             onPray: () => _prayForRequest(req),
+            onEdit: isOwner ? () => _showEditRequestDialog(req) : null,
             onMarkAnswered: isOwner && !req.isAnswered
                 ? () => _showAnsweredPrayerDialog(req)
                 : null,
@@ -510,6 +511,118 @@ class _PrivatePrayerRoomScreenState extends ConsumerState<PrivatePrayerRoomScree
       _loadRoomRequests(_selectedRoom!.id);
     } catch (e) {
       _showSnack('Error: $e', isError: true);
+    }
+  }
+
+  Future<void> _showEditRequestDialog(PrayerRequest request) async {
+    final titleController = TextEditingController(text: request.title);
+    final descController = TextEditingController(text: request.description);
+    bool isAnonymous = request.isAnonymous;
+    bool isSaving = false;
+    String? errorMsg;
+
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          title: const Text('Edit Prayer Request'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (errorMsg != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      errorMsg!,
+                      style: TextStyle(
+                        color: Theme.of(ctx).colorScheme.error,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Prayer Title',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Description / Details *',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Share Anonymously'),
+                  value: isAnonymous,
+                  onChanged: (val) {
+                    setDlgState(() => isAnonymous = val ?? false);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final desc = descController.text.trim();
+                      if (desc.isEmpty) {
+                        setDlgState(() => errorMsg = 'Please enter prayer details.');
+                        return;
+                      }
+                      var title = titleController.text.trim();
+                      if (title.isEmpty) {
+                        title = desc.length > 35 ? '${desc.substring(0, 35)}...' : desc;
+                      }
+                      setDlgState(() {
+                        isSaving = true;
+                        errorMsg = null;
+                      });
+                      try {
+                        await _prayerService.updatePrayerRequest(
+                          id: request.id,
+                          title: title,
+                          description: desc,
+                          isAnonymous: isAnonymous,
+                        );
+                        if (ctx.mounted) Navigator.pop(ctx, true);
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          setDlgState(() {
+                            isSaving = false;
+                            errorMsg = '$e';
+                          });
+                        }
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (updated == true && _selectedRoom != null) {
+      _showSnack('Prayer request updated.');
+      _loadRoomRequests(_selectedRoom!.id);
     }
   }
 

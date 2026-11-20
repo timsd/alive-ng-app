@@ -14,6 +14,10 @@ String? getInitialRoute() {
   return null;
 }
 
+void clearInitialRoute() {
+  // no-op on non-web
+}
+
 String? _stubPostAuthRedirect;
 
 String? getPostAuthRedirect() {
@@ -26,6 +30,19 @@ void setPostAuthRedirect(String route) {
 
 void clearPostAuthRedirect() {
   _stubPostAuthRedirect = null;
+}
+
+String consumePostAuthRedirectOrHome([String defaultRoute = '/home']) {
+  final pending = getPostAuthRedirect();
+  if (pending != null &&
+      pending.trim().isNotEmpty &&
+      pending.trim() != '/' &&
+      pending.trim() != '/auth' &&
+      pending.trim() != '/onboarding') {
+    clearPostAuthRedirect();
+    return pending.trim();
+  }
+  return defaultRoute;
 }
 
 /// Clears Appwrite's `cookieFallback` key from localStorage.

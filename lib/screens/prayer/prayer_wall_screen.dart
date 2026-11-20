@@ -41,7 +41,9 @@ final answeredPrayerWallProvider =
 });
 
 class PrayerWallScreen extends ConsumerStatefulWidget {
-  const PrayerWallScreen({super.key});
+  final String? initialPrayerId;
+
+  const PrayerWallScreen({super.key, this.initialPrayerId});
 
   @override
   ConsumerState<PrayerWallScreen> createState() => _PrayerWallScreenState();
@@ -236,12 +238,20 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             );
           }
 
+          final targetId = widget.initialPrayerId?.trim() ?? '';
+          final orderedRequests = targetId.isEmpty
+              ? requests
+              : [
+                  ...requests.where((r) => r.id == targetId),
+                  ...requests.where((r) => r.id != targetId),
+                ];
+
           return ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
-            itemCount: requests.length,
+            itemCount: orderedRequests.length,
             itemBuilder: (context, index) {
-              final request = requests[index];
+              final request = orderedRequests[index];
               final userRole = RoleAccessService.instance.getCurrentUserRole()?.toLowerCase() ?? 'member';
               const adminRoles = {'admin', 'bod', 'trustee', 'director'};
               final canModerate = adminRoles.contains(userRole);
@@ -272,6 +282,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
                 ),
                 onPray: () => _recordPrayer(request),
                 onShare: () => _sharePrayerRequest(request),
+                onEdit: isOwner ? () => _showEditPrayerDialog(request) : null,
                 onMarkAnswered: isOwner && !request.isAnswered
                     ? () => _markPrayerAnswered(request)
                     : null,
@@ -375,6 +386,157 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
     }
   }
 
+  Future<void> _showEditPrayerDialog(PrayerRequest request) async {
+    final titleController = TextEditingController(text: request.title);
+    final categoryController = TextEditingController(text: request.category);
+    final descController = TextEditingController(text: request.description);
+    bool isAnonymous = request.isAnonymous;
+    bool isSaving = false;
+    String? errorMsg;
+
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final theme = Theme.of(ctx);
+          final width = MediaQuery.of(ctx).size.width;
+          final maxWidth = width < 600 ? width * 0.95 : 540.0;
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.edit_outlined, color: theme.colorScheme.primary, size: 22),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('Edit Prayer Request')),
+              ],
+            ),
+            content: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (errorMsg != null) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          errorMsg!,
+                          style: TextStyle(
+                            color: theme.colorScheme.onErrorContainer,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Title',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: categoryController,
+                      decoration: const InputDecoration(
+                        labelText: 'Category',
+                        hintText: 'e.g. Health, Family, Evangelism',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descController,
+                      maxLines: 4,
+                      maxLength: 500,
+                      decoration: const InputDecoration(
+                        labelText: 'Description *',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    CheckboxListTile(
+                      value: isAnonymous,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Post anonymously'),
+                      onChanged: (val) {
+                        setDialogState(() => isAnonymous = val ?? false);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        final desc = descController.text.trim();
+                        if (desc.isEmpty) {
+                          setDialogState(() {
+                            errorMsg = 'Please enter a description for your prayer request.';
+                          });
+                          return;
+                        }
+                        var title = titleController.text.trim();
+                        final cat = categoryController.text.trim();
+                        if (title.isEmpty) {
+                          title = desc.length > 35 ? '${desc.substring(0, 35)}...' : desc;
+                        }
+                        setDialogState(() {
+                          isSaving = true;
+                          errorMsg = null;
+                        });
+                        try {
+                          await PrayerRequestsService.instance.updatePrayerRequest(
+                            id: request.id,
+                            title: title,
+                            description: desc,
+                            category: cat.isEmpty ? 'General' : cat,
+                            isAnonymous: isAnonymous,
+                          );
+                          if (ctx.mounted) Navigator.of(ctx).pop(true);
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            setDialogState(() {
+                              isSaving = false;
+                              errorMsg = ErrorHandler.getUserFriendlyMessage(e);
+                            });
+                          }
+                        }
+                      },
+                child: isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Save Changes'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (updated == true) {
+      ref.invalidate(publicPrayerWallProvider);
+      ref.invalidate(myPrayerWallProvider);
+      ref.invalidate(supportedPrayerWallProvider);
+      ref.invalidate(answeredPrayerWallProvider);
+      _showSnack('Prayer request updated');
+    }
+  }
+
   Future<void> _deletePrayer(PrayerRequest request) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -456,8 +618,11 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
   }
 
   void _sharePrayerRequest(PrayerRequest request) {
+    final link = request.id.isNotEmpty
+        ? 'https://app.alivenigeria.org/prayer-wall?prayerId=${Uri.encodeComponent(request.id)}'
+        : 'https://app.alivenigeria.org/prayer-wall';
     final text =
-        '🙏 *${request.title}*\n\n${request.description}\n\n— Shared from ALIVE Nigeria Prayer';
+        '🙏 *${request.title}*\n\n${request.description}\n\n— Shared from ALIVE Nigeria Prayer\n$link';
     SharePlus.instance.share(
       ShareParams(
         text: text,

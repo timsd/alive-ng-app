@@ -91,6 +91,7 @@ bool _isGuestAccessibleRoute(String path) {
     '/oath',
     '/home',
     '/study',
+    '/study-guide',
     '/daily',
     '/health',
     '/enhanced-health',
@@ -123,9 +124,64 @@ bool _isGuestAccessibleRoute(String path) {
     '/reset-password',
     '/meet',
     '/conference',
+    '/events',
+    '/announcements',
+    '/announcement',
+    '/prayer',
+    '/prayer-wall',
+    '/prayer-requests',
+    '/achievements',
   ];
 
-  return guestAccessibleRoutes.contains(path) || guestAccessibleRoutes.contains(normalized);
+  if (guestAccessibleRoutes.contains(path) ||
+      guestAccessibleRoutes.contains(normalized)) {
+    return true;
+  }
+  if (normalized.startsWith('/prayer-requests/')) {
+    return true;
+  }
+  return false;
+}
+
+/// Captures the initial incoming deep link from either `sessionStorage['start_route']`
+/// (saved by `web/index.html` before Flutter boots) or `Uri.base` (before `GoRouter`
+/// replaces the browser URL with `initialLocation: '/'`).
+String? _extractStartupDeepLink() {
+  try {
+    final fromStorage = getInitialRoute()?.trim();
+    if (fromStorage != null &&
+        fromStorage.isNotEmpty &&
+        fromStorage != '/' &&
+        fromStorage != AppConstants.splashRoute &&
+        fromStorage != AppConstants.authRoute &&
+        fromStorage != AppConstants.onboardingRoute) {
+      return fromStorage;
+    }
+  } catch (_) {}
+
+  try {
+    final base = Uri.base;
+    if (base.fragment.startsWith('/') && base.fragment.length > 1) {
+      final frag = base.fragment;
+      if (frag != AppConstants.splashRoute &&
+          frag != AppConstants.authRoute &&
+          frag != AppConstants.onboardingRoute) {
+        return frag;
+      }
+    }
+    final path = base.path;
+    if (path.isNotEmpty &&
+        path != '/' &&
+        !path.endsWith('.html') &&
+        !path.contains(':') &&
+        path != AppConstants.splashRoute &&
+        path != AppConstants.authRoute &&
+        path != AppConstants.onboardingRoute) {
+      return base.hasQuery ? '$path?${base.query}' : path;
+    }
+  } catch (_) {}
+
+  return null;
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -153,6 +209,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(authStateProvider, (_, __) => refresh.value++);
   ref.onDispose(refresh.dispose);
   String? lastRouterUri;
+  String? pendingStartupDeepLink = _extractStartupDeepLink();
   const String lastActiveRouteKey = 'last_active_route';
 
   bool isPersistableRoute(String path) {
@@ -239,6 +296,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
+      // Allow guest-accessible shared deep links (everything except '/home')
+      // even if the visitor has not yet completed onboarding, so clicking a
+      // shared podcast, tract, Bible verse, meeting, or event link opens the
+      // shared destination directly.
+      if (!isAuthenticated &&
+          isGuestAccessibleRoute &&
+          state.uri.path != AppConstants.homeRoute &&
+          state.uri.path != AppConstants.onboardingRoute) {
+        debugPrint('Allow direct guest deep link: ${state.uri}');
+        return null;
+      }
+
       // If onboarding hasn't been completed and user is not authenticated,
       // route to onboarding first so visitors get the Onboarding -> Oath -> Auth flow
       // (while preserving direct deep links like password reset or admin approval).
@@ -250,6 +319,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.uri.path != '/donate' &&
           state.uri.path != AppConstants.resetPasswordRoute &&
           state.uri.path != AppConstants.authRoute) {
+        final target = state.uri.toString();
+        if (target.isNotEmpty &&
+            target != '/' &&
+            target != AppConstants.homeRoute &&
+            target != AppConstants.splashRoute) {
+          setPostAuthRedirect(target);
+        }
         debugPrint('Unauthenticated visitor: redirecting to onboarding');
         return AppConstants.onboardingRoute;
       }
@@ -334,6 +410,39 @@ final routerProvider = Provider<GoRouter>((ref) {
           onAnimationComplete: () async {
             final isAuthenticated =
                 ref.read(authGatewayProvider).currentUser != null;
+
+            // 1. Check if the app was launched via a shared deep link!
+            final incomingDeepLink = pendingStartupDeepLink ??
+                getInitialRoute() ??
+                getPostAuthRedirect();
+            pendingStartupDeepLink = null;
+            clearInitialRoute();
+
+            if (incomingDeepLink != null &&
+                incomingDeepLink.trim().isNotEmpty &&
+                incomingDeepLink.trim() != '/' &&
+                incomingDeepLink.trim() != AppConstants.splashRoute &&
+                incomingDeepLink.trim() != AppConstants.authRoute &&
+                incomingDeepLink.trim() != AppConstants.onboardingRoute) {
+              final deepLink = incomingDeepLink.trim();
+              final parsedUri = Uri.tryParse(deepLink);
+              final deepLinkPath = parsedUri?.path ?? deepLink;
+
+              if (isAuthenticated || _isGuestAccessibleRoute(deepLinkPath)) {
+                clearPostAuthRedirect();
+                if (!isAuthenticated) {
+                  ref.read(isGuestModeProvider.notifier).state = true;
+                }
+                if (!context.mounted) return;
+                context.go(deepLink);
+                return;
+              } else {
+                // Protected deep link while unauthenticated: save it so after
+                // login the user lands on their shared destination.
+                setPostAuthRedirect(deepLink);
+              }
+            }
+
             if (isAuthenticated) {
               String targetRoute = AppConstants.homeRoute;
               try {
@@ -487,7 +596,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Health Route
           GoRoute(
             path: AppConstants.healthRoute,
-            builder: (context, state) => const HealthScreen(),
+            builder: (context, state) {
+              final day = int.tryParse(state.uri.queryParameters['day'] ?? '');
+              return HealthScreen(initialDay: day);
+            },
           ),
 
           // Missions Route
@@ -745,8 +857,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.bibleRoute,
             builder: (context, state) {
-              final tab = state.uri.queryParameters['tab'];
+              final qp = state.uri.queryParameters;
+              final tab = qp['tab'];
+              String? refParam = qp['ref'] ?? qp['reference'];
+              if ((refParam == null || refParam.trim().isEmpty) &&
+                  qp['book'] != null &&
+                  qp['book']!.trim().isNotEmpty) {
+                final book = qp['book']!.trim();
+                final chapter = qp['chapter']?.trim() ?? '1';
+                final verse = qp['verse']?.trim();
+                refParam = (verse != null && verse.isNotEmpty)
+                    ? '$book $chapter:$verse'
+                    : '$book $chapter';
+              }
               return BibleReaderScreen(
+                initialReference: refParam,
                 initialTab: tab == 'study' ? 2 : (tab == 'search' ? 1 : 0),
               );
             },
@@ -788,15 +913,30 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Prayer Wall Route
           GoRoute(
             path: AppConstants.prayerWallRoute,
-            builder: (context, state) => const PrayerWallScreen(),
+            builder: (context, state) {
+              final prayerId = state.uri.queryParameters['prayerId'] ??
+                  state.uri.queryParameters['id'];
+              return PrayerWallScreen(initialPrayerId: prayerId);
+            },
           ),
           GoRoute(
             path: '/prayer-requests',
-            redirect: (context, state) => AppConstants.prayerWallRoute,
+            redirect: (context, state) {
+              final id = state.uri.queryParameters['prayerId'] ??
+                  state.uri.queryParameters['id'];
+              return (id != null && id.isNotEmpty)
+                  ? '${AppConstants.prayerWallRoute}?prayerId=${Uri.encodeComponent(id)}'
+                  : AppConstants.prayerWallRoute;
+            },
           ),
           GoRoute(
             path: '/prayer-requests/:id',
-            redirect: (context, state) => AppConstants.prayerWallRoute,
+            redirect: (context, state) {
+              final id = state.pathParameters['id'];
+              return (id != null && id.isNotEmpty)
+                  ? '${AppConstants.prayerWallRoute}?prayerId=${Uri.encodeComponent(id)}'
+                  : AppConstants.prayerWallRoute;
+            },
           ),
 
           // Private Prayer Room Route
@@ -837,15 +977,20 @@ final routerProvider = Provider<GoRouter>((ref) {
               final tabParam = state.uri.queryParameters['tab'];
               final initialTab =
                   (tabParam == 'downloaded' || tabParam == '1') ? 1 : 0;
-              return TractsScreen(initialTabIndex: initialTab);
+              final tractId = state.uri.queryParameters['tractId'] ??
+                  state.uri.queryParameters['id'];
+              return TractsScreen(
+                initialTabIndex: initialTab,
+                initialTractId: tractId,
+              );
             },
           ),
           GoRoute(
             path: AppConstants.booksTractsRoute,
             redirect: (context, state) {
-              final tab = state.uri.queryParameters['tab'];
-              return tab != null
-                  ? '${AppConstants.tractsRoute}?tab=$tab'
+              final query = state.uri.query;
+              return query.isNotEmpty
+                  ? '${AppConstants.tractsRoute}?$query'
                   : AppConstants.tractsRoute;
             },
           ),
@@ -895,16 +1040,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppConstants.eventsRoute,
             builder: (context, state) => EventsScreen(
               initialTab: state.uri.queryParameters['tab'] ?? 'events',
+              initialItemId: state.uri.queryParameters['id'],
             ),
           ),
           GoRoute(
             path: AppConstants.announcementsRoute,
-            builder: (context, state) =>
-                const EventsScreen(initialTab: 'announcements'),
+            builder: (context, state) => EventsScreen(
+              initialTab: 'announcements',
+              initialItemId: state.uri.queryParameters['id'],
+            ),
           ),
           GoRoute(
             path: '/announcement',
-            redirect: (context, state) => AppConstants.announcementsRoute,
+            redirect: (context, state) {
+              final query = state.uri.query;
+              return query.isNotEmpty
+                  ? '${AppConstants.announcementsRoute}?$query'
+                  : AppConstants.announcementsRoute;
+            },
           ),
 
           // Help & Support Route
