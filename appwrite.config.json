@@ -48,6 +48,7 @@
             "path": "appwrite_functions/createLiveKitToken",
             "entrypoint": "src/main.js",
             "execute": [
+                "any",
                 "users"
             ],
             "enabled": true,
@@ -77,7 +78,7 @@
             "logging": true,
             "events": [],
             "schedule": "",
-            "timeout": 15,
+            "timeout": 60,
             "commands": "npm install",
             "scopes": [
                 "databases.read",
@@ -117,7 +118,7 @@
             "logging": true,
             "events": [],
             "schedule": "",
-            "timeout": 15,
+            "timeout": 60,
             "commands": "npm install",
             "scopes": [
                 "users.write"
@@ -138,7 +139,7 @@
                 "users.*.create"
             ],
             "schedule": "",
-            "timeout": 15,
+            "timeout": 60,
             "commands": "npm install",
             "scopes": [
                 "users.read",
@@ -158,14 +159,11 @@
             "logging": true,
             "events": [],
             "schedule": "",
-            "timeout": 30,
+            "timeout": 60,
             "commands": "npm install",
             "scopes": [
                 "databases.read",
-                "documents.read",
-                "users.read",
-                "messages.write",
-                "topics.read"
+                "documents.read"
             ]
         },
         {
@@ -197,7 +195,7 @@
             "entrypoint": "src/main.js",
             "enabled": true,
             "logging": true,
-            "timeout": 15,
+            "timeout": 60,
             "commands": "npm install",
             "events": [
                 "users.*.create"
@@ -225,7 +223,7 @@
             "logging": true,
             "events": [],
             "schedule": "",
-            "timeout": 15,
+            "timeout": 60,
             "commands": "npm install",
             "scopes": [
                 "users.read",

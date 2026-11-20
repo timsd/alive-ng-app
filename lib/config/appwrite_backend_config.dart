@@ -90,7 +90,6 @@ class AppwriteBackendConfig {
   static const String chapterTasksCollectionId = 'chapter_tasks';
   static const String chapterReportsCollectionId = 'chapter_reports';
   static const String eventsCollectionId = 'events';
-  static const String userEventsCollectionId = 'user_events';
   static const String announcementsCollectionId = 'announcements';
   static const String contentPagesCollectionId = 'content_pages';
   static const String dynamicContentCollectionId = 'dynamic_content';

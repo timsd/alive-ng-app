@@ -6,11 +6,11 @@ export const appwriteProject = {
   databaseId: process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32',
 };
 
-const appwrite17MaxFileSize = 200000000;
+const appwrite17MaxFileSize = 500 * 1024 * 1024; // 500 MB
 // Appwrite can hold many audio files in this bucket. Total storage is limited
 // by the server's disk and `_APP_STORAGE_LIMIT` environment setting, not by code.
 // Increase that server-side limit if you plan to store a large library (e.g. 20 GB).
-const podcastMaxFileSize = 200000000;
+const podcastMaxFileSize = 500 * 1024 * 1024; // 500 MB
 
 export const buckets = [
   {
@@ -64,8 +64,8 @@ export const buckets = [
   {
     id: 'app_releases',
     name: 'App Releases',
-    maximumFileSize: appwrite17MaxFileSize,
-    allowedFileExtensions: ['apk', 'aab', 'zip'],
+    maximumFileSize: 200 * 1024 * 1024,
+    allowedFileExtensions: ['apk'],
   },
 ];
 
@@ -190,6 +190,7 @@ export const tables = [
       s('processor', 64), s('material_id', 128), s('material_title'), text('notes'), mediumtext('metadata'),
       s('purpose', 255), s('project_title', 255),
       dt('created_at'), dt('updated_at'), dt('completed_at'),
+      dt('receipt_sent_at'), dt('project_credited_at'), b('is_test', false, false),
     ],
     indexes: [{ key: 'donations_reference_idx', type: 'unique', columns: ['reference'] }, { key: 'donations_status_idx', type: 'key', columns: ['status'] }],
   },
@@ -199,7 +200,7 @@ export const tables = [
     columns: [
       s('title', 255, true), s('summary', 512), mediumtext('description'), s('category', 128), s('type', 128),
       s('status', 64), f('goal'), f('target_amount'), f('raised'), f('amount_raised'), s('currency', 16),
-      s('image_url', 1024), s('fund_update_title', 255), mediumtext('fund_update_text'),
+      s('image_url', 1024), s('viewer_url', 2048), s('fund_update_title', 255), mediumtext('fund_update_text'),
       s('fund_update_images', 2048, false, true), dt('fund_update_updated_at'),
       s('cta_label', 128), i('priority'), b('is_active', false, true), dt('created_at'), dt('updated_at'),
     ],
@@ -221,7 +222,8 @@ export const tables = [
     name: 'Material Downloads',
     columns: [
       s('user_id', 128, true), s('material_id', 128, true), s('material_title'), s('donation_id', 128),
-      f('donation_amount'), dt('downloaded_at'), s('download_url', 2048), dt('url_expires_at'),
+      f('donation_amount'), s('currency', 16), s('reference', 128), b('is_test', false, false),
+      dt('downloaded_at'), s('download_url', 2048), dt('url_expires_at'),
     ],
     indexes: [{ key: 'material_downloads_user_idx', type: 'key', columns: ['user_id'] }],
   },
@@ -314,10 +316,9 @@ export const tables = [
     ],
   },
   { id: 'events', name: 'Events', columns: [s('title', 255, true), mediumtext('description'), dt('scheduled_time'), i('event_timestamp'), s('location'), s('chapter_id', 128), s('status', 64), s('image_url', 1024), dt('created_at'), dt('updated_at')] },
-  { id: 'user_events', name: 'User Events', columns: [s('user_id', 128, true), s('event_id', 128, true), s('status', 64), dt('created_at'), dt('updated_at')] },
-  { id: 'announcements', name: 'Announcements', columns: [s('title', 255, true), mediumtext('content', true), s('author_id', 128), s('audience', 128), s('target_audience', 128), s('priority', 64), b('is_active', false, true), s('media_urls', 2048, false, true), i('created_timestamp'), dt('published_at'), dt('created_at'), dt('updated_at')], indexes: [{ key: 'announcements_created_idx', type: 'key', columns: ['created_at'], orders: ['DESC'] }] },
+  { id: 'announcements', name: 'Announcements', columns: [s('title', 255, true), mediumtext('content', true), s('author_id', 128), s('audience', 128), s('target_audience', 128), s('priority', 64), b('is_active', false, true), s('media_urls', 2048, false, true), s('action_url', 2048), s('action_text', 128), i('created_timestamp'), dt('published_at'), dt('created_at'), dt('updated_at')], indexes: [{ key: 'announcements_created_idx', type: 'key', columns: ['created_at'], orders: ['DESC'] }] },
   { id: 'content_pages', name: 'Content Pages', columns: [s('slug', 255, true), s('title', 255, true), mediumtext('content'), s('category', 128), s('page_type', 64), s('language', 32), s('language_code', 32), b('is_published', false, false), mediumtext('metadata'), text('meta_description'), text('meta_keywords'), i('sort_order'), s('author_id', 128), dt('publish_date'), dt('created_at'), dt('updated_at')], indexes: [{ key: 'content_pages_slug_idx', type: 'unique', columns: ['slug'] }] },
-  { id: 'dynamic_content', name: 'Dynamic Content', columns: [s('key', 255, true), s('category', 128), mediumtext('value'), mediumtext('metadata'), dt('created_at'), dt('updated_at')] },
+  { id: 'dynamic_content', name: 'Dynamic Content', columns: [s('key', 255, true), s('type', 64), s('title', 255), mediumtext('content'), s('category', 128), mediumtext('value'), mediumtext('metadata'), b('is_active', false, true), dt('created_at'), dt('updated_at')] },
   { id: 'featured_content', name: 'Featured Content', columns: [s('title', 255), text('description'), s('content_id', 128), s('content_type', 128), i('priority'), b('is_active', false, true), dt('created_at'), dt('updated_at')] },
   { id: 'app_settings', name: 'App Settings', columns: [s('key', 255, true), s('setting_key', 255), s('display_name', 255), mediumtext('value'), mediumtext('setting_value'), s('type', 64), s('data_type', 64), s('category', 128), text('description'), b('is_public', false, false), b('is_active', false, true), s('updated_by', 128), dt('created_at'), dt('updated_at')], indexes: [{ key: 'app_settings_key_idx', type: 'unique', columns: ['key'] }] },
   {
@@ -340,9 +341,10 @@ export const tables = [
     id: 'discipleship_contacts',
     name: 'Discipleship Contacts',
     columns: [
-      s('disciple_maker_id', 128, true), s('first_name', 128, true), s('last_name', 128, true), s('email', 320),
-      s('phone', 64), text('address'), dt('date_of_birth'), s('occupation', 255), text('interests'),
-      s('current_level', 64, true), dt('first_contact', true), dt('last_contact'), dt('baptism_date'),
+      s('disciple_maker_id', 128, true), s('first_name', 128, true), s('last_name', 128, true), s('name', 255),
+      s('email', 320), s('phone', 64), text('address'), dt('date_of_birth'), s('occupation', 255), text('interests'),
+      s('current_level', 64, true), s('level', 64), s('chapter_id', 128), s('owner_user_id', 128),
+      dt('first_contact', true), dt('last_contact'), dt('last_contacted_at'), dt('baptism_date'),
       text('notes'), b('is_active', false, true), s('tags', 128, false, true), mediumtext('custom_fields'),
       dt('created_at', true), dt('updated_at', true),
     ],
@@ -407,12 +409,14 @@ export const tables = [
     id: 'discipleship_reports',
     name: 'Discipleship Reports',
     columns: [
-      s('disciple_maker_id', 128, true), s('supervisor_id', 128), dt('report_period_start', true), dt('report_period_end', true),
+      s('disciple_maker_id', 128, true), s('disciple_maker_name', 255), s('supervisor_id', 128),
+      s('chapter_id', 128), s('routed_office_id', 128), s('report_period', 64), s('report_type', 64),
+      dt('report_period_start', true), dt('report_period_end', true),
       i('total_contacts', true), i('active_contacts', true), i('new_contacts', true), i('baptisms', true),
-      i('study_sessions', true), i('interactions', true), text('highlights'), text('challenges'), text('prayer_requests'),
+      i('study_sessions', true), i('interactions', true), mediumtext('summary'), text('highlights'), text('challenges'), text('prayer_requests'),
       text('goals'), s('frequency', 64, true), s('routed_officer_id', 128), s('routed_office_title', 255),
       s('routed_officer_name', 255), text('feedback'), s('feedback_officer_name', 255), dt('feedback_at'),
-      s('status', 64), dt('created_at', true), dt('submitted_at'),
+      s('status', 64), dt('created_at', true), dt('updated_at'), dt('submitted_at'),
     ],
     indexes: [
       { key: 'discipleship_reports_maker_idx', type: 'key', columns: ['disciple_maker_id'] },
@@ -472,7 +476,7 @@ export const tables = [
     ],
   },
   { id: 'task_assignments', name: 'Task Assignments', columns: [s('title', 255, true), mediumtext('description'), s('assigned_by_id', 128), s('assigned_to_id', 128), s('team_id', 128), s('chapter_id', 128), s('priority', 64), s('status', 64), dt('due_date'), dt('created_at'), dt('updated_at'), dt('completed_at')] },
-  { id: 'tracts', name: 'Tracts', columns: [s('title', 255, true), mediumtext('description'), s('category', 128), s('pdf_url', 2048), s('image_url', 2048), s('cover_image', 2048), s('cover_images', 2048, false, true), s('author'), i('pages'), i('order'), s('language', 32), b('featured', false, false), s('tags', 128, false, true), dt('created_at'), dt('updated_at')] },
+  { id: 'tracts', name: 'Tracts', columns: [s('title', 255, true), mediumtext('description'), s('category', 128), s('pdf_url', 2048), s('file_url', 2048), s('image_url', 2048), s('cover_image', 2048), s('cover_images', 2048, false, true), s('author'), i('pages'), i('order'), s('language', 32), b('featured', false, false), b('is_featured', false, false), s('tags', 128, false, true), dt('created_at'), dt('updated_at')] },
   { id: 'tract_contents', name: 'Tract Contents', columns: [s('tract_id', 128, true), mediumtext('content'), mediumtext('questions'), mediumtext('metadata'), dt('created_at'), dt('updated_at')], indexes: [{ key: 'tract_contents_tract_idx', type: 'key', columns: ['tract_id'] }] },
   { id: 'tract_categories', name: 'Tract Categories', columns: [s('name', 255, true), text('description'), s('image_url', 2048), i('order'), b('is_active', false, true)] },
   { id: 'tract_progress', name: 'Tract Progress', columns: [s('user_id', 128, true), s('tract_id', 128, true), i('current_page'), b('is_completed', false, false), dt('last_updated')] },
@@ -480,8 +484,8 @@ export const tables = [
   { id: 'books', name: 'Library Books', columns: [s('title', 255, true), s('author', 255), s('category', 128), s('language', 32), s('cover_url', 2048), s('file_url', 2048), mediumtext('description'), b('is_active'), dt('created_at'), dt('updated_at')], indexes: [{ key: 'books_title_idx', type: 'key', columns: ['title'] }, { key: 'books_category_idx', type: 'key', columns: ['category'] }] },
   { id: 'articles', name: 'Library Articles', columns: [s('title', 255, true), s('author', 255), s('category', 128), s('language', 32), mediumtext('content'), mediumtext('excerpt'), s('image_url', 2048), b('is_active'), dt('created_at'), dt('updated_at')], indexes: [{ key: 'articles_title_idx', type: 'key', columns: ['title'] }, { key: 'articles_category_idx', type: 'key', columns: ['category'] }] },
   { id: 'videos', name: 'Library Videos', columns: [s('title', 255, true), s('author', 255), s('category', 128), s('language', 32), s('video_url', 2048), s('thumbnail_url', 2048), mediumtext('description'), s('duration', 64), s('aspect_ratio', 32), mediumtext('notes'), b('is_active'), dt('created_at'), dt('updated_at')], indexes: [{ key: 'videos_title_idx', type: 'key', columns: ['title'] }, { key: 'videos_category_idx', type: 'key', columns: ['category'] }] },
-  { id: 'podcasts', name: 'Podcasts', columns: [s('title', 255, true), mediumtext('description'), s('category', 128), s('host'), i('episodes'), f('rating'), b('is_subscribed'), s('tags', 128, false, true), s('cover_image', 2048), s('audio_url', 2048), dt('created_at'), dt('updated_at')] },
-  { id: 'podcast_episodes', name: 'Podcast Episodes', columns: [s('title', 255, true), s('podcast_id', 128, true), s('podcast_title'), mediumtext('description'), mediumtext('transcript'), s('duration', 64), s('audio_url', 2048), dt('publish_date'), b('is_downloaded'), s('local_path', 1024)] },
+  { id: 'podcasts', name: 'Podcasts', columns: [s('title', 255, true), mediumtext('description'), s('category', 128), s('host'), i('episodes'), f('rating'), b('is_subscribed'), s('tags', 128, false, true), s('cover_image', 2048), s('audio_url', 2048), mediumtext('notes'), mediumtext('transcript'), dt('created_at'), dt('updated_at')] },
+  { id: 'podcast_episodes', name: 'Podcast Episodes', columns: [s('title', 255, true), s('podcast_id', 128, true), s('podcast_title'), mediumtext('description'), mediumtext('transcript'), mediumtext('notes'), s('duration', 64), s('audio_url', 2048), dt('publish_date'), b('is_downloaded'), s('local_path', 1024)] },
   { id: 'podcast_categories', name: 'Podcast Categories', columns: [s('name', 255, true), text('description'), i('order'), b('is_active', false, true)] },
   { id: 'study_guides', name: 'Study Guides', columns: [s('title', 255, true), mediumtext('description'), s('type', 128), s('difficulty', 64), s('cover_image_url', 2048), s('image_url', 2048), i('estimated_duration_minutes'), i('duration'), i('lesson_count'), mediumtext('objectives'), mediumtext('prerequisites'), mediumtext('metadata'), i('sort_order'), b('is_active'), b('is_featured'), b('is_published'), dt('created_at'), dt('updated_at')] },
   { id: 'study_lessons', name: 'Study Lessons', columns: [s('study_guide_id', 128, true), i('lesson_number'), s('title', 255, true), mediumtext('content'), mediumtext('key_verses'), mediumtext('supporting_verses'), text('summary'), text('practical_application'), i('estimated_duration_minutes'), mediumtext('resources'), dt('created_at'), dt('updated_at')] },

@@ -28,7 +28,8 @@
     "build:aab": "node scripts/sync_version_from_pubspec.mjs && node scripts/build_android_release.mjs aab",
     "build:android": "node scripts/sync_version_from_pubspec.mjs && node scripts/build_android_release.mjs all",
     "env:sync-coolify": "node scripts/build_android_release.mjs sync",
-    "appwrite:upload-android-release": "node --env-file=.env scripts/upload_android_release.mjs"
+    "appwrite:upload-android-release": "node --env-file=.env scripts/upload_android_release.mjs",
+    "backup:monitor": "node scripts/r2_backup_monitor.mjs"
   },
   "dependencies": {
     "node-appwrite": "22.1.3",

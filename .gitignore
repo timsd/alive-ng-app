@@ -142,3 +142,20 @@ assets/bible/*.bak-*
 .tmp-backups/
 .tmp_*
 
+# App releases & binaries
+*.apk
+*.aab
+
+# Database dumps and exports
+*.sql
+*.sql.gz
+
+# Android keystores & certificate stores
+*.jks
+*.keystore
+
+# Temporary scratch and maintenance scripts
+scripts/scratch_*
+scratch_*
+
+
