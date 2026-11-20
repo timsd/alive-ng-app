@@ -70,6 +70,7 @@ class OfficialMeetingMinutesData {
   final List<String> agendaItems;
   final List<MinutesAgendaRow> minutesRows;
   final String closingRemarks;
+  final List<Map<String, String>> transcriptAppendix;
 
   const OfficialMeetingMinutesData({
     required this.documentTitle,
@@ -86,6 +87,7 @@ class OfficialMeetingMinutesData {
     this.agendaItems = const [],
     this.minutesRows = const [],
     this.closingRemarks = '',
+    this.transcriptAppendix = const [],
   });
 
   factory OfficialMeetingMinutesData.fromJson(Map<String, dynamic> json) {
@@ -147,6 +149,15 @@ class OfficialMeetingMinutesData {
               ))
           .toList(),
       closingRemarks: (json['closing_remarks'] ?? '').toString(),
+      transcriptAppendix: (json['transcript_appendix'] as List<dynamic>? ?? [])
+          .whereType<Map>()
+          .map((e) => {
+                'timestamp': (e['timestamp'] ?? '').toString(),
+                'speaker': (e['speaker'] ?? '').toString(),
+                'role': (e['role'] ?? '').toString(),
+                'text': (e['text'] ?? '').toString(),
+              })
+          .toList(),
     );
   }
 }
@@ -661,6 +672,37 @@ class DocxReportGenerator {
       ));
     }
 
+    // 9. OPTIONAL APPENDIX: COMPLETE CLEAN CHRONOLOGICAL TRANSCRIPT
+    if (data.transcriptAppendix.isNotEmpty) {
+      body.writeln(_spacer(200));
+      body.writeln(_sectionHeading('APPENDIX: VERBATIM CHRONOLOGICAL TRANSCRIPT'));
+      for (final turn in data.transcriptAppendix) {
+        final ts = turn['timestamp'] ?? '';
+        final spk = turn['speaker'] ?? 'Speaker';
+        final role = turn['role'] ?? '';
+        final txt = turn['text'] ?? '';
+        if (txt.trim().isEmpty) continue;
+        final header = role.isNotEmpty
+            ? '**[$ts] $spk ($role):**'
+            : '**[$ts] $spk:**';
+        body.writeln(_richParagraph(
+          header,
+          fontSizeHalfPt: 18,
+          colorHex: '1B365D',
+          spacingBefore: 80,
+          spacingAfter: 20,
+        ));
+        body.writeln(_richParagraph(
+          txt,
+          fontSizeHalfPt: 18,
+          colorHex: '334155',
+          leftIndent: 180,
+          spacingBefore: 0,
+          spacingAfter: 60,
+        ));
+      }
+    }
+
     return _buildDocxArchive(body.toString(), customLogoBytes: logoBytes);
   }
 
@@ -706,18 +748,73 @@ class DocxReportGenerator {
     ));
     body.writeln(_spacer(120));
 
-    for (final rawLine in markdownContent.split(RegExp(r'\r?\n'))) {
-      final line = rawLine.trim();
+    final lines = markdownContent.split(RegExp(r'\r?\n'));
+    int idx = 0;
+    while (idx < lines.length) {
+      final line = lines[idx].trim();
       if (line.isEmpty) {
         body.writeln(_spacer(60));
+        idx++;
         continue;
       }
+
+      // Render Markdown pipe tables as genuine styled Word tables
+      if (line.startsWith('|') && line.endsWith('|')) {
+        final tableLines = <String>[];
+        while (idx < lines.length &&
+            lines[idx].trim().startsWith('|') &&
+            lines[idx].trim().endsWith('|')) {
+          tableLines.add(lines[idx].trim());
+          idx++;
+        }
+        List<String> splitPipeRow(String r) => r
+            .substring(1, r.length - 1)
+            .split('|')
+            .map((c) => c.trim())
+            .toList();
+        bool isSeparator(List<String> cells) =>
+            cells.every((c) => RegExp(r'^:?-{2,}:?$').hasMatch(c));
+
+        final parsedRows = tableLines.map(splitPipeRow).toList();
+        if (parsedRows.isNotEmpty) {
+          final headers = parsedRows.first;
+          final dataRows = parsedRows
+              .skip(1)
+              .where((r) => !isSeparator(r))
+              .toList();
+          final colCount = headers.length;
+          if (colCount > 0) {
+            final colWidth = (10080 / colCount).floor();
+            final widths = List<int>.filled(colCount, colWidth);
+            body.writeln(_styledGridTable(
+              columnWidthsDxa: widths,
+              headers: headers,
+              rows: dataRows,
+            ));
+            body.writeln(_spacer(100));
+          }
+        }
+        continue;
+      }
+
       if (line.startsWith('# ')) {
         body.writeln(_sectionHeading(line.substring(2).replaceAll('**', '').trim()));
       } else if (line.startsWith('## ')) {
         body.writeln(_sectionHeading(line.substring(3).replaceAll('**', '').trim()));
       } else if (line.startsWith('### ')) {
         body.writeln(_subHeading(line.substring(4).replaceAll('**', '').trim()));
+      } else if (line.startsWith('> ')) {
+        final quoteText = line.substring(2).replaceAll('*', '').trim();
+        body.writeln(_paragraph(
+          quoteText,
+          italic: true,
+          fontSizeHalfPt: 18,
+          colorHex: '475569',
+          shadingHex: 'F8FAFC',
+          leftIndent: 360,
+          spacingBefore: 20,
+          spacingAfter: 60,
+        ));
       } else if (line.startsWith('- ') || line.startsWith('* ')) {
         body.writeln(_richParagraph(
           '• ${line.substring(2).trim()}',
@@ -732,6 +829,7 @@ class DocxReportGenerator {
       } else {
         body.writeln(_richParagraph(line, fontSizeHalfPt: 20));
       }
+      idx++;
     }
 
     return _buildDocxArchive(body.toString(), customLogoBytes: logoBytes);

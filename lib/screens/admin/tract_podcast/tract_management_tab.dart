@@ -965,10 +965,10 @@ class _TractFormDialogState extends State<_TractFormDialog> {
       });
 
       if (extracted != null && extracted.interactiveSections.isNotEmpty && mounted) {
-        final warnCount = extracted.extractionWarnings.length;
+        final warnCount = extracted.reviewNotes.length;
         final msg = warnCount == 0
             ? 'Extracted ${extracted.interactiveSections.length} interactive study sections from $fileName.'
-            : 'Extracted ${extracted.interactiveSections.length} sections with $warnCount lint warning(s): ${extracted.extractionWarnings.first}';
+            : 'Extracted ${extracted.interactiveSections.length} sections with $warnCount lint warning(s): ${extracted.reviewNotes.first}';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg),

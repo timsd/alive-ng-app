@@ -351,10 +351,15 @@ class _LeaderMeetingTranscriptionScreenState
           '';
 
       final meetingTitle = _meetingTitleController.text.trim();
+      final officialMinutesJson = _scribeService?.generateOfficialMinutesJson(
+            meetingTitle: meetingTitle,
+            meetingType: _meetingType,
+          ) ??
+          markdown;
       final bytes = await DocxReportGenerator.generateMeetingMinutesDocx(
         meetingTitle: meetingTitle,
         meetingType: _meetingType,
-        markdownContent: markdown,
+        markdownContent: officialMinutesJson,
       );
       final dateClean = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
       final sanitizedTitle = meetingTitle

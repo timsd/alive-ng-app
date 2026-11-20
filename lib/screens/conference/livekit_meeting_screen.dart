@@ -501,10 +501,15 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       return;
     }
 
+    final officialMinutesJson = scribe.generateOfficialMinutesJson(
+      meetingTitle: roomTitle,
+      meetingType: meetingTypeStr,
+    );
+
     final bytes = await DocxReportGenerator.generateMeetingMinutesDocx(
       meetingTitle: roomTitle,
       meetingType: meetingTypeStr,
-      markdownContent: markdown,
+      markdownContent: officialMinutesJson,
     );
     final dateClean = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
     final sanitizedTitle = roomTitle.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');

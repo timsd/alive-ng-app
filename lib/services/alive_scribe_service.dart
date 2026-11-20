@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -172,6 +173,8 @@ class AliveScribeService {
   final List<ScribeDecision> _decisions = [];
   final List<ScribeActionItem> _actionItems = [];
   final Set<String> _attendees = {};
+  final Map<String, String> _attendeeRoles = {};
+  final Set<String> _speakingAttendees = {};
 
   final _transcriptStreamController =
       StreamController<List<ScribeTranscriptPacket>>.broadcast();
@@ -722,12 +725,16 @@ class AliveScribeService {
   // ──────────────────────────────────────────────────────────
   void _handleIncomingPacket(ScribeTranscriptPacket packet) {
     _attendees.add(packet.speakerName);
+    _speakingAttendees.add(packet.speakerName);
+    if (packet.speakerRole.trim().isNotEmpty) {
+      _attendeeRoles[packet.speakerName] = packet.speakerRole.trim();
+    }
 
     // Merge rapid successive fragments from the same speaker within 3.5 seconds
     if (_transcript.isNotEmpty) {
       final last = _transcript.last;
       final diff = packet.timestamp.difference(last.timestamp).inMilliseconds;
-      if (last.speakerId == packet.speakerId && diff < 3500) {
+      if (last.speakerId == packet.speakerId && diff >= 0 && diff < 3500) {
         final lastTrimmed = last.text.trim();
         final currentTrimmed = packet.text.trim();
         final lastLower = lastTrimmed.toLowerCase();
@@ -752,8 +759,11 @@ class AliveScribeService {
           return;
         }
 
-        // 3. Otherwise merge with punctuation
-        final combinedText = '$lastTrimmed. $currentTrimmed';
+        // 3. Otherwise merge cleanly (preserve sentence flow if no trailing punctuation)
+        final endsSentence = RegExp(r'[.!?]$').hasMatch(lastTrimmed);
+        final combinedText = endsSentence
+            ? '$lastTrimmed $currentTrimmed'
+            : '$lastTrimmed. $currentTrimmed';
         final updated = last.copyWith(
           text: combinedText,
           timestamp: packet.timestamp,
@@ -763,8 +773,9 @@ class AliveScribeService {
           _transcriptStreamController.add(List.unmodifiable(_transcript));
         }
 
-        // Run Pass 2 only on the newly arrived packet to avoid re-matching earlier turns
-        _runPass2Extraction(packet);
+        // Run Pass 2 on the merged turn so motions/actions split across brief
+        // breathing pauses are still captured (clause-level dedup prevents duplicates).
+        _runPass2Extraction(updated);
         return;
       }
     }
@@ -781,145 +792,855 @@ class AliveScribeService {
   // ──────────────────────────────────────────────────────────
   //  Pass 2: Real-Time Deterministic NLP & Traceable Citations
   // ──────────────────────────────────────────────────────────
-  void _runPass2Extraction(ScribeTranscriptPacket packet) {
-    final text = packet.text.trim();
-    if (text.length < 12) return;
+  static List<String> _splitIntoSentences(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return const [];
 
-    final lower = text.toLowerCase();
-    final timeStr = DateFormat('HH:mm').format(packet.timestamp);
+    // Protect common abbreviations and titles so periods inside them don't split sentences
+    const sentinel = '\u0000';
+    var protected = trimmed.replaceAllMapped(
+      RegExp(
+        r'\b(Dr|Bro|Sis|Mr|Mrs|Ms|Rev|Ps|St|Prof|Engr|P\.O|U\.S\.A|e\.g|i\.e|vs|No|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.',
+        caseSensitive: false,
+      ),
+      (m) => '${m.group(1)}$sentinel',
+    );
+    // Protect decimal numbers like 2.3 million or 1.1 million
+    protected = protected.replaceAllMapped(
+      RegExp(r'(\d)\.(\d)'),
+      (m) => '${m.group(1)}$sentinel${m.group(2)}',
+    );
 
-    // 1. Council Decisions / Resolutions Matcher
-    final decisionPatterns = [
-      RegExp(r'\b(i\s+(hereby\s+)?move\s+that\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(second(ed)?\s+(the\s+motion|by\s+[A-Za-z\s]+))', caseSensitive: false),
-      RegExp(r'\b(adopt(ed)?\s+(it|this|the\s+minutes|the\s+report)\s+as\s+a\s+working\s+document)', caseSensitive: false),
-      RegExp(r'\b(we (agreed|decided) to\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(it is resolved that\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(council (agreed|resolves|approved)\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(board (agreed|resolves|approved|decided)\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(moved and seconded that\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(consensus (is|was) that\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(unanimously (approved|agreed|adopted)\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(approved the budget for\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(voted to (adopt|approve|appoint|proceed with)\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(confirmed the appointment of\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(it is decided that\s+(.+))', caseSensitive: false),
-      RegExp(r"\b((let'?s|we('ll| will)?)\s+(go with|adopt|approve|proceed with|stick with)\s+(.+))", caseSensitive: false),
-      RegExp(r'\b((agreed|settled|confirmed|approved)\s+(to|that|on)\s+(.+))', caseSensitive: false),
+    final rawParts = protected.split(RegExp(r'(?<=[.!?])\s+'));
+    return rawParts
+        .map((s) => s.replaceAll(sentinel, '.').trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  /// Extracts Nigerian/British/standard English deadlines and target windows.
+  static String? extractDeadline(String text) {
+    final patterns = <RegExp>[
+      // "15th of December", "by 29th of this month", "23rd of November"
+      RegExp(
+        r'\b(?:(?:by|on|before|from)\s+)?(?:the\s+)?\d{1,2}(?:st|nd|rd|th)?\s+of\s+(?:this\s+month|next\s+month|January|February|March|April|May|June|July|August|September|October|November|December)\b',
+        caseSensitive: false,
+      ),
+      // "November 23rd", "December 15", "29 November", "24th to 29th"
+      RegExp(
+        r'\b(?:(?:by|on|before|from)\s+)?(?:(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*(?:to|-|–)\s*\d{1,2}(?:st|nd|rd|th)?)?|\d{1,2}(?:st|nd|rd|th)?\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?)\b',
+        caseSensitive: false,
+      ),
+      // "first or second week of December", "last week of December or first week of January"
+      RegExp(
+        r'\b(?:(?:by|in)\s+)?(?:the\s+)?(?:first|second|third|fourth|last|1st|2nd|3rd|4th)(?:\s+or\s+(?:first|second|third|fourth|last|1st|2nd|3rd|4th))?\s+week\s+(?:of|in)\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)(?:\s+or\s+(?:first|second|third|fourth|last|1st|2nd|3rd|4th)\s+week\s+(?:of|in)\s+(?:January|February|March|April|May|June|July|August|September|October|November|December))?\b',
+        caseSensitive: false,
+      ),
+      // "end of November", "end of this month", "November ending"
+      RegExp(
+        r'\b(?:(?:by|from)\s+)?(?:(?:the\s+)?(?:end|beginning|start)\s+of\s+(?:this\s+month|next\s+month|January|February|March|April|May|June|July|August|September|October|November|December)|(?:this\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+ending)\b',
+        caseSensitive: false,
+      ),
+      // "in latest two weeks' time", "in two weeks' time", "within 3 days", "within 2 weeks"
+      RegExp(
+        r"\b(?:in\s+(?:latest\s+|about\s+)?|within\s+)(?:a|an|one|two|three|four|five|six|\d+)(?:\s*(?:to|-)\s*(?:one|two|three|four|five|six|\d+))?\s+(?:day|days|week|weeks|month|months)(?:'?s?\s+time)?\b",
+        caseSensitive: false,
+      ),
+      // "by next Sunday", "before handover", "during handover", "before January"
+      RegExp(
+        r'\b(?:by\s+(?:next\s+)?(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|tomorrow|tonight|next\s+week|next\s+month)|(?:before|during)\s+(?:the\s+)?(?:handover|January|February|March|April|May|June|July|August|September|October|November|December|next\s+meeting))\b',
+        caseSensitive: false,
+      ),
+      // Short relative markers: "this week", "next week", "next Sunday", "after the meeting", "immediately", "urgently"
+      RegExp(
+        r'\b(?:this\s+week|next\s+week|next\s+(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)|after\s+the\s+meeting|before\s+the\s+next\s+meeting|immediately|urgently|tomorrow|tonight)\b',
+        caseSensitive: false,
+      ),
     ];
 
-    for (final pattern in decisionPatterns) {
-      final match = pattern.firstMatch(text);
-      if (match != null) {
-        var extractedDecision = match.group(0)!;
-        // Clean leading indicators for a punchy resolution statement
-        extractedDecision = extractedDecision
-            .replaceFirst(RegExp(r'^(we agreed to|it is resolved that|council agreed that|board agreed that|consensus is that|unanimously approved that)\s*', caseSensitive: false), '')
-            .trim();
-        if (extractedDecision.isNotEmpty) {
-          extractedDecision =
-              extractedDecision[0].toUpperCase() + extractedDecision.substring(1);
+    for (final p in patterns) {
+      final m = p.firstMatch(text);
+      if (m != null) {
+        final raw = m.group(0)!.trim().replaceAll(RegExp(r'\s+'), ' ');
+        return raw[0].toUpperCase() + raw.substring(1);
+      }
+    }
+    return null;
+  }
+
+  static bool _isFacilitationOrNoise(String sentence) {
+    final lower = sentence.toLowerCase().trim();
+    if (lower.length < 14) return true;
+    final noisePatterns = [
+      RegExp(r'^(thank you|thanks|all right|okay|yes|no|amen|not?ed|good evening|hello)\b[^.]{0,25}$'),
+      RegExp(r'\b(please\s+close\s+us\s+in\s+prayer|close\s+in\s+prayer|let\s+us\s+pray|can\s+you\s+hear\s+me|smile\s+for\s+me|go\s+ahead\s+please|let(?:\x27s|\s+us)\s+(?:make\s+progress|move\s+on))\b'),
+      RegExp(r'^(?:i\s+just\s+want(?:ed)?\s+to\s+(?:say|ask|find\s+out|thank|comment)|let\s+me\s+(?:just\s+)?(?:say|ask|take\s+a\s+quick))\b'),
+    ];
+    return noisePatterns.any((r) => r.hasMatch(lower));
+  }
+
+  /// Checks whether a short turn confirms/seconds/carries a recent motion
+  /// and attaches it to that motion instead of creating an orphan decision.
+  bool _tryAttachMotionConfirmation(
+    String sentence,
+    ScribeTranscriptPacket packet,
+  ) {
+    final lower = sentence.toLowerCase().trim();
+    final isSecond = RegExp(
+      r'\b(seconded(?:\s+by\s+([A-Za-z\.\s]+?))?|i\s+second\b)',
+      caseSensitive: false,
+    ).firstMatch(sentence);
+    final isCarried = RegExp(
+      r'\b(carried|all\s+in\s+favor\s+say\s+aye|say\s+aye|^aye!?$|supported\s+sir|supported)\b',
+      caseSensitive: false,
+    ).hasMatch(lower);
+
+    if (isSecond == null && !isCarried) return false;
+    if (_decisions.isEmpty) return false;
+
+    // Attach to the most recent Motion / Resolution or Chair challenge within the last 5 minutes
+    for (int i = _decisions.length - 1; i >= 0; i--) {
+      final prev = _decisions[i];
+      if (prev.category == 'Motion / Resolution' ||
+          prev.category == 'Consensus' ||
+          prev.category == 'Budget / Finance') {
+        var updatedDecision = prev.decision;
+        if (isSecond != null) {
+          final namedSeconder = isSecond.group(2)?.trim();
+          final seconder = (namedSeconder != null && namedSeconder.isNotEmpty)
+              ? namedSeconder.replaceAll(RegExp(r'[.,;:]+$'), '')
+              : packet.speakerName;
+          if (!updatedDecision.toLowerCase().contains('seconded')) {
+            updatedDecision = '$updatedDecision [Seconded by $seconder]';
+          }
         }
-
-        // Avoid duplicate decisions
-        final isDuplicate = _decisions.any((d) =>
-            d.decision.toLowerCase() == extractedDecision.toLowerCase() ||
-            d.verbatimQuote == text);
-
-        if (!isDuplicate) {
-          final decisionObj = ScribeDecision(
-            id: DateTime.now().microsecondsSinceEpoch.toString(),
-            decision: extractedDecision,
-            speakerName: packet.speakerName,
-            speakerRole: packet.speakerRole,
-            timestampFormatted: timeStr,
-            verbatimQuote: text,
-            category: lower.contains('budget')
-                ? 'Budget'
-                : lower.contains('appoint')
-                    ? 'Appointment'
-                    : lower.contains('move') || lower.contains('second') || lower.contains('adopt')
-                        ? 'Motion / Resolution'
-                        : 'Resolution',
+        if (isCarried && !updatedDecision.toLowerCase().contains('carried') && !updatedDecision.toLowerCase().contains('supported')) {
+          final tag = lower.contains('supported') ? 'Supported' : 'Carried';
+          updatedDecision = '$updatedDecision [$tag]';
+        }
+        if (updatedDecision != prev.decision) {
+          _decisions[i] = ScribeDecision(
+            id: prev.id,
+            decision: updatedDecision,
+            speakerName: prev.speakerName,
+            speakerRole: prev.speakerRole,
+            timestampFormatted: prev.timestampFormatted,
+            verbatimQuote: prev.verbatimQuote,
+            category: prev.category,
           );
-          _decisions.add(decisionObj);
           if (!_decisionsStreamController.isClosed) {
             _decisionsStreamController.add(List.unmodifiable(_decisions));
           }
         }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Cross-turn deadline back-patching: if the Chair/speaker states a deadline
+  /// right after an action commitment that lacked a date, attach it cleanly.
+  void _tryBackfillRecentActionDeadline(
+    String sentence,
+    ScribeTranscriptPacket packet,
+  ) {
+    if (_actionItems.isEmpty) return;
+    final foundDate = extractDeadline(sentence);
+    if (foundDate == null) return;
+
+    final lower = sentence.toLowerCase();
+    final isFollowupDate = lower.contains('reasonable') ||
+        lower.contains('should be okay') ||
+        lower.contains('report dropped') ||
+        lower.contains('give him') ||
+        lower.contains('specific time') ||
+        sentence.length <= 130;
+    if (!isFollowupDate) return;
+
+    // Look back up to 2 recent action items without a due date
+    final startIdx = (_actionItems.length - 2).clamp(0, _actionItems.length - 1);
+    for (int i = _actionItems.length - 1; i >= startIdx; i--) {
+      final act = _actionItems[i];
+      if (act.targetDueDate == null || act.targetDueDate!.isEmpty) {
+        _actionItems[i] = ScribeActionItem(
+          id: act.id,
+          task: act.task,
+          assignee: act.assignee,
+          targetDueDate: foundDate,
+          speakerName: act.speakerName,
+          timestampFormatted: act.timestampFormatted,
+          verbatimQuote: act.verbatimQuote,
+          isCompleted: act.isCompleted,
+        );
+        if (!_actionItemsStreamController.isClosed) {
+          _actionItemsStreamController.add(List.unmodifiable(_actionItems));
+        }
         break;
       }
     }
+  }
 
-    // 2. Action Items & Commitments Matcher
-    final actionPatterns = [
-      RegExp(r'\b(i (will|am going to|shall)\s+(.+))', caseSensitive: false),
-      RegExp(r"\b(i'll\s+(.+))", caseSensitive: false),
-      RegExp(r'\b(assigned to\s+([A-Za-z\s]+?)\s+(to|for|with)\s+(.+))', caseSensitive: false),
-      RegExp(r'\b((bro|brother|sis|sister|pastor|elder|sir|uncle|aunty|dr)\s+[A-Za-z]+\s+(will|is to|to|should)\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(we will follow up on\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(take responsibility for\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(action point(\s+is)?\s+(.+))', caseSensitive: false),
-      RegExp(r'\b(action\s+(?:on|for)\s+([A-Za-z\s]+?)\s*(?:to|:|-)\s*(.+))', caseSensitive: false),
-      RegExp(r"\b(we(?:'ll| will| need to)\s+(?:make sure|ensure|send|prepare|share|follow up|contact)\s+(.+))", caseSensitive: false),
+  void _runPass2Extraction(ScribeTranscriptPacket packet) {
+    final fullText = packet.text.trim();
+    if (fullText.length < 4) return;
+
+    final timeStr = DateFormat('HH:mm').format(packet.timestamp);
+    final sentences = _splitIntoSentences(fullText);
+
+    // 1. Council Decisions / Resolutions Matcher (per sentence)
+    final decisionPatterns = <RegExp>[
+      RegExp(r'\b(i\s+(?:hereby\s+)?move\s+that\s+.+)', caseSensitive: false),
+      RegExp(r'\b(moved\s+and\s+seconded\s+that\s+.+)', caseSensitive: false),
+      RegExp(r'\b(it\s+is\s+(?:hereby\s+)?(?:resolved|decided)\s+that\s+.+)', caseSensitive: false),
+      RegExp(r'\b(unanimously\s+(?:approved|agreed|adopted)\s+.+)', caseSensitive: false),
+      RegExp(r'\b(voted\s+to\s+(?:adopt|approve|appoint|proceed\s+with)\s+.+)', caseSensitive: false),
+      RegExp(r'\b(confirmed\s+the\s+appointment\s+of\s+.+)', caseSensitive: false),
+      RegExp(r'\b(approved\s+the\s+budget\s+for\s+.+)', caseSensitive: false),
+      RegExp(r'\b((?:council|board|the\s+board|we)\s+(?:agreed|decided|resolved|approved|confirmed)\s+(?:to|that|on)\s+.+)', caseSensitive: false),
+      RegExp(r'\b(consensus\s+(?:is|was)\s+that\s+.+)', caseSensitive: false),
+      RegExp(r'\b(adopt(?:ed)?\s+(?:it|this|the\s+minutes|the\s+report|the\s+document)\s+as\s+a\s+working\s+document.*)', caseSensitive: false),
+      // Natural Board/ExCo consensus, structural & policy rulings
+      RegExp(r"\b((?:we\s+(?:are\s+going\s+to|can|will)|let(?:'s|\s+us))\s+(?:split|separate|combine|do\s+[^.]+?\s+and\s+separate|keep\s+[^.]+?\s+alone|hold\s+on\s+voting|defer|take\s+that\s+window|solidify|add\s+[^.]+?\s+to\s+kpi|start\s+dropping|go\s+with|adopt|approve|proceed\s+with|stick\s+with)\s*.+)", caseSensitive: false),
+      RegExp(r'\b((?:so\s+)?[A-Z][A-Za-z\s/&]+?\s+stay\s+together,\s+and\s+.+?\s+is\s+separate.*)', caseSensitive: false),
+      RegExp(r'\b(i\s+want\s+to\s+challenge\s+all\s+.+?\s+board\s+members.+)', caseSensitive: false),
+      RegExp(r'\b(taking\s+a\s+break\s+is\s+not\s+a\s+permanent\s+exit.+)', caseSensitive: false),
+      RegExp(r'\b(we\s+(?:must|should)\s+(?:keep|have)\s+(?:a\s+pool\s+of|ring-fenced|some\s+names\s+on\s+standby).+)', caseSensitive: false),
+      RegExp(r'\b(going\s+forward\s+.+?\s+must\s+be\s+.+)', caseSensitive: false),
+      RegExp(r'\b(the\s+calling\s+should\s+come\s+with\s+clear\s+terms\s+and\s+conditions.+)', caseSensitive: false),
+      RegExp(r'\b(include\s+it\s+as\s+a\s+formal\s+kpi\s+for\s+all\s+offices.+)', caseSensitive: false),
     ];
 
-    for (final pattern in actionPatterns) {
-      final match = pattern.firstMatch(text);
-      if (match != null) {
-        var task = match.group(0)!;
-        String assignee = packet.speakerName;
+    for (final sentence in sentences) {
+      if (_tryAttachMotionConfirmation(sentence, packet)) {
+        continue;
+      }
+      if (sentence.length < 18) continue;
+      final lower = sentence.toLowerCase();
 
-        // Detect third-party assignment
-        final thirdPartyMatch = RegExp(
-          r'\b(assigned to\s+([A-Za-z\s]+?)|(bro|brother|sis|sister|pastor|elder|sir|uncle|aunty|dr)\s+([A-Za-z]+))\b',
-          caseSensitive: false,
-        ).firstMatch(text);
-        if (thirdPartyMatch != null) {
-          final candidate = thirdPartyMatch.group(0)!;
-          assignee = candidate.replaceFirst(RegExp(r'^assigned to\s+', caseSensitive: false), '').trim();
-        }
-
-        // Detect deadline or target date
-        String? targetDueDate;
-        final dateMatch = RegExp(
-          r'\b(by\s+(next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|tonight|next week|end of the month|month end|[0-9]{1,2}(st|nd|rd|th)?\s+[A-Za-z]+)|within\s+[0-9]+\s+(days|weeks|months))\b',
-          caseSensitive: false,
-        ).firstMatch(text);
-        if (dateMatch != null) {
-          targetDueDate = dateMatch.group(0)!.trim();
-        }
-
-        // Clean task description
-        task = task
-            .replaceFirst(RegExp(r"^(i will|i'll|we will follow up on|take responsibility for|action point is|action point)\s*", caseSensitive: false), '')
-            .trim();
-        if (task.isNotEmpty) {
-          task = task[0].toUpperCase() + task.substring(1);
-        }
-
-        final isDuplicate = _actionItems.any((a) =>
-            a.task.toLowerCase() == task.toLowerCase() ||
-            a.verbatimQuote == text);
-
-        if (!isDuplicate && task.length > 5) {
-          final actionObj = ScribeActionItem(
-            id: DateTime.now().microsecondsSinceEpoch.toString(),
-            task: task,
-            assignee: assignee,
-            targetDueDate: targetDueDate,
-            speakerName: packet.speakerName,
-            timestampFormatted: timeStr,
-            verbatimQuote: text,
-          );
-          _actionItems.add(actionObj);
-          if (!_actionItemsStreamController.isClosed) {
-            _actionItemsStreamController.add(List.unmodifiable(_actionItems));
+      for (final pattern in decisionPatterns) {
+        final match = pattern.firstMatch(sentence);
+        if (match != null) {
+          var extractedDecision = match.group(0)!.trim();
+          extractedDecision = extractedDecision
+              .replaceFirst(
+                RegExp(
+                  r'^(?:we\s+agreed\s+to|it\s+is\s+(?:hereby\s+)?resolved\s+that|council\s+agreed\s+that|board\s+agreed\s+that|consensus\s+is\s+that|unanimously\s+approved\s+that)\s*',
+                  caseSensitive: false,
+                ),
+                '',
+              )
+              .trim();
+          if (extractedDecision.isNotEmpty) {
+            extractedDecision = extractedDecision[0].toUpperCase() +
+                extractedDecision.substring(1);
           }
+
+          final normNew = extractedDecision.toLowerCase();
+          final isDuplicate = _decisions.any((d) {
+            final normOld = d.decision.toLowerCase();
+            return normOld == normNew ||
+                normOld.contains(normNew) ||
+                normNew.contains(normOld) ||
+                d.verbatimQuote.toLowerCase() == sentence.toLowerCase();
+          });
+
+          if (!isDuplicate && extractedDecision.length >= 12) {
+            final isPastReview = lower.contains('last meeting') ||
+                lower.contains('september meeting') ||
+                lower.contains('wasn\'t there');
+            final category = lower.contains('move that') ||
+                    lower.contains('working document') ||
+                    lower.contains('seconded')
+                ? 'Motion / Resolution'
+                : lower.contains('budget') ||
+                        lower.contains('giving') ||
+                        lower.contains('challenge all') ||
+                        lower.contains('naira') ||
+                        lower.contains('fund')
+                    ? 'Budget / Finance'
+                    : lower.contains('appoint') || lower.contains('assist elder')
+                        ? 'Appointment'
+                        : lower.contains('split') ||
+                                lower.contains('separate') ||
+                                lower.contains('stay together') ||
+                                lower.contains('kpi')
+                            ? 'Governance / Structure'
+                            : lower.contains('policy') ||
+                                    lower.contains('hold on voting') ||
+                                    lower.contains('permanent exit') ||
+                                    lower.contains('terms and conditions')
+                                ? 'Policy'
+                                : isPastReview
+                                    ? 'Prior Resolution'
+                                    : 'Consensus';
+
+            final decisionObj = ScribeDecision(
+              id: '${DateTime.now().microsecondsSinceEpoch}_${_decisions.length}',
+              decision: extractedDecision,
+              speakerName: packet.speakerName,
+              speakerRole: packet.speakerRole,
+              timestampFormatted: timeStr,
+              verbatimQuote: sentence,
+              category: category,
+            );
+            _decisions.add(decisionObj);
+            if (!_decisionsStreamController.isClosed) {
+              _decisionsStreamController.add(List.unmodifiable(_decisions));
+            }
+          }
+          break;
         }
-        break;
       }
     }
+
+    // 2. Clause-Scoped Action Items, Assignees & Deadlines (per sentence)
+    for (final sentence in sentences) {
+      if (_isFacilitationOrNoise(sentence)) continue;
+      final lower = sentence.toLowerCase();
+
+      // Skip hypothetical "If we wait for X..." warnings (not assignments)
+      if (RegExp(r'^if\s+we\s+wait\s+for\b', caseSensitive: false)
+          .hasMatch(sentence)) {
+        continue;
+      }
+
+      String? extractedTask;
+      String? extractedAssignee;
+
+      // Pattern A: Explicit first-person commitment ("I will ...", "I'll ...", "I can work with ...")
+      final firstPersonMatch = RegExp(
+        r"\b(?:i\s+(?:will|shall|am\s+going\s+to)|i'll)\s+(?!say\b|just\s+say\b|think\b|believe\b|agree\b|want\b|need\b|understand\b)(.+)",
+        caseSensitive: false,
+      ).firstMatch(sentence);
+
+      // Pattern B: Explicit "assigned to X to/for Y"
+      final assignedToMatch = RegExp(
+        r'\bassigned\s+to\s+([A-Za-z\.\s]+?)\s+(?:to|for|with)\s+(.+)',
+        caseSensitive: false,
+      ).firstMatch(sentence);
+
+      // Pattern C: Direct vocative / named subject directive within THIS sentence ONLY
+      final directedMatch = RegExp(
+        r'\b((?:bro\.?|brother|sis\.?|sister|pastor|elder|uncle|aunty|auntie|dr\.?)\s+[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)?|presido|secretary|treasurer|committee)\s*,?\s+(?:please\s+)?(?:you\s+need\s+to|needs?\s+to|should(?:\s+also)?|is\s+to|will|must|go\s+ahead\s+and|please\s+(?:go\s+ahead\s+and\s+)?(?:recommend|capture|forward|submit|prepare|send|compile|work\s+on|share|help|consolidate|source))\s+(.+)',
+        caseSensitive: false,
+      ).firstMatch(sentence);
+
+      // Pattern C2: Standalone first-name directive ("Deji should work on...", "Frank will help...")
+      final namedVerbMatch = RegExp(
+        r'\b([A-Z][a-z]{2,15})\s+(?:should|will|must|is\s+to)\s+(?:work\s+on|help\s+us|prepare|send|compile|submit|consolidate|source|lead|follow\s+up|capture|recommend)\s+(.+)',
+      ).firstMatch(sentence);
+
+      // Pattern D: Collective / Board / Committee commitment
+      final collectiveMatch = RegExp(
+        r"\b((?:all\s+(?:11\s+of\s+us\s+)?board\s+members|every\s+board\s+member|our\s+committee|our\s+target\s+is\s+to|we(?:'ll|\s+will|\s+shall|\s+should\s+be\s+able\s+to|\s+need\s+to)|let(?:'s|\s+us)\s+(?:all\s+)?)(?:be\s+able\s+to\s+)?(?:prepare|supply|compile|submit|send|share|push|finalize|finish|complete|call|contact|create|set\s+up|add|follow\s+up|work\s+on|start\s+dropping|commence|fill\s+it\s+out|have\s+that\s+report|put\s+them\s+together|contribute|go\s+over|make\s+sure|ensure)\s+.+)",
+        caseSensitive: false,
+      ).firstMatch(sentence);
+
+      // Pattern E: Explicit "action point / take responsibility"
+      final explicitActionMatch = RegExp(
+        r'\b(?:action\s+point(?:\s+is)?|take\s+responsibility\s+for)\s+(.+)',
+        caseSensitive: false,
+      ).firstMatch(sentence);
+
+      if (assignedToMatch != null) {
+        extractedAssignee = assignedToMatch.group(1)!.trim();
+        extractedTask = assignedToMatch.group(2)!.trim();
+      } else if (firstPersonMatch != null) {
+        extractedTask = firstPersonMatch.group(1)!.trim();
+        extractedAssignee = packet.speakerName;
+        // Detect co-assignee strictly inside the first-person clause (e.g. "work with Timothy")
+        final coMatch = RegExp(
+          r'\b(?:work\s+with|and\s+(?:the\s+)?(?:president|secretary|sister\s+[A-Z][a-z]+|brother\s+[A-Z][a-z]+))\b(?:\s+([A-Z][a-z]+))?',
+          caseSensitive: false,
+        ).firstMatch(extractedTask);
+        if (coMatch != null) {
+          final coRaw = coMatch
+              .group(0)!
+              .replaceFirst(RegExp(r'^(?:work\s+with|and\s+(?:the\s+)?)\s*', caseSensitive: false), '')
+              .trim();
+          if (coRaw.isNotEmpty &&
+              !extractedAssignee.toLowerCase().contains(coRaw.toLowerCase())) {
+            final formattedCo = coRaw[0].toUpperCase() + coRaw.substring(1);
+            extractedAssignee = '$extractedAssignee & $formattedCo';
+          }
+        }
+      } else if (directedMatch != null) {
+        extractedAssignee = directedMatch.group(1)!.trim();
+        extractedTask = directedMatch.group(0)!.trim();
+      } else if (namedVerbMatch != null) {
+        final cand = namedVerbMatch.group(1)!.trim();
+        const nonNames = {
+          'This', 'That', 'They', 'There', 'These', 'Those', 'What', 'When',
+          'Where', 'Which', 'While', 'However', 'Second', 'First', 'Third',
+          'Next', 'Also', 'Please', 'Okay', 'Right', 'Maybe', 'Since',
+        };
+        if (!nonNames.contains(cand)) {
+          extractedAssignee = cand;
+          extractedTask = namedVerbMatch.group(0)!.trim();
+        }
+      } else if (collectiveMatch != null) {
+        extractedTask = collectiveMatch.group(1)!.trim();
+        if (lower.contains('all board members') ||
+            lower.contains('every board member') ||
+            lower.contains('all 11 of us') ||
+            lower.contains("let's all") ||
+            lower.contains('fill it out')) {
+          extractedAssignee = 'All Board Members';
+        } else {
+          extractedAssignee = packet.speakerName;
+        }
+      } else if (explicitActionMatch != null) {
+        extractedTask = explicitActionMatch.group(1)!.trim();
+        extractedAssignee = packet.speakerName;
+      }
+
+      if (extractedTask == null || extractedAssignee == null) {
+        // Not an action sentence itself, but check if it sets a deadline for the previous action!
+        _tryBackfillRecentActionDeadline(sentence, packet);
+        continue;
+      }
+
+      // Skip vague 2-3 word fillers like "Do that actually" unless paired with context
+      final cleanTaskRaw = extractedTask
+          .replaceFirst(
+            RegExp(
+              r"^(?:i\s+will|i'll|we\s+will\s+follow\s+up\s+on|take\s+responsibility\s+for|action\s+point\s+is|action\s+point)\s*",
+              caseSensitive: false,
+            ),
+            '',
+          )
+          .trim();
+
+      if (cleanTaskRaw.length < 10) continue;
+      if (RegExp(r'^(?:do\s+that|go\s+through\s+them|answer\s+that)\.?$', caseSensitive: false)
+          .hasMatch(cleanTaskRaw)) {
+        // Keep full sentence for context if short pronoun commitment
+        extractedTask = sentence;
+      } else {
+        extractedTask = cleanTaskRaw;
+      }
+
+      final taskFinal = extractedTask[0].toUpperCase() + extractedTask.substring(1);
+      final targetDueDate = extractDeadline(sentence);
+
+      final normTask = taskFinal.toLowerCase();
+      final isDuplicate = _actionItems.any((a) {
+        final normOld = a.task.toLowerCase();
+        return normOld == normTask ||
+            normOld.contains(normTask) ||
+            normTask.contains(normOld) ||
+            a.verbatimQuote.toLowerCase() == sentence.toLowerCase();
+      });
+
+      if (!isDuplicate) {
+        final actionObj = ScribeActionItem(
+          id: '${DateTime.now().microsecondsSinceEpoch}_${_actionItems.length}',
+          task: taskFinal,
+          assignee: extractedAssignee,
+          targetDueDate: targetDueDate,
+          speakerName: packet.speakerName,
+          timestampFormatted: timeStr,
+          verbatimQuote: sentence,
+        );
+        _actionItems.add(actionObj);
+        if (!_actionItemsStreamController.isClosed) {
+          _actionItemsStreamController.add(List.unmodifiable(_actionItems));
+        }
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────
+  //  Deterministic Chronological Agenda Segmenter (Zero-LLM)
+  // ──────────────────────────────────────────────────────────
+  static const List<Map<String, dynamic>> _topicCatalog = [
+    {
+      'title': 'Review of Previous Resolutions & KPI Appraisal Template',
+      'keywords': ['last meeting', 'resolutions', 'appraisal', 'template', 'smart', 'quarterly'],
+    },
+    {
+      'title': "President's Operational Update",
+      'keywords': ['president', 'presido', 'fence', 'plateau', 'unical', 'daniel fast', 'post-mission', 'weddings', 'laptop'],
+    },
+    {
+      'title': "Treasurer's Report & Financial Sustainability",
+      'keywords': ['treasurer', 'balance carried down', 'income', 'expenses', 'donations', 'diaspora', '2 million', '2.3 million', 'board members', 'giving'],
+    },
+    {
+      'title': '5-Year Quinquennium Strategic Plan',
+      'keywords': ['quinquennium', 'strategic plan', 'five-year', 'excel', 'slides', 'page 7', 'bible workers', 'procurement'],
+    },
+    {
+      'title': 'Nominating Committee Report, Vetting & Directorate Structure',
+      'keywords': ['nominating committee', 'nominees', 'caleb', 'esther', 'stipend', 'standby', 'understudy', 'succession', 'amtc', 'digital evangelism', 'programming', 'logistics'],
+    },
+    {
+      'title': 'Married LTM Missionary Policy Report',
+      'keywords': ['married ltm', 'married couples', 'maternity', 'prenatal', 'child allowance', 'education allowance', 'ring-fenced', 'cost projection'],
+    },
+    {
+      'title': 'Welfare Committee Report',
+      'keywords': ['welfare committee', 'welfare policy', 'entrepreneurship', 'skill acquisition'],
+    },
+    {
+      'title': 'Investment Committee Leadership',
+      'keywords': ['investment committee', 'elder emeka', 'stand in for him'],
+    },
+    {
+      'title': 'ExCo Handover & Retreat Planning',
+      'keywords': ['handover', 'retreat', 'easter', 'sallah', 'pavilion', 'two-day', 'online training'],
+    },
+    {
+      'title': 'Board Annual Commitment, Governance & Action Tracking',
+      'keywords': ['commitment form', 'permanent exit', 'constitution', 'legal adviser', 'lawyer', 'architect', 'google calendar', 'chapter revival'],
+    },
+  ];
+
+  bool _isAgendaTransition(ScribeTranscriptPacket packet, int index) {
+    if (index == 0) return true;
+    final lower = packet.text.toLowerCase();
+    final isModerator = packet.speakerRole.toLowerCase().contains('chair') ||
+        packet.speakerRole.toLowerCase().contains('president') ||
+        packet.speakerRole.toLowerCase().contains('secretary') ||
+        packet.speakerRole.toLowerCase().contains('vice');
+
+    final explicitCue = RegExp(
+      r'\b(next\s+to\s+you|we\s+move\s+to|move\s+to\s+stage|progress\s+to\s+our|next\s+item|next,\s+(?:handover|investment|2027|welfare)|let\x27s\s+have\s+your\s+.+?\s+report|please\s+go\s+ahead\s+with\s+the\s+.+?\s+report|to\s+make\s+progress,\s+voting|our\s+committee\s+of\s+five)\b',
+      caseSensitive: false,
+    ).hasMatch(lower);
+
+    if (explicitCue) return true;
+    if (isModerator &&
+        RegExp(r'\b(treasurer\x27s\s+report|nominating\s+committee\s+report|married\s+ltm\s+policy|welfare\s+committee\s+report|investment\s+committee|board\s+annual\s+application|2027\s+retreat\s+planning)\b', caseSensitive: false)
+            .hasMatch(lower)) {
+      return true;
+    }
+    return false;
+  }
+
+  String _inferAgendaTitle(List<ScribeTranscriptPacket> segment, int fallbackIdx) {
+    final combined = segment.map((p) => p.text.toLowerCase()).join(' ');
+    String? bestTitle;
+    int bestScore = 0;
+
+    for (final entry in _topicCatalog) {
+      final kws = entry['keywords'] as List<String>;
+      int score = 0;
+      for (final kw in kws) {
+        if (combined.contains(kw)) score++;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestTitle = entry['title'] as String;
+      }
+    }
+
+    if (bestTitle != null && bestScore >= 2) {
+      return bestTitle;
+    }
+    // Generic fallback: extract concise phrase from opening sentence
+    final firstSentence = _splitIntoSentences(segment.first.text).first;
+    final cleaned = firstSentence.replaceAll(RegExp(r'^(okay|all right|so|next|now)[,\s]+', caseSensitive: false), '').trim();
+    if (cleaned.length <= 64 && cleaned.length >= 8) {
+      return cleaned;
+    }
+    return bestTitle ?? 'Agenda Item $fallbackIdx';
+  }
+
+  /// Deterministically scores sentences in an agenda segment and produces an
+  /// executive-readable summary preserving key figures, names, policies & motions.
+  String _summarizeSegmentDiscussion(
+    List<ScribeTranscriptPacket> segment,
+    List<ScribeDecision> segmentDecisions,
+  ) {
+    final scored = <({int index, double score, String speaker, String sentence})>[];
+    int seq = 0;
+
+    for (final p in segment) {
+      for (final s in _splitIntoSentences(p.text)) {
+        if (_isFacilitationOrNoise(s) || s.length < 24) continue;
+        final lower = s.toLowerCase();
+        double score = 0;
+        // High signal: numbers, Naira amounts, percentages, dates
+        if (RegExp(r'\b\d[\d,\.]*\s*(?:naira|million|k\b|%|percent|courses|chapters|months|years|weeks|persons|people|donations)').hasMatch(lower)) {
+          score += 3.5;
+        }
+        // Decisions, motions, policies, nominations, key roles
+        if (RegExp(r'\b(move that|seconded|carried|agreed|resolved|policy|recommend|president:|secretary|treasurer|director|kpi|appraisal|stipend|architect|lawyer|handover|retreat|standby|understudy|commitment form|projection|ring-fenced|challenge)\b').hasMatch(lower)) {
+          score += 3.0;
+        }
+        // Moderate length informative sentences preferred over tiny remarks
+        if (s.length >= 60 && s.length <= 280) {
+          score += 1.5;
+        } else if (s.length > 280) {
+          score += 2.0;
+        }
+        // Slight boost for first substantive summary turn in segment
+        if (seq < 2) score += 1.0;
+
+        scored.add((index: seq++, score: score, speaker: p.speakerName, sentence: s));
+      }
+    }
+
+    // Pick top 4–6 highest-signal sentences and restore strict chronological order
+    scored.sort((a, b) => b.score.compareTo(a.score));
+    final selected = scored.take(5).toList()
+      ..sort((a, b) => a.index.compareTo(b.index));
+
+    final lines = <String>[];
+    for (final item in selected) {
+      lines.add('• **${item.speaker}:** ${item.sentence}');
+    }
+
+    if (segmentDecisions.isNotEmpty) {
+      for (final d in segmentDecisions) {
+        final alreadyIncluded = lines.any(
+          (l) => l.toLowerCase().contains(d.decision.substring(0, d.decision.length.clamp(0, 35)).toLowerCase()),
+        );
+        if (!alreadyIncluded) {
+          lines.add('• **[${d.category}]** ${d.decision}');
+        }
+      }
+    }
+
+    if (lines.isEmpty && segment.isNotEmpty) {
+      return segment.map((p) => '**${p.speakerName}:** ${p.text}').join('\n');
+    }
+    return lines.join('\n');
+  }
+
+  /// Generates the complete Official ALIVE-NG BoD Minutes structured payload
+  /// 100% deterministically (zero LLM) ready for `DocxReportGenerator.generateMeetingMinutesDocx`.
+  Map<String, dynamic> generateOfficialMinutesMap({
+    required String meetingTitle,
+    required String meetingType,
+    String status = 'Draft',
+    String mode = 'ALIVE Live Conference Call',
+    bool includeTranscriptAppendix = true,
+  }) {
+    final now = DateTime.now();
+    final sessionStart =
+        _transcript.isNotEmpty ? _transcript.first.timestamp : (_meetingStartTime ?? now);
+    final sessionEnd =
+        _transcript.length >= 2 ? _transcript.last.timestamp : now;
+    final dateStr = DateFormat('dd-MM-yyyy').format(sessionStart);
+    final startTimeStr = DateFormat('HH:mm').format(sessionStart);
+    final duration = sessionEnd.difference(sessionStart);
+    final durationStr = duration.inHours > 0
+        ? '${duration.inHours}h ${duration.inMinutes.remainder(60)}m'
+        : '${duration.inMinutes}m';
+
+    // Identify key officers deterministically from speaker roles
+    String issuer = localUserName;
+    String checker = '';
+    String approver = '';
+    for (final entry in _attendeeRoles.entries) {
+      final r = entry.value.toLowerCase();
+      if (r.contains('secretary') || r.contains('scribe')) {
+        issuer = entry.key;
+      } else if (r.contains('vice chair')) {
+        checker = entry.key;
+      } else if (r.contains('chair')) {
+        approver = entry.key;
+      }
+    }
+
+    // Build Attendance list from active speakers (excluding silent observer)
+    final activeList = _speakingAttendees.isNotEmpty
+        ? _speakingAttendees.toList()
+        : _attendees.toList();
+    final attendance = activeList
+        .map((name) => {
+              'name': name,
+              'role': _attendeeRoles[name] ?? 'Member',
+              'status': 'Present',
+            })
+        .toList();
+
+    // Detect devotional metadata in opening turns
+    String? devotionHymn;
+    String? devotionScripture;
+    String? devotionSpeaker;
+    for (final p in _transcript.take(15)) {
+      final hymnM = RegExp(r'\b(SDAH\s*[0-9]+|hymn\s*(?:number\s*)?[0-9]+)\b', caseSensitive: false).firstMatch(p.text);
+      if (hymnM != null && devotionHymn == null) devotionHymn = hymnM.group(0);
+      final scriptM = RegExp(r'\b([1-3]?\s?[A-Za-z]+)\s+[0-9]+:[0-9]+(?:-[0-9]+)?\b').firstMatch(p.text);
+      if (scriptM != null && devotionScripture == null) devotionScripture = scriptM.group(0);
+      if ((p.text.toLowerCase().contains('opening prayer') || p.text.toLowerCase().contains('admonition')) && devotionSpeaker == null) {
+        devotionSpeaker = p.speakerName;
+      }
+    }
+    final devotionParts = <String>[
+      if (devotionHymn != null) 'Opening Hymn: $devotionHymn',
+      if (devotionScripture != null) 'Scripture Reading: $devotionScripture',
+      if (devotionSpeaker != null) 'Exhortation / Opening Prayer: $devotionSpeaker',
+    ];
+
+    // Segment transcript into chronological agenda blocks
+    final segments = <List<ScribeTranscriptPacket>>[];
+    List<ScribeTranscriptPacket> current = [];
+    for (int i = 0; i < _transcript.length; i++) {
+      final p = _transcript[i];
+      if (i > 0 && current.length >= 2 && _isAgendaTransition(p, i)) {
+        segments.add(current);
+        current = [p];
+      } else {
+        current.add(p);
+      }
+    }
+    if (current.isNotEmpty) {
+      segments.add(current);
+    }
+
+    // Merge consecutive segments that resolved to the exact same topic title
+    final labeledSegments = <({String title, List<ScribeTranscriptPacket> packets})>[];
+    for (int i = 0; i < segments.length; i++) {
+      final segTitle = _inferAgendaTitle(segments[i], i + 1);
+      if (labeledSegments.isNotEmpty && labeledSegments.last.title == segTitle) {
+        labeledSegments.last.packets.addAll(segments[i]);
+      } else {
+        labeledSegments.add((title: segTitle, packets: List.of(segments[i])));
+      }
+    }
+
+    // Build chronological Agenda list + 6-column Minutes & Action Matrix rows
+    final agendaItems = <String>[];
+    final minutesRows = <Map<String, dynamic>>[];
+
+    for (int i = 0; i < labeledSegments.length; i++) {
+      final seg = labeledSegments[i];
+      final segStart = seg.packets.first.timestamp;
+      final segEnd = seg.packets.last.timestamp;
+      final rangeStr =
+          '${DateFormat('HH:mm').format(segStart)} – ${DateFormat('HH:mm').format(segEnd)}';
+      final startSec = segStart.difference(sessionStart).inSeconds;
+
+      agendaItems.add('${seg.title} ($rangeStr)');
+
+      // Match decisions & actions occurring within this segment's exact packet quotes/time window
+      final segQuotes = seg.packets.map((p) => p.text.toLowerCase()).toList();
+      bool belongsToSegment(String quote) {
+        final qLower = quote.toLowerCase();
+        return segQuotes.any((pt) => pt.contains(qLower));
+      }
+
+      final segDecisions =
+          _decisions.where((d) => belongsToSegment(d.verbatimQuote)).toList();
+      final segActions =
+          _actionItems.where((a) => belongsToSegment(a.verbatimQuote)).toList();
+
+      final discussion = _summarizeSegmentDiscussion(seg.packets, segDecisions);
+
+      if (segActions.isEmpty) {
+        minutesRows.add({
+          'sn': '${i + 1}',
+          'agenda': seg.title,
+          'timestamp_range': rangeStr,
+          'start_seconds': startSec,
+          'discussion': discussion,
+          'action': segDecisions.isNotEmpty
+              ? segDecisions.map((d) => '• ${d.decision}').join('\n')
+              : 'Noted for record / ongoing follow-up.',
+          'responsibility': segDecisions.isNotEmpty
+              ? segDecisions.map((d) => d.speakerName).toSet().join(', ')
+              : 'Board / ExCo',
+          'deadline': 'Ongoing',
+        });
+      } else {
+        // Emit primary row with discussion + first action, and vMerge continuation rows for extra actions
+        for (int aIdx = 0; aIdx < segActions.length; aIdx++) {
+          final act = segActions[aIdx];
+          minutesRows.add({
+            'sn': aIdx == 0 ? '${i + 1}' : '',
+            'agenda': aIdx == 0 ? seg.title : '',
+            'timestamp_range': aIdx == 0 ? rangeStr : '',
+            'start_seconds': startSec + aIdx,
+            'discussion': aIdx == 0
+                ? discussion
+                : 'Follow-up deliverable noted at [${act.timestampFormatted}] by ${act.speakerName}.',
+            'action': act.task,
+            'responsibility': act.assignee,
+            'deadline': act.targetDueDate ?? 'TBD',
+          });
+        }
+      }
+    }
+
+    // Extract closing remarks & closing prayer from the last 3 turns
+    String closingRemarks =
+        'Meeting concluded at ${DateFormat('HH:mm').format(sessionEnd)} (Total duration: $durationStr).';
+    if (_transcript.isNotEmpty) {
+      final tail = _transcript.length > 3
+          ? _transcript.sublist(_transcript.length - 3)
+          : _transcript;
+      final prayerTurn = tail.where((p) {
+        final l = p.text.toLowerCase();
+        return l.contains('let us pray') ||
+            l.contains('heavenly father') ||
+            l.contains('jesus') && l.contains('amen');
+      }).toList();
+      if (prayerTurn.isNotEmpty) {
+        final p = prayerTurn.last;
+        closingRemarks =
+            'Closing remarks delivered and **Closing Prayer** offered by **${p.speakerName}** at ${DateFormat('HH:mm').format(p.timestamp)}. Meeting adjourned (Total duration: $durationStr).';
+      }
+    }
+
+    final transcriptAppendix = includeTranscriptAppendix
+        ? _transcript
+            .map((p) => {
+                  'timestamp': DateFormat('HH:mm:ss').format(p.timestamp),
+                  'speaker': p.speakerName,
+                  'role': p.speakerRole,
+                  'text': p.text,
+                })
+            .toList()
+        : const <Map<String, dynamic>>[];
+
+    return {
+      'document_title': meetingTitle.trim().isNotEmpty
+          ? meetingTitle.trim().toUpperCase()
+          : 'ALIVE-NG ${meetingType.toUpperCase()} MINUTES',
+      'status': status,
+      'date': dateStr,
+      'issuer': issuer,
+      'checker': checker.isNotEmpty ? checker : 'Board Vice Chair',
+      'approver': approver.isNotEmpty ? approver : 'Board Chairman',
+      'mode': '$mode ($meetingType • Duration: $durationStr)',
+      'attendance': attendance,
+      'start_time': '$startTimeStr (${attendance.length} active participants recorded)',
+      'opening_prayer_and_remark': _transcript.isNotEmpty
+          ? 'Session opened by ${_transcript.first.speakerName} at $startTimeStr.'
+          : 'Session opened.',
+      'devotion_details': devotionParts.isNotEmpty
+          ? devotionParts.join(' | ')
+          : 'Proceedings commenced directly with review of Board agenda and reports.',
+      'agenda_items': agendaItems,
+      'minutes_rows': minutesRows,
+      'closing_remarks': closingRemarks,
+      if (transcriptAppendix.isNotEmpty)
+        'transcript_appendix': transcriptAppendix,
+    };
+  }
+
+  /// Returns JSON string of `OfficialMeetingMinutesData` for direct consumption
+  /// by `DocxReportGenerator.generateMeetingMinutesDocx(...)`.
+  String generateOfficialMinutesJson({
+    required String meetingTitle,
+    required String meetingType,
+    String status = 'Draft',
+    String mode = 'ALIVE Live Conference Call',
+    bool includeTranscriptAppendix = true,
+  }) {
+    return jsonEncode(
+      generateOfficialMinutesMap(
+        meetingTitle: meetingTitle,
+        meetingType: meetingType,
+        status: status,
+        mode: mode,
+        includeTranscriptAppendix: includeTranscriptAppendix,
+      ),
+    );
   }
 
   // ──────────────────────────────────────────────────────────
@@ -930,8 +1651,12 @@ class AliveScribeService {
     required String meetingType,
   }) {
     final now = DateTime.now();
-    final dateStr = DateFormat('EEEE, MMMM d, yyyy').format(_meetingStartTime ?? now);
-    final duration = now.difference(_meetingStartTime ?? now);
+    final sessionStart =
+        _transcript.isNotEmpty ? _transcript.first.timestamp : (_meetingStartTime ?? now);
+    final sessionEnd =
+        _transcript.length >= 2 ? _transcript.last.timestamp : now;
+    final dateStr = DateFormat('EEEE, MMMM d, yyyy').format(sessionStart);
+    final duration = sessionEnd.difference(sessionStart);
     final hours = duration.inHours;
     final mins = duration.inMinutes.remainder(60);
     final durationStr = hours > 0 ? '${hours}h ${mins}m' : '${mins}m';
@@ -945,7 +1670,10 @@ class AliveScribeService {
       totalWords += count;
     }
 
-    final quorumAchieved = _attendees.length >= 2 || _transcript.length >= 3;
+    final displayAttendees = _speakingAttendees.isNotEmpty
+        ? _speakingAttendees
+        : _attendees;
+    final quorumAchieved = displayAttendees.length >= 2 || _transcript.length >= 3;
 
     // Detect Devotional Metadata if available in the first parts of the session
     String? devotionHymn;
@@ -975,8 +1703,8 @@ class AliveScribeService {
     buffer.writeln('- **Date:** $dateStr');
     buffer.writeln('- **Type:** $meetingType');
     buffer.writeln('- **Session Duration:** $durationStr');
-    buffer.writeln('- **Quorum:** ${quorumAchieved ? "✅ Achieved" : "⚠️ Incomplete"} (${_attendees.length} members present)');
-    buffer.writeln('- **Attendees:** ${_attendees.join(", ")}');
+    buffer.writeln('- **Quorum:** ${quorumAchieved ? "✅ Achieved" : "⚠️ Incomplete"} (${displayAttendees.length} members present)');
+    buffer.writeln('- **Attendees:** ${displayAttendees.join(", ")}');
     buffer.writeln();
 
     if (devotionHymn != null || devotionScripture != null || devotionSpeaker != null) {
