@@ -475,81 +475,289 @@ class PdfExtractorService {
     );
   }
 
+  /// Normalizes invisible/non-breaking Unicode spaces & soft hyphens from PDF text streams.
+  static String _normalizePdfText(String raw) {
+    return raw
+        .replaceAll('\u00A0', ' ')
+        .replaceAll('\u2007', ' ')
+        .replaceAll('\u202F', ' ')
+        .replaceAll('\u200B', '')
+        .replaceAll('\uFEFF', '')
+        .replaceAll('\u00AD', '')
+        .replaceAll('\u201C', '"')
+        .replaceAll('\u201D', '"')
+        .replaceAll('\u2018', "'")
+        .replaceAll('\u2019', "'")
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  /// Fixes kerning gaps in stylized PDF headers like "T ruth F or Th e W orld" -> "Truth For The World".
+  static String _compactSpacedLetters(String text) {
+    return text.replaceAllMapped(
+      RegExp(r'\b([A-Za-z])\s+([a-z]{1,4})\b'),
+      (m) => '${m.group(1)}${m.group(2)}',
+    );
+  }
+
+  static bool _isPublisherOrBoilerplateLine(String text) {
+    final compact = _compactSpacedLetters(text).toLowerCase().trim();
+    if (compact.isEmpty) return true;
+    final squashed = compact.replaceAll(RegExp(r'\s+'), '');
+    if (squashed.contains('truthfortheworld') ||
+        squashed.contains('creativecommons') ||
+        squashed.contains('bethelsprings')) {
+      return true;
+    }
+    final patterns = <RegExp>[
+      RegExp(r'creative\s+commons|attribution-noncommercial|unported\s+license|all\s+rights\s+reserved'),
+      RegExp(r'\b(?:p\.?\s*o\.?\s*box|bethel\s+springs|truthfortheworld\.org|info@|www\.[a-z0-9.-]+\.[a-z]{2,})'),
+      RegExp(r'^(?:published|printed|distributed)\s+by\b'),
+      RegExp(r'^(?:u\.?\s*s\.?\s*a\.?|\d{5}(?:\s*u\.?\s*s\.?\s*a\.?)?)$'),
+      RegExp(r'^(?:truth\s+for\s+the\s+world|for\s+enquiry|call\s+us|contact\s+us)\b'),
+      RegExp(r'^(?:page\s*\d+(?:\s*of\s*\d+)?|-\s*\d+\s*-)$'),
+    ];
+    return patterns.any((r) => r.hasMatch(compact));
+  }
+
+  static bool _isAuthorByline(String text) {
+    final t = text.trim();
+    return RegExp(
+          r'^(?:by|written\s+by|compiled\s+by|author:?)\s+[A-Z][A-Za-z\.\s\-]{2,45}$',
+          caseSensitive: false,
+        ).hasMatch(t) &&
+        t.split(RegExp(r'\s+')).length <= 6 &&
+        !t.endsWith('?') &&
+        !t.contains(':');
+  }
+
+  static double _trigramSimilarity(String a, String b) {
+    final na = a.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final nb = b.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    if (na.isEmpty || nb.isEmpty) return 0;
+    if (na == nb) return 1.0;
+    if (na.length < 3 || nb.length < 3) return na == nb ? 1.0 : 0.0;
+    final sa = <String>{for (int i = 0; i <= na.length - 3; i++) na.substring(i, i + 3)};
+    final sb = <String>{for (int i = 0; i <= nb.length - 3; i++) nb.substring(i, i + 3)};
+    final inter = sa.intersection(sb).length;
+    final union = sa.union(sb).length;
+    return union == 0 ? 0.0 : inter / union;
+  }
+
   // ===========================================================================
   // STEP 1: EXTRACT TYPOGRAPHY + GEOMETRY FROM PDF (syncfusion_flutter_pdf)
   // ===========================================================================
   List<_StyledPdfLine> _extractStyledLinesFromPdf(Uint8List bytes) {
     final PdfDocument document = PdfDocument(inputBytes: bytes);
     final PdfTextExtractor extractor = PdfTextExtractor(document);
-    final allStyled = <_StyledPdfLine>[];
+    final pageMap = <int, List<_StyledPdfLine>>{};
+    final pageHeights = <int, double>{};
+    final pageWidths = <int, double>{};
 
     try {
       for (int pageIdx = 0; pageIdx < document.pages.count; pageIdx++) {
+        final pageSize = document.pages[pageIdx].size;
+        pageHeights[pageIdx] = pageSize.height;
+        pageWidths[pageIdx] = pageSize.width;
+
         final rawLines = extractor.extractTextLines(
           startPageIndex: pageIdx,
           endPageIndex: pageIdx,
         );
         if (rawLines.isEmpty) continue;
 
-        final pageStyled = rawLines
-            .where((l) => l.text.trim().isNotEmpty)
-            .map((l) {
-              final fName = l.fontName.toLowerCase();
-              final isBold = fName.contains('bold') ||
-                  fName.contains('black') ||
-                  fName.contains('heavy') ||
-                  fName.contains('demi') ||
-                  fName.contains('semibold');
-              final isItalic =
-                  fName.contains('italic') || fName.contains('oblique');
-              return _StyledPdfLine(
-                pageIndex: pageIdx,
-                left: l.bounds.left,
-                top: l.bounds.top,
-                right: l.bounds.right,
-                bottom: l.bounds.bottom,
-                fontSize: l.fontSize,
-                isBold: isBold,
-                isItalic: isItalic,
-                text: l.text.trim(),
-              );
-            })
-            .toList();
+        final pageStyled = <_StyledPdfLine>[];
+        for (final l in rawLines) {
+          final cleaned = _normalizePdfText(l.text);
+          if (cleaned.isEmpty) continue;
+          final fName = l.fontName.toLowerCase();
+          final isBold = fName.contains('bold') ||
+              fName.contains('black') ||
+              fName.contains('heavy') ||
+              fName.contains('demi') ||
+              fName.contains('semibold');
+          final isItalic =
+              fName.contains('italic') || fName.contains('oblique');
+          pageStyled.add(_StyledPdfLine(
+            pageIndex: pageIdx,
+            left: l.bounds.left,
+            top: l.bounds.top,
+            right: l.bounds.right,
+            bottom: l.bounds.bottom,
+            fontSize: l.fontSize,
+            isBold: isBold,
+            isItalic: isItalic,
+            text: cleaned,
+          ));
+        }
 
-        // Segment page into vertical columns using XY-cut whitespace gutters
-        final orderedPageLines = _segmentPageColumnsXYCut(pageStyled);
-        allStyled.addAll(orderedPageLines);
+        if (pageStyled.isNotEmpty) {
+          pageMap[pageIdx] = pageStyled;
+        }
       }
     } finally {
       document.dispose();
     }
 
+    // Strip repeated running headers/footers & standalone page numbers on multi-page PDFs
+    _stripRunningHeadersFootersAndPageNumbers(pageMap, pageHeights);
+
+    final allStyled = <_StyledPdfLine>[];
+    final sortedPages = pageMap.keys.toList()..sort();
+    for (final pageIdx in sortedPages) {
+      final pLines = pageMap[pageIdx]!;
+      final orderedPageLines = _segmentPageColumnsXYCut(
+        pLines,
+        pageWidth: pageWidths[pageIdx] ?? 612.0,
+      );
+      allStyled.addAll(orderedPageLines);
+    }
+
     return _orderPagesByLogicalSequence(allStyled);
   }
 
-  /// Classic 2D XY-Cut Column Segmenter:
-  /// Finds true vertical whitespace gutters across the page (works for 1, 2, 3, or 4 columns)
-  /// rather than guessing column widths.
-  List<_StyledPdfLine> _segmentPageColumnsXYCut(List<_StyledPdfLine> lines) {
+  /// Removes repeated running headers/footers across pages (even with slight OCR
+  /// typos like "WHAT DO THESE THINGS MEAN ?" vs "WHAT 1)0 THESE THINGS MEAN?")
+  /// and standalone page numbers in the top/bottom page margins.
+  void _stripRunningHeadersFootersAndPageNumbers(
+    Map<int, List<_StyledPdfLine>> pageMap,
+    Map<int, double> pageHeights,
+  ) {
+    final pageCount = pageMap.length;
+    if (pageCount < 2) return;
+
+    // 1. Collect candidate top/bottom margin lines per page
+    final marginTextsByPage = <int, List<String>>{};
+    for (final entry in pageMap.entries) {
+      final pIdx = entry.key;
+      final h = pageHeights[pIdx] ?? 792.0;
+      final topBand = h * 0.11;
+      final bottomBand = h * 0.89;
+      marginTextsByPage[pIdx] = entry.value
+          .where((l) =>
+              (l.top <= topBand || l.bottom >= bottomBand) &&
+              l.text.length >= 4 &&
+              l.text.length <= 90 &&
+              !RegExp(r'^\d{1,3}$').hasMatch(l.text))
+          .map((l) => l.text)
+          .toList();
+    }
+
+    // 2. Identify running header/footer templates appearing on >= 3 pages (or >= 50% of >= 3 pages)
+    final runningTemplates = <String>[];
+    if (pageCount >= 3) {
+      final allMarginSamples = marginTextsByPage.values.expand((e) => e).toList();
+      for (final sample in allMarginSamples) {
+        if (runningTemplates.any((t) => _trigramSimilarity(t, sample) >= 0.72)) {
+          continue;
+        }
+        int matchingPages = 0;
+        for (final pSamples in marginTextsByPage.values) {
+          if (pSamples.any((s) => _trigramSimilarity(s, sample) >= 0.72)) {
+            matchingPages++;
+          }
+        }
+        if (matchingPages >= 3 || (pageCount >= 4 && matchingPages >= (pageCount * 0.4).ceil())) {
+          runningTemplates.add(sample);
+        }
+      }
+    }
+
+    // 3. Filter each page
+    for (final entry in pageMap.entries) {
+      final pIdx = entry.key;
+      final h = pageHeights[pIdx] ?? 792.0;
+      final topBand = h * 0.12;
+      final bottomBand = h * 0.88;
+      final lines = entry.value;
+
+      pageMap[pIdx] = lines.where((l) {
+        final inTopOrBottomMargin = l.top <= topBand || l.bottom >= bottomBand;
+
+        // Strip standalone page numbers in top/bottom margin (unless clearly a question badge paired on same Y with text)
+        if (inTopOrBottomMargin && RegExp(r'^(?:page\s*)?\d{1,3}$', caseSensitive: false).hasMatch(l.text)) {
+          final hasSameBaselineText = lines.any((other) =>
+              other != l &&
+              (other.top - l.top).abs() <= 6.0 &&
+              other.left > l.right &&
+              other.text.length >= 8);
+          if (!hasSameBaselineText) {
+            return false;
+          }
+        }
+
+        // Also strip standalone page numbers on multi-page books/booklets (>= 4 pages) that match page number +/- 2
+        if (pageCount >= 4 && RegExp(r'^\d{1,3}$').hasMatch(l.text)) {
+          final n = int.tryParse(l.text) ?? -1;
+          final hasSameBaselineText = lines.any((other) =>
+              other != l &&
+              (other.top - l.top).abs() <= 6.0 &&
+              other.left > l.right &&
+              other.text.length >= 8);
+          if (!hasSameBaselineText && (n == pIdx + 1 || n == pIdx || n == pIdx + 2 || inTopOrBottomMargin)) {
+            return false;
+          }
+        }
+
+        // Strip repeated running header/footer on all pages after the very first occurrence (keep page 0 for title detection)
+        if (runningTemplates.isNotEmpty && pIdx > 0 && inTopOrBottomMargin) {
+          final isRunning = runningTemplates
+              .any((t) => _trigramSimilarity(t, l.text) >= 0.72);
+          if (isRunning) return false;
+        }
+        return true;
+      }).toList();
+    }
+  }
+
+  /// Classic 2D XY-Cut Column Segmenter with full-width banner preservation and
+  /// minimum column-width guards so narrow letter fragments are never sliced off.
+  List<_StyledPdfLine> _segmentPageColumnsXYCut(
+    List<_StyledPdfLine> lines, {
+    double pageWidth = 612.0,
+  }) {
     if (lines.length <= 1) return lines;
 
-    // Filter out tiny isolated numeric badges on images (e.g., photo drawer numbers)
-    // by keeping them attached to their nearest horizontal column band
     final minX = lines.map((l) => l.left).reduce(min);
     final maxX = lines.map((l) => l.right).reduce(max);
     final pageSpan = maxX - minX;
-    if (pageSpan < 150) {
+    if (pageSpan < 180) {
       return List<_StyledPdfLine>.from(lines)
-        ..sort((a, b) => a.top.compareTo(b.top));
+        ..sort((a, b) {
+          final dy = a.top - b.top;
+          if (dy.abs() > 3.5) return a.top.compareTo(b.top);
+          return a.left.compareTo(b.left);
+        });
     }
 
-    // Build a 1D horizontal projection histogram (1pt resolution) of substantial text lines
+    // Separate full-width lines (titles/banners spanning > 58% of content span) so they don't hide column gutters
+    final fullWidthLines = <_StyledPdfLine>[];
+    final bodyCandidates = <_StyledPdfLine>[];
+    for (final l in lines) {
+      if (l.width > pageSpan * 0.58) {
+        fullWidthLines.add(l);
+      } else {
+        bodyCandidates.add(l);
+      }
+    }
+
+    // If most lines are full-width (single-column document), just sort top-to-bottom!
+    if (bodyCandidates.length < 6 || fullWidthLines.length > bodyCandidates.length * 0.45) {
+      return List<_StyledPdfLine>.from(lines)
+        ..sort((a, b) {
+          final dy = a.top - b.top;
+          if (dy.abs() > 3.5) return a.top.compareTo(b.top);
+          return a.left.compareTo(b.left);
+        });
+    }
+
+    // Build 1D horizontal projection histogram from multi-word lines only
     final histLen = (maxX - minX).ceil() + 2;
     final coverage = List<int>.filled(histLen, 0);
 
-    for (final l in lines) {
-      // Ignore very narrow single-number badges when finding column gutters
-      if (l.width < 22 && RegExp(r'^\d{1,2}$').hasMatch(l.text)) continue;
+    for (final l in bodyCandidates) {
+      // Ignore tiny isolated badges/fragments when locating true column gutters
+      if (l.width < 28 && l.text.length <= 3) continue;
       final start = (l.left - minX).floor().clamp(0, histLen - 1);
       final end = (l.right - minX).ceil().clamp(0, histLen - 1);
       for (int x = start; x <= end; x++) {
@@ -557,34 +765,55 @@ class PdfExtractorService {
       }
     }
 
-    // Find empty vertical gutters (coverage == 0) at least 12pt wide
+    // Find true vertical gutters (coverage == 0) at least 14pt wide, with each column >= 95pt wide
     final splitPoints = <double>[];
     int zeroRunStart = -1;
+    double lastBoundary = minX;
     for (int x = 0; x < histLen; x++) {
       if (coverage[x] == 0) {
         if (zeroRunStart == -1) zeroRunStart = x;
       } else {
-        if (zeroRunStart != -1 && (x - zeroRunStart) >= 12) {
+        if (zeroRunStart != -1 && (x - zeroRunStart) >= 14) {
           final mid = minX + (zeroRunStart + x) / 2.0;
-          // Ensure there is real content on both sides of the gutter
-          if (mid > minX + 60 && mid < maxX - 60) {
+          if (mid - lastBoundary >= 95 && maxX - mid >= 95) {
             splitPoints.add(mid);
+            lastBoundary = mid;
           }
         }
         zeroRunStart = -1;
       }
     }
 
-    // Bucket lines into the discovered column bands
+    if (splitPoints.isEmpty) {
+      return List<_StyledPdfLine>.from(lines)
+        ..sort((a, b) {
+          final dy = a.top - b.top;
+          if (dy.abs() > 3.5) return a.top.compareTo(b.top);
+          return a.left.compareTo(b.left);
+        });
+    }
+
+    // Separate top full-width banners vs bottom full-width footers around the columns
+    final minBodyTop = bodyCandidates.map((l) => l.top).reduce(min);
+    final maxBodyBottom = bodyCandidates.map((l) => l.bottom).reduce(max);
+    final topBanners = fullWidthLines.where((l) => l.bottom <= minBodyTop + 16).toList()
+      ..sort((a, b) => a.top.compareTo(b.top));
+    final bottomBanners = fullWidthLines.where((l) => l.top >= maxBodyBottom - 16).toList()
+      ..sort((a, b) => a.top.compareTo(b.top));
+    final midFullWidth = fullWidthLines
+        .where((l) => !topBanners.contains(l) && !bottomBanners.contains(l))
+        .toList();
+
+    // Bucket column lines into discovered column bands
     final bounds = <double>[minX - 10, ...splitPoints, maxX + 10];
     final columns = List<List<_StyledPdfLine>>.generate(
         bounds.length - 1, (_) => <_StyledPdfLine>[]);
 
-    for (final line in lines) {
-      final center = (line.left + line.right) / 2.0;
+    for (final line in [...bodyCandidates, ...midFullWidth]) {
+      final anchor = line.left + min(line.width * 0.35, 35.0);
       int targetCol = 0;
       for (int c = 0; c < bounds.length - 1; c++) {
-        if (center >= bounds[c] && center < bounds[c + 1]) {
+        if (anchor >= bounds[c] && anchor < bounds[c + 1]) {
           targetCol = c;
           break;
         }
@@ -592,17 +821,50 @@ class PdfExtractorService {
       columns[targetCol].add(line);
     }
 
-    // Sort each column strictly top-to-bottom (with 3.5pt line-baseline tolerance)
-    final result = <_StyledPdfLine>[];
-    for (final col in columns) {
-      if (col.isEmpty) continue;
-      col.sort((a, b) {
+    // Merge tiny same-baseline fragments inside each column (prevents "ly", "y", "P", "38315 U" splits!)
+    List<_StyledPdfLine> mergeSameBaseline(List<_StyledPdfLine> colLines) {
+      if (colLines.length <= 1) return colLines;
+      colLines.sort((a, b) {
         final dy = a.top - b.top;
         if (dy.abs() > 3.5) return a.top.compareTo(b.top);
         return a.left.compareTo(b.left);
       });
-      result.addAll(col);
+      final merged = <_StyledPdfLine>[];
+      for (final l in colLines) {
+        if (merged.isEmpty) {
+          merged.add(l);
+          continue;
+        }
+        final prev = merged.last;
+        final sameBaseline = (l.top - prev.top).abs() <= 3.5;
+        final horizGap = l.left - prev.right;
+        if (sameBaseline && horizGap >= -4 && horizGap <= 28) {
+          // Join without space if gap is tiny kerning (< 1.5pt)
+          final sep = horizGap < 1.5 ? '' : ' ';
+          merged[merged.length - 1] = _StyledPdfLine(
+            pageIndex: prev.pageIndex,
+            left: min(prev.left, l.left),
+            top: min(prev.top, l.top),
+            right: max(prev.right, l.right),
+            bottom: max(prev.bottom, l.bottom),
+            fontSize: max(prev.fontSize, l.fontSize),
+            isBold: prev.isBold || l.isBold,
+            isItalic: prev.isItalic && l.isItalic,
+            text: _normalizePdfText('${prev.text}$sep${l.text}'),
+          );
+        } else {
+          merged.add(l);
+        }
+      }
+      return merged;
     }
+
+    final result = <_StyledPdfLine>[...topBanners];
+    for (final col in columns) {
+      if (col.isEmpty) continue;
+      result.addAll(mergeSameBaseline(col));
+    }
+    result.addAll(bottomBanners);
     return result;
   }
 
@@ -642,14 +904,46 @@ class PdfExtractorService {
   // ===========================================================================
   // STEP 2: TYPOGRAPHIC ROLE CLASSIFICATION (Heading vs Body vs Quote vs Table)
   // ===========================================================================
+  /// Character-weighted mode of font sizes so footnotes/headers never skew body size.
   double _computeMedianFontSize(List<_StyledPdfLine> lines) {
-    final sizes = lines
-        .where((l) => l.text.length > 15 && l.fontSize > 4)
-        .map((l) => l.fontSize)
-        .toList()
-      ..sort();
-    if (sizes.isEmpty) return 10.0;
-    return sizes[sizes.length ~/ 2];
+    final weightBySize = <double, int>{};
+    for (final l in lines) {
+      if (l.text.length < 12 || l.fontSize <= 4) continue;
+      // Round to nearest 0.5pt bucket
+      final bucket = (l.fontSize * 2).round() / 2.0;
+      weightBySize[bucket] = (weightBySize[bucket] ?? 0) + l.text.length;
+    }
+    if (weightBySize.isEmpty) return 10.0;
+    double bestSize = 10.0;
+    int bestWeight = -1;
+    weightBySize.forEach((size, weight) {
+      if (weight > bestWeight) {
+        bestWeight = weight;
+        bestSize = size;
+      }
+    });
+    return bestSize;
+  }
+
+  /// True if text looks like a genuine heading/question rather than a mid-sentence fragment.
+  static bool _isPlausibleHeadingText(String text) {
+    final t = text.trim();
+    if (t.length < 4 || t.length > 135) return false;
+    if (!RegExp(r'[A-Za-z]{2,}').hasMatch(t)) return false;
+    if (_isPublisherOrBoilerplateLine(t) || _isAuthorByline(t)) return false;
+    // Never a standalone Bible quote or pure verse reference
+    if (t.startsWith('"') || t.startsWith("'")) return false;
+    if (RegExp(r'^[a-z]').hasMatch(t)) return false;
+    // Reject obvious trailing mid-sentence connectors (unless it's a question)
+    if (!t.endsWith('?') &&
+        RegExp(
+          r'\b(?:the|a|an|of|to|in|for|with|by|from|and|or|but|that|which|who|whom|whose|their|his|her|its|our|your|as|at|on|into|unto|upon|about|against)$',
+          caseSensitive: false,
+        ).hasMatch(t)) {
+      return false;
+    }
+    if (t.endsWith(',') || t.endsWith(';')) return false;
+    return true;
   }
 
   String _renderStyledLinesToAnnotatedMarkdown(List<_StyledPdfLine> lines) {
@@ -669,57 +963,170 @@ class PdfExtractorService {
         sections: const [],
         headings: const [],
         totalWordCount: 0,
+        reviewNotes: const ['No readable text could be extracted from this PDF.'],
       );
     }
 
-    final bodyFontSize = _computeMedianFontSize(lines);
-    final maxFontSize = lines.map((l) => l.fontSize).reduce(max);
+    final rawInputWordCount = lines
+        .map((l) => l.text)
+        .join(' ')
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .length;
 
-    // 1. Detect Cover Title & Enquiry Phone using font size hierarchy
+    final bodyFontSize = _computeMedianFontSize(lines);
+    final reviewNotes = <String>[];
+
+    // Compute largest font size strictly over genuine alphabetic text lines (NEVER bare digits like "1 2 3 ... 17"!)
+    final nonNumericLines = lines
+        .where((l) =>
+            RegExp(r'[A-Za-z]{3,}').hasMatch(l.text) &&
+            !_isPublisherOrBoilerplateLine(l.text) &&
+            !_isAuthorByline(l.text) &&
+            !RegExp(r'^(HOLY|BIBLE|KING JAMES|ALIVE|Nigeria|Series[:.]?\s*\d*|What The Bible Says)$',
+                    caseSensitive: false)
+                .hasMatch(l.text))
+        .toList();
+    final maxAlphaFontSize = nonNumericLines.isNotEmpty
+        ? nonNumericLines.map((l) => l.fontSize).reduce(max)
+        : bodyFontSize;
+
+    // 1. Detect Cover Title & Enquiry Phone using font size hierarchy + cover-top heuristics
     String detectedTitle = fallbackTitle ?? 'Interactive Bible Study';
     String enquiryPhone = '07014331481';
     String seriesName = 'What The Bible Says';
+    bool usedFilenameFallback = true;
 
     final titleLines = <_StyledPdfLine>[];
+    final firstPageIdx = lines.map((l) => l.pageIndex).reduce(min);
+
     for (final l in lines) {
-      final phoneM =
-          RegExp(r'(?:Enquiry|call|Tel)[:\s]+(\+?\d[\d\s-]{8,14})',
-                  caseSensitive: false)
-              .firstMatch(l.text);
+      final phoneM = RegExp(
+        r'(?:Enquiry|call|Tel)[:\s]+(\+?\d[\d\s-]{8,14})',
+        caseSensitive: false,
+      ).firstMatch(l.text);
       if (phoneM != null) {
         enquiryPhone = phoneM.group(1)!.replaceAll(RegExp(r'\s+'), '');
       }
       if (l.text.toLowerCase().startsWith('series')) {
         seriesName = l.text;
       }
-      // Largest font on the cover page (excluding "HOLY BIBLE") is the tract title
-      if (l.fontSize >= maxFontSize - 1.5 &&
-          l.fontSize > bodyFontSize + 2.5 &&
-          !RegExp(r'^(HOLY|BIBLE|KING JAMES)', caseSensitive: false)
-              .hasMatch(l.text)) {
-        titleLines.add(l);
+    }
+
+    // Strategy A: Largest alphabetic display font block (must be > bodyFontSize + 2.0, excluding numbered questions!)
+    if (maxAlphaFontSize > bodyFontSize + 2.0) {
+      final largeCandidates = nonNumericLines
+          .where((l) =>
+              l.fontSize >= maxAlphaFontSize - 1.5 &&
+              l.fontSize > bodyFontSize + 2.0 &&
+              !RegExp(r'^\d{1,2}[\.\)]?\s+').hasMatch(l.text) &&
+              !RegExp(r'^["' "'" r']').hasMatch(l.text) &&
+              !RegExp(r'^[a-z]').hasMatch(l.text) &&
+              !l.text.endsWith('?'))
+          .toList();
+      if (largeCandidates.isNotEmpty) {
+        final anchorPage = largeCandidates.first.pageIndex;
+        final anchorTop = largeCandidates.first.top;
+        for (final c in largeCandidates) {
+          if (c.pageIndex == anchorPage && (c.top - anchorTop).abs() <= 140) {
+            titleLines.add(c);
+          }
+        }
       }
     }
-    if (titleLines.isNotEmpty) {
-      final candidate = titleLines.map((l) => l.text).join(' ').trim();
-      if (candidate.length >= 4 && candidate.length <= 70) {
-        detectedTitle = candidate;
+
+    // Strategy B: If no display font found (uniform-font tracts like 123/137/138, Character_of_God),
+    // inspect top non-boilerplate lines on first page and merge multi-line cover titles!
+    if (titleLines.isEmpty) {
+      final topPageLines = nonNumericLines
+          .where((l) => l.pageIndex == firstPageIdx)
+          .take(10)
+          .toList();
+      for (int idx = 0; idx < topPageLines.length; idx++) {
+        final c = topPageLines[idx];
+        final t = c.text.trim();
+        final looksLikeTitle = t.length >= 4 &&
+            t.length <= 85 &&
+            !t.startsWith('"') &&
+            !RegExp(r'^\d{1,2}[\.\)]?\s+').hasMatch(t) &&
+            !RegExp(r'^[a-z]').hasMatch(t) &&
+            (c.isBold ||
+                c.fontSize >= bodyFontSize + 0.8 ||
+                t == t.toUpperCase() ||
+                t.endsWith('?'));
+        if (looksLikeTitle) {
+          // Include immediately preceding title line if this line is line 2 of a 2-line question/title
+          if (idx > 0) {
+            final prev = topPageLines[idx - 1];
+            final vGap = c.top - prev.bottom;
+            if (vGap >= -4 &&
+                vGap <= max(prev.height * 1.4, 18.0) &&
+                (c.fontSize - prev.fontSize).abs() <= 1.5 &&
+                prev.text.length <= 65 &&
+                !prev.text.endsWith('.') &&
+                !RegExp(r'^\d{1,2}[\.\)]?\s+').hasMatch(prev.text)) {
+              titleLines.add(prev);
+            }
+          }
+          titleLines.add(c);
+          // Also include immediately following continuation line of a multi-line title
+          if (idx + 1 < topPageLines.length && !t.endsWith('?') && !t.endsWith('.')) {
+            final next = topPageLines[idx + 1];
+            final vGap = next.top - c.bottom;
+            if (vGap >= -4 &&
+                vGap <= max(c.height * 1.4, 18.0) &&
+                (next.fontSize - c.fontSize).abs() <= 1.5 &&
+                next.text.length <= 65 &&
+                !RegExp(r'^\d{1,2}[\.\)]?\s+').hasMatch(next.text)) {
+              titleLines.add(next);
+            }
+          }
+          break;
+        }
       }
+    }
+
+    if (titleLines.isNotEmpty) {
+      var candidate = titleLines.map((l) => l.text).join(' ').trim();
+      candidate = candidate.replaceAll(RegExp(r'\s+'), ' ');
+      // Strip leading "Series: 4 " prefix if followed by actual title
+      final strippedSeries = candidate
+          .replaceFirst(RegExp(r'^Series[:.]?\s*\d+\s+', caseSensitive: false), '')
+          .trim();
+      if (strippedSeries.length >= 4) {
+        candidate = strippedSeries;
+      }
+      if (candidate.length >= 4 &&
+          candidate.length <= 95 &&
+          RegExp(r'[A-Za-z]{3,}').hasMatch(candidate)) {
+        detectedTitle = candidate;
+        usedFilenameFallback = false;
+      }
+    }
+
+    if (usedFilenameFallback) {
+      reviewNotes.add(
+        'Could not detect a cover title automatically; fell back to filename "$detectedTitle".',
+      );
     }
 
     // 2. Group consecutive lines into visual paragraphs / headings using font & Y-gaps
     final blocks = <Map<String, dynamic>>[];
     List<_StyledPdfLine> currentGroup = [];
 
-    bool isHeadingLine(_StyledPdfLine l) {
-      if (RegExp(r'^\d{1,2}\.?$').hasMatch(l.text) && l.isBold) return true;
-      if (l.fontSize >= bodyFontSize + 1.0 && l.text.length < 110) return true;
-      if (l.isBold &&
-          l.text.length < 100 &&
-          !l.text.startsWith('"') &&
-          (l.text.endsWith('?') ||
-              l.text.endsWith(':') ||
-              RegExp(r'^\d{1,2}[\.\)]\s+').hasMatch(l.text))) {
+    // Any bold non-quote line (even line 1 of a 2-line question before the "?") is treated
+    // as a heading-style line during grouping so multi-line questions stay intact!
+    bool isHeadingStyleLine(_StyledPdfLine l) {
+      if (RegExp(r'^\d{1,2}\.?$').hasMatch(l.text) &&
+          (l.isBold || l.fontSize >= bodyFontSize + 1.5)) {
+        return true;
+      }
+      if (l.fontSize >= bodyFontSize + 1.5 &&
+          l.text.length < 115 &&
+          !l.text.startsWith('"')) {
+        return true;
+      }
+      if (l.isBold && l.text.length < 115 && !l.text.startsWith('"')) {
         return true;
       }
       return false;
@@ -728,19 +1135,25 @@ class PdfExtractorService {
     void flushGroup() {
       if (currentGroup.isEmpty) return;
       final joined = _rejoinHyphenatedLines(
-          currentGroup.map((l) => l.text).toList());
+        currentGroup.map((l) => l.text).toList(),
+      );
+      if (joined.isEmpty) {
+        currentGroup = [];
+        return;
+      }
+      final allBold = currentGroup.every((l) => l.isBold);
       final anyBold = currentGroup.any((l) => l.isBold);
-      final anyItalic = currentGroup.every((l) => l.isItalic);
-      final avgFont = currentGroup
-              .map((l) => l.fontSize)
-              .reduce((a, b) => a + b) /
-          currentGroup.length;
+      final allItalic = currentGroup.every((l) => l.isItalic);
+      final avgFont =
+          currentGroup.map((l) => l.fontSize).reduce((a, b) => a + b) /
+              currentGroup.length;
       final minLeft = currentGroup.map((l) => l.left).reduce(min);
 
       blocks.add({
         'text': joined,
         'isBold': anyBold,
-        'isAllItalic': anyItalic,
+        'isAllBold': allBold,
+        'isAllItalic': allItalic,
         'fontSize': avgFont,
         'left': minLeft,
         'pageIndex': currentGroup.first.pageIndex,
@@ -751,13 +1164,15 @@ class PdfExtractorService {
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i];
 
-      // Skip cover boilerplate stamps
-      if (RegExp(r'^(HOLY|BIBLE|KING JAMES V\w+|ALIVE|Nigeria|Series[:.]?\s*\d*|What The Bible Says)$',
-              caseSensitive: false)
-          .hasMatch(line.text)) {
+      // Skip cover boilerplate stamps, publisher footers & author bylines
+      if (RegExp(
+        r'^(HOLY|BIBLE|KING JAMES V\w+|ALIVE|Nigeria|Series[:.]?\s*\d*|What The Bible Says)$',
+        caseSensitive: false,
+      ).hasMatch(line.text)) {
         continue;
       }
-      if (line.text.toLowerCase().startsWith('for enquiry')) continue;
+      if (_isPublisherOrBoilerplateLine(line.text)) continue;
+      if (_isAuthorByline(line.text)) continue;
       if (titleLines.contains(line)) continue;
 
       // Skip cropped decorative banner fragments that start mid-word/lowercase in huge display font
@@ -790,19 +1205,45 @@ class PdfExtractorService {
       }
 
       final prev = currentGroup.last;
+      final firstInGroup = currentGroup.first;
       final samePage = processedLine.pageIndex == prev.pageIndex;
-      final sameColumn = (processedLine.left - prev.left).abs() < 45;
+      // Allow hanging-indent continuation (numbered question starts left, line 2 indented right)
+      final leftDelta = processedLine.left - prev.left;
+      final sameColumn = leftDelta >= -55 && leftDelta <= 85;
       final verticalGap = processedLine.top - prev.bottom;
-      final prevIsHeading = isHeadingLine(prev);
-      final currIsHeading = isHeadingLine(processedLine);
+      final prevIsHeading = isHeadingStyleLine(prev);
+      final currIsHeading = isHeadingStyleLine(processedLine);
+      final prevIsBareNum = RegExp(r'^\d{1,2}\.?$').hasMatch(prev.text);
+      final currIsBareNum = RegExp(r'^\d{1,2}\.?$').hasMatch(processedLine.text);
+      final currStartsNewNumber =
+          RegExp(r'^\d{1,2}[\.\)]?\s+[A-Z]').hasMatch(processedLine.text);
+      final groupStartsNumbered =
+          RegExp(r'^\d{1,2}[\.\)]?\s+[A-Z]').hasMatch(firstInGroup.text);
+      final prevIncompleteHeading = (prevIsHeading || groupStartsNumbered) &&
+          !prev.text.endsWith('?') &&
+          !prev.text.endsWith(':') &&
+          !prev.text.endsWith('.') &&
+          !prev.text.endsWith('!');
 
-      // Merge multi-line headings together, or merge body lines with small vertical gap
+      // Merge multi-line headings/questions (including hyphenated or non-bold line 2 continuations),
+      // or merge body lines with normal line spacing
       final shouldMerge = samePage &&
           sameColumn &&
-          verticalGap >= -4 &&
-          verticalGap <= max(prev.height * 0.65, 8.0) &&
-          ((prevIsHeading && currIsHeading && !prev.text.endsWith('?')) ||
-              (!prevIsHeading && !currIsHeading && !processedLine.text.startsWith('"')));
+          !prevIsBareNum &&
+          !currIsBareNum &&
+          !currStartsNewNumber &&
+          verticalGap >= -5 &&
+          ((prevIncompleteHeading &&
+                  verticalGap <= max(prev.height * 1.15, 12.0) &&
+                  !processedLine.text.startsWith('"') &&
+                  (currIsHeading ||
+                      processedLine.text.endsWith('?') ||
+                      RegExp(r'^[a-z]').hasMatch(processedLine.text) ||
+                      prev.text.endsWith('-'))) ||
+              (!prevIsHeading &&
+                  !currIsHeading &&
+                  verticalGap <= max(prev.height * 0.9, 9.5) &&
+                  !processedLine.text.startsWith('"')));
 
       if (shouldMerge) {
         currentGroup.add(processedLine);
@@ -813,49 +1254,83 @@ class PdfExtractorService {
     }
     flushGroup();
 
-    // 3. Pair standalone bold numbers ("1", "2", "10") with the heading block right after them
+    // 3. Pair standalone question numbers ("1", "2", "10") with the heading block right after them,
+    //    and classify blocks into Section Headers vs Body using strict structural & typographic guards.
     final mergedBlocks = <Map<String, dynamic>>[];
     int bIdx = 0;
     while (bIdx < blocks.length) {
       final blk = blocks[bIdx];
       final txt = blk['text'] as String;
-      if (RegExp(r'^\d{1,2}\.?$').hasMatch(txt) && bIdx + 1 < blocks.length) {
-        final nextBlk = blocks[bIdx + 1];
-        final nextTxt = nextBlk['text'] as String;
-        final nextIsHeading = (nextBlk['isBold'] == true) ||
-            (nextBlk['fontSize'] as double) >= bodyFontSize + 0.8 ||
-            nextTxt.endsWith('?');
-        if (nextIsHeading && nextTxt.length < 130) {
-          final numVal = int.parse(txt.replaceAll('.', ''));
-          mergedBlocks.add({
-            ...nextBlk,
-            'num': numVal,
-            'isSectionHeader': true,
-          });
-          bIdx += 2;
-          continue;
+
+      // Standalone number badge ("1", "2.")
+      if (RegExp(r'^\d{1,2}\.?$').hasMatch(txt)) {
+        if (bIdx + 1 < blocks.length) {
+          final nextBlk = blocks[bIdx + 1];
+          final nextTxt = nextBlk['text'] as String;
+          final nextIsHeading = (nextBlk['isBold'] == true) ||
+              (nextBlk['fontSize'] as double) >= bodyFontSize + 0.8 ||
+              nextTxt.endsWith('?');
+          if (nextIsHeading && _isPlausibleHeadingText(nextTxt)) {
+            final numVal = int.parse(txt.replaceAll('.', ''));
+            mergedBlocks.add({
+              ...nextBlk,
+              'num': numVal,
+              'isSectionHeader': true,
+            });
+            bIdx += 2;
+            continue;
+          }
         }
+        // Orphan bare number not followed by a heading (e.g. stray page number) -> drop safely
+        bIdx++;
+        continue;
       }
 
-      final inlineNum =
-          RegExp(r'^(\d{1,2})[\.\)]?\s+(.+)$').firstMatch(txt);
-      final isHeaderFont = (blk['isBold'] == true) ||
-          (blk['fontSize'] as double) >= bodyFontSize + 0.8;
+      // Split accidentally merged two-question lines like "Who wrote this? 2. When was this written?"
+      final inlineTwoQuestions = RegExp(r'^([^?]+\?)\s+(\d{1,2})[\.\)]\s+(.+\?)$')
+          .firstMatch(txt);
+      if (inlineTwoQuestions != null) {
+        final q1Raw = inlineTwoQuestions.group(1)!.trim();
+        final q1NumMatch = RegExp(r'^(\d{1,2})[\.\)]\s+(.+)$').firstMatch(q1Raw);
+        mergedBlocks.add({
+          ...blk,
+          'num': q1NumMatch != null ? int.parse(q1NumMatch.group(1)!) : null,
+          'text': q1NumMatch != null ? q1NumMatch.group(2)!.trim() : q1Raw,
+          'isSectionHeader': true,
+        });
+        mergedBlocks.add({
+          ...blk,
+          'num': int.parse(inlineTwoQuestions.group(2)!),
+          'text': inlineTwoQuestions.group(3)!.trim(),
+          'isSectionHeader': true,
+        });
+        bIdx++;
+        continue;
+      }
+
+      final inlineNum = RegExp(r'^(\d{1,2})[\.\)]?\s+([A-Z].+)$').firstMatch(txt);
+      final fontSize = blk['fontSize'] as double;
+      final isAllBold = blk['isAllBold'] == true;
+      final isBold = blk['isBold'] == true;
+      final isLargerHeaderFont = fontSize >= bodyFontSize + 1.8;
 
       if (inlineNum != null &&
-          (isHeaderFont || txt.endsWith('?')) &&
-          txt.length < 130) {
+          (isBold || fontSize >= bodyFontSize + 0.8 || txt.endsWith('?')) &&
+          _isPlausibleHeadingText(inlineNum.group(2)!)) {
         mergedBlocks.add({
           ...blk,
           'num': int.parse(inlineNum.group(1)!),
           'text': inlineNum.group(2)!.trim(),
           'isSectionHeader': true,
         });
-      } else if (isHeaderFont &&
-          txt.length >= 6 &&
-          txt.length < 110 &&
-          !txt.startsWith('"') &&
-          (txt.endsWith('?') || txt.endsWith(':') || (blk['fontSize'] as double) >= bodyFontSize + 1.2)) {
+      } else if (_isPlausibleHeadingText(txt) &&
+          ((isLargerHeaderFont && txt.length <= 95 && !txt.endsWith('.')) ||
+              (isAllBold &&
+                  txt.length <= 95 &&
+                  (txt.endsWith('?') ||
+                      txt.endsWith(':') ||
+                      (txt == txt.toUpperCase() && txt.length >= 6) ||
+                      (txt.split(RegExp(r'\s+')).length <= 8 && !txt.endsWith('.')))))) {
         mergedBlocks.add({
           ...blk,
           'num': null,
@@ -870,17 +1345,16 @@ class PdfExtractorService {
       bIdx++;
     }
 
-    // 4. Separate Intro, Numbered Sections (sorted 1..N), Unnumbered Sidebars, and Closing Decision
+    // 4. Separate Intro, Sections (never overwriting duplicate section numbers!), and Closing Decision
     final introBlocks = <Map<String, dynamic>>[];
-    final numberedSections = <int, Map<String, dynamic>>{};
-    final unnumberedSections = <Map<String, dynamic>>[];
+    final rawSectionsList = <Map<String, dynamic>>[];
     final decisionQuestions = <String>[];
 
     Map<String, dynamic>? activeSec;
     for (final blk in mergedBlocks) {
       final txt = blk['text'] as String;
       if (blk['isSectionHeader'] == true) {
-        // Check if this is a closing personal decision question ("Do you...", "Will you...", "Would you...")
+        // Closing personal decision question ("Do you...", "Will you...", "Would you...")
         if (blk['num'] == null &&
             RegExp(r'^(Do you |Will you |Would you )', caseSensitive: false)
                 .hasMatch(txt) &&
@@ -890,14 +1364,11 @@ class PdfExtractorService {
         }
         activeSec = {
           'num': blk['num'],
+          'order': rawSectionsList.length,
           'title': txt,
           'children': <Map<String, dynamic>>[],
         };
-        if (blk['num'] != null) {
-          numberedSections[blk['num'] as int] = activeSec;
-        } else {
-          unnumberedSections.add(activeSec);
-        }
+        rawSectionsList.add(activeSec);
       } else {
         if (activeSec == null) {
           introBlocks.add(blk);
@@ -907,48 +1378,132 @@ class PdfExtractorService {
       }
     }
 
-    // Fallback: If no section headers were detected (pure narrative tract),
-    // automatically chunk blocks into narrative sections so the user doesn't get a single wall of text!
-    if (numberedSections.isEmpty && unnumberedSections.isEmpty && introBlocks.isNotEmpty) {
-      final totalBlocks = introBlocks.length;
-      if (totalBlocks >= 2) {
-        final introCount = totalBlocks > 4 ? 1 : 0;
-        final realIntro = introBlocks.take(introCount).toList();
-        final bodyBlocks = introBlocks.skip(introCount).toList();
-
-        introBlocks.clear();
-        introBlocks.addAll(realIntro);
-
-        // Group every 2-3 paragraphs into a section
-        final chunkSize = bodyBlocks.length > 8 ? 2 : 1;
-        int sectionCounter = 1;
-        for (int i = 0; i < bodyBlocks.length; i += chunkSize) {
-          final chunk = bodyBlocks.sublist(i, min(i + chunkSize, bodyBlocks.length));
-          final firstTxt = chunk.first['text'] as String;
-          // Generate a section title from the first sentence of the section
-          final firstSentence = firstTxt.split(RegExp(r'[.!?]')).first.trim();
-          final secTitle = firstSentence.length > 55
-              ? '${firstSentence.substring(0, 52)}...'
-              : firstSentence.isNotEmpty
-                  ? firstSentence
-                  : 'Section $sectionCounter';
-
-          numberedSections[sectionCounter] = {
-            'num': sectionCounter,
-            'title': secTitle,
-            'children': chunk,
-          };
-          sectionCounter++;
+    // Remove empty shell sections (e.g. a heading with zero children followed immediately by another heading)
+    // by folding consecutive header-only blocks into the next section's title or dropping pure noise headers
+    final cleanedSections = <Map<String, dynamic>>[];
+    for (int i = 0; i < rawSectionsList.length; i++) {
+      final sec = rawSectionsList[i];
+      final children = sec['children'] as List<Map<String, dynamic>>;
+      if (children.isEmpty) {
+        // Keep question headings only if there is no adjacent body, otherwise skip empty shells
+        final title = sec['title'] as String;
+        if (title.endsWith('?') && sec['num'] != null) {
+          cleanedSections.add(sec);
         }
+        continue;
       }
+      cleanedSections.add(sec);
     }
 
-    // Sort numbered sections strictly 1 -> N
-    final sortedSectionKeys = numberedSections.keys.toList()..sort();
-    final orderedSections = [
-      for (final k in sortedSectionKeys) numberedSections[k]!,
-      ...unnumberedSections,
-    ];
+    // Helper to create clean readable titles when chunking pure-narrative tracts
+    String makeCleanChunkTitle(String text, int index) {
+      final clean = text.trim();
+      // Prefer a short question sentence if present at the start
+      final qMatch = RegExp(r'^([A-Z][^.!?]{8,75}\?)').firstMatch(clean);
+      if (qMatch != null) return qMatch.group(1)!.trim();
+      // Otherwise look for the first complete capitalized sentence
+      for (final sent in clean.split(RegExp(r'(?<=[.!?])\s+'))) {
+        final s = sent.trim().replaceAll(RegExp(r'["()]'), '').trim();
+        if (s.length >= 10 &&
+            s.length <= 68 &&
+            RegExp(r'^[A-Z]').hasMatch(s) &&
+            !s.endsWith(',')) {
+          return s.replaceAll(RegExp(r'[.]+$'), '').trim();
+        }
+      }
+      // Fallback: clean capitalized lead-in words without trailing punctuation/connectors
+      final lead = clean.replaceFirst(RegExp(r'^[^A-Z]+'), '').trim();
+      final words = lead
+          .replaceAll(RegExp(r'["(),;:]'), '')
+          .split(RegExp(r'\s+'))
+          .where((w) => w.isNotEmpty)
+          .take(7)
+          .toList();
+      while (words.length > 3 &&
+          RegExp(r'^(?:the|a|an|of|to|in|for|with|by|and|or|but|that|which|his|her|their|its|as|at|on)$',
+                  caseSensitive: false)
+              .hasMatch(words.last)) {
+        words.removeLast();
+      }
+      if (words.length >= 3) {
+        var candidate = words.join(' ');
+        if (candidate.length > 56) {
+          candidate = '${candidate.substring(0, 53).trim()}...';
+        }
+        return candidate;
+      }
+      return 'Study Section $index';
+    }
+
+    // If a large tract ended up with 0 sections (pure narrative) OR 1 giant monolithic section (>= 6 blocks),
+    // chunk paragraphs into 4-8 clean readable study sections so nothing gets lost or shattered!
+    List<Map<String, dynamic>> orderedSections;
+    if (cleanedSections.isEmpty && introBlocks.isNotEmpty) {
+      final introCount = introBlocks.length > 3 ? 1 : 0;
+      final realIntro = introBlocks.take(introCount).toList();
+      final bodyBlocks = introBlocks.skip(introCount).toList();
+      introBlocks
+        ..clear()
+        ..addAll(realIntro);
+
+      final targetSectionCount = bodyBlocks.length <= 4 ? bodyBlocks.length : 6;
+      final chunkSize = max(1, (bodyBlocks.length / targetSectionCount).ceil());
+      orderedSections = [];
+      int secNum = 1;
+      for (int i = 0; i < bodyBlocks.length; i += chunkSize) {
+        final chunk = bodyBlocks.sublist(i, min(i + chunkSize, bodyBlocks.length));
+        orderedSections.add({
+          'num': secNum,
+          'order': secNum - 1,
+          'title': makeCleanChunkTitle(chunk.first['text'] as String, secNum),
+          'children': chunk,
+        });
+        secNum++;
+      }
+    } else if (cleanedSections.length == 1 &&
+        (cleanedSections.first['children'] as List<Map<String, dynamic>>).length >= 6) {
+      final kids = cleanedSections.first['children'] as List<Map<String, dynamic>>;
+      final chunkSize = max(3, (kids.length / 6).ceil());
+      orderedSections = [];
+      int secNum = 1;
+      for (int i = 0; i < kids.length; i += chunkSize) {
+        final chunk = kids.sublist(i, min(i + chunkSize, kids.length));
+        orderedSections.add({
+          'num': secNum,
+          'order': secNum - 1,
+          'title': secNum == 1
+              ? (cleanedSections.first['title'] as String)
+              : makeCleanChunkTitle(chunk.first['text'] as String, secNum),
+          'children': chunk,
+        });
+        secNum++;
+      }
+    } else {
+      // Preserve logical order: if numbered sections exist, sort numbered ones 1..N stably, then unnumbered
+      final numbered = cleanedSections.where((s) => s['num'] != null).toList()
+        ..sort((a, b) {
+          final cmp = (a['num'] as int).compareTo(b['num'] as int);
+          return cmp != 0 ? cmp : (a['order'] as int).compareTo(b['order'] as int);
+        });
+      final unnumbered = cleanedSections.where((s) => s['num'] == null).toList();
+      orderedSections = [...numbered, ...unnumbered];
+    }
+
+    // Never drop excess intro paragraphs: if > 2 paragraphs landed in introBlocks before the first heading,
+    // keep the first as introSummary and promote the rest into an Opening Overview section!
+    if (introBlocks.length > 2) {
+      final overflow = introBlocks.sublist(1);
+      final firstIntro = introBlocks.first;
+      introBlocks
+        ..clear()
+        ..add(firstIntro);
+      orderedSections.insert(0, {
+        'num': null,
+        'order': -1,
+        'title': 'Introduction & Background',
+        'children': overflow,
+      });
+    }
 
     // Build Interactive Sections + Clean Markdown
     final seed = detectedTitle.codeUnits.fold<int>(0, (p, e) => p + e);
@@ -959,13 +1514,18 @@ class PdfExtractorService {
     final headings = <String>[];
     final mdBuf = StringBuffer('# $detectedTitle\n\n');
 
-    final introTexts =
-        introBlocks.map((b) => b['text'] as String).where((t) => t.isNotEmpty).toList();
+    final introTexts = introBlocks
+        .map((b) => b['text'] as String)
+        .where((t) => t.isNotEmpty)
+        .toList();
     final introSummary = introTexts.isNotEmpty ? introTexts.first : '';
     final introHighlight =
         introTexts.length > 1 ? introTexts.sublist(1).join('\n\n') : null;
 
     if (introSummary.isNotEmpty) mdBuf.writeln('$introSummary\n');
+    if (introHighlight != null && introHighlight.isNotEmpty) {
+      mdBuf.writeln('$introHighlight\n');
+    }
 
     for (int i = 0; i < orderedSections.length; i++) {
       final sec = orderedSections[i];
@@ -987,8 +1547,20 @@ class PdfExtractorService {
         mdBuf.writeln('"${v['quote']}" — ${v['reference']}');
       }
       if (parsed.bodyText.isNotEmpty) mdBuf.writeln(parsed.bodyText);
+      if (parsed.highlightNote != null && parsed.highlightNote!.isNotEmpty) {
+        mdBuf.writeln(parsed.highlightNote);
+      }
+      if (parsed.testimony != null && (parsed.testimony!['text'] ?? '').isNotEmpty) {
+        mdBuf.writeln('"${parsed.testimony!['text']}" (${parsed.testimony!['title'] ?? ''})');
+      }
       for (final st in parsed.steps) {
         mdBuf.writeln('- **${st['title']}** ${st['text']}');
+      }
+      for (final qa in parsed.qaItems) {
+        mdBuf.writeln('- **${qa['letter']}. ${qa['question']}** ${qa['text']}');
+      }
+      for (final ck in parsed.checklistItems) {
+        mdBuf.writeln('- ${ck['label']}');
       }
       mdBuf.writeln();
     }
@@ -998,6 +1570,37 @@ class PdfExtractorService {
         fullBody.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
     final estMinutes = max(10, 5 * ((wordCount / 130) / 5).round());
     final estimatedReadTime = '$estMinutes–${estMinutes + 5} mins';
+
+    // Real automatic extraction quality diagnostics (`reviewNotes`)
+    if (rawInputWordCount > 40) {
+      final retentionRatio = wordCount / rawInputWordCount;
+      if (retentionRatio < 0.85) {
+        reviewNotes.add(
+          'Low word retention (${(retentionRatio * 100).toStringAsFixed(1)}%: $wordCount of $rawInputWordCount raw words). Please verify no content was missed.',
+        );
+      } else if (retentionRatio > 1.20) {
+        reviewNotes.add(
+          'Word count expanded (${(retentionRatio * 100).toStringAsFixed(1)}%). Check for duplicated headings or repeated fragments.',
+        );
+      }
+    }
+    if (interactiveSections.isEmpty) {
+      reviewNotes.add('No structured study sections were detected.');
+    }
+    final emptySecs = interactiveSections
+        .where((s) =>
+            s.bodyText.isEmpty &&
+            s.verseQuotes.isEmpty &&
+            s.steps.isEmpty &&
+            s.qaItems.isEmpty &&
+            s.checklistItems.isEmpty &&
+            s.tableData == null &&
+            s.testimony == null &&
+            (s.highlightNote == null || s.highlightNote!.isEmpty))
+        .length;
+    if (emptySecs > 0) {
+      reviewNotes.add('$emptySecs section(s) have a heading without extracted body content.');
+    }
 
     String? heroVerse;
     String? heroVerseRef;
@@ -1054,7 +1657,7 @@ class PdfExtractorService {
       decisionQuestions: decisionQuestions,
       commitmentText:
           'I commit to studying God\'s Word prayerfully and following its truth.',
-      reviewNotes: const [],
+      reviewNotes: reviewNotes,
     );
 
     return ExtractedTractArticle(
@@ -1073,6 +1676,7 @@ class PdfExtractorService {
       enquiryPhone: enquiryPhone,
       decisionQuestions: decisionQuestions,
       lessonJson: lessonJson,
+      reviewNotes: reviewNotes,
     );
   }
 

@@ -30,6 +30,40 @@ class _PodcastSeekBarState extends State<PodcastSeekBar> {
     return '${twoDigits(minutes)}:${twoDigits(seconds)}';
   }
 
+  Duration _parseFallbackDuration(String raw) {
+    final clean = raw.trim().toLowerCase();
+    if (clean.isEmpty) return const Duration(minutes: 15);
+    final parts = clean.split(':');
+    if (parts.length == 3) {
+      final h = int.tryParse(parts[0].trim()) ?? 0;
+      final m = int.tryParse(parts[1].trim()) ?? 0;
+      final s = int.tryParse(parts[2].split('.').first.trim()) ?? 0;
+      final total = (h * 3600) + (m * 60) + s;
+      if (total > 0) return Duration(seconds: total);
+    } else if (parts.length == 2) {
+      final m = int.tryParse(parts[0].trim()) ?? 0;
+      final s = int.tryParse(parts[1].split('.').first.trim()) ?? 0;
+      final total = (m * 60) + s;
+      if (total > 0) return Duration(seconds: total);
+    }
+    // Natural formats like "48 min", "1h 15m", "1 hr 20 mins", "90 sec"
+    final hMatch = RegExp(r'(\d+)\s*(?:h|hr|hrs|hour|hours)\b').firstMatch(clean);
+    final mMatch = RegExp(r'(\d+)\s*(?:m|min|mins|minute|minutes)\b').firstMatch(clean);
+    final sMatch = RegExp(r'(\d+)\s*(?:s|sec|secs|second|seconds)\b').firstMatch(clean);
+    if (hMatch != null || mMatch != null || sMatch != null) {
+      final h = int.tryParse(hMatch?.group(1) ?? '0') ?? 0;
+      final m = int.tryParse(mMatch?.group(1) ?? '0') ?? 0;
+      final s = int.tryParse(sMatch?.group(1) ?? '0') ?? 0;
+      final total = (h * 3600) + (m * 60) + s;
+      if (total > 0) return Duration(seconds: total);
+    }
+    final bareMinutes = int.tryParse(clean);
+    if (bareMinutes != null && bareMinutes > 0) {
+      return Duration(minutes: bareMinutes);
+    }
+    return const Duration(minutes: 15);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -40,12 +74,7 @@ class _PodcastSeekBarState extends State<PodcastSeekBar> {
       builder: (context, positionSnapshot) {
         final position = positionSnapshot.data ?? Duration.zero;
         final duration = widget.audioPlayer.duration ??
-            Duration(
-              minutes: int.tryParse(
-                    widget.fallbackDurationString.split(':').first,
-                  ) ??
-                  15,
-            );
+            _parseFallbackDuration(widget.fallbackDurationString);
 
         final totalMs = duration.inMilliseconds.toDouble();
         final posMs = _isSeeking
