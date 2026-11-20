@@ -172,6 +172,7 @@ class AliveScribeService {
   final List<ScribeTranscriptPacket> _transcript = [];
   final List<ScribeDecision> _decisions = [];
   final List<ScribeActionItem> _actionItems = [];
+  final Map<String, DateTime> _actionItemTimestamps = {};
   final Set<String> _attendees = {};
   final Map<String, String> _attendeeRoles = {};
   final Set<String> _speakingAttendees = {};
@@ -945,6 +946,14 @@ class AliveScribeService {
     ScribeTranscriptPacket packet,
   ) {
     if (_actionItems.isEmpty) return;
+    // Ignore calendar/holiday facts (e.g. "Easter 2027 falls on March 28, 2027")
+    if (RegExp(
+      r'\b(falls\s+on|was\s+on|easter|sallah|christmas|public\s+holiday)\b',
+      caseSensitive: false,
+    ).hasMatch(sentence)) {
+      return;
+    }
+
     final foundDate = extractDeadline(sentence);
     if (foundDate == null) return;
 
@@ -957,10 +966,15 @@ class AliveScribeService {
         sentence.length <= 130;
     if (!isFollowupDate) return;
 
-    // Look back up to 2 recent action items without a due date
+    // Look back up to 2 recent action items without a due date within 90 seconds
     final startIdx = (_actionItems.length - 2).clamp(0, _actionItems.length - 1);
     for (int i = _actionItems.length - 1; i >= startIdx; i--) {
       final act = _actionItems[i];
+      final actTime = _actionItemTimestamps[act.id];
+      if (actTime != null &&
+          packet.timestamp.difference(actTime).inSeconds.abs() > 90) {
+        continue;
+      }
       if (act.targetDueDate == null || act.targetDueDate!.isEmpty) {
         _actionItems[i] = ScribeActionItem(
           id: act.id,
@@ -1104,6 +1118,17 @@ class AliveScribeService {
         continue;
       }
 
+      // Skip pure informational questions (e.g. "when do you anticipate...?")
+      // unless phrased as a direct polite delegation ("Can you please send...")
+      if (sentence.trim().endsWith('?') &&
+          !RegExp(
+            r'\b(?:can|could|will|would)\s+you\s+(?:please\s+)?(?:prepare|send|compile|submit|share|work\s+on|follow\s+up|recommend|forward|capture|help|consolidate|source|create|set\s+up)\b',
+            caseSensitive: false,
+          ).hasMatch(sentence)) {
+        _tryBackfillRecentActionDeadline(sentence, packet);
+        continue;
+      }
+
       String? extractedTask;
       String? extractedAssignee;
 
@@ -1212,13 +1237,13 @@ class AliveScribeService {
           .trim();
 
       if (cleanTaskRaw.length < 10) continue;
-      if (RegExp(r'^(?:do\s+that|go\s+through\s+them|answer\s+that)\.?$', caseSensitive: false)
-          .hasMatch(cleanTaskRaw)) {
-        // Keep full sentence for context if short pronoun commitment
-        extractedTask = sentence;
-      } else {
-        extractedTask = cleanTaskRaw;
+      if (RegExp(
+        r'^(?:do\s+that(?:\s+actually)?|go\s+through\s+them|answer\s+that)\.?$',
+        caseSensitive: false,
+      ).hasMatch(cleanTaskRaw)) {
+        continue;
       }
+      extractedTask = cleanTaskRaw;
 
       final taskFinal = extractedTask[0].toUpperCase() + extractedTask.substring(1);
       final targetDueDate = extractDeadline(sentence);
@@ -1243,6 +1268,7 @@ class AliveScribeService {
           verbatimQuote: sentence,
         );
         _actionItems.add(actionObj);
+        _actionItemTimestamps[actionObj.id] = packet.timestamp;
         if (!_actionItemsStreamController.isClosed) {
           _actionItemsStreamController.add(List.unmodifiable(_actionItems));
         }
@@ -1251,7 +1277,7 @@ class AliveScribeService {
   }
 
   // ──────────────────────────────────────────────────────────
-  //  Deterministic Chronological Agenda Segmenter (Zero-LLM)
+  //  Deterministic Chronological Agenda Segmenter
   // ──────────────────────────────────────────────────────────
   static const List<Map<String, dynamic>> _topicCatalog = [
     {
@@ -1410,7 +1436,7 @@ class AliveScribeService {
   }
 
   /// Generates the complete Official ALIVE-NG BoD Minutes structured payload
-  /// 100% deterministically (zero LLM) ready for `DocxReportGenerator.generateMeetingMinutesDocx`.
+  /// 100% deterministically ready for `DocxReportGenerator.generateMeetingMinutesDocx`.
   Map<String, dynamic> generateOfficialMinutesMap({
     required String meetingTitle,
     required String meetingType,

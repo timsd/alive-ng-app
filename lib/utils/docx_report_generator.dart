@@ -1,11 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
 
 import '../models/board_models.dart';
@@ -190,13 +187,15 @@ class DocxReportGenerator {
   static const String docxMimeType =
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-  static Uint8List generateDiscipleshipOfficeReport({
+  static Future<Uint8List> generateDiscipleshipOfficeReport({
     required String officeTitle,
     required String officerName,
     required List<DiscipleshipReport> reports,
     Map<String, DocxSenderDetails> senderDetailsByUserId = const {},
     DateTime? generatedAt,
-  }) {
+    String logoAssetPath = aliveLogoAssetPath,
+  }) async {
+    final logoBytes = await loadAliveLogoPngBytes(assetPath: logoAssetPath);
     final now = generatedAt ?? DateTime.now();
     final generatedDate = DateFormat('MMMM dd, yyyy HH:mm').format(now);
 
@@ -376,16 +375,18 @@ class DocxReportGenerator {
       spacingAfter: 0,
     ));
 
-    return _buildDocxArchive(body.toString());
+    return _buildDocxArchive(body.toString(), logoBytes: logoBytes);
   }
 
-  static Uint8List generateLeadershipReportsDocx({
+  static Future<Uint8List> generateLeadershipReportsDocx({
     required String sectionTitle,
     required String exportedBy,
     required List<BoardReport> reports,
     Map<String, DocxSenderDetails> senderDetailsByUserId = const {},
     DateTime? generatedAt,
-  }) {
+    String logoAssetPath = aliveLogoAssetPath,
+  }) async {
+    final logoBytes = await loadAliveLogoPngBytes(assetPath: logoAssetPath);
     final now = generatedAt ?? DateTime.now();
     final generatedDate = DateFormat('MMMM dd, yyyy HH:mm').format(now);
 
@@ -518,46 +519,25 @@ class DocxReportGenerator {
       spacingAfter: 0,
     ));
 
-    return _buildDocxArchive(body.toString());
+    return _buildDocxArchive(body.toString(), logoBytes: logoBytes);
   }
 
-  static const String aliveLogoAssetPath = 'assets/images/alive_logo.svg';
+  static const String aliveLogoAssetPath = 'assets/images/alive_logo.png';
+  static Uint8List? _cachedLogoBytes;
 
-  /// Loads `assets/images/alive_logo.svg` from Flutter assets and renders it to PNG bytes.
-  /// Falls back to programmatic mosaic rendering if run outside a Flutter asset bundle.
+  /// Loads `assets/images/alive_logo.png` from Flutter assets for every DOCX report.
   static Future<Uint8List> loadAliveLogoPngBytes({
     String assetPath = aliveLogoAssetPath,
-    int maxDimensionPx = 200,
   }) async {
-    try {
-      final svgString = await rootBundle.loadString(assetPath);
-      final pictureInfo =
-          await vg.loadPicture(SvgStringLoader(svgString), null);
-
-      final srcW = pictureInfo.size.width > 0 ? pictureInfo.size.width : 100.0;
-      final srcH =
-          pictureInfo.size.height > 0 ? pictureInfo.size.height : 100.0;
-      final scale = maxDimensionPx / (srcW > srcH ? srcW : srcH);
-      final outW = (srcW * scale).round().clamp(1, maxDimensionPx);
-      final outH = (srcH * scale).round().clamp(1, maxDimensionPx);
-
-      final recorder = ui.PictureRecorder();
-      final canvas = ui.Canvas(recorder);
-      canvas.scale(scale, scale);
-      canvas.drawPicture(pictureInfo.picture);
-      pictureInfo.picture.dispose();
-
-      final image = await recorder.endRecording().toImage(outW, outH);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      image.dispose();
-
-      if (byteData != null) {
-        return byteData.buffer.asUint8List();
-      }
-    } catch (_) {
-      // Fallback for pure-Dart unit tests without Flutter asset bundle
+    if (assetPath == aliveLogoAssetPath && _cachedLogoBytes != null) {
+      return _cachedLogoBytes!;
     }
-    return _generateAliveLogoPngBytes();
+    final data = await rootBundle.load(assetPath);
+    final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    if (assetPath == aliveLogoAssetPath) {
+      _cachedLogoBytes = bytes;
+    }
+    return bytes;
   }
 
   /// Generates a formatted Word (`.docx`) document in the official ALIVE-NG
@@ -569,11 +549,13 @@ class DocxReportGenerator {
     final logoBytes = await loadAliveLogoPngBytes(assetPath: logoAssetPath);
     final body = StringBuffer();
 
-    // 1. Centered ALIVE Logo + Centered All-Caps Bold Title
-    body.writeln(_centeredLogoAndTitle(
+    // 1. Top-Right ALIVE Nigeria Logo cleanly aligned beside Title (2-column borderless banner so text never runs over the logo)
+    body.writeln(_documentHeaderBanner(
       title: data.documentTitle.toUpperCase(),
-      logoWidthEmu: 762000, // ~60pt
-      logoHeightEmu: 838200, // preserves natural vertical Africa emblem aspect ratio
+      subtitle: 'ALIVE NIGERIA — OFFICIAL MEETING MINUTES',
+      titleFontSizeHalfPt: 28,
+      subtitleFontSizeHalfPt: 20,
+      logoEmuSize: 731520, // ~57.6pt square (matches 200x200 ALIVE Nigeria logo cleanly)
     ));
     body.writeln(_spacer(120));
 
@@ -703,7 +685,7 @@ class DocxReportGenerator {
       }
     }
 
-    return _buildDocxArchive(body.toString(), customLogoBytes: logoBytes);
+    return _buildDocxArchive(body.toString(), logoBytes: logoBytes);
   }
 
   /// Backward-compatible wrapper: accepts either ALIVE Scribe JSON string
@@ -734,10 +716,14 @@ class DocxReportGenerator {
     final generatedDate = DateFormat('MMMM dd, yyyy HH:mm').format(now);
     final body = StringBuffer();
 
-    body.writeln(_centeredLogoAndTitle(
+    body.writeln(_documentHeaderBanner(
       title: meetingTitle.trim().isNotEmpty
           ? meetingTitle.trim().toUpperCase()
           : 'ALIVE-NG MEETING MINUTES',
+      subtitle: 'ALIVE NIGERIA — ${meetingType.toUpperCase()} MINUTES',
+      titleFontSizeHalfPt: 28,
+      subtitleFontSizeHalfPt: 20,
+      logoEmuSize: 731520,
     ));
     body.writeln(_spacer(100));
     body.writeln(_twoColumnTable(
@@ -832,12 +818,12 @@ class DocxReportGenerator {
       idx++;
     }
 
-    return _buildDocxArchive(body.toString(), customLogoBytes: logoBytes);
+    return _buildDocxArchive(body.toString(), logoBytes: logoBytes);
   }
 
   static Uint8List _buildDocxArchive(
     String bodyXml, {
-    Uint8List? customLogoBytes,
+    required Uint8List logoBytes,
   }) {
     final documentXml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
@@ -856,67 +842,12 @@ $bodyXml
     _addFile(archive, 'word/_rels/document.xml.rels', _documentRelsXml);
     _addFile(archive, 'word/styles.xml', _stylesXml);
     _addFile(archive, 'word/document.xml', documentXml);
-    final logoBytes = customLogoBytes ?? _generateAliveLogoPngBytes();
     archive.addFile(
       ArchiveFile('word/media/alive_logo.png', logoBytes.length, logoBytes),
     );
 
     final encoded = ZipEncoder().encode(archive);
     return Uint8List.fromList(encoded);
-  }
-
-  static String _centeredLogoAndTitle({
-    required String title,
-    int logoWidthEmu = 762000,
-    int logoHeightEmu = 838200,
-  }) {
-    return '''<w:p>
-  <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="100"/></w:pPr>
-  <w:r>
-    <w:drawing>
-      <wp:inline distT="0" distB="0" distL="0" distR="0">
-        <wp:extent cx="$logoWidthEmu" cy="$logoHeightEmu"/>
-        <wp:docPr id="1" name="ALIVE Logo"/>
-        <wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>
-        <a:graphic>
-          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
-            <pic:pic>
-              <pic:nvPicPr>
-                <pic:cNvPr id="0" name="alive_logo.png"/>
-                <pic:cNvPicPr/>
-              </pic:nvPicPr>
-              <pic:blipFill>
-                <a:blip r:embed="rId2"/>
-                <a:stretch><a:fillRect/></a:stretch>
-              </pic:blipFill>
-              <pic:spPr>
-                <a:xfrm><a:off x="0" y="0"/><a:ext cx="$logoWidthEmu" cy="$logoHeightEmu"/></a:xfrm>
-                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-              </pic:spPr>
-            </pic:pic>
-          </a:graphicData>
-        </a:graphic>
-      </wp:inline>
-    </w:drawing>
-  </w:r>
-</w:p>
-<w:p>
-  <w:pPr>
-    <w:jc w:val="center"/>
-    <w:spacing w:before="40" w:after="140"/>
-    <w:pBdr><w:bottom w:val="single" w:sz="12" w:space="8" w:color="1B365D"/></w:pBdr>
-  </w:pPr>
-  <w:r>
-    <w:rPr>
-      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>
-      <w:b/>
-      <w:color w:val="1B365D"/>
-      <w:sz w:val="28"/>
-      <w:szCs w:val="28"/>
-    </w:rPr>
-    <w:t xml:space="preserve">${_xmlEscape(title)}</w:t>
-  </w:r>
-</w:p>''';
   }
 
   /// Parses `**bold**` markers into proper Word `<w:b/>` runs instead of stripping them.
@@ -1104,48 +1035,17 @@ $bodyXml
     return sb.toString();
   }
 
-  /// Renders a crisp transparent-background PNG of the ALIVE Africa mosaic
-  /// emblem in brand green (#0F9A07) for the top-right DOCX header.
-  static Uint8List _generateAliveLogoPngBytes() {
-    const scale = 6;
-    const width = 24 * scale;
-    const height = 24 * scale;
-    final canvas = img.Image(width: width, height: height, numChannels: 4);
-    final green = img.ColorRgba8(0x0F, 0x9A, 0x07, 0xFF);
-
-    const cells = <List<double>>[
-      [7.575, 2.225], [8.875, 2.225], [10.175, 2.225], [11.475, 2.225],
-      [6.275, 3.875], [7.575, 3.875], [8.875, 3.875], [10.175, 3.875], [11.475, 3.875], [12.775, 3.875], [14.075, 3.875],
-      [4.975, 5.525], [6.275, 5.525], [7.575, 5.525], [8.875, 5.525], [10.175, 5.525], [11.475, 5.525], [12.775, 5.525], [14.075, 5.525], [15.375, 5.525],
-      [4.975, 7.175], [6.275, 7.175], [7.575, 7.175], [8.875, 7.175], [10.175, 7.175], [11.475, 7.175], [12.775, 7.175], [14.075, 7.175], [15.375, 7.175],
-      [4.975, 8.825], [6.275, 8.825], [7.575, 8.825], [8.875, 8.825], [10.175, 8.825], [11.475, 8.825], [12.775, 8.825], [15.375, 8.825], [16.675, 8.825],
-      [8.875, 10.475], [10.175, 10.475], [11.475, 10.475], [16.675, 10.475], [17.975, 10.475],
-      [11.475, 12.125], [12.775, 12.125], [15.375, 12.125], [16.675, 12.125],
-      [11.475, 13.775], [12.775, 13.775], [15.375, 13.775],
-      [11.475, 15.425], [12.775, 15.425], [15.375, 15.425],
-      [11.475, 17.075], [12.775, 17.075], [14.075, 17.075], [15.375, 17.075], [17.975, 17.075],
-      [11.475, 18.725], [12.775, 18.725], [14.075, 18.725], [15.375, 18.725], [17.975, 18.725],
-      [12.775, 20.375], [14.075, 20.375],
-    ];
-
-    for (final c in cells) {
-      final x1 = (c[0] * scale).round();
-      final y1 = (c[1] * scale).round();
-      final x2 = ((c[0] + 1.05) * scale).round();
-      final y2 = ((c[1] + 1.4) * scale).round();
-      img.fillRect(canvas, x1: x1, y1: y1, x2: x2, y2: y2, color: green);
-    }
-    return Uint8List.fromList(img.encodePng(canvas));
-  }
-
   static String _documentHeaderBanner({
     required String title,
     required String subtitle,
+    int titleFontSizeHalfPt = 32,
+    int subtitleFontSizeHalfPt = 24,
+    int logoEmuSize = 685800,
   }) {
-    const emuSize = 685800; // ~54pt square
     return '''<w:tbl>
   <w:tblPr>
     <w:tblW w:w="10080" w:type="dxa"/>
+    <w:tblLayout w:type="fixed"/>
     <w:tblBorders>
       <w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>
       <w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>
@@ -1155,20 +1055,32 @@ $bodyXml
       <w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>
     </w:tblBorders>
   </w:tblPr>
+  <w:tblGrid>
+    <w:gridCol w:w="8400"/>
+    <w:gridCol w:w="1680"/>
+  </w:tblGrid>
   <w:tr>
     <w:tc>
-      <w:tcPr><w:tcW w:w="8400" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>
-      ${_paragraph(title, bold: true, fontSizeHalfPt: 32, colorHex: '1B365D', spacingBefore: 0, spacingAfter: 40)}
-      ${_paragraph(subtitle, bold: true, fontSizeHalfPt: 24, colorHex: '0F9A07', spacingBefore: 0, spacingAfter: 80)}
+      <w:tcPr>
+        <w:tcW w:w="8400" w:type="dxa"/>
+        <w:vAlign w:val="center"/>
+        <w:tcMar><w:top w:w="40" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="200" w:type="dxa"/></w:tcMar>
+      </w:tcPr>
+      ${_paragraph(title, bold: true, fontSizeHalfPt: titleFontSizeHalfPt, colorHex: '1B365D', spacingBefore: 0, spacingAfter: 40)}
+      ${_paragraph(subtitle, bold: true, fontSizeHalfPt: subtitleFontSizeHalfPt, colorHex: '0F9A07', spacingBefore: 0, spacingAfter: 60)}
     </w:tc>
     <w:tc>
-      <w:tcPr><w:tcW w:w="1680" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>
+      <w:tcPr>
+        <w:tcW w:w="1680" w:type="dxa"/>
+        <w:vAlign w:val="center"/>
+        <w:tcMar><w:top w:w="40" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tcMar>
+      </w:tcPr>
       <w:p>
-        <w:pPr><w:jc w:val="right"/><w:spacing w:before="0" w:after="60"/></w:pPr>
+        <w:pPr><w:jc w:val="right"/><w:spacing w:before="0" w:after="40"/></w:pPr>
         <w:r>
           <w:drawing>
             <wp:inline distT="0" distB="0" distL="0" distR="0">
-              <wp:extent cx="$emuSize" cy="$emuSize"/>
+              <wp:extent cx="$logoEmuSize" cy="$logoEmuSize"/>
               <wp:docPr id="1" name="ALIVE Logo"/>
               <wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>
               <a:graphic>
@@ -1183,7 +1095,7 @@ $bodyXml
                       <a:stretch><a:fillRect/></a:stretch>
                     </pic:blipFill>
                     <pic:spPr>
-                      <a:xfrm><a:off x="0" y="0"/><a:ext cx="$emuSize" cy="$emuSize"/></a:xfrm>
+                      <a:xfrm><a:off x="0" y="0"/><a:ext cx="$logoEmuSize" cy="$logoEmuSize"/></a:xfrm>
                       <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
                     </pic:spPr>
                   </pic:pic>

@@ -2511,7 +2511,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
       exportableReports.map((r) => r.authorId).toSet(),
     );
 
-    final docxBytes = DocxReportGenerator.generateLeadershipReportsDocx(
+    final docxBytes = await DocxReportGenerator.generateLeadershipReportsDocx(
       sectionTitle: sectionTitle,
       exportedBy: exportedBy,
       reports: exportableReports,
@@ -2586,7 +2586,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
         'leadership_reports_${cleanLevel}_${DateFormat('yyyyMMdd_HHmm').format(now)}.docx';
 
     final bytes = prebuiltBytes ??
-        DocxReportGenerator.generateLeadershipReportsDocx(
+        await DocxReportGenerator.generateLeadershipReportsDocx(
           sectionTitle: sectionTitle,
           exportedBy: exportedBy,
           reports: targetReports,

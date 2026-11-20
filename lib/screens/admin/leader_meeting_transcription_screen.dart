@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
@@ -418,7 +417,7 @@ class _LeaderMeetingTranscriptionScreenState
   }
 
   // ──────────────────────────────────────────────────────────
-  //  Action 2: Copy / Share Minutes
+  //  Action 2: Share Minutes
   // ──────────────────────────────────────────────────────────
   Future<void> _copyOrShareMinutes() async {
     final markdown = _scribeService?.generateMarkdownMinutes(
@@ -452,20 +451,8 @@ class _LeaderMeetingTranscriptionScreenState
               ),
               const SizedBox(height: 12),
               ListTile(
-                leading: Icon(Icons.copy_rounded, color: Theme.of(ctx).colorScheme.primary),
-                title: const Text('Copy to Clipboard'),
-                subtitle: const Text('Markdown format with overview, decisions & table'),
-                onTap: () async {
-                  await Clipboard.setData(ClipboardData(text: markdown));
-                  if (ctx.mounted) {
-                    Navigator.of(ctx).pop();
-                    ToastUtils.showSuccess('Minutes copied to clipboard!');
-                  }
-                },
-              ),
-              ListTile(
                 leading: const Icon(Icons.share_rounded, color: Color(0xFF00897B)),
-                title: const Text('Share via App / Email'),
+                title: const Text('Share'),
                 subtitle: const Text('Send verified minutes through system share'),
                 onTap: () async {
                   Navigator.of(ctx).pop();

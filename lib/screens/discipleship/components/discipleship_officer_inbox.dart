@@ -1364,7 +1364,7 @@ class _DiscipleshipOfficerInboxViewState
       exportableReports.map((r) => r.discipleMakerId).toSet(),
     );
 
-    final docxBytes = DocxReportGenerator.generateDiscipleshipOfficeReport(
+    final docxBytes = await DocxReportGenerator.generateDiscipleshipOfficeReport(
       officeTitle: officeTitle,
       officerName: officerName,
       reports: exportableReports,
@@ -1446,7 +1446,7 @@ class _DiscipleshipOfficerInboxViewState
         'discipleship_reports_${cleanTitle}_${DateFormat('yyyyMMdd_HHmm').format(now)}.docx';
 
     final bytes = prebuiltBytes ??
-        DocxReportGenerator.generateDiscipleshipOfficeReport(
+        await DocxReportGenerator.generateDiscipleshipOfficeReport(
           officeTitle: officeTitle,
           officerName: officerName,
           reports: targetReports,
