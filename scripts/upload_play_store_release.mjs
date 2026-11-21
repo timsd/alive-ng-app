@@ -381,9 +381,9 @@ async function main() {
               language: 'en-US',
               text:
                 `What's New in v${versionName}:\n` +
-                `• Live Voice Activity: Real-time speaking & mic indicators across ALIVE Meet, Chat, Bible Game, and Kids Missions.\n` +
-                `• Instant Content Sync: Faster updates and offline access for tracts, lessons, podcasts, Health+, and announcements.\n` +
-                `• Smoother Meetings: Direct join for ongoing meetings, seamless overlay resume, and reliable alerts.\n` +
+                `• Audio Architecture: Spotify-style Opus/HE-AAC audio optimization for sermons & podcasts.\n` +
+                `• Cleaner Podcast Player: Removed transcript alignment banner for a focused listening experience.\n` +
+                `• Live Voice Activity: Real-time speaking & mic indicators across ALIVE Meet, Chat, and Bible Game.\n` +
                 `• Bug fixes and performance improvements.`,
             },
           ],

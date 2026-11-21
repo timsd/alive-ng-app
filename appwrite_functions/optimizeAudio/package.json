@@ -1,0 +1,10 @@
+{
+  "name": "optimize-audio",
+  "version": "1.0.0",
+  "description": "High efficiency audio optimizer (Opus / HE-AAC at 64-96 kbps) for sermons and podcasts",
+  "type": "module",
+  "main": "src/main.js",
+  "dependencies": {
+    "node-appwrite": "^14.1.0"
+  }
+}

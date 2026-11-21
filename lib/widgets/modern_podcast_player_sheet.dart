@@ -1194,32 +1194,6 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
           ),
 
           const SizedBox(height: 10),
-          if (_wasTimelineNormalized) ...[
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: isDark ? 0.16 : 0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.sync_rounded, size: 14, color: colorScheme.primary),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Transcript timeline auto-aligned to episode audio length.',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
 
           // Transcript List with live real-time audio synchronization
           Expanded(

@@ -1133,7 +1133,9 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
           : (podcast?.title ?? ''),
       'description': episode.description,
       'duration': episode.duration,
-      'audioUrl': episode.audioUrl,
+      'audioUrl': episode.playableAudioUrl,
+      'compressedAudioUrl': episode.compressedAudioUrl,
+      'audioFormat': episode.audioFormat,
       'transcript': episode.transcript,
       'notes': episode.notes,
       'downloadDate': '',
@@ -1144,6 +1146,11 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   }
 
   String _episodeAudioUrl(Map<String, dynamic> episode) {
-    return (episode['audioUrl'] ?? episode['audio_url'] ?? '').toString();
+    return (episode['compressedAudioUrl'] ??
+            episode['compressed_audio_url'] ??
+            episode['audioUrl'] ??
+            episode['audio_url'] ??
+            '')
+        .toString();
   }
 }

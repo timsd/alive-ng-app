@@ -135,6 +135,8 @@ class AppwriteBackendConfig {
   static const String podcastsCollectionId = 'podcasts';
   static const String podcastEpisodesCollectionId = 'podcast_episodes';
   static const String podcastCategoriesCollectionId = 'podcast_categories';
+  static const String audioOptimizationJobsCollectionId =
+      'audio_optimization_jobs';
   static const String healthTrackingCollectionId = 'health_tracking';
   static const String userSubmittedRecipesCollectionId =
       'user_submitted_recipes';

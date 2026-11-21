@@ -128,6 +128,22 @@ class PodcastEpisode {
   final String? localPath;
   final String? transcript;
   final String? notes;
+  final String? compressedAudioUrl;
+  final String? audioFormat;
+  final String? audioBitrate;
+  final int? originalFileSize;
+  final int? compressedFileSize;
+  final double? compressionRatio;
+  final String? compressionStatus;
+
+  /// Returns the highest-efficiency playable audio URL (preferring compressed Opus/HE-AAC if available).
+  String get playableAudioUrl {
+    final compressed = compressedAudioUrl?.trim();
+    if (compressed != null && compressed.isNotEmpty) {
+      return compressed;
+    }
+    return audioUrl;
+  }
 
   const PodcastEpisode({
     required this.id,
@@ -142,6 +158,13 @@ class PodcastEpisode {
     this.localPath,
     this.transcript,
     this.notes,
+    this.compressedAudioUrl,
+    this.audioFormat,
+    this.audioBitrate,
+    this.originalFileSize,
+    this.compressedFileSize,
+    this.compressionRatio,
+    this.compressionStatus,
   });
 
   factory PodcastEpisode.fromJson(Map<String, dynamic> json) {
@@ -164,6 +187,22 @@ class PodcastEpisode {
       localPath: json['localPath'] as String? ?? json['local_path'] as String?,
       transcript: json['transcript'] as String? ?? json['transcription'] as String?,
       notes: json['notes'] as String?,
+      compressedAudioUrl: json['compressedAudioUrl'] as String? ??
+          json['compressed_audio_url'] as String?,
+      audioFormat: json['audioFormat'] as String? ??
+          json['audio_format'] as String?,
+      audioBitrate: json['audioBitrate'] as String? ??
+          json['audio_bitrate'] as String?,
+      originalFileSize: json['original_file_size'] != null
+          ? _int(json['original_file_size'])
+          : null,
+      compressedFileSize: json['compressed_file_size'] != null
+          ? _int(json['compressed_file_size'])
+          : null,
+      compressionRatio: json['compression_ratio'] != null
+          ? _double(json['compression_ratio'])
+          : null,
+      compressionStatus: json['compression_status'] as String?,
     );
   }
 
@@ -181,6 +220,13 @@ class PodcastEpisode {
       'localPath': localPath,
       'transcript': transcript,
       'notes': notes,
+      'compressedAudioUrl': compressedAudioUrl,
+      'audioFormat': audioFormat,
+      'audioBitrate': audioBitrate,
+      'originalFileSize': originalFileSize,
+      'compressedFileSize': compressedFileSize,
+      'compressionRatio': compressionRatio,
+      'compressionStatus': compressionStatus,
     };
   }
 }

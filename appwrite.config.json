@@ -240,6 +240,28 @@
                 "documents.read",
                 "documents.write"
             ]
+        },
+        {
+            "$id": "optimize_audio",
+            "name": "optimizeAudio",
+            "runtime": "node-20.0",
+            "path": "appwrite_functions/optimizeAudio",
+            "entrypoint": "src/main.js",
+            "execute": [
+                "users"
+            ],
+            "enabled": true,
+            "logging": true,
+            "events": [],
+            "schedule": "",
+            "timeout": 300,
+            "commands": "npm install",
+            "scopes": [
+                "databases.read",
+                "databases.write",
+                "storage.read",
+                "storage.write"
+            ]
         }
     ]
 }
