@@ -235,10 +235,11 @@ export default async ({ req, res, log, error }) => {
       const proj = process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_FUNCTION_PROJECT_ID;
       const key = process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
       const dbId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
+      const usersColId = process.env.USERS_COLLECTION_ID || '6a08943100226f5b4963';
       if (ep && proj && key && userId) {
         try {
           const uRes = await fetch(
-            `${ep.replace(/\/v1\/?$/, '')}/v1/databases/${dbId}/collections/users/documents/${encodeURIComponent(userId)}`,
+            `${ep.replace(/\/v1\/?$/, '')}/v1/databases/${dbId}/collections/${usersColId}/documents/${encodeURIComponent(userId)}`,
             { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
           );
           if (uRes.ok) {
