@@ -17,6 +17,8 @@ class TTSService {
   final List<VoidCallback> _completionListeners = [];
   final List<VoidCallback> _startListeners = [];
   final List<void Function(dynamic)> _errorListeners = [];
+  VoidCallback? _oneShotStart;
+  VoidCallback? _oneShotComplete;
 
   void addCompletionListener(VoidCallback listener) => _completionListeners.add(listener);
   void removeCompletionListener(VoidCallback listener) => _completionListeners.remove(listener);
@@ -27,6 +29,19 @@ class TTSService {
   void addErrorListener(void Function(dynamic) listener) => _errorListeners.add(listener);
   void removeErrorListener(void Function(dynamic) listener) => _errorListeners.remove(listener);
 
+  void _fireOneShotStart() {
+    final cb = _oneShotStart;
+    _oneShotStart = null;
+    cb?.call();
+  }
+
+  void _fireOneShotComplete() {
+    final cb = _oneShotComplete;
+    _oneShotStart = null;
+    _oneShotComplete = null;
+    cb?.call();
+  }
+
   Future<void> initialize() async {
     if (_isInitialized && _flutterTts != null) return;
 
@@ -35,6 +50,7 @@ class TTSService {
 
       _flutterTts!.setStartHandler(() {
         _isSpeaking = true;
+        _fireOneShotStart();
         for (final l in List.of(_startListeners)) {
           l();
         }
@@ -42,6 +58,7 @@ class TTSService {
 
       _flutterTts!.setCompletionHandler(() {
         _isSpeaking = false;
+        _fireOneShotComplete();
         for (final l in List.of(_completionListeners)) {
           l();
         }
@@ -50,6 +67,7 @@ class TTSService {
       _flutterTts!.setErrorHandler((msg) {
         _isSpeaking = false;
         _logger.warning('TTS error event: $msg');
+        _fireOneShotComplete();
         for (final l in List.of(_errorListeners)) {
           l(msg);
         }
@@ -57,6 +75,7 @@ class TTSService {
 
       _flutterTts!.setCancelHandler(() {
         _isSpeaking = false;
+        _fireOneShotComplete();
         for (final l in List.of(_completionListeners)) {
           l();
         }
@@ -165,14 +184,19 @@ class TTSService {
 
       if (_flutterTts == null || text.trim().isEmpty) return;
 
-      // Handle language configuration
+      // Handle language configuration (supports both ISO codes and display names)
       if (languageCode != null && languageCode.isNotEmpty) {
+        final normalizedLang = languageCode.trim().toLowerCase();
         final langTag = {
           'yo': 'yo-NG',
+          'yoruba': 'yo-NG',
           'ha': 'ha-NG',
+          'hausa': 'ha-NG',
           'ig': 'ig-NG',
+          'igbo': 'ig-NG',
           'en': 'en-US',
-        }[languageCode] ?? languageCode;
+          'english': 'en-US',
+        }[normalizedLang] ?? languageCode;
 
         try {
           await _flutterTts!.setLanguage(langTag);
@@ -182,12 +206,8 @@ class TTSService {
         }
       }
 
-      if (onStart != null) {
-        _startListeners.add(onStart);
-      }
-      if (onComplete != null) {
-        _completionListeners.add(onComplete);
-      }
+      _oneShotStart = onStart;
+      _oneShotComplete = onComplete;
 
       final cleanText = _cleanTextForSpeech(text);
       _isSpeaking = true;
@@ -195,7 +215,7 @@ class TTSService {
     } catch (e) {
       _isSpeaking = false;
       _logger.error('Error speaking text', e);
-      onComplete?.call();
+      _fireOneShotComplete();
     }
   }
 

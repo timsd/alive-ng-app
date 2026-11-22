@@ -21,6 +21,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   final HealthContentService _contentService = HealthContentService();
+  final TextEditingController _communityPostController = TextEditingController();
 
   late bool _isLoading;
   String? _error;
@@ -36,6 +37,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
 
   @override
   void dispose() {
+    _communityPostController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -720,7 +722,7 @@ class _EnhancedHealthScreenState extends ConsumerState<EnhancedHealthScreen>
 
   Widget _buildPostForm(AppUser user) {
     final theme = Theme.of(context);
-    final controller = TextEditingController();
+    final controller = _communityPostController;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),

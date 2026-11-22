@@ -1137,9 +1137,21 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
   }
 
   void _submitQuizAnswer() {
+    final answer = _answerController.text.trim();
+    if (answer.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your answer before submitting.')),
+      );
+      return;
+    }
     final expected = _expectedText;
-    if (expected == null) return;
-    final score = MissionScoring.scoreAnswer(expected, _answerController.text);
+    if (expected == null) {
+      // Open-ended / reflection quiz without a rigid answer key
+      setState(() => _score = 100);
+      _awardPoints(100);
+      return;
+    }
+    final score = MissionScoring.scoreAnswer(expected, answer);
     setState(() => _score = score);
     if (score >= MissionScoring.quizPassThreshold) {
       _awardPoints(score);
@@ -1149,12 +1161,21 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
   }
 
   Future<void> _pickPhoto() async {
-    final picker = ImagePicker();
-    final picked =
-        await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
-    if (picked == null) return;
-    // Photo missions are parent-verified; capture counts as completion.
-    await _awardPoints(100);
+    try {
+      final picker = ImagePicker();
+      final picked =
+          await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+      if (picked == null) return;
+      // Photo missions are parent-verified; capture counts as completion.
+      await _awardPoints(100);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to open camera: ${ErrorHandler.getUserFriendlyMessage(e)}'),
+        ),
+      );
+    }
   }
 
   Future<void> _awardPoints(int score) async {

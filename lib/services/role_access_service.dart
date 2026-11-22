@@ -345,17 +345,22 @@ class RoleAccessService {
 
   /// Check if user can modify another user's role
   bool canModifyUserRole(String targetUserRole) {
-    final currentRole = getCurrentUserRole();
+    final currentRole = getCurrentUserRole()?.toLowerCase().trim();
     if (currentRole == null) return false;
+    final target = targetUserRole.toLowerCase().trim();
 
-    // Admins can modify anyone except other admins (unless same person)
-    if (currentRole == 'admin') {
+    if (currentRole == 'super_admin') {
       return true;
+    }
+
+    // Admins can modify anyone except super_admins
+    if (currentRole == 'admin') {
+      return target != 'super_admin';
     }
 
     // Leaders can modify coordinators and members, but not other leaders or admins
     if (currentRole == 'leader') {
-      return targetUserRole == 'coordinator' || targetUserRole == 'member';
+      return target == 'coordinator' || target == 'member';
     }
 
     // Coordinators and members cannot modify roles
@@ -364,17 +369,22 @@ class RoleAccessService {
 
   /// Check if user can assign a specific role
   bool canAssignRole(String roleToAssign) {
-    final currentRole = getCurrentUserRole();
+    final currentRole = getCurrentUserRole()?.toLowerCase().trim();
     if (currentRole == null) return false;
+    final target = roleToAssign.toLowerCase().trim();
 
-    // Admins can assign any role
-    if (currentRole == 'admin') {
+    if (currentRole == 'super_admin') {
       return true;
+    }
+
+    // Admins can assign any role except super_admin
+    if (currentRole == 'admin') {
+      return target != 'super_admin';
     }
 
     // Leaders can assign coordinator and member roles
     if (currentRole == 'leader') {
-      return roleToAssign == 'coordinator' || roleToAssign == 'member';
+      return target == 'coordinator' || target == 'member';
     }
 
     // Others cannot assign roles
@@ -391,7 +401,8 @@ class RoleAccessService {
         profile.role == 'director' ||
         profile.role == 'bod' ||
         profile.role == 'trustee' ||
-        profile.role == 'admin';
+        profile.role == 'admin' ||
+        profile.role == 'super_admin';
   }
 
   /// Check if user is archived

@@ -181,13 +181,31 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             
-            <!-- Deep linking support (App Links to the web app) -->
+            <!-- Deep linking support (App Links scoped to app routes only, so static
+                 web assets like /oauth-callback.html and /downloads/*.apk stay in browser) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https"
-                      android:host="app.alivenigeria.org" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/meet" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/podcasts" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/bible" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/prayer" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/events" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/missions" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/chapters" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/donate" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/payment" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/tracts" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/lessons" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/chat" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/profile" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/daily" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/health" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/kids" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/study-guides" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/discipleship" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/library" />
             </intent-filter>
         </activity>
 

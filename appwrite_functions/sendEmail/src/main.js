@@ -194,9 +194,11 @@ export default async ({ req, res, log, error }) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              ...(body.prefs || targetPrefs || {}),
-              welcome_email_sent: true,
-              welcome_email_sent_at: new Date().toISOString(),
+              prefs: {
+                ...(body.prefs || targetPrefs || {}),
+                welcome_email_sent: true,
+                welcome_email_sent_at: new Date().toISOString(),
+              },
             }),
           });
           log(`Marked welcome_email_sent=true in prefs for user ${targetUserId}.`);
@@ -215,10 +217,40 @@ export default async ({ req, res, log, error }) => {
     }
 
     const userId = req.headers['x-appwrite-user-id'];
-    // Allow if authenticated user or internal execution
-    const isInternal = Boolean(req.headers['x-appwrite-key']);
+    const trigger = (req.headers['x-appwrite-trigger'] || '').toLowerCase();
+    // Only trust internal execution when triggered by event/schedule or server API key without user header
+    const isInternal = Boolean(
+      (!userId && req.headers['x-appwrite-key']) ||
+      trigger === 'event' ||
+      trigger === 'schedule'
+    );
     if (!userId && !isInternal) {
       return res.json({ error: 'Authentication required.' }, 401);
+    }
+
+    // Prevent regular members from forging official donation receipts
+    if (isReceipt && !isInternal) {
+      let isAdminCaller = false;
+      const ep = process.env.APPWRITE_ENDPOINT || process.env.APPWRITE_FUNCTION_API_ENDPOINT;
+      const proj = process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_FUNCTION_PROJECT_ID;
+      const key = process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
+      const dbId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
+      if (ep && proj && key && userId) {
+        try {
+          const uRes = await fetch(
+            `${ep.replace(/\/v1\/?$/, '')}/v1/databases/${dbId}/collections/users/documents/${encodeURIComponent(userId)}`,
+            { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
+          );
+          if (uRes.ok) {
+            const uDoc = await uRes.json();
+            const r = String(uDoc?.role || '').toLowerCase().trim();
+            isAdminCaller = ['admin', 'super_admin', 'treasurer'].includes(r);
+          }
+        } catch (_) {}
+      }
+      if (!isAdminCaller) {
+        return res.json({ error: 'Only server-side payment verification or admins may send receipts.' }, 403);
+      }
     }
 
     const to = validateEmail(body.to);

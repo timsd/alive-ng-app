@@ -92,7 +92,12 @@ android {
     buildTypes {
         release {
             val hasSigning = keystoreProperties.getProperty("storeFile") != null
-            signingConfig = signingConfigs.getByName(if (hasSigning) "release" else "debug")
+            if (!hasSigning) {
+                throw org.gradle.api.GradleException(
+                    "Release signing configuration missing! Provide android/key.properties or ANDROID_KEYSTORE_PATH/PASSWORD env vars."
+                )
+            }
+            signingConfig = signingConfigs.getByName("release")
             // R8 code shrinking + resource shrinking (Play Console "App optimization").
             isMinifyEnabled = true
             isShrinkResources = true

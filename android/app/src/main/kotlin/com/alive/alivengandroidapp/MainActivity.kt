@@ -102,32 +102,55 @@ class MainActivity: AudioServiceFragmentActivity() {
                     }
                     "startScreenShareService" -> {
                         isRequestingScreenShare = true
-                        try {
-                            MediaProjectionForegroundService.start(this@MainActivity) { ready ->
-                                if (ready) {
-                                    result.success(true)
-                                } else {
-                                    isRequestingScreenShare = false
-                                    result.error(
-                                        "SCREEN_SHARE_SERVICE_ERROR",
-                                        "MediaProjection foreground service did not become ready",
-                                        null
-                                    )
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isPipSupported()) {
+                            try {
+                                setPictureInPictureParams(buildPipParams(autoEnter = false))
+                            } catch (_: Exception) {}
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            // Android 14+ (targetSdk 35) throws SecurityException if a
+                            // mediaProjection FGS starts BEFORE user consent. We defer starting
+                            // MediaProjectionForegroundService until onActivityResult() receives
+                            // RESULT_OK from the system screen-capture consent dialog.
+                            result.success(true)
+                        } else {
+                            try {
+                                MediaProjectionForegroundService.start(this@MainActivity) { ready ->
+                                    if (ready) {
+                                        result.success(true)
+                                    } else {
+                                        isRequestingScreenShare = false
+                                        result.error(
+                                            "SCREEN_SHARE_SERVICE_ERROR",
+                                            "MediaProjection foreground service did not become ready",
+                                            null
+                                        )
+                                    }
                                 }
+                            } catch (e: Exception) {
+                                isRequestingScreenShare = false
+                                Log.e("MainActivity", "Failed to start screen share service", e)
+                                result.error("SCREEN_SHARE_SERVICE_ERROR", e.message, null)
                             }
-                        } catch (e: Exception) {
-                            isRequestingScreenShare = false
-                            Log.e("MainActivity", "Failed to start screen share service", e)
-                            result.error("SCREEN_SHARE_SERVICE_ERROR", e.message, null)
                         }
                     }
                     "stopScreenShareService" -> {
                         isRequestingScreenShare = false
                         MediaProjectionForegroundService.stop(this@MainActivity)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isPipSupported()) {
+                            try {
+                                setPictureInPictureParams(buildPipParams(autoEnter = isInActiveMeeting || isPlayingVideo))
+                            } catch (_: Exception) {}
+                        }
                         result.success(true)
                     }
                     "setRequestingScreenShare" -> {
                         isRequestingScreenShare = call.argument<Boolean>("requesting") ?: false
+                        if (!isRequestingScreenShare && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isPipSupported()) {
+                            try {
+                                setPictureInPictureParams(buildPipParams(autoEnter = isInActiveMeeting || isPlayingVideo))
+                            } catch (_: Exception) {}
+                        }
                         result.success(true)
                     }
                     else -> result.notImplemented()
@@ -248,6 +271,24 @@ class MainActivity: AudioServiceFragmentActivity() {
         } catch (e: Exception) {
             Log.e("MainActivity", "Error sending email", e)
         }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (isRequestingScreenShare && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            isRequestingScreenShare = false
+            if (resultCode == android.app.Activity.RESULT_OK && data != null) {
+                MediaProjectionForegroundService.start(this) { _ ->
+                    super.onActivityResult(requestCode, resultCode, data)
+                }
+                return
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isPipSupported()) {
+                try {
+                    setPictureInPictureParams(buildPipParams(autoEnter = isInActiveMeeting || isPlayingVideo))
+                } catch (_: Exception) {}
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onUserLeaveHint() {

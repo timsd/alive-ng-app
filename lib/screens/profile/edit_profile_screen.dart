@@ -320,10 +320,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: true,
+      canPop: !_hasChanges,
       onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
-          await _onWillPop();
+          final shouldLeave = await _onWillPop();
+          if (shouldLeave && context.mounted) {
+            Navigator.of(context).pop();
+          }
         }
       },
       child: Scaffold(
@@ -1044,6 +1047,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         }
       } catch (e) {
         debugPrint('[ProfilePicture] upload error: ${describeError(e)}');
+        ref.read(pendingAvatarBytesProvider.notifier).state = null;
         if (mounted) {
           setState(() {
             _pendingPictureBytes = null;
@@ -1055,6 +1059,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       }
     } catch (e) {
       debugPrint('[ProfilePicture] selection error: ${describeError(e)}');
+      ref.read(pendingAvatarBytesProvider.notifier).state = null;
       ToastUtils.showError('Could not process that image: ${describeError(e)}');
       if (mounted) setState(() => _isUploadingPicture = false);
     }
@@ -1094,6 +1099,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       _profilePictureUrl = null;
       _pendingPictureBytes = null;
     });
+    ref.read(pendingAvatarBytesProvider.notifier).state = null;
 
     try {
       await ref.read(appwriteProfileServiceProvider).updateUserProfile(

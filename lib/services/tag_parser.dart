@@ -119,6 +119,20 @@ class TagParser {
       }
     });
     
+    // Parse !special tags (!urgent, !prayer, etc.)
+    final specialTagRegex = RegExp(r'!([a-zA-Z0-9_]+)');
+    specialTagRegex.allMatches(content).forEach((match) {
+      final tagValue = match.group(1)!;
+      final lower = tagValue.toLowerCase();
+      if (!_disabledSpecialTags.contains(lower)) {
+        tags.add(MessageTag(
+          type: TagType.special,
+          value: lower,
+          displayName: _getSpecialTagDisplayName(lower),
+        ));
+      }
+    });
+
     return tags;
   }
 

@@ -200,24 +200,58 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         .toList();
   }
 
+  static const String _adminTeamId = '6a098ba2001455c27fdb';
+
+  bool _isSecretSettingKey(String? key) {
+    final k = (key ?? '').toLowerCase();
+    return k.contains('secret') ||
+        k.contains('stream_key') ||
+        k.contains('api_key') ||
+        k.contains('password') ||
+        k.contains('token');
+  }
+
+  List<String> _permissionsForSetting(String? key, Map<String, dynamic> data) {
+    final isPublic = data['is_public'] == true && !_isSecretSettingKey(key);
+    return <String>[
+      if (isPublic) Permission.read(Role.any()),
+      Permission.read(Role.team(_adminTeamId)),
+      Permission.update(Role.team(_adminTeamId)),
+      Permission.delete(Role.team(_adminTeamId)),
+    ];
+  }
+
   Future<void> _createSetting(Map<String, dynamic> data) async {
     final key = data['setting_key']?.toString() ?? data['key']?.toString();
+    final normalized = _normalizeSettingPayload(data);
+    if (_isSecretSettingKey(key)) {
+      normalized['is_public'] = false;
+    }
     await _tables.createRow(
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.appSettingsCollectionId,
       rowId: AppwriteIdUtils.toValidUid(key, prefix: 'st'),
-      data: _normalizeSettingPayload(data),
+      data: normalized,
+      permissions: _permissionsForSetting(key, normalized),
     );
   }
 
   Future<void> _updateSetting(
       String documentId, Map<String, dynamic> data) async {
+    final key = data['setting_key']?.toString() ??
+        data['key']?.toString() ??
+        documentId;
+    final normalized = _normalizeSettingPayload(data);
+    if (_isSecretSettingKey(key)) {
+      normalized['is_public'] = false;
+    }
     await AppwriteUpsertHelper.updateOrCreateRow(
       _tables,
       databaseId: AppwriteBackendConfig.databaseId,
       tableId: AppwriteBackendConfig.appSettingsCollectionId,
       rowId: AppwriteIdUtils.toValidUid(documentId, prefix: 'st'),
-      data: _normalizeSettingPayload(data),
+      data: normalized,
+      permissions: _permissionsForSetting(key, normalized),
     );
   }
 

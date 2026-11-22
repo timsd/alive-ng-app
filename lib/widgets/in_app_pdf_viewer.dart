@@ -29,7 +29,16 @@ class InAppPdfViewerScreen extends StatefulWidget {
 }
 
 class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
+  static const int _maxCachedPdfs = 5;
   static final Map<String, Uint8List> _pdfMemoryCache = {};
+
+  static void _putPdfCache(String key, Uint8List bytes) {
+    _pdfMemoryCache.remove(key);
+    _pdfMemoryCache[key] = bytes;
+    while (_pdfMemoryCache.length > _maxCachedPdfs) {
+      _pdfMemoryCache.remove(_pdfMemoryCache.keys.first);
+    }
+  }
 
   final PdfViewerController _pdfController = PdfViewerController();
   Uint8List? _bytes;
@@ -44,7 +53,7 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
     _loadDocumentBytes();
   }
 
-  Future<void> _loadDocumentBytes() async {
+  Future<void> _loadDocumentBytes({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -67,13 +76,16 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
       return;
     }
 
-    // Check fast in-memory cache first for instant 0ms preview
-    if (_pdfMemoryCache.containsKey(url)) {
+    // Check fast in-memory cache first for instant 0ms preview (unless reloaded)
+    if (!forceRefresh && _pdfMemoryCache.containsKey(url)) {
       setState(() {
         _bytes = _pdfMemoryCache[url];
         _isLoading = false;
       });
       return;
+    }
+    if (forceRefresh) {
+      _pdfMemoryCache.remove(url);
     }
 
     try {
@@ -97,7 +109,7 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
 
       if (response != null && response.statusCode >= 200 && response.statusCode < 300) {
         if (!mounted) return;
-        _pdfMemoryCache[url] = response.bodyBytes;
+        _putPdfCache(url, response.bodyBytes);
         setState(() {
           _bytes = response!.bodyBytes;
           _isLoading = false;
@@ -147,7 +159,7 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Reload Document',
-            onPressed: _loadDocumentBytes,
+            onPressed: () => _loadDocumentBytes(forceRefresh: true),
           ),
         ],
       ),
@@ -182,7 +194,7 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
                     ),
                     const SizedBox(height: 20),
                     FilledButton.icon(
-                      onPressed: _loadDocumentBytes,
+                      onPressed: () => _loadDocumentBytes(forceRefresh: true),
                       icon: const Icon(Icons.refresh_rounded),
                       label: const Text('Retry'),
                     ),

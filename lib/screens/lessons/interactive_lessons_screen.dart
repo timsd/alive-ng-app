@@ -377,7 +377,7 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
                           isFavorite ? Icons.favorite : Icons.favorite_border,
                           color: isFavorite ? Colors.redAccent : Colors.white,
                         ),
-                        onPressed: () => _toggleFavorite(index),
+                        onPressed: () => _toggleFavorite(lesson['id']?.toString()),
                       ),
                     ),
                   ),
@@ -513,13 +513,9 @@ class _InteractiveLessonsScreenState extends ConsumerState<InteractiveLessonsScr
   }
 
 
-  void _toggleFavorite(int index) {
-    if (index >= 0 && index < _filteredLessons.length) {
-      final lesson = _filteredLessons[index];
-      final id = lesson['id']?.toString();
-      if (id != null) {
-        _lessonsService.toggleFavorite(id);
-      }
+  void _toggleFavorite(String? lessonId) {
+    if (lessonId != null && lessonId.isNotEmpty) {
+      _lessonsService.toggleFavorite(lessonId);
     }
   }
 

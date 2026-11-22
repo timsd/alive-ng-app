@@ -214,14 +214,49 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
   Timer? _timer;
   int _currentStreak = 1;
 
+  static const _taskStartsPrefsKey = 'daily_task_start_times';
+
   @override
   void initState() {
     super.initState();
     _loadStreak();
+    _loadPersistedTaskStarts();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _autoCompleteElapsedTasks();
       if (mounted) setState(() {});
     });
+  }
+
+  Future<void> _loadPersistedTaskStarts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_taskStartsPrefsKey);
+      if (raw == null || raw.isEmpty) return;
+      final today = DateTime.now();
+      for (final entry in raw.split('|')) {
+        final parts = entry.split('=');
+        if (parts.length != 2) continue;
+        final dt = DateTime.tryParse(parts[1]);
+        if (dt != null &&
+            dt.year == today.year &&
+            dt.month == today.month &&
+            dt.day == today.day) {
+          _taskStartTimes[parts[0]] = dt;
+        }
+      }
+      _autoCompleteElapsedTasks();
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  Future<void> _persistTaskStarts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encoded = _taskStartTimes.entries
+          .map((e) => '${e.key}=${e.value.toIso8601String()}')
+          .join('|');
+      await prefs.setString(_taskStartsPrefsKey, encoded);
+    } catch (_) {}
   }
 
   @override
@@ -462,6 +497,8 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
             ref.read(dailyTasksProvider.notifier).state = updatedTasks;
             if (completed) {
               _taskStartTimes.remove(task.id);
+              _persistTaskStarts();
+              _recordStreakActivity();
             }
           },
           onStart: () => _startTask(context, ref, tasks, index),
@@ -560,6 +597,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
     if (task.completed) return;
 
     _taskStartTimes.putIfAbsent(task.id, () => DateTime.now());
+    _persistTaskStarts();
     setState(() {});
 
     context.go(task.route);
@@ -649,6 +687,7 @@ class _DailyScreenState extends ConsumerState<DailyScreen> {
     }
 
     if (changed) {
+      _persistTaskStarts();
       ref.read(dailyTasksProvider.notifier).state = updated;
     }
   }

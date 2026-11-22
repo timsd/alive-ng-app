@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../services/appwrite_library_service.dart';
+import '../../widgets/in_app_pdf_viewer.dart';
 import '../../widgets/standard_video_player_modal.dart';
 import '../../widgets/custom_image.dart';
 
@@ -20,8 +21,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  final String _selectedCategory = 'all';
-  final String _selectedLanguage = 'all';
+  String _selectedCategory = 'all';
+  String _selectedLanguage = 'all';
   final AppwriteLibraryService _libraryService =
       AppwriteLibraryService.instance;
 
@@ -254,14 +255,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       final isItemActive = rawActive == null ? true : (rawActive == true || rawActive == 1 || rawActive.toString().toLowerCase() == 'true');
       if (!isItemActive) return false;
 
-      final matchesSearch = _searchQuery.isEmpty ||
-          item['title'].toString().toLowerCase().contains(_searchQuery) ||
-          item['author'].toString().toLowerCase().contains(_searchQuery);
+      final title = (item['title'] ?? '').toString().toLowerCase();
+      final author = (item['author'] ?? '').toString().toLowerCase();
+      final category = (item['category'] ?? '').toString().toLowerCase();
+      final language = (item['language'] ?? 'en').toString().toLowerCase();
 
-      final matchesCategory =
-          _selectedCategory == 'all' || item['category'] == _selectedCategory;
-      final matchesLanguage =
-          _selectedLanguage == 'all' || item['language'] == _selectedLanguage;
+      final matchesSearch = _searchQuery.isEmpty ||
+          title.contains(_searchQuery) ||
+          author.contains(_searchQuery);
+
+      final matchesCategory = _selectedCategory == 'all' ||
+          category == _selectedCategory.toLowerCase() ||
+          category.contains(_selectedCategory.toLowerCase());
+      final matchesLanguage = _selectedLanguage == 'all' ||
+          language == _selectedLanguage.toLowerCase();
 
       return matchesSearch && matchesCategory && matchesLanguage;
     }).toList();
@@ -311,7 +318,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      book['title'],
+                      (book['title'] ?? 'Untitled Book').toString(),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -320,7 +327,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'By ${book['author']}',
+                      'By ${(book['author'] ?? 'ALIVE Nigeria').toString()}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
@@ -330,7 +337,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      book['category'],
+                      (book['category'] ?? 'General').toString(),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.primary,
                             fontSize: ResponsiveUtils.getResponsiveValue(
@@ -368,7 +375,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                article['title'],
+                (article['title'] ?? 'Untitled Article').toString(),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: ResponsiveUtils.getResponsiveValue(
@@ -382,7 +389,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'By ${article['author']}',
+                'By ${(article['author'] ?? 'ALIVE Nigeria').toString()}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context)
                           .textTheme
@@ -410,7 +417,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      article['category'],
+                      (article['category'] ?? 'General').toString(),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.primary,
                             fontSize: 12,
@@ -571,94 +578,179 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }
 
   void _showFilterDialog() {
+    String tempCategory = _selectedCategory;
+    String tempLanguage = _selectedLanguage;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filter Library'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Category Filter
-            ModernDropdownFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                border: OutlineInputBorder(),
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: const Text('Filter Library'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Category Filter
+              ModernDropdownFormField<String>(
+                initialValue: tempCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'all', child: Text('All Categories')),
+                  DropdownMenuItem(value: 'bible', child: Text('Bible Study')),
+                  DropdownMenuItem(
+                      value: 'devotional', child: Text('Devotional')),
+                  DropdownMenuItem(value: 'health', child: Text('Health')),
+                  DropdownMenuItem(value: 'youth', child: Text('Youth')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => tempCategory = value);
+                  }
+                },
               ),
-              items: const [
-                DropdownMenuItem(value: 'all', child: Text('All Categories')),
-                DropdownMenuItem(value: 'bible', child: Text('Bible Study')),
-                DropdownMenuItem(
-                    value: 'devotional', child: Text('Devotional')),
-                DropdownMenuItem(value: 'health', child: Text('Health')),
-                DropdownMenuItem(value: 'youth', child: Text('Youth')),
-              ],
-              onChanged: (value) {
-                _applyCategoryFilter(value!);
-              },
-            ),
-            SizedBox(
-                height: ResponsiveUtils.getResponsiveValue(
-                    context: context, mobile: 12, tablet: 14, desktop: 16)),
+              SizedBox(
+                  height: ResponsiveUtils.getResponsiveValue(
+                      context: dialogCtx, mobile: 12, tablet: 14, desktop: 16)),
 
-            // Language Filter
-            ModernDropdownFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Language',
-                border: OutlineInputBorder(),
+              // Language Filter
+              ModernDropdownFormField<String>(
+                initialValue: tempLanguage,
+                decoration: const InputDecoration(
+                  labelText: 'Language',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'all', child: Text('All Languages')),
+                  DropdownMenuItem(value: 'en', child: Text('English')),
+                  DropdownMenuItem(value: 'yo', child: Text('Yoruba')),
+                  DropdownMenuItem(value: 'ig', child: Text('Igbo')),
+                  DropdownMenuItem(value: 'ha', child: Text('Hausa')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => tempLanguage = value);
+                  }
+                },
               ),
-              items: const [
-                DropdownMenuItem(value: 'all', child: Text('All Languages')),
-                DropdownMenuItem(value: 'en', child: Text('English')),
-                DropdownMenuItem(value: 'yo', child: Text('Yoruba')),
-                DropdownMenuItem(value: 'ig', child: Text('Igbo')),
-                DropdownMenuItem(value: 'ha', child: Text('Hausa')),
-              ],
-              onChanged: (value) {
-                _applyLanguageFilter(value!);
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: Text(
+                'Cancel',
+                style: Theme.of(dialogCtx).textTheme.labelLarge?.copyWith(
+                      fontSize: ResponsiveUtils.getResponsiveValue(
+                          context: dialogCtx, mobile: 14, tablet: 15, desktop: 16),
+                    ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _selectedCategory = tempCategory;
+                  _selectedLanguage = tempLanguage;
+                });
+                Navigator.of(dialogCtx).pop();
               },
+              child: Text(
+                'Apply',
+                style: Theme.of(dialogCtx).textTheme.labelLarge?.copyWith(
+                      fontSize: ResponsiveUtils.getResponsiveValue(
+                          context: dialogCtx, mobile: 14, tablet: 15, desktop: 16),
+                    ),
+              ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Cancel',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 14, tablet: 15, desktop: 16),
+      ),
+    );
+  }
+
+  void _openDocumentOrReader(Map<String, dynamic> doc, {required String kind}) {
+    final title = (doc['title'] ?? 'Untitled $kind').toString();
+    final pdfUrl = (doc['pdf_url'] ?? doc['file_url'] ?? doc['url'] ?? '').toString().trim();
+    if (pdfUrl.isNotEmpty &&
+        (pdfUrl.toLowerCase().contains('.pdf') || pdfUrl.contains('/storage/buckets/'))) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => InAppPdfViewerScreen(title: title, pdfUrl: pdfUrl),
+        ),
+      );
+      return;
+    }
+
+    final author = (doc['author'] ?? 'ALIVE Nigeria').toString();
+    final category = (doc['category'] ?? 'General').toString();
+    final body = (doc['content'] ?? doc['body'] ?? doc['description'] ?? doc['summary'] ?? '')
+        .toString()
+        .trim();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.78,
+        minChildSize: 0.45,
+        maxChildSize: 0.95,
+        builder: (_, scrollCtrl) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: ListView(
+            controller: scrollCtrl,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(sheetCtx)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
                   ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              _applyFilters();
-              Navigator.of(context).pop();
-            },
-            child: Text(
-              'Apply',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontSize: ResponsiveUtils.getResponsiveValue(
-                        context: context, mobile: 14, tablet: 15, desktop: 16),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(sheetCtx).pop(),
                   ),
-            ),
+                ],
+              ),
+              Text(
+                'By $author • $category',
+                style: Theme.of(sheetCtx).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(sheetCtx).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const Divider(height: 24),
+              Text(
+                body.isNotEmpty
+                    ? body
+                    : 'Full content for "$title" will appear here once published by the ALIVE Nigeria content team.',
+                style: Theme.of(sheetCtx).textTheme.bodyLarge?.copyWith(height: 1.6),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   // Navigation methods
   void _navigateToBookReader(String bookId) async {
-    debugPrint('Navigating to book reader for book ID: $bookId');
     try {
-      final doc = await _libraryService.getBook(bookId);
-      if (doc != null && mounted) {
-        // Navigate to actual reader screen (assuming BooksTractsScreen or similar)
-        // For now, we'll just show the success message as the reader might need specific arguments
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Opening book: ${doc['title']}')),
-        );
+      final doc = await _libraryService.getBook(bookId) ??
+          _allBooks.firstWhere(
+            (b) => (b['id'] ?? b['title']).toString() == bookId,
+            orElse: () => {'title': bookId},
+          );
+      if (mounted) {
+        _openDocumentOrReader(doc, kind: 'Book');
       }
     } catch (e) {
       if (mounted) {
@@ -670,13 +762,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }
 
   void _navigateToArticle(String articleId) async {
-    debugPrint('Navigating to article for article ID: $articleId');
     try {
-      final doc = await _libraryService.getArticle(articleId);
-      if (doc != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Opening article: ${doc['title']}')),
-        );
+      final doc = await _libraryService.getArticle(articleId) ??
+          _allArticles.firstWhere(
+            (a) => (a['id'] ?? a['title']).toString() == articleId,
+            orElse: () => {'title': articleId},
+          );
+      if (mounted) {
+        _openDocumentOrReader(doc, kind: 'Article');
       }
     } catch (e) {
       if (mounted) {
@@ -714,22 +807,4 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     }
   }
 
-  // Filter Methods
-  void _applyCategoryFilter(String category) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Applied category filter: $category')),
-    );
-  }
-
-  void _applyLanguageFilter(String language) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Applied language filter: $language')),
-    );
-  }
-
-  void _applyFilters() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Filters applied successfully')),
-    );
-  }
 }

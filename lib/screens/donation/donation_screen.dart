@@ -344,9 +344,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                         children: [
                     if (_selectedProjectId != null)
                       FutureBuilder<Project?>(
-                        future: ref
-                            .read(donationServiceProvider)
-                            .getProject(_selectedProjectId!),
+                        future: _getSelectedProjectFuture(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData || snapshot.data == null) {
                             return const SizedBox.shrink();
@@ -1337,7 +1335,27 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     );
   }
 
+  bool _isSubmitting = false;
+  String? _cachedProjectFutureId;
+  Future<Project?>? _selectedProjectFuture;
+
+  Future<Project?>? _getSelectedProjectFuture() {
+    final id = _selectedProjectId;
+    if (id == null) {
+      _cachedProjectFutureId = null;
+      _selectedProjectFuture = null;
+      return null;
+    }
+    if (_cachedProjectFutureId != id || _selectedProjectFuture == null) {
+      _cachedProjectFutureId = id;
+      _selectedProjectFuture =
+          ref.read(donationServiceProvider).getProject(id);
+    }
+    return _selectedProjectFuture;
+  }
+
   void _processDonation() async {
+    if (_isSubmitting) return;
     final rootCtx = context;
     final amount = _selectedAmount;
     final currency = _selectedCurrency;
@@ -1387,6 +1405,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
     // Adjust amount to include processing fees if selected
     final totalAmount = _coverProcessingFees ? (amount * 1.035) : amount;
+
+    setState(() => _isSubmitting = true);
 
     // Create donation record
     try {
@@ -1535,7 +1555,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      rootCtx.pop();
+                      if (rootCtx.mounted && rootCtx.canPop()) {
+                        rootCtx.pop();
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: dialogTheme.colorScheme.primary,
@@ -1600,6 +1622,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           backgroundColor: Theme.of(rootCtx).colorScheme.error,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 

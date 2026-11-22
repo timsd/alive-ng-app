@@ -952,8 +952,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
             if (value == null || value.isEmpty) {
               return translate('password_required');
             }
-            if (value.length < 6) {
-              return translate('password_too_short');
+            if (value.length < 8) {
+              return 'Password must be at least 8 characters';
             }
             return null;
           },
@@ -1269,8 +1269,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         _showFormError('Phone number is required');
         return;
       }
-      if (_passwordController.text.length < 6) {
-        _showFormError(translate('password_too_short'));
+      if (_passwordController.text.length < 8) {
+        _showFormError('Password must be at least 8 characters');
         return;
       }
       if (_confirmPasswordController.text != _passwordController.text) {
@@ -1609,9 +1609,9 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
       _showFormError('Phone number is required');
       return;
     }
-    if (_passwordController.text.length < 6) {
+    if (_passwordController.text.length < 8) {
       setState(() => _currentStage = 0);
-      _showFormError(translate('password_too_short'));
+      _showFormError('Password must be at least 8 characters');
       return;
     }
     if (_confirmPasswordController.text != _passwordController.text) {
@@ -1716,10 +1716,16 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
         ),
       );
 
+      final currentUid =
+          ref.read(authGatewayProvider).currentUser?.uid ?? '';
+      if (currentUid.isEmpty) {
+        // Signup failed (error already surfaced via signInControllerProvider);
+        // do not send admin signup alerts or show a false welcome banner.
+        return;
+      }
+
       // Notify admin of new signup (best-effort)
       try {
-        final currentUid =
-            ref.read(authGatewayProvider).currentUser?.uid ?? '';
         final chosenChapter = _tojoinChapterController.text.trim();
         final newProfile = UserProfile(
           id: currentUid,

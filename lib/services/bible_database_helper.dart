@@ -165,8 +165,10 @@ class BibleDatabaseHelper {
         debugPrint('[BibleDB] Successfully imported pre-built bible.db to IndexedDB '
             '(${(bytes.length / 1024 / 1024).toStringAsFixed(1)} MB)');
       } catch (e) {
-        debugPrint('[BibleDB] Pre-built Bible database download/import note: $e');
-        // Do not throw fatal error; allow openDatabase to proceed with local/cached schema
+        debugPrint('[BibleDB] Pre-built Bible database download/import error: $e');
+        throw BibleDatabaseInstallException(
+          'Could not download or import the Bible database in browser storage: $e',
+        );
       }
     }
 

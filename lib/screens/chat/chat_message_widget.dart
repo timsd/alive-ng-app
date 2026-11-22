@@ -417,13 +417,8 @@ class _ChatMessageWidgetState extends ConsumerState<ChatMessageWidget> {
   }
 
   String? _resolveRoleBadge() {
-    if (widget.message.taggedGroups.isNotEmpty) {
-      return widget.message.taggedGroups.first.replaceAll('_', ' ');
-    }
-    final nameLower = widget.message.senderName.toLowerCase();
-    if (nameLower.contains('admin')) return 'Admin';
-    if (nameLower.contains('pastor') || nameLower.contains('dr.')) return 'Leader';
-    if (nameLower.contains('coordinator')) return 'Coordinator';
+    // ChatMessage does not store a server-verified sender role; never derive a
+    // sender authority badge from message hashtags (#bod) or user display names.
     return null;
   }
 

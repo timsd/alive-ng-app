@@ -866,6 +866,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.scribeRoute,
             builder: (context, state) => const LeaderMeetingTranscriptionScreen(),
+            redirect: (context, state) {
+              final roleService = RoleAccessService.instance;
+              if (!roleService.canAccessAdmin() &&
+                  !roleService.canStartConferencing() &&
+                  !roleService.canAccessBoardDocuments()) {
+                return '/home';
+              }
+              return null;
+            },
           ),
 
           // Bible Game Route
@@ -1235,6 +1244,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppConstants.adminBillboardRoute,
         builder: (context, state) => const AdminBillboardScreen(),
+        redirect: (context, state) {
+          final roleService = RoleAccessService.instance;
+          if (!roleService.canAccessAdmin()) {
+            return '/home';
+          }
+          return null;
+        },
       ),
     ],
 

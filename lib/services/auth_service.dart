@@ -374,15 +374,27 @@ class AuthService {
     await _profileService.deleteUserProfile(user.uid);
 
     // Remove the Appwrite auth account so a stale session / lingering user row
-    // can never make the "deleted" account reappear.
+    // can never make the "deleted" account reappear. Propagate failures (other
+    // than 404 already-deleted) so the UI does not falsely report success.
     try {
       await _appwriteAuth.deleteAuthAccount();
       _logger.info('Auth account removed for ${user.uid}');
     } catch (e) {
-      _logger.warning('Auth account removal skipped for ${user.uid}: $e');
+      final msg = e.toString().toLowerCase();
+      if (!msg.contains('404') && !msg.contains('not found')) {
+        _logger.error('Auth account removal failed for ${user.uid}: $e');
+        rethrow;
+      }
     }
 
-    await signOut();
+    // Best-effort local/session cleanup: once the auth account is deleted on
+    // the server, deleteSession('current') returns 401 and must not turn a
+    // successful deletion into a false error toast.
+    try {
+      await signOut();
+    } catch (e) {
+      _logger.warning('Post-deletion signOut cleanup note: $e');
+    }
   }
 
   Future<UserProfile?> getCurrentUserProfile() async {

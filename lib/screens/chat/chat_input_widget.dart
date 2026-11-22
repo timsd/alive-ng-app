@@ -3,6 +3,7 @@ import '../../utils/error_handler.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:go_router/go_router.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../services/file_picker_facade.dart';
 import 'package:image_picker/image_picker.dart';
@@ -330,6 +331,9 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   }
 
   void _handleSubmitted() {
+    if (_isDictating) {
+      _stopVoiceDictation();
+    }
     final text = widget.controller.text.trim();
     if (text.isNotEmpty) {
       widget.onSendMessage(text);
@@ -410,18 +414,23 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
         quality: 80,
       );
 
-      final extension = image.name.split('.').last.toLowerCase();
+      // compressChatImage outputs JPEG (even when source was iOS .heic/.webp)
       const contentType = 'image/jpeg';
+      const uploadExt = 'jpg';
+      final baseName = image.name.contains('.')
+          ? image.name.substring(0, image.name.lastIndexOf('.'))
+          : image.name;
+      final cleanBase = baseName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final uploadFileName = '$cleanBase.$uploadExt';
       _validateAttachment(
-        fileName: image.name,
+        fileName: uploadFileName,
         size: compressedBytes.lengthInBytes,
         contentType: contentType,
-        extension: extension,
+        extension: uploadExt,
       );
 
-      final cleanName = image.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
       final String fileName =
-          'chat_img_${DateTime.now().millisecondsSinceEpoch}_$cleanName';
+          'chat_img_${DateTime.now().millisecondsSinceEpoch}_$uploadFileName';
       final String downloadUrl =
           await AppwriteStorageService.instance.uploadChatFile(
         bytes: compressedBytes,
@@ -621,7 +630,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                     desktop: 16.0)),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/auth');
+                context.go('/auth');
               },
               child: const Text('Sign In'),
             ),
