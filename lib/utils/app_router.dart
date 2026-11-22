@@ -206,7 +206,13 @@ final routerProvider = Provider<GoRouter>((ref) {
   }
 
   final refresh = ValueNotifier<int>(0);
-  ref.listen(authStateProvider, (_, __) => refresh.value++);
+  ref.listen(authStateProvider, (_, next) {
+    final signedInUser = next.valueOrNull;
+    if (signedInUser != null && ref.read(isGuestModeProvider)) {
+      ref.read(isGuestModeProvider.notifier).state = false;
+    }
+    refresh.value++;
+  });
   ref.onDispose(refresh.dispose);
   String? lastRouterUri;
   String? pendingStartupDeepLink = _extractStartupDeepLink();
@@ -222,7 +228,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       '/oath',
       '/profile-completion',
       '/admin-approve',
+      '/payment/callback',
+      '/payment-callback',
+      '/meet',
+      '/conference',
     };
+    if (path.startsWith('/meet/')) return false;
     return !excluded.contains(path);
   }
 
@@ -246,6 +257,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     // Always start from splash so web/mobile behavior is consistent.
     initialLocation: AppConstants.splashRoute,
     redirect: (context, state) async {
+      // Rewrite custom scheme payment callback (`aliveng://payment.callback?reference=...`)
+      if (state.uri.scheme == 'aliveng' && state.uri.host == 'payment.callback') {
+        final q = state.uri.hasQuery ? '?${state.uri.query}' : '';
+        return '/payment/callback$q';
+      }
       final currentUri = state.uri.toString();
       if (lastRouterUri != null && lastRouterUri != currentUri) {
         WidgetsBinding.instance.addPostFrameCallback((_) => dismissActivePopups());
@@ -290,8 +306,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // Allow onboarding route before authentication.
+      // Allow onboarding route before authentication; signed-in users proceed straight to home.
       if (isOnboardingRoute) {
+        if (isAuthenticated) {
+          return AppConstants.homeRoute;
+        }
         debugPrint('Allow onboarding route');
         return null;
       }
@@ -354,9 +373,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Authenticated users can access non-auth routes.
       if (isAuthenticated && !isAuthRoute) {
-        // Enforce guest restrictions: non-members only have access to guest area
+        if (state.uri.path == '/profile-completion') {
+          return null;
+        }
+        // Enforce guest restrictions only for accounts explicitly assigned the 'guest' role
         final userRole = RoleAccessService.instance.getCurrentUserRole();
-        final isGuest = userRole == 'guest' || ref.read(isGuestModeProvider);
+        final isGuest = userRole == 'guest';
         if (isGuest && !isGuestAccessibleRoute) {
           debugPrint('Guest user restricted from protected route: ${state.uri.path}, redirecting to home');
           return AppConstants.homeRoute;
@@ -791,7 +813,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             // to it. An admin passes, since they may need it to repair data.
             redirect: (context, state) async {
               final roleService = RoleAccessService.instance;
-              if (!roleService.canAccessAdmin()) return '/home';
               if (roleService.hasRole('admin')) return null;
 
               final user = ref.read(authGatewayProvider).currentUser;

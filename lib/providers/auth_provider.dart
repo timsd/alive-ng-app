@@ -27,8 +27,14 @@ final authStateProvider = StreamProvider<AppUser?>((ref) {
   final gateway = ref.watch(authGatewayProvider);
   final controller = StreamController<AppUser?>();
 
-  // Seed with the current cached user.
-  controller.add(gateway.currentUser);
+  // Seed only once initial session check has resolved (or if a cached user is
+  // already present), keeping authStateProvider in AsyncLoading during cold start
+  // so BiometricLockOverlay does not prematurely skip the unlock gate.
+  if (gateway is! AppwriteAuthGateway ||
+      gateway.hasResolvedInitialSession ||
+      gateway.currentUser != null) {
+    controller.add(gateway.currentUser);
+  }
 
   // Forward all gateway auth-state events.
   final sub = gateway.authStateChanges.listen(

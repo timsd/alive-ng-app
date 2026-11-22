@@ -1052,17 +1052,17 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
       BuildContext context, Map<String, dynamic> episode) async {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Download Episode'),
         content: Text('Download "${episode['title']}" for offline listening?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.of(context).pop();
+              Navigator.of(dialogCtx).pop();
 
               // Show downloading notification
               if (!context.mounted) return;

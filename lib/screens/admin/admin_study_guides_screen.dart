@@ -145,6 +145,7 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen>
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'txt'],
+        withData: true,
       );
 
       if (result != null && result.files.single.bytes != null) {
@@ -183,7 +184,10 @@ class _AdminStudyGuidesScreenState extends State<AdminStudyGuidesScreen>
   }
 
   Future<void> _pickCoverImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
     if (result != null && result.files.single.bytes != null) {
       setState(() {
         _coverImageBytes = result.files.single.bytes;

@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/notification_service.dart';
 import '../services/notification_settings_service.dart';
@@ -92,67 +93,27 @@ class ReminderService {
 
   static final Logger _logger = Logger('ReminderService');
 
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  /// Shares the single initialized [FlutterLocalNotificationsPlugin] from
+  /// [NotificationService] so notification tap callbacks never overwrite each other.
+  FlutterLocalNotificationsPlugin get _plugin =>
+      NotificationService.instance.localNotificationsPlugin;
 
   bool _isInitialized = false;
-  final Map<String, Timer> _scheduledReminders = {};
 
   Future<void> initialize() async {
     if (_isInitialized) return;
-
-    // Initialize timezone
-    tz.initializeTimeZones();
-
-    // Initialize local notifications
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('ic_notification');
-
-    const DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
-
-    await _flutterLocalNotificationsPlugin.initialize(
-      settings: initializationSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
-
+    NotificationService.configureLocalTimeZone();
+    await NotificationService.instance.initialize();
     _isInitialized = true;
   }
 
   Future<bool> requestPermission() async {
     await initialize();
-
-    // Request Android notification permission (API 33+)
-    final androidPermission = await _flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
-
-    // Request iOS notification permission
-    final iosPermission = await _flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-
-    return androidPermission ?? iosPermission ?? true;
+    return NotificationService.instance.requestPermissions();
   }
 
   Future<bool> scheduleReminder(ReminderConfig config) async {
-    if (!config.enabled) {
+    if (!config.enabled || kIsWeb) {
       return false;
     }
 
@@ -162,8 +123,10 @@ class ReminderService {
     await clearReminder(config.type.value);
 
     try {
-      final now = DateTime.now();
-      var scheduledDate = DateTime(
+      NotificationService.configureLocalTimeZone();
+      final now = tz.TZDateTime.now(tz.local);
+      var scheduledDate = tz.TZDateTime(
+        tz.local,
         now.year,
         now.month,
         now.day,
@@ -176,12 +139,8 @@ class ReminderService {
         scheduledDate = scheduledDate.add(const Duration(days: 1));
       }
 
-      // Schedule local notification
+      // Schedule OS-level daily repeating notification (survives app close & reboot)
       await _scheduleLocalNotification(config, scheduledDate);
-
-      // Schedule recurring timer for daily reminders
-      _scheduleRecurringReminder(config);
-
       return true;
     } catch (error) {
       _logger.error('Error scheduling reminder', error);
@@ -201,13 +160,16 @@ class ReminderService {
     bool showWhen = false,
     bool autoCancel = false,
     bool enableVibration = false,
+    bool includeLargeIcon = true,
   }) {
     return AndroidNotificationDetails(
       channelId,
       channelName,
       channelDescription: channelDescription,
       icon: 'ic_notification',
-      largeIcon: const DrawableResourceAndroidBitmap('ic_notification_large'),
+      largeIcon: includeLargeIcon
+          ? const DrawableResourceAndroidBitmap('ic_notification_large')
+          : null,
       color: _aliveGreen,
       importance: importance,
       priority: priority,
@@ -224,157 +186,167 @@ class ReminderService {
     required String body,
     String? payload,
   }) async {
+    if (kIsWeb) return;
     await initialize();
 
-    final androidDetails = _buildAndroidDetails(
-      channelId: 'default_channel',
-      channelName: 'Default Notifications',
-      channelDescription: 'Default app notifications',
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
-    );
-    const iosDetails = DarwinNotificationDetails();
+    NotificationDetails buildDetails({required bool includeLargeIcon}) {
+      final androidDetails = _buildAndroidDetails(
+        channelId: 'alive_ng_notifications',
+        channelName: 'ALIVE Nigeria Notifications',
+        channelDescription: 'Ministry updates, broadcasts, and ALIVE Meet alerts',
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+        includeLargeIcon: includeLargeIcon,
+      );
+      const iosDetails = DarwinNotificationDetails();
+      return NotificationDetails(android: androidDetails, iOS: iosDetails);
+    }
 
-    await _flutterLocalNotificationsPlugin.show(
-      id: id,
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(android: androidDetails, iOS: iosDetails),
-      payload: payload,
-    );
+    try {
+      await _plugin.show(
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: buildDetails(includeLargeIcon: true),
+        payload: payload,
+      );
+    } on PlatformException catch (e) {
+      if (e.code == 'invalid_large_icon') {
+        await _plugin.show(
+          id: id,
+          title: title,
+          body: body,
+          notificationDetails: buildDetails(includeLargeIcon: false),
+          payload: payload,
+        );
+      } else {
+        rethrow;
+      }
+    }
   }
 
   Future<void> _scheduleLocalNotification(
     ReminderConfig config,
-    DateTime scheduledDate,
+    tz.TZDateTime scheduledDate,
   ) async {
-    // Get sound setting from notification settings
     final settings = await NotificationSettingsService.fetchSettings();
     final soundEnabled = settings?.soundEnabled ?? true;
 
-    final AndroidNotificationDetails androidPlatformChannelSpecifics =
-        _buildAndroidDetails(
-      channelId: soundEnabled ? 'reminder_channel' : 'reminder_channel_silent',
-      channelName: soundEnabled ? 'Reminders' : 'Reminders (Silent)',
-      channelDescription: 'Daily reminders for ALIVE Nigeria app',
-      importance: Importance.high,
-      priority: Priority.high,
-      showWhen: true,
-      playSound: soundEnabled,
-      enableVibration: true,
-    );
+    NotificationDetails buildDetails({required bool includeLargeIcon}) {
+      final androidDetails = _buildAndroidDetails(
+        channelId: soundEnabled ? 'reminder_channel' : 'reminder_channel_silent',
+        channelName: soundEnabled ? 'Reminders' : 'Reminders (Silent)',
+        channelDescription: 'Daily reminders for ALIVE Nigeria app',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        autoCancel: true,
+        playSound: soundEnabled,
+        enableVibration: true,
+        includeLargeIcon: includeLargeIcon,
+      );
 
-    final DarwinNotificationDetails iOSPlatformChannelSpecifics =
-        DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: soundEnabled,
-    );
+      final iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: soundEnabled,
+      );
 
-    final NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
-    );
-
-    await _flutterLocalNotificationsPlugin.zonedSchedule(
-      id: config.type.value.hashCode,
-      title: config.title,
-      body: config.body,
-      scheduledDate: tz.TZDateTime.from(scheduledDate, tz.local),
-      notificationDetails: platformChannelSpecifics,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      payload: jsonEncode({
-        'type': config.type.value,
-        'route': _getRouteForType(config.type),
-      }),
-    );
-  }
-
-  void _scheduleRecurringReminder(ReminderConfig config) {
-    final now = DateTime.now();
-    var nextReminder = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      config.time.hour,
-      config.time.minute,
-    );
-
-    if (nextReminder.isBefore(now)) {
-      nextReminder = nextReminder.add(const Duration(days: 1));
+      return NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
     }
 
-    final duration = nextReminder.difference(now);
-
-    _scheduledReminders[config.type.value] = Timer.periodic(
-      const Duration(days: 1),
-      (timer) {
-        if (config.enabled) {
-          _showLocalNotification(config);
-        } else {
-          timer.cancel();
-          _scheduledReminders.remove(config.type.value);
-        }
-      },
-    );
-
-    // Schedule the first notification
-    Timer(duration, () {
-      if (config.enabled) {
-        _showLocalNotification(config);
-      }
+    final payload = jsonEncode({
+      'type': config.type.value,
+      'route': _getRouteForType(config.type),
     });
+
+    try {
+      await _plugin.zonedSchedule(
+        id: config.type.value.hashCode,
+        title: config.title,
+        body: config.body,
+        scheduledDate: scheduledDate,
+        notificationDetails: buildDetails(includeLargeIcon: true),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: payload,
+      );
+    } on PlatformException catch (e) {
+      if (e.code == 'invalid_large_icon') {
+        await _plugin.zonedSchedule(
+          id: config.type.value.hashCode,
+          title: config.title,
+          body: config.body,
+          scheduledDate: scheduledDate,
+          notificationDetails: buildDetails(includeLargeIcon: false),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          matchDateTimeComponents: DateTimeComponents.time,
+          payload: payload,
+        );
+      } else {
+        rethrow;
+      }
+    }
   }
 
   Future<void> _showLocalNotification(ReminderConfig config) async {
-    // Get sound setting from notification settings
+    if (kIsWeb) return;
+    await initialize();
     final settings = await NotificationSettingsService.fetchSettings();
     final soundEnabled = settings?.soundEnabled ?? true;
 
-    final AndroidNotificationDetails androidPlatformChannelSpecifics =
-        _buildAndroidDetails(
-      channelId: soundEnabled ? 'reminder_channel' : 'reminder_channel_silent',
-      channelName: soundEnabled ? 'Reminders' : 'Reminders (Silent)',
-      channelDescription: 'Daily reminders for ALIVE Nigeria app',
-      importance: Importance.high,
-      priority: Priority.high,
-      autoCancel: true,
-      playSound: soundEnabled,
-      enableVibration: true,
-    );
+    NotificationDetails buildDetails({required bool includeLargeIcon}) {
+      final androidDetails = _buildAndroidDetails(
+        channelId: soundEnabled ? 'reminder_channel' : 'reminder_channel_silent',
+        channelName: soundEnabled ? 'Reminders' : 'Reminders (Silent)',
+        channelDescription: 'Daily reminders for ALIVE Nigeria app',
+        importance: Importance.high,
+        priority: Priority.high,
+        autoCancel: true,
+        playSound: soundEnabled,
+        enableVibration: true,
+        includeLargeIcon: includeLargeIcon,
+      );
 
-    final DarwinNotificationDetails iOSPlatformChannelSpecifics =
-        DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: soundEnabled,
-    );
+      final iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: soundEnabled,
+      );
 
-    final NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
-    );
+      return NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+    }
 
-    await _flutterLocalNotificationsPlugin.show(
-      id: config.type.value.hashCode,
-      title: config.title,
-      body: config.body,
-      notificationDetails: platformChannelSpecifics,
-      payload: jsonEncode({
-        'type': config.type.value,
-        'route': _getRouteForType(config.type),
-      }),
-    );
-  }
+    final payload = jsonEncode({
+      'type': config.type.value,
+      'route': _getRouteForType(config.type),
+    });
 
-  void _onNotificationTapped(NotificationResponse notificationResponse) {
-    final payload = notificationResponse.payload;
-    if (payload != null) {
-      try {
-        final data = jsonDecode(payload) as Map<String, dynamic>;
-        NotificationService.instance.handleMessageOpenedApp(data);
-      } catch (e) {
-        _logger.error('Error parsing notification payload', e);
+    try {
+      await _plugin.show(
+        id: config.type.value.hashCode,
+        title: config.title,
+        body: config.body,
+        notificationDetails: buildDetails(includeLargeIcon: true),
+        payload: payload,
+      );
+    } on PlatformException catch (e) {
+      if (e.code == 'invalid_large_icon') {
+        await _plugin.show(
+          id: config.type.value.hashCode,
+          title: config.title,
+          body: config.body,
+          notificationDetails: buildDetails(includeLargeIcon: false),
+          payload: payload,
+        );
+      } else {
+        rethrow;
       }
     }
   }
@@ -395,28 +367,17 @@ class ReminderService {
   }
 
   Future<void> clearReminder(String type) async {
+    if (kIsWeb) return;
     await initialize();
-    // Cancel scheduled notification
-    await _flutterLocalNotificationsPlugin.cancel(id: type.hashCode);
-
-    // Cancel recurring timer
-    final timer = _scheduledReminders[type];
-    if (timer != null) {
-      timer.cancel();
-      _scheduledReminders.remove(type);
-    }
+    await _plugin.cancel(id: type.hashCode);
   }
 
   Future<void> clearAllReminders() async {
+    if (kIsWeb) return;
     await initialize();
-    // Cancel all scheduled notifications
-    await _flutterLocalNotificationsPlugin.cancelAll();
-
-    // Cancel all recurring timers
-    for (final timer in _scheduledReminders.values) {
-      timer.cancel();
+    for (final type in ReminderType.values) {
+      await _plugin.cancel(id: type.value.hashCode);
     }
-    _scheduledReminders.clear();
   }
 
   List<ReminderConfig> getDefaultReminders() {
@@ -461,6 +422,7 @@ class ReminderService {
   }
 
   Future<void> scheduleAllReminders(List<ReminderConfig> reminders) async {
+    if (kIsWeb) return;
     await initialize();
     await clearAllReminders();
 

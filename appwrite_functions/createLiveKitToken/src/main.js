@@ -244,9 +244,10 @@ export default async ({ req, res, log, error }) => {
   if (req.method !== 'POST') return res.json({ error: 'Method not allowed. Use POST.' }, 405);
 
   try {
-    const isInternal = Boolean(req.headers['x-appwrite-key']);
+    const triggerType = String(req.headers['x-appwrite-trigger'] || '').trim().toLowerCase();
+    const isInternal = triggerType === 'event' || triggerType === 'schedule';
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
-    const authenticatedUserId = req.headers['x-appwrite-user-id'] || (isInternal ? body.identity : null) || body.identity;
+    const authenticatedUserId = String(req.headers['x-appwrite-user-id'] || '').trim() || (isInternal ? String(body.identity || '').trim() : '');
     const { action, roomName, participantName, identity, meetingType = 'general', notifyMembers = false } = body;
 
     if (!authenticatedUserId) return res.json({ error: 'Authentication is required.' }, 401);
@@ -274,10 +275,10 @@ export default async ({ req, res, log, error }) => {
             const count = Number(r.numParticipants || 0);
             if (count <= 0) return false;
             if (name === 'alive-meet-board' || name.startsWith('board-meeting-')) {
-              return ['director', 'bod', 'trustee', 'admin'].includes(role);
+              return ['director', 'bod', 'trustee', 'president', 'admin', 'super_admin'].includes(role);
             }
             if (name === 'alive-meet-leadership') {
-              return ['coordinator', 'leader', 'director', 'bod', 'trustee', 'admin'].includes(role);
+              return ['coordinator', 'leader', 'director', 'bod', 'trustee', 'president', 'admin', 'super_admin'].includes(role);
             }
             return true;
           })
@@ -339,22 +340,28 @@ export default async ({ req, res, log, error }) => {
     }
 
     if (!roomName || !identity) return res.json({ error: 'Invalid ALIVE Meet request.' }, 400);
-    if (identity !== authenticatedUserId && !isInternal) return res.json({ error: 'Cannot create a token for another user.' }, 403);
+    const isSelfOrRelay =
+      identity === authenticatedUserId ||
+      String(identity).startsWith(`${authenticatedUserId}_relay_`);
+    if (!isSelfOrRelay && !isInternal) {
+      return res.json({ error: 'Cannot create a token for another user.' }, 403);
+    }
 
     const targetRoom = String(roomName).trim();
     const policy = roomPolicies[meetingType] || roomPolicies.custom;
 
-    const isLeader = ['admin', 'bod', 'director', 'trustee', 'leader', 'coordinator'].includes(role);
-    const isAdmin = ['admin', 'bod', 'director', 'trustee'].includes(role);
+    const isLeader = ['admin', 'super_admin', 'president', 'bod', 'director', 'trustee', 'leader', 'coordinator'].includes(role);
+    const isAdmin = ['admin', 'super_admin', 'president', 'bod', 'director', 'trustee'].includes(role);
 
     // Permission enforcement:
-    // 1. Role-restricted rooms (e.g. board, leadership) require matching roles
-    if (policy.roles && !policy.roles.includes(role)) {
+    // 1. Role-restricted rooms (e.g. board, leadership) require matching roles (super_admin/president always allowed)
+    if (policy.roles && !policy.roles.includes(role) && !['super_admin', 'president'].includes(role)) {
       return res.json({ error: 'You do not have access to this ALIVE Meet room.' }, 403);
     }
 
-    // 2. Fixed-room policy validation for non-leaders (only leaders can start arbitrary/custom rooms)
-    if (policy.room && targetRoom !== policy.room && !isLeader) {
+    // 2. Fixed-room policy validation for non-leaders (allow breakout rooms under the same policy room)
+    const isBreakoutOfPolicyRoom = Boolean(policy.room && targetRoom.startsWith(`${policy.room}--br-`));
+    if (policy.room && targetRoom !== policy.room && !isBreakoutOfPolicyRoom && !isLeader) {
       return res.json({ error: 'Only ALIVE leaders and administrators can start new meeting rooms.' }, 403);
     }
 

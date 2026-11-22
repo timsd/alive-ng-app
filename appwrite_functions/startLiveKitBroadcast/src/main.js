@@ -124,6 +124,19 @@ export default async ({ req, res, error }) => {
       }, 503);
     }
 
+    // Verify user role BEFORE handling stop, list, or start so regular members
+    // cannot stop live broadcasts or read RTMP stream keys!
+    let role = 'member';
+    try {
+      role = await getRole(userId, req);
+    } catch (err) {
+      if (error) error(`Role lookup notice: ${err.message}`);
+    }
+
+    if (!BROADCAST_ROLES.includes(role) && !['super_admin', 'president'].includes(role)) {
+      return res.json({ error: 'You do not have permission to manage live broadcasts.' }, 403);
+    }
+
     const egress = new EgressClient(SERVICE_URL, apiKey, apiSecret);
 
     if (action === 'stop') {
@@ -134,7 +147,13 @@ export default async ({ req, res, error }) => {
 
     if (action === 'list') {
       const egresses = await egress.listEgress();
-      return res.json({ egresses });
+      const sanitized = (Array.isArray(egresses) ? egresses : []).map((e) => ({
+        egressId: e.egressId,
+        roomName: e.roomName,
+        status: e.status,
+        startedAt: e.startedAt,
+      }));
+      return res.json({ egresses: sanitized });
     }
 
     // 'start' (default) path.
@@ -193,23 +212,11 @@ export default async ({ req, res, error }) => {
       );
     }
 
-    // Verify user role
-    let role = 'member';
-    try {
-      role = await getRole(userId, req);
-    } catch (err) {
-      if (error) error(`Role lookup notice: ${err.message}`);
-    }
-
-    if (!BROADCAST_ROLES.includes(role)) {
-      return res.json({ error: 'You do not have permission to broadcast.' }, 403);
-    }
-
     const policy = roomPolicies[meetingType];
     const targetRoom = body.roomName || (policy ? policy.room : null) || 'alive-meet-community';
 
     // If room policy has role restrictions, ensure user has access to that room
-    if (policy && policy.roles && !policy.roles.includes(role)) {
+    if (policy && policy.roles && !policy.roles.includes(role) && !['super_admin', 'president'].includes(role)) {
       return res.json({ error: 'You do not have permission to broadcast from this room.' }, 403);
     }
 

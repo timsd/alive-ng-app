@@ -183,6 +183,7 @@ class PaystackPaymentGateway implements PaymentGateway {
   }) async {
     final data = await _executePaystackFunction({
       'action': 'list_subscriptions',
+      'test_mode': PaymentConfig.isTestMode,
       'email': email,
     });
     final raw = data['subscriptions'];
@@ -206,6 +207,7 @@ class PaystackPaymentGateway implements PaymentGateway {
 
       final data = await _executePaystackFunction({
         'action': 'cancel_subscription',
+        'test_mode': PaymentConfig.isTestMode,
         'email': email,
         if (subscriptionCode != null && subscriptionCode.isNotEmpty)
           'subscription_code': subscriptionCode,
@@ -236,6 +238,7 @@ class PaystackPaymentGateway implements PaymentGateway {
     final bodyJson = jsonEncode(payload);
 
     // 1. First attempt via Appwrite Functions SDK
+    var receivedStructuredError = false;
     try {
       final functions = Functions(appwriteClient);
       final execution = await functions.createExecution(
@@ -250,6 +253,7 @@ class PaystackPaymentGateway implements PaymentGateway {
         final decoded = jsonDecode(bodyStr);
         if (decoded is Map<String, dynamic>) {
           if (decoded['error'] != null) {
+            receivedStructuredError = true;
             final err = decoded['error'].toString();
             if (err.toLowerCase().contains('currency not supported')) {
               throw Exception(
@@ -262,6 +266,11 @@ class PaystackPaymentGateway implements PaymentGateway {
         }
       }
     } catch (sdkErr) {
+      // Do not fall back and execute the payment function twice if the backend
+      // already ran and returned a structured JSON error.
+      if (receivedStructuredError) {
+        rethrow;
+      }
       _logger.warning(
         'Appwrite SDK createExecution note: $sdkErr. Falling back to direct HTTP execution...',
       );

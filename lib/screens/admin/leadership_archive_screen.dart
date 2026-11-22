@@ -6,6 +6,7 @@ import '../../config/appwrite_backend_config.dart';
 import '../../services/appwrite_client.dart';
 import '../../services/appwrite_profile_service.dart';
 import '../../services/channel_membership_sync_service.dart';
+import '../../services/office_access_service.dart';
 import '../../models/app_models.dart';
 import '../../utils/error_handler.dart';
 import '../../models/leadership_models.dart';
@@ -1381,13 +1382,25 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
         );
       }
 
+      OfficeAccessService.instance.invalidate();
+
       if (userId.trim().isNotEmpty) {
         final targetRole = isCurrent
             ? (isTrustee ? 'trustee' : (isBod ? 'bod' : 'director'))
             : 'member';
         try {
-          await AppwriteProfileService().updateUserRole(userId.trim(), targetRole);
-          final profile = await AppwriteProfileService().getUserProfileModel(userId.trim());
+          final existingProfile =
+              await AppwriteProfileService().getUserProfileModel(userId.trim());
+          final existingRole =
+              (existingProfile?.role ?? '').trim().toLowerCase();
+          final isProtectedAdmin =
+              existingRole == 'admin' || existingRole == 'super_admin';
+          if (!isProtectedAdmin) {
+            await AppwriteProfileService()
+                .updateUserRole(userId.trim(), targetRole);
+          }
+          final profile =
+              await AppwriteProfileService().getUserProfileModel(userId.trim());
           if (profile != null) {
             await ChannelMembershipSyncService.instance.syncUserChannels(profile);
           }
@@ -1467,11 +1480,23 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
           );
         }
 
-        // Demote role to regular member so they lose elevated admin permissions when tenure ends
+        OfficeAccessService.instance.invalidate();
+
+        // Demote role to regular member so they lose elevated permissions when tenure ends,
+        // without downgrading platform admin / super_admin accounts.
         if (userId.trim().isNotEmpty) {
           try {
-            await AppwriteProfileService().updateUserRole(userId.trim(), 'member');
-            final profile = await AppwriteProfileService().getUserProfileModel(userId.trim());
+            final existingProfile =
+                await AppwriteProfileService().getUserProfileModel(userId.trim());
+            final existingRole =
+                (existingProfile?.role ?? '').trim().toLowerCase();
+            final isProtectedAdmin =
+                existingRole == 'admin' || existingRole == 'super_admin';
+            if (!isProtectedAdmin) {
+              await AppwriteProfileService().updateUserRole(userId.trim(), 'member');
+            }
+            final profile =
+                await AppwriteProfileService().getUserProfileModel(userId.trim());
             if (profile != null) {
               await ChannelMembershipSyncService.instance.syncUserChannels(profile);
             }
@@ -1535,6 +1560,7 @@ class _LeadershipArchiveScreenState extends State<LeadershipArchiveScreen>
             tableId: AppwriteBackendConfig.orgOfficeHoldersCollectionId,
             rowId: docId,
           );
+          OfficeAccessService.instance.invalidate();
         }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -69,79 +69,94 @@ class _PodcastSeekBarState extends State<PodcastSeekBar> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return StreamBuilder<Duration>(
-      stream: widget.audioPlayer.positionStream,
-      builder: (context, positionSnapshot) {
-        final position = positionSnapshot.data ?? Duration.zero;
-        final duration = widget.audioPlayer.duration ??
-            _parseFallbackDuration(widget.fallbackDurationString);
+    return StreamBuilder<Duration?>(
+      stream: widget.audioPlayer.durationStream,
+      builder: (context, durationSnapshot) {
+        return StreamBuilder<Duration>(
+          stream: widget.audioPlayer.positionStream,
+          builder: (context, positionSnapshot) {
+            final position = positionSnapshot.data ?? widget.audioPlayer.position;
+            final duration = durationSnapshot.data ??
+                widget.audioPlayer.duration ??
+                _parseFallbackDuration(widget.fallbackDurationString);
 
-        final totalMs = duration.inMilliseconds.toDouble();
-        final posMs = _isSeeking
-            ? _dragPosition
-            : position.inMilliseconds
-                .toDouble()
-                .clamp(0.0, totalMs > 0 ? totalMs : 1.0);
+            final totalMs = duration.inMilliseconds.toDouble();
+            final posMs = _isSeeking
+                ? _dragPosition.clamp(0.0, totalMs > 0 ? totalMs : 1.0)
+                : position.inMilliseconds
+                    .toDouble()
+                    .clamp(0.0, totalMs > 0 ? totalMs : 1.0);
 
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 4,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                activeTrackColor: colorScheme.primary,
-                inactiveTrackColor:
-                    colorScheme.onSurface.withValues(alpha: 0.15),
-                thumbColor: colorScheme.primary,
-              ),
-              child: Slider(
-                min: 0.0,
-                max: totalMs > 0 ? totalMs : 1.0,
-                value: posMs,
-                onChangeStart: (val) {
-                  setState(() {
-                    _isSeeking = true;
-                    _dragPosition = val;
-                  });
-                },
-                onChanged: (val) {
-                  setState(() {
-                    _dragPosition = val;
-                  });
-                },
-                onChangeEnd: (val) {
-                  _isSeeking = false;
-                  widget.audioPlayer.seek(Duration(milliseconds: val.round()));
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _formatDuration(
-                      _isSeeking
-                          ? Duration(milliseconds: _dragPosition.round())
-                          : position,
-                    ),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 4,
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape:
+                        const RoundSliderOverlayShape(overlayRadius: 14),
+                    activeTrackColor: colorScheme.primary,
+                    inactiveTrackColor:
+                        colorScheme.onSurface.withValues(alpha: 0.15),
+                    thumbColor: colorScheme.primary,
                   ),
-                  Text(
-                    '-${_formatDuration(duration > position ? duration - position : Duration.zero)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
+                  child: Slider(
+                    min: 0.0,
+                    max: totalMs > 0 ? totalMs : 1.0,
+                    value: posMs,
+                    onChangeStart: (val) {
+                      setState(() {
+                        _isSeeking = true;
+                        _dragPosition = val;
+                      });
+                    },
+                    onChanged: (val) {
+                      setState(() {
+                        _dragPosition = val;
+                      });
+                    },
+                    onChangeEnd: (val) {
+                      final maxSeekMs = totalMs > 1500
+                          ? (totalMs - 1500).round()
+                          : totalMs.round();
+                      final targetMs = val.round().clamp(0, maxSeekMs);
+                      setState(() {
+                        _isSeeking = false;
+                      });
+                      widget.audioPlayer
+                          .seek(Duration(milliseconds: targetMs));
+                    },
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatDuration(
+                          _isSeeking
+                              ? Duration(milliseconds: _dragPosition.round())
+                              : position,
+                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      Text(
+                        '-${_formatDuration(duration > position ? duration - position : Duration.zero)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );

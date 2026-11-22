@@ -8,6 +8,8 @@ import '../models/notification_settings.dart';
 import '../utils/toast_utils.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
+import 'appwrite_push_service.dart';
+import 'notification_service.dart' hide NotificationSettings;
 import 'storage_service.dart';
 
 class NotificationSettingsService {
@@ -100,6 +102,13 @@ class NotificationSettingsService {
       }
 
       await StorageHelper.setNotificationSettings(settings.toJson());
+      if (!kIsWeb) {
+        if (settings.pushNotificationsEnabled) {
+          await NotificationService.instance.ensurePushRegistered(force: true);
+        } else {
+          await AppwritePushService.instance.unsubscribeCurrentTarget('all_users');
+        }
+      }
       ToastUtils.showSuccess('Your notification preferences have been saved');
       return true;
     } catch (error) {
@@ -143,9 +152,13 @@ class NotificationSettingsService {
           );
         }
 
+        await NotificationService.instance.ensurePushRegistered(
+          requestPermission: true,
+          force: true,
+        );
+
         _logger.info(
-          'Notification permission granted. Appwrite Messaging target setup '
-          'will register remote push identifiers after provider setup.',
+          'Notification permission granted and push target registered.',
         );
 
         ToastUtils.showSuccess(

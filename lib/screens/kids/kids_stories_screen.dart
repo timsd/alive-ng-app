@@ -28,11 +28,13 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
   String _selectedAgeGroup = 'All';
   String _selectedCategory = 'All';
   final Set<String> _favoriteStories = {};
+  late final Stream<List<BibleStory>> _storiesStream;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _storiesStream = _getStoriesStream();
   }
 
   void _openStoryReader(BuildContext context, BibleStory story) {
@@ -234,7 +236,7 @@ class _KidsStoriesScreenState extends ConsumerState<KidsStoriesScreen>
         ),
       ),
       body: StreamBuilder<List<BibleStory>>(
-          stream: _getStoriesStream(),
+          stream: _storiesStream,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());

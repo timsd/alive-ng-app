@@ -1,7 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'package:appwrite/appwrite.dart' hide Locale;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -69,27 +68,10 @@ void main() {
     }
     await CrashReportingService.instance.initialize();
 
-    if (!kIsWeb) {
-      try {
-        await Firebase.initializeApp();
-        debugPrint('Firebase initialized successfully for push transport.');
-      } catch (e) {
-        debugPrint('Firebase initialization failed: $e');
-      }
-      try {
-        await JustAudioBackground.init(
-          androidNotificationChannelId:
-              'com.alive.alivengandroidapp.channel.audio',
-          androidNotificationChannelName: 'ALIVE Podcasts',
-          androidNotificationOngoing: true,
-          androidNotificationIcon: 'drawable/ic_notification',
-        );
-      } catch (e) {
-        debugPrint('JustAudioBackground initialization failed: $e');
-      }
-    }
-
-    // Restore the preference before the first frame; ARB messages are compiled.
+    // Restore lightweight preferences before the first frame; ARB messages are compiled.
+    // NOTE: Heavy native plugins (Firebase, JustAudioBackground) are intentionally
+    // deferred past runApp() so cold boot never triggers an Android ANR (GlitchTip #246)
+    // and AudioService is only spawned when a user actually plays a podcast (#242).
     try {
       await LocaleNotifier.loadSavedLocale();
       await ThemeModeNotifier.loadSavedThemeMode();
@@ -129,6 +111,15 @@ void main() {
     Future(() async {
       // Pre-warm offline Bible database as soon as the user enters the app
       unawaited(OfflineBibleService().prewarmBundle());
+
+      if (!kIsWeb) {
+        try {
+          await Firebase.initializeApp();
+          debugPrint('Firebase initialized successfully for push transport.');
+        } catch (e) {
+          debugPrint('Firebase initialization failed: $e');
+        }
+      }
 
       if (backendReady) {
         try {
@@ -173,6 +164,23 @@ void main() {
     debugPrint('Unhandled: $error');
     CrashReportingService.instance.captureError(error, stack, fatal: true);
   });
+}
+
+class _SafeBackButtonDispatcher extends RootBackButtonDispatcher {
+  final GoRouter router;
+  _SafeBackButtonDispatcher(this.router);
+
+  @override
+  Future<bool> didPopRoute() async {
+    if (router.routerDelegate.currentConfiguration.matches.isEmpty) {
+      return true;
+    }
+    try {
+      return await super.didPopRoute();
+    } on StateError {
+      return true;
+    }
+  }
 }
 
 class AliveApp extends ConsumerStatefulWidget {
@@ -240,8 +248,11 @@ class _AliveAppState extends ConsumerState<AliveApp>
         AppCupertinoDelegate(),
         GlobalWidgetsLocalizations.delegate,
       ],
-      // Routing
-      routerConfig: router,
+      // Routing (guarded against empty match stack during async redirects — GlitchTip #232)
+      routerDelegate: router.routerDelegate,
+      routeInformationParser: router.routeInformationParser,
+      routeInformationProvider: router.routeInformationProvider,
+      backButtonDispatcher: _SafeBackButtonDispatcher(router),
       builder: (context, child) {
         return Stack(
           children: [

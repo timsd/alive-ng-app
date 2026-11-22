@@ -7,25 +7,95 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/appwrite_admin_export_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/office_access_service.dart';
+import '../../services/role_access_service.dart';
 import '../../models/donation_report_models.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/overview_stat_card.dart';
-import '../../widgets/role_guard.dart';
 import '../../widgets/admin_filter_header.dart';
 import '../../utils/responsive_utils.dart';
 
-class AdminDonationsReportScreen extends StatelessWidget {
+class AdminDonationsReportScreen extends StatefulWidget {
   const AdminDonationsReportScreen({super.key});
 
   @override
+  State<AdminDonationsReportScreen> createState() =>
+      _AdminDonationsReportScreenState();
+}
+
+class _AdminDonationsReportScreenState
+    extends State<AdminDonationsReportScreen> {
+  late final Future<bool> _accessFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _accessFuture = _checkFinanceAccess();
+  }
+
+  Future<bool> _checkFinanceAccess() async {
+    if (RoleAccessService.instance.canAccessAdmin()) {
+      return true;
+    }
+    final user = AuthService.instance.currentUser;
+    if (user == null) return false;
+    return OfficeAccessService.instance.canAccessFinance(
+      userId: user.uid,
+      email: user.email,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Financial data is leadership-gated: it exposes every donor's name, email
-    // and amounts. This screen previously had no guard at all, so any signed-in
-    // user who could reach the route could read the whole giving history.
-    return const RoleProtectedScreen(
-      requiredRole: 'leader',
-      screenName: 'Donation Reports',
-      child: _AdminDonationsReportContent(),
+    // Financial data is gated to Admins, Treasurers, and Executive Presidents
+    // (matched against server-backed org_office_holders).
+    return FutureBuilder<bool>(
+      future: _accessFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.data == true) {
+          return const _AdminDonationsReportContent();
+        }
+        return Scaffold(
+          appBar: const CustomAppBar(
+            title: 'Donation Reports',
+            showBackButton: true,
+          ),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 56,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Restricted Financial Access',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Donation Reports are restricted to Admins, the Treasurer, and the Executive President.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -115,6 +115,9 @@ class PodcastControlButtons extends StatelessWidget {
                   if (isPlaying) {
                     audioPlayer.pause();
                   } else {
+                    if (state?.processingState == ProcessingState.completed) {
+                      audioPlayer.seek(Duration.zero);
+                    }
                     audioPlayer.play();
                   }
                 },

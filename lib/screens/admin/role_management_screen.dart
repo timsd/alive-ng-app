@@ -644,10 +644,11 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         currentUser.role == 'super_admin';
     final isCurrentAdmin = isCurrentSuperAdmin || currentUser.role == 'admin';
 
-    // Super Admins can modify anyone; Admins can modify anyone except other admins (unless same person)
+    // Super Admins can modify anyone; regular Admins cannot modify super_admins or other admins
     if (isCurrentSuperAdmin) return true;
     if (isCurrentAdmin) {
-      return user.id != currentUser.id || user.role != 'admin';
+      return user.role != 'super_admin' &&
+          (user.role != 'admin' || user.id == currentUser.id);
     }
 
     // Leaders can modify coordinators and members, but not other leaders or admins
@@ -800,13 +801,24 @@ class _RoleManagementContentState extends State<_RoleManagementContent> {
         currentUser.role == 'super_admin';
     final isCurrentAdmin = isCurrentSuperAdmin || currentUser.role == 'admin';
 
+    if (isCurrentSuperAdmin) {
+      return true; // Super Admins can assign any role
+    }
     if (isCurrentAdmin) {
-      return true; // Admins and Super Admins can assign any role
+      return role != 'super_admin'; // Regular Admins cannot assign super_admin
     }
 
     if (currentUser.role == 'leader') {
-      return role != 'admin' &&
-          role != 'leader'; // Leaders can't create other leaders or admins
+      const leaderAssignable = <String>{
+        'member',
+        'field_worker',
+        'campus_missionary',
+        'amtc_team',
+        'dietist',
+        'kids_lead',
+        'coordinator',
+      };
+      return leaderAssignable.contains(role);
     }
 
     return false;

@@ -31,7 +31,10 @@
 -dontwarn io.sentry.**
 -keep class org.webrtc.** { *; }
 -dontwarn org.webrtc.**
+-keep class com.livekit.** { *; }
 -dontwarn com.livekit.**
+-keep class com.cloudwebrtc.** { *; }
+-dontwarn com.cloudwebrtc.**
 -dontwarn androidx.**
 
 # Appwrite & WebAuth OAuth callbacks

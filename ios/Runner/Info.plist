@@ -94,6 +94,10 @@
 		<string>remote-notification</string>
 	</array>
 	
+	<!-- Native Google Sign-In Client ID (iOS) -->
+	<key>GIDClientID</key>
+	<string>234909240985-jr2767d4lmp9plt62fk6j3colff51gue.apps.googleusercontent.com</string>
+
 	<!-- URL Schemes -->
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -104,6 +108,7 @@
 			<array>
 				<string>aliveng</string>
 				<string>appwrite-callback-6a3bef53002f5090dedf</string>
+				<string>com.googleusercontent.apps.234909240985-jr2767d4lmp9plt62fk6j3colff51gue</string>
 			</array>
 		</dict>
 	</array>

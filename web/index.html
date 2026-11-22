@@ -57,7 +57,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="preload" as="script" href="flutter_bootstrap.js">
   <!-- Cache-busting: forces browsers to fetch fresh assets after each deploy -->
-  <meta name="version" content="2.0.10+20">
+  <meta name="version" content="2.0.11+22">
   <script>
     // Clean stale flutter service workers while protecting sqflite SQLite worker for offline Bible
     (function () {
@@ -1481,8 +1481,9 @@
         } catch (_) { }
         var _readyCheckTimer = setInterval(function () {
           try {
-            var ready = !!(document.querySelector('flt-glass-pane') || document.getElementById('flutter'));
+            var ready = !!(document.querySelector('flt-glass-pane') || document.querySelector('flutter-view') || document.getElementById('flutter'));
             if (ready) {
+              window._flutterReady = true;
               setLoadingProgress(100, 'Ready');
               setTimeout(function () {
                 document.getElementById('app-loading-overlay').style.display = 'none';
@@ -1556,6 +1557,13 @@
 
         function showError(msg) {
           try {
+            // Once Flutter has mounted and taken over the viewport, never
+            // re-open the boot loading overlay on runtime JS/network errors.
+            if (window._flutterReady || document.querySelector('flt-glass-pane') || document.querySelector('flutter-view')) {
+              window._flutterReady = true;
+              try { console.error('[ALIVE Web Runtime]', msg); } catch (_) { }
+              return;
+            }
             var overlay = document.getElementById('app-loading-overlay');
             var textEl = document.getElementById('loading-text');
             var percentEl = document.getElementById('loading-percent');

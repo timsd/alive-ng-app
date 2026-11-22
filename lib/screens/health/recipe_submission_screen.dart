@@ -26,7 +26,8 @@ class RecipeSubmissionScreen extends ConsumerStatefulWidget {
 
 class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormBuilderState>();
+  final _mealFormKey = GlobalKey<FormBuilderState>();
+  final _remedyFormKey = GlobalKey<FormBuilderState>();
   late final TablesDB _tables = TablesDB(appwriteClient);
   late TabController _tabController;
   bool _isSubmitting = false;
@@ -161,7 +162,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     return SingleChildScrollView(
       padding: context.responsivePadding,
       child: FormBuilder(
-        key: _formKey,
+        key: _mealFormKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -332,7 +333,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     return SingleChildScrollView(
       padding: context.responsivePadding,
       child: FormBuilder(
-        key: _formKey,
+        key: _remedyFormKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -512,7 +513,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
 
   Future<void> _submitMealRecipe(
       BuildContext context, String Function(String) translate) async {
-    if (!_formKey.currentState!.saveAndValidate()) return;
+    if (!(_mealFormKey.currentState?.saveAndValidate() ?? false)) return;
 
     setState(() {
       _isSubmitting = true;
@@ -524,7 +525,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      final formData = _formKey.currentState!.value;
+      final formData = _mealFormKey.currentState!.value;
       final currentUser = ref.read(currentUserProvider);
 
       if (currentUser == null) {
@@ -566,7 +567,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       );
 
       // Reset form
-      _formKey.currentState!.reset();
+      _mealFormKey.currentState?.reset();
     } catch (e) {
       if (!mounted) return;
 
@@ -587,7 +588,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
 
   Future<void> _submitRemedyRecipe(
       BuildContext context, String Function(String) translate) async {
-    if (!_formKey.currentState!.saveAndValidate()) return;
+    if (!(_remedyFormKey.currentState?.saveAndValidate() ?? false)) return;
 
     setState(() {
       _isSubmitting = true;
@@ -599,7 +600,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      final formData = _formKey.currentState!.value;
+      final formData = _remedyFormKey.currentState!.value;
       final currentUser = ref.read(currentUserProvider);
 
       if (currentUser == null) {
@@ -642,7 +643,7 @@ class _RecipeSubmissionScreenState extends ConsumerState<RecipeSubmissionScreen>
       );
 
       // Reset form
-      _formKey.currentState!.reset();
+      _remedyFormKey.currentState?.reset();
     } catch (e) {
       if (!mounted) return;
 

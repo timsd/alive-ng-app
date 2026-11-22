@@ -53,6 +53,7 @@ class CreatePrayerRequestNotifier extends StateNotifier<AsyncValue<void>> {
         category: category,
         userId: user?.uid ?? '',
         isAnonymous: isAnonymous,
+        isPrivate: !isPublic,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

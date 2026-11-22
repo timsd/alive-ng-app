@@ -601,6 +601,13 @@ class UserStatisticsService {
         'session_count',
         'total_study_time',
         'total_app_time',
+        'discipleship_sessions',
+        'testimonies_submitted',
+        'tracts_read',
+        'audio_listened',
+        'donations_count',
+        'shares_count',
+        'quizzes_completed',
       ]) {
         if (updates.containsKey(key)) {
           incrementalUpdates[key] =

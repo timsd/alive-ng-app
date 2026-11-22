@@ -101,7 +101,7 @@ module.exports = async ({ req, res, log, error }) => {
       APP_SETTINGS_COLLECTION_ID,
       'monthly_reminder',
     );
-    const raw = settingsDoc?.data?.value;
+    const raw = settingsDoc?.value ?? settingsDoc?.data?.value;
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (typeof parsed?.enabled === 'boolean') {
       reminderEnabled = parsed.enabled;
@@ -133,6 +133,30 @@ module.exports = async ({ req, res, log, error }) => {
   } catch (_) {}
 
   const isScheduledTrigger = req?.headers?.['x-appwrite-trigger'] === 'schedule';
+  const callerUserId = String(req?.headers?.['x-appwrite-user-id'] || '').trim();
+
+  // Security: only Appwrite scheduler or an authenticated Admin/Super Admin may run this job
+  if (!isScheduledTrigger) {
+    if (!callerUserId) {
+      return res.json({ error: 'Unauthorized: scheduled or admin execution only.' }, 401);
+    }
+    let isAdmin = false;
+    try {
+      const caller = await users.get(callerUserId);
+      const labels = Array.isArray(caller.labels) ? caller.labels.map((l) => String(l).toLowerCase()) : [];
+      if (labels.some((l) => ['admin', 'super_admin'].includes(l))) isAdmin = true;
+    } catch (_) {}
+    if (!isAdmin) {
+      try {
+        const uDoc = await databases.getDocument(DATABASE_ID, '6a08943100226f5b4963', callerUserId);
+        const r = String(uDoc.role || '').toLowerCase();
+        if (uDoc.is_admin === true || ['admin', 'super_admin'].includes(r)) isAdmin = true;
+      } catch (_) {}
+    }
+    if (!isAdmin) {
+      return res.json({ error: 'Forbidden: admin access required.' }, 403);
+    }
+  }
 
   if (!reminderEnabled && !forceRun) {
     const summary = {
@@ -178,7 +202,7 @@ module.exports = async ({ req, res, log, error }) => {
       APP_SETTINGS_COLLECTION_ID,
       'monthly_reminder_optouts',
     );
-    const raw = settingsDoc?.data?.value;
+    const raw = settingsDoc?.value ?? settingsDoc?.data?.value;
     const list = Array.isArray(raw)
       ? raw
       : typeof raw === 'string'
@@ -190,6 +214,16 @@ module.exports = async ({ req, res, log, error }) => {
     // If document does not exist yet, no one opted out this way — carry on.
     if (e?.code !== 404) {
       error(`Warning: Could not load legacy opt-out list: ${e?.message}`);
+    }
+  }
+
+  // Per-user opt-out helper reading notification_settings
+  async function isOptedOutPerUser(userId) {
+    try {
+      const doc = await databases.getDocument(DATABASE_ID, 'notification_settings', userId);
+      return doc?.monthly_reminder_opt_out === true || doc?.push_notifications_enabled === false;
+    } catch (_) {
+      return false;
     }
   }
 

@@ -1,7 +1,9 @@
-import { Client, Databases, ID, Query } from 'node-appwrite';
+import { Client, Databases, ID, Query, Users } from 'node-appwrite';
 
 const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
 const paymentLogsCollectionId = process.env.APPWRITE_PAYMENT_LOGS_COLLECTION_ID || 'payment_logs';
+const donationsCollectionId = process.env.APPWRITE_DONATION_RECORDS_COLLECTION_ID || 'donation_records';
+const usersCollectionId = process.env.APPWRITE_USERS_COLLECTION_ID || '6a08943100226f5b4963';
 const appSettingsCollectionId =
   process.env.APPWRITE_APP_SETTINGS_COLLECTION_ID || 'app_settings';
 // LAST-RESORT value, used only when every live FX provider AND the Appwrite
@@ -317,7 +319,7 @@ export default async ({ req, res, log, error }) => {
         source,
         pair: 'USD_NGN',
         live: source !== 'fallback',
-        test_mode: paystackConfig.testMode,
+        test_mode: paystackConfig.isTestMode,
         paystack_public_key: publicKey,
         updated_at: new Date().toISOString(),
       });
@@ -377,6 +379,43 @@ export default async ({ req, res, log, error }) => {
 
     // ── Admin sync: pull live Paystack transactions directly into payment_logs ──
     if (action === 'sync_transactions') {
+      const callerId = String(req.headers['x-appwrite-user-id'] || '').trim();
+      const triggerType = String(req.headers['x-appwrite-trigger'] || '').trim().toLowerCase();
+      if (!callerId && triggerType !== 'schedule') {
+        return res.json({ error: 'Authentication required.' }, 401);
+      }
+      if (callerId) {
+        const fnEp = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
+        const fnPr = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
+        const fnKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
+        if (!fnEp || !fnPr || !fnKey) {
+          return res.json({ error: 'Admin verification unavailable.' }, 500);
+        }
+        const authClient = new Client().setEndpoint(fnEp).setProject(fnPr).setKey(fnKey);
+        const authDb = new Databases(authClient);
+        const authUsers = new Users(authClient);
+        let isAuthorizedAdmin = false;
+        try {
+          const u = await authUsers.get(callerId);
+          const labels = Array.isArray(u.labels) ? u.labels.map((l) => String(l).toLowerCase()) : [];
+          if (labels.some((l) => ['admin', 'super_admin', 'treasurer', 'president'].includes(l))) {
+            isAuthorizedAdmin = true;
+          }
+        } catch (_) {}
+        if (!isAuthorizedAdmin) {
+          try {
+            const uDoc = await authDb.getDocument(databaseId, usersCollectionId, callerId);
+            const r = String(uDoc.role || '').toLowerCase();
+            if (uDoc.is_admin === true || ['admin', 'super_admin'].includes(r)) {
+              isAuthorizedAdmin = true;
+            }
+          } catch (_) {}
+        }
+        if (!isAuthorizedAdmin) {
+          return res.json({ error: 'Unauthorized: admin access required.' }, 403);
+        }
+      }
+
       const liveConf = await getPaystackConfigKeys(log, { forceTestMode: false });
       const liveSecret = liveConf.liveSecretKey;
       if (!liveSecret || !liveSecret.startsWith('sk_live_')) {
@@ -446,6 +485,31 @@ export default async ({ req, res, log, error }) => {
     // ── Manage a recurring subscription (list / cancel) ──
     if (action === 'list_subscriptions' || action === 'cancel_subscription') {
       const fnError = (message, status = 400) => res.json({ error: message }, status);
+      const callerId = String(req.headers['x-appwrite-user-id'] || '').trim();
+      if (!callerId) {
+        return fnError('Authentication is required to manage subscriptions.', 401);
+      }
+
+      // Derive donor email authoritatively from the authenticated Appwrite account
+      // so no caller can enumerate or cancel another member's subscriptions.
+      let verifiedEmail = '';
+      try {
+        const fnEp = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
+        const fnPr = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
+        const fnKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
+        if (fnEp && fnPr && fnKey) {
+          const uClient = new Client().setEndpoint(fnEp).setProject(fnPr).setKey(fnKey);
+          const authUser = await new Users(uClient).get(callerId);
+          verifiedEmail = String(authUser?.email || '').trim().toLowerCase();
+        }
+      } catch (lookupErr) {
+        log(`Subscription caller lookup failed: ${lookupErr.message}`);
+      }
+      if (!verifiedEmail) {
+        return fnError('Could not verify your account email.', 403);
+      }
+
+      const subModePrefix = paystackConfig.isTestMode ? 'sk_test_' : 'sk_live_';
       const paystack = async (path, { method = 'GET', payload = null } = {}) => {
         let resp = await fetch(`https://api.paystack.co${path}`, {
           method,
@@ -457,7 +521,7 @@ export default async ({ req, res, log, error }) => {
         });
         let json = await resp.json().catch(() => ({}));
         if (!json?.status && (json?.message?.toLowerCase().includes('key') || resp.status === 401)) {
-          for (const altKey of candidateKeys.filter((k) => k !== secret)) {
+          for (const altKey of candidateKeys.filter((k) => k !== secret && k.startsWith(subModePrefix))) {
             const retryResp = await fetch(`https://api.paystack.co${path}`, {
               method,
               headers: {
@@ -481,26 +545,26 @@ export default async ({ req, res, log, error }) => {
         return json.data;
       };
 
-      // The donor's email is the only reliable key: find their live
-      // (non-cancelled) subscriptions and filter by match below.
-      const donorEmail =
-        typeof body.email === 'string' && body.email.trim()
-          ? body.email.trim().toLowerCase()
-          : (typeof body.metadata?.donor_email === 'string'
-              ? body.metadata.donor_email.trim().toLowerCase()
-              : '');
-      if (!donorEmail) {
-        return fnError('Missing donor email.');
-      }
+      const donorEmail = verifiedEmail;
 
-      let subscriptions;
+      let subscriptions = [];
       try {
-        subscriptions = await paystack('/subscription?perPage=100');
+        // Look up Paystack customer ID first so we filter server-side even past 100 org subscriptions
+        let customerId = null;
+        try {
+          const customer = await paystack(`/customer/${encodeURIComponent(donorEmail)}`);
+          customerId = customer?.id || null;
+        } catch (_) {}
+        const queryPath = customerId
+          ? `/subscription?customer=${encodeURIComponent(customerId)}&perPage=100`
+          : '/subscription?perPage=100';
+        const data = await paystack(queryPath);
+        subscriptions = Array.isArray(data) ? data : [];
       } catch (listErr) {
         return fnError(`Could not list subscriptions: ${listErr.message}`, 502);
       }
 
-      const owned = (Array.isArray(subscriptions) ? subscriptions : []).filter(
+      const owned = subscriptions.filter(
         (sub) =>
           typeof sub?.customer?.email === 'string' &&
           sub.customer.email.trim().toLowerCase() === donorEmail &&
@@ -514,7 +578,6 @@ export default async ({ req, res, log, error }) => {
           count: owned.length,
           subscriptions: owned.map((sub) => ({
             subscription_code: sub.subscription_code,
-            email_token: sub.email_token,
             status: sub.status,
             amount: sub.amount,
             currency: sub.plan?.currency || null,
@@ -764,7 +827,7 @@ export default async ({ req, res, log, error }) => {
     // ── Invalid key recovery (same mode only) ───────────────────────────────
     // Never silently fall back from Live mode to a Test key (or vice versa),
     // so Live mode never disguises an invalid sk_live_ key as a test checkout.
-    const sameModePrefix = paystackConfig.testMode ? 'sk_test_' : 'sk_live_';
+    const sameModePrefix = paystackConfig.isTestMode ? 'sk_test_' : 'sk_live_';
     const sameModeCandidates = candidateKeys.filter((k) => k !== secret && k.startsWith(sameModePrefix));
     if (!json?.status && (json?.message?.toLowerCase().includes('key') || paystackResponse.status === 401)) {
       for (const altKey of sameModeCandidates) {
@@ -791,12 +854,12 @@ export default async ({ req, res, log, error }) => {
     }
 
     if (!json?.status && (json?.message?.toLowerCase().includes('key') || paystackResponse.status === 401)) {
-      const modeLabel = paystackConfig.testMode ? 'Test' : 'Live';
-      const settingKey = paystackConfig.testMode ? 'paystack_test_secret_key' : 'paystack_live_secret_key';
+      const modeLabel = paystackConfig.isTestMode ? 'Test' : 'Live';
+      const settingKey = paystackConfig.isTestMode ? 'paystack_test_secret_key' : 'paystack_live_secret_key';
       error(`Paystack ${modeLabel} secret key rejected: ${json?.message || paystackResponse.status}`);
       return res.json({
         error: `Paystack ${modeLabel} Secret Key was rejected by Paystack ("${json?.message || 'Invalid key'}"). Please update ${settingKey} in App Settings.`,
-        test_mode: paystackConfig.testMode,
+        test_mode: paystackConfig.isTestMode,
       }, 400);
     }
 
@@ -841,12 +904,10 @@ export default async ({ req, res, log, error }) => {
     //   • "Currency not supported by merchant" — USD not enabled at all
     //   • "No active channel to process transaction" — USD enabled but no
     //     payment channel (card/bank) is activated for USD on Paystack dashboard
+    // Strictly gate USD->NGN conversion to USD transactions only so an NGN channel
+    // error can never multiply an NGN kobo amount by the USD/NGN exchange rate!
     const isUsdFailure = !json?.status && payload.currency === 'USD';
-    const isCurrencyRelated = !json?.status && json?.message && (
-      json.message.toLowerCase().includes('currency') ||
-      json.message.toLowerCase().includes('channel')
-    );
-    if (isUsdFailure || isCurrencyRelated) {
+    if (isUsdFailure) {
       // Prefer a client-supplied fresh rate, else resolve live on the server
       // so the donor is billed at the current market rate — never stale.
       // Web sends `exchange_rate`, the Flutter app sends

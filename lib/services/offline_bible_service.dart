@@ -269,11 +269,22 @@ class OfflineBibleService {
   // verses across 9 versions.  On native platforms, the SQLite compound-
   // indexed query returns a full chapter in <1 ms.  The loose-JSON and
   // ZIP paths are kept only as web / emergency fallbacks.
+  static const int _maxMemoryCachedChapters = 24;
+
+  static void _putMemoryCache(String key, BibleChapter chapter) {
+    _memoryChapterCache.remove(key);
+    _memoryChapterCache[key] = chapter;
+    while (_memoryChapterCache.length > _maxMemoryCachedChapters) {
+      _memoryChapterCache.remove(_memoryChapterCache.keys.first);
+    }
+  }
+
   Future<BibleChapter?> getBibleChapter({
     required String book,
     required int chapter,
     String? version,
     String? language,
+    bool prefetch = true,
   }) async {
     try {
       final versionCode = version ?? _defaultVersion;
@@ -291,51 +302,29 @@ class OfflineBibleService {
       final memKey = '$languageCode/$versionCode/${book.toLowerCase().trim()}/$chapter';
       final inMem = _memoryChapterCache[memKey];
       if (inMem != null && inMem.verses.isNotEmpty) {
-        _prefetchChapter(book, chapter + 1, versionCode, languageCode);
-        if (chapter > 1) {
-          _prefetchChapter(book, chapter - 1, versionCode, languageCode);
+        if (prefetch) {
+          _prefetchChapter(book, chapter + 1, versionCode, languageCode);
+          if (chapter > 1) {
+            _prefetchChapter(book, chapter - 1, versionCode, languageCode);
+          }
         }
         return inMem;
       }
 
-      // 0.5. Persistent local offline cache check (<1 ms response, 100% offline)
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final cachedJson = prefs.getString('cached_chapter_$memKey');
-        if (cachedJson != null && cachedJson.isNotEmpty) {
-          final decoded = jsonDecode(cachedJson);
-          if (decoded is Map<String, dynamic>) {
-            final cachedChapter = BibleChapter.fromJson(decoded);
-            if (cachedChapter.verses.isNotEmpty) {
-              _memoryChapterCache[memKey] = cachedChapter;
-              _prefetchChapter(book, chapter + 1, versionCode, languageCode);
-              if (chapter > 1) {
-                _prefetchChapter(book, chapter - 1, versionCode, languageCode);
-              }
-              return cachedChapter;
-            }
-          }
-        }
-      } catch (cacheErr) {
-        _logger.warning('Persistent chapter cache read note: $cacheErr');
-      }
-
       // 1. PRIMARY: Pre-built SQLite database (<1 ms indexed query)
       //    The pre-built bible.db is copied from assets on first launch,
-      //    so this will hit from the very first chapter open.
+      //    so this will hit from the very first chapter open without bloating
+      //    SharedPreferences with duplicated chapter JSON blobs.
       try {
         final dbChapter = await _dbHelper.getChapter(
             book, chapter, versionCode, languageCode);
         if (dbChapter != null && dbChapter.verses.isNotEmpty) {
-          _memoryChapterCache[memKey] = dbChapter;
-          // Store in persistent local cache so subsequent and offline reads are instant
-          unawaited(SharedPreferences.getInstance().then((p) {
-            p.setString('cached_chapter_$memKey', jsonEncode(dbChapter.toJson()));
-          }).catchError((_) {}));
-
-          _prefetchChapter(book, chapter + 1, versionCode, languageCode);
-          if (chapter > 1) {
-            _prefetchChapter(book, chapter - 1, versionCode, languageCode);
+          _putMemoryCache(memKey, dbChapter);
+          if (prefetch) {
+            _prefetchChapter(book, chapter + 1, versionCode, languageCode);
+            if (chapter > 1) {
+              _prefetchChapter(book, chapter - 1, versionCode, languageCode);
+            }
           }
           return dbChapter;
         }
@@ -352,7 +341,7 @@ class OfflineBibleService {
           language: languageCode,
           verses: _genesis1KjvVerses,
         );
-        _memoryChapterCache[memKey] = fallback;
+        _putMemoryCache(memKey, fallback);
         return fallback;
       }
 
@@ -1230,6 +1219,7 @@ class OfflineBibleService {
           chapter: chapter,
           version: version,
           language: language,
+          prefetch: false,
         );
       } catch (_) {}
     });

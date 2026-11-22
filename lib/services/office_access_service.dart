@@ -143,6 +143,7 @@ class OfficeAccessService {
           queries: [Query.limit(200)],
         );
         final holders = response.rows
+            .where((r) => r.data['is_current'] != false)
             .map((r) => OfficeHolder.fromDocument(r.data))
             .where((h) => h.officeId.isNotEmpty)
             .toList();

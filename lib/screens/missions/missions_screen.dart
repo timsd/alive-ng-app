@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/appwrite_facade.dart';
 
@@ -500,18 +501,20 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: Text(translate('create_mission')),
         content: Text(translate('create_mission_description')),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
             child: Text(translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              _showCreateMissionForm(context, translate);
+              Navigator.of(dialogCtx).pop();
+              if (context.mounted) {
+                _showCreateMissionForm(context, translate);
+              }
             },
             child: Text(translate('create')),
           ),
@@ -645,17 +648,20 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
 
   void _completeMission(BuildContext context, Mission mission) {
     final translate = ref.read(translationProvider);
+    final messenger = ScaffoldMessenger.of(context);
 
     // Show star animation celebration
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StarAnimationWidget(
+      builder: (dialogCtx) => StarAnimationWidget(
         showAnimation: true,
         onAnimationComplete: () {
-          Navigator.of(context).pop();
+          if (dialogCtx.mounted) {
+            Navigator.of(dialogCtx).pop();
+          }
           // Show completion message
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(
               content: Text(
                   '${translate('mission_completed').replaceAll('{title}', mission.title)} 🎉'),
@@ -698,7 +704,7 @@ class MissionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final daysUntilStart =
-        mission.createdAt?.difference(DateTime.now()).inDays ?? 0;
+        mission.startDate.difference(DateTime.now()).inDays;
     final currentCount =
         mission.currentParticipants?.length ?? mission.participantsCount;
     final max = mission.maxParticipants;
@@ -1101,9 +1107,10 @@ class MissionDetailsSheet extends StatelessWidget {
                           '${mission.title}\n\n${mission.description}\n\nLocation: ${mission.location}\nDate: ${mission.startDate.day}/${mission.startDate.month}/${mission.startDate.year}\n\nJoin us in this mission! Download the ALIVE Nigeria app to participate.';
 
                       // Show share dialog
+                      final messenger = ScaffoldMessenger.of(context);
                       showDialog(
                         context: context,
-                        builder: (context) => AlertDialog(
+                        builder: (dialogCtx) => AlertDialog(
                           title: const Text('Share Mission'),
                           content: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -1111,33 +1118,37 @@ class MissionDetailsSheet extends StatelessWidget {
                               const Text('Share this mission with others:'),
                               SizedBox(
                                   height: ResponsiveUtils.getResponsiveSpacing(
-                                      context, 16)),
+                                      dialogCtx, 16)),
                               Container(
                                 padding: ResponsiveUtils
-                                    .getResponsivePaddingWithBase(context, 12),
+                                    .getResponsivePaddingWithBase(dialogCtx, 12),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                  color: Theme.of(dialogCtx).colorScheme.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(
                                       ResponsiveUtils
                                           .getResponsiveBorderRadiusValue(
-                                              context, 8)),
+                                              dialogCtx, 8)),
                                 ),
                                 child: Text(
                                   shareText,
-                                  style: Theme.of(context).textTheme.bodySmall,
+                                  style: Theme.of(dialogCtx).textTheme.bodySmall,
                                 ),
                               ),
                             ],
                           ),
                           actions: [
                             TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
+                              onPressed: () => Navigator.of(dialogCtx).pop(),
                               child: const Text('Cancel'),
                             ),
                             ElevatedButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                    ClipboardData(text: shareText));
+                                if (dialogCtx.mounted) {
+                                  Navigator.of(dialogCtx).pop();
+                                }
+                                messenger.showSnackBar(
                                   const SnackBar(
                                     content: Text(
                                         'Mission details copied to clipboard'),

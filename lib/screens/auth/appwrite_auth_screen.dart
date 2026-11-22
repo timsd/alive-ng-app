@@ -246,23 +246,26 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
     ref.listen<AsyncValue<void>>(signInControllerProvider, (previous, next) {
       next.when(
         data: (_) {
-          // Cache credentials silently so the user can toggle Biometric Sign-In
-          // ON or OFF inside Profile -> Account & Security without any login popup collision.
-          if (mounted) {
-            ref.read(isGuestModeProvider.notifier).state = false;
-            if (_isEmailPasswordSignIn ||
-                (_emailController.text.trim().isNotEmpty &&
-                    _passwordController.text.isNotEmpty)) {
-              _biometricService.cacheSessionCredentials(
-                email: _emailController.text.trim(),
-                password: _passwordController.text,
-              );
-            }
+          // Only navigate on an actual completed sign-in (prevents Google cancel,
+          // forgot-password, or pending Web OAuth redirects from jumping to /home).
+          final signedInUser = ref.read(authGatewayProvider).currentUser;
+          if (!mounted || signedInUser == null || signedInUser.uid == 'pending_web_oauth') {
             _isEmailPasswordSignIn = false;
-            // Warm up offline Bible database immediately on login
-            unawaited(OfflineBibleService().prewarmBundle());
-            context.go(consumePostAuthRedirectOrHome(AppConstants.homeRoute));
+            return;
           }
+          ref.read(isGuestModeProvider.notifier).state = false;
+          if (_isEmailPasswordSignIn ||
+              (_emailController.text.trim().isNotEmpty &&
+                  _passwordController.text.isNotEmpty)) {
+            _biometricService.cacheSessionCredentials(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+            );
+          }
+          _isEmailPasswordSignIn = false;
+          // Warm up offline Bible database immediately on login
+          unawaited(OfflineBibleService().prewarmBundle());
+          context.go(consumePostAuthRedirectOrHome(AppConstants.homeRoute));
         },
         error: (error, _) {
           _isEmailPasswordSignIn = false;
@@ -1856,7 +1859,7 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
           ElevatedButton(
             onPressed: () async {
               final email = emailController.text.trim();
-              if (email.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+              if (email.isEmpty || !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$').hasMatch(email)) {
                 ScaffoldMessenger.of(dialogCtx).showSnackBar(
                   SnackBar(
                     content: Text(translate('invalid_email')),
@@ -1868,8 +1871,8 @@ class _AppwriteAuthScreenState extends ConsumerState<AppwriteAuthScreen> {
               Navigator.of(dialogCtx).pop();
               try {
                 await ref
-                    .read(signInControllerProvider.notifier)
-                    .resetPassword(email);
+                    .read(authGatewayProvider)
+                    .sendPasswordRecovery(email);
               } catch (_) {
                 // Keep neutral response to prevent user enumeration
               }

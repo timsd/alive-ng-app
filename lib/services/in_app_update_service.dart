@@ -88,15 +88,19 @@ class InAppUpdateService {
             return;
           } else if (info.flexibleUpdateAllowed == true) {
             // Flexible update in background
-            await InAppUpdate.startFlexibleUpdate();
-            await InAppUpdate.completeFlexibleUpdate();
-            googlePlayHandled = true;
-            final ctx = context ?? rootNavigatorKey.currentContext;
-            if (ctx != null && ctx.mounted) {
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                const SnackBar(content: Text('App updated successfully')),
-              );
+            final result = await InAppUpdate.startFlexibleUpdate();
+            if (result == AppUpdateResult.success) {
+              await InAppUpdate.completeFlexibleUpdate();
+              googlePlayHandled = true;
+              final ctx = context ?? rootNavigatorKey.currentContext;
+              if (ctx != null && ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('App updated successfully')),
+                );
+              }
+              return;
             }
+            googlePlayHandled = true;
             return;
           } else {
             // Update is available on Google Play, but in-app flags weren't set by priority.
@@ -120,8 +124,9 @@ class InAppUpdateService {
       }
 
       // 2. Fallback: Appwrite-managed remote version check
-      if (!googlePlayHandled && context != null && context.mounted) {
-        await _checkRemoteAppUpdate(context, manual);
+      final resolvedCtx = context ?? rootNavigatorKey.currentContext;
+      if (!googlePlayHandled && resolvedCtx != null && resolvedCtx.mounted) {
+        await _checkRemoteAppUpdate(resolvedCtx, manual);
       }
     } finally {
       _isChecking = false;
@@ -263,11 +268,12 @@ class InAppUpdateService {
     }
   }
 
-  /// Compares semantic versions (e.g. 2.0.9 > 2.0.7)
+  /// Compares semantic versions (e.g. 2.0.9 > 2.0.7), stripping optional +build or -prerelease suffixes.
   static bool _isVersionNewer(String latest, String current) {
     try {
-      final lParts = latest.split('.').map(int.parse).toList();
-      final cParts = current.split('.').map(int.parse).toList();
+      String stripMeta(String v) => v.split('+').first.split('-').first.trim();
+      final lParts = stripMeta(latest).split('.').map(int.parse).toList();
+      final cParts = stripMeta(current).split('.').map(int.parse).toList();
       final length =
           lParts.length > cParts.length ? lParts.length : cParts.length;
       for (var i = 0; i < length; i++) {

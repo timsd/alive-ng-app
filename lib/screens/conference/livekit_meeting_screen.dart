@@ -289,6 +289,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   }
 
   String _getRoomSlug() {
+    final custom = widget.customRoomName?.trim();
+    if (custom != null && custom.isNotEmpty) {
+      return custom.replaceAll(' ', '-').toLowerCase();
+    }
     if (widget.meetingType != null) {
       return AliveMeetConfig.roomFor(widget.meetingType!);
     }

@@ -1,0 +1,10 @@
+{
+  "name": "google-native-auth",
+  "version": "1.0.0",
+  "description": "Verifies native Android/iOS Google Sign-In ID tokens and mints single-use Appwrite session tokens",
+  "type": "module",
+  "main": "src/main.js",
+  "dependencies": {
+    "node-appwrite": "^22.1.3"
+  }
+}

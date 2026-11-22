@@ -14,10 +14,12 @@ const GUEST_PUSH_USER_ID = 'guest_push_devices';
 const ALLOWED_ROLES = new Set([
   'admin',
   'super_admin',
+  'president',
   'coordinator',
+  'leader',
   'director',
-  'board',
-  'editor',
+  'bod',
+  'trustee',
 ]);
 
 function sha1Hex(input) {
@@ -270,7 +272,11 @@ async function isAuthorizedSender({ databases, usersApi, databaseId, callerUserI
   try {
     const userDoc = await databases.getDocument(databaseId, USERS_COLLECTION_ID, callerUserId);
     const role = String(userDoc.role || '').toLowerCase();
-    if (userDoc.is_admin === true || ALLOWED_ROLES.has(role)) {
+    const isAdminRole = userDoc.is_admin === true || role === 'admin' || role === 'super_admin';
+    const isApproved =
+      userDoc.is_approved === true ||
+      String(userDoc.approval_status || '').toLowerCase() === 'approved';
+    if (isAdminRole || (isApproved && ALLOWED_ROLES.has(role))) {
       return true;
     }
   } catch (e) {
@@ -283,7 +289,7 @@ async function isAuthorizedSender({ databases, usersApi, databaseId, callerUserI
       ORG_OFFICE_HOLDERS_COLLECTION_ID,
       [
         Query.equal('user_id', callerUserId),
-        Query.equal('is_active', true),
+        Query.equal('is_current', true),
         Query.limit(5),
       ],
     );
@@ -404,6 +410,8 @@ export default async ({ req, res, log, error }) => {
         );
         if (
           settingsDoc.push_notifications_enabled === false ||
+          settingsDoc.prayer_reminder === false ||
+          settingsDoc.prayer === false ||
           settingsDoc.prayer_requests === false
         ) {
           return res.json({

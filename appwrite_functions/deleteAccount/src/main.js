@@ -54,7 +54,10 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: 'You can only delete your own account.' }, 403);
   }
 
-  const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;
+  const apiKey =
+    process.env.APPWRITE_FUNCTION_API_KEY ||
+    process.env.APPWRITE_API_KEY ||
+    req.headers?.['x-appwrite-key'];
   const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
   const project = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
   if (!apiKey || !endpoint || !project) {

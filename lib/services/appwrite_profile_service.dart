@@ -126,7 +126,6 @@ class AppwriteProfileService {
               tableId: AppwriteBackendConfig.usersCollectionId,
               rowId: userId,
               data: {
-                'user_id': userId,
                 'email': currentAuthUser.email,
                 'full_name': name,
                 'role': 'member',
@@ -193,7 +192,6 @@ class AppwriteProfileService {
       data: data,
       createData: {
         ...data,
-        'user_id': userId,
         'created_at': now,
       },
     );
@@ -243,7 +241,6 @@ class AppwriteProfileService {
       data: updateData,
       createData: {
         ...updateData,
-        'user_id': userId,
         'created_at': now,
       },
     );
@@ -301,7 +298,6 @@ class AppwriteProfileService {
       data: updateData,
       createData: {
         ...updateData,
-        'user_id': userId,
         'created_at': now,
       },
     );
@@ -346,7 +342,6 @@ class AppwriteProfileService {
       data: data,
       createData: {
         ...data,
-        'user_id': userId,
         'created_at': now,
       },
     );

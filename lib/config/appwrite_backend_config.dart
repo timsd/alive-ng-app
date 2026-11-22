@@ -54,6 +54,14 @@ class AppwriteBackendConfig {
   static const String sendEmailFunctionId = 'send_email';
   static const String sendPushFunctionId = 'send_push';
   static const String deleteAccountFunctionId = 'delete_account';
+  static const String googleNativeAuthFunctionId = 'google_native_auth';
+  static const String googleWebClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+    defaultValue:
+        '234909240985-1dernhsf9qmkau7idp4hn1nudegpd5ju.apps.googleusercontent.com',
+  );
+  static const String mobileOauthCallbackUrl =
+      'https://app.alivenigeria.org/oauth-callback.html';
   static const String adminTeamId = '6a098ba2001455c27fdb';
   static const String approvalTokensCollectionId = 'approval_tokens';
   static const String donationRecordsCollectionId = 'donation_records';

@@ -473,8 +473,14 @@ class _MeetingBreakoutSheetState extends State<MeetingBreakoutSheet> {
                       });
                     }
 
+                    final mainRoom = (session.mainRoomName != null &&
+                            session.mainRoomName!.isNotEmpty)
+                        ? session.mainRoomName!
+                        : (session.roomName.isNotEmpty
+                            ? session.roomName
+                            : 'alive-general-fellowship');
                     rooms.add(BreakoutRoom(
-                      id: 'breakout_${i + 1}_${DateTime.now().millisecondsSinceEpoch}',
+                      id: '$mainRoom--br-${i + 1}-${DateTime.now().millisecondsSinceEpoch}',
                       name: _nameControllers[i].text.trim().isNotEmpty
                           ? _nameControllers[i].text.trim()
                           : 'Room ${i + 1}',

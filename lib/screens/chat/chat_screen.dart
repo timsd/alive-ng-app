@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/chat_models.dart';
@@ -37,6 +38,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   List<ChatChannel> _channels = [];
   List<ChatMessage> _messages = [];
+  StreamSubscription<List<ChatMessage>>? _messagesSubscription;
   bool _onlyMentions = false;
   ChatMessage? _replyingTo;
   ChatChannel? _selectedChannel;
@@ -48,9 +50,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _loadChannels();
-    if (widget.channelId != null) {
-      _selectChannelById(widget.channelId!);
-    }
   }
 
   Future<void> _handleDeleteMessage(ChatMessage message) async {
@@ -148,6 +147,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    _messagesSubscription?.cancel();
+    _messagesSubscription = null;
     _scrollController.dispose();
     _messageController.dispose();
     super.dispose();
@@ -181,16 +182,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       final channels = await _chatService.getUserChannels(userId);
 
+      if (!mounted) return;
+      ChatChannel? initialChannel = _selectedChannel;
+      if (initialChannel == null && channels.isNotEmpty) {
+        if (widget.channelId != null && widget.channelId!.isNotEmpty) {
+          initialChannel = channels.firstWhere(
+            (c) => c.id == widget.channelId,
+            orElse: () => channels.first,
+          );
+        } else {
+          initialChannel = channels.first;
+        }
+      }
+
       setState(() {
         _channels = channels;
         _isLoading = false;
-
-        // Select first channel if none selected
-        if (_selectedChannel == null && channels.isNotEmpty) {
-          _selectedChannel = channels.first;
-          _loadMessages();
-        }
+        _selectedChannel = initialChannel;
       });
+
+      if (initialChannel != null) {
+        _loadMessages();
+        _subscribeToSelectedChannel(initialChannel.id);
+      }
     } catch (e) {
       setState(() {
         _error =
@@ -200,22 +214,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _selectChannelById(String channelId) async {
-    if (_channels.isEmpty) return;
-    final channel = _channels.firstWhere(
-      (c) => c.id == channelId,
-      orElse: () => _channels.first,
-    );
-    _selectChannel(channel);
-  }
-
   void _selectChannel(ChatChannel channel) {
     setState(() {
       _selectedChannel = channel;
       _messages = [];
     });
     _loadMessages();
+    _subscribeToSelectedChannel(channel.id);
     _markMessagesAsRead();
+  }
+
+  void _subscribeToSelectedChannel(String channelId) {
+    _messagesSubscription?.cancel();
+    _messagesSubscription = _chatService
+        .subscribeToChannelMessages(channelId)
+        .listen((incomingMessages) {
+      if (!mounted || _selectedChannel?.id != channelId) return;
+      final hadMore = incomingMessages.length > _messages.length;
+      setState(() {
+        _messages = incomingMessages;
+        _isLoadingMessages = false;
+      });
+      if (hadMore) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    }, onError: (Object err) {
+      debugPrint('Chat realtime stream note: $err');
+    });
   }
 
   Future<void> _loadMessages() async {
@@ -272,7 +305,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
 
       setState(() {
-        _messages.add(message);
+        if (!_messages.any((m) => m.id == message.id)) {
+          _messages.add(message);
+        }
         _replyingTo = null;
       });
 

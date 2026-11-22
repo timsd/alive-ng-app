@@ -5,6 +5,8 @@ import 'package:appwrite/enums.dart' as appwrite_enums;
 import 'package:appwrite/models.dart' as models;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
 
 import '../config/appwrite_backend_config.dart';
 import '../main.dart';
@@ -63,11 +65,22 @@ class AppwriteAuthService {
           e.type == 'user_unauthorized' ||
           (e.type?.contains('session') ?? false)) {
         await _clearStaleSessions();
+        debugPrint('No active Appwrite session found: $e');
+        _sharedCurrentUser = null;
+        return null;
       }
-      debugPrint('No active Appwrite session found: $e');
-      _sharedCurrentUser = null;
-      return null;
+      // Network/transient error (e.g. code == 0 offline): rethrow so
+      // AppwriteAuthGateway restores the persisted offline user cleanly.
+      rethrow;
     } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('socket') ||
+          msg.contains('clientexception') ||
+          msg.contains('timeout') ||
+          msg.contains('failed host lookup') ||
+          msg.contains('network')) {
+        rethrow;
+      }
       debugPrint('No active Appwrite session found: $e');
       _sharedCurrentUser = null;
       return null;
@@ -252,6 +265,12 @@ class AppwriteAuthService {
       debugPrint('Appwrite deleteSession notice: $e');
     }
 
+    if (!kIsWeb) {
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {}
+    }
+
     _sharedCurrentUser = null;
 
     if (kIsWeb) {
@@ -347,6 +366,68 @@ class AppwriteAuthService {
     );
   }
 
+  Future<Map<String, dynamic>> _exchangeGoogleIdToken(String idToken) async {
+    final bodyJson = jsonEncode({'idToken': idToken});
+
+    // 1. Primary path: Appwrite Functions SDK
+    try {
+      final functions = Functions(appwriteClient);
+      final execution = await functions.createExecution(
+        functionId: AppwriteBackendConfig.googleNativeAuthFunctionId,
+        body: bodyJson,
+        xasync: false,
+        method: appwrite_enums.ExecutionMethod.pOST,
+      );
+      final raw = execution.responseBody.trim();
+      if (raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map<String, dynamic>) {
+          if (decoded['error'] != null) {
+            throw Exception(decoded['error'].toString());
+          }
+          return decoded;
+        }
+      }
+    } catch (sdkErr) {
+      debugPrint('google_native_auth SDK note: $sdkErr; trying direct HTTP...');
+    }
+
+    // 2. Fallback: direct HTTP execution (avoids self-hosted SDK enum quirks)
+    final uri = Uri.parse(
+      '${appwriteClient.endPoint}/functions/${AppwriteBackendConfig.googleNativeAuthFunctionId}/executions',
+    );
+    final res = await http.post(
+      uri,
+      headers: {
+        'X-Appwrite-Project': AppwriteBackendConfig.projectId,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'body': bodyJson,
+        'async': false,
+        'method': 'POST',
+      }),
+    );
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final execMap = jsonDecode(res.body);
+      if (execMap is Map<String, dynamic>) {
+        final respBody = execMap['responseBody']?.toString() ??
+            execMap['response']?.toString() ??
+            '';
+        if (respBody.trim().isNotEmpty) {
+          final decoded = jsonDecode(respBody);
+          if (decoded is Map<String, dynamic>) {
+            if (decoded['error'] != null) {
+              throw Exception(decoded['error'].toString());
+            }
+            return decoded;
+          }
+        }
+      }
+    }
+    throw Exception('Could not complete Google Sign-In verification.');
+  }
+
   Future<void> signInWithGoogle() async {
     if (kIsWeb) {
       final successUrl = AppwriteBackendConfig.oauthSuccessUrl;
@@ -361,10 +442,65 @@ class AppwriteAuthService {
       return;
     }
 
-    await _account.createOAuth2Session(
-      provider: appwrite_enums.OAuthProvider.google,
-      scopes: const ['email', 'profile'],
-    );
+    // Primary mobile path: 100% Native Google Sign-In (zero browser tabs, zero Appwrite redirect screen)
+    bool nativeSucceeded = false;
+    try {
+      final googleSignIn = GoogleSignIn(
+        scopes: const ['email', 'profile'],
+        serverClientId: AppwriteBackendConfig.googleWebClientId,
+      );
+      // Clear cached Google selection lightly so the account picker lets users switch accounts
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        throw Exception('user_canceled');
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Google sign-in did not return an ID token.');
+      }
+
+      final data = await _exchangeGoogleIdToken(idToken);
+      final userId = data['userId']?.toString() ?? '';
+      final secret = data['secret']?.toString() ?? '';
+      if (userId.isEmpty || secret.isEmpty) {
+        throw Exception('Google authentication did not return a session token.');
+      }
+
+      // Clear any stale current session before activating the new Google session
+      try {
+        await _account.deleteSession(sessionId: 'current');
+      } catch (_) {}
+
+      await _account.createSession(userId: userId, secret: secret);
+      nativeSucceeded = true;
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('user_canceled') ||
+          msg.contains('canceled') ||
+          msg.contains('cancelled')) {
+        rethrow;
+      }
+      debugPrint(
+        'Native Google Sign-In unavailable ($e); falling back to branded OAuth2 flow...',
+      );
+    }
+
+    // Fallback for non-GMS devices (e.g. Huawei) or unconfigured Android SHA-1:
+    // Omit custom app.alivenigeria.org URL so Android App Links never hijacks
+    // the browser redirect before flutter_web_auth_2 receives the callback.
+    if (!nativeSucceeded) {
+      await _account.createOAuth2Session(
+        provider: appwrite_enums.OAuthProvider.google,
+        scopes: const ['email', 'profile'],
+      );
+    }
+
     await getCurrentUser();
     final user = _sharedCurrentUser;
     if (user != null) {

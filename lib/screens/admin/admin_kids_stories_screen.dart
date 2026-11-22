@@ -165,6 +165,7 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen>
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'txt'],
+        withData: true,
       );
 
       if (result != null && result.files.single.bytes != null) {
@@ -203,7 +204,10 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen>
   }
 
   Future<void> _pickCoverImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
     if (result != null && result.files.single.bytes != null) {
       setState(() {
         _coverImageBytes = result.files.single.bytes;
@@ -213,7 +217,10 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen>
   }
 
   Future<void> _pickAudio() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.audio,
+      withData: true,
+    );
     if (result != null && result.files.single.bytes != null) {
       setState(() {
         _audioBytes = result.files.single.bytes;

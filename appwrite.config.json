@@ -121,6 +121,7 @@
             "timeout": 60,
             "commands": "npm install",
             "scopes": [
+                "users.read",
                 "users.write"
             ]
         },
@@ -173,7 +174,7 @@
             "path": "appwrite_functions/monthlyDonationReminder",
             "entrypoint": "src/main.js",
             "execute": [
-                "any"
+                "users"
             ],
             "enabled": true,
             "logging": true,
@@ -200,9 +201,7 @@
             "events": [
                 "users.*.create"
             ],
-            "execute": [
-                "users"
-            ],
+            "execute": [],
             "runtime": "node-20.0",
             "scopes": [
                 "databases.read",
@@ -261,6 +260,26 @@
                 "databases.write",
                 "storage.read",
                 "storage.write"
+            ]
+        },
+        {
+            "$id": "google_native_auth",
+            "name": "googleNativeAuth",
+            "runtime": "node-20.0",
+            "path": "appwrite_functions/googleNativeAuth",
+            "entrypoint": "src/main.js",
+            "execute": [
+                "any"
+            ],
+            "enabled": true,
+            "logging": true,
+            "events": [],
+            "schedule": "",
+            "timeout": 15,
+            "commands": "npm install",
+            "scopes": [
+                "users.read",
+                "users.write"
             ]
         }
     ]

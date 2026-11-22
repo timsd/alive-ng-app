@@ -436,6 +436,8 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       })
       ..on<lk.RoomDisconnectedEvent>((event) {
         if (!_isSwitchingBreakoutRoom) {
+          _isScreenShareEnabled = false;
+          MeetingPipService.instance.stopScreenShareService();
           if (event.reason == lk.DisconnectReason.roomDeleted) {
             _moderationPromptsController.add('ended_by_host');
           }
@@ -481,7 +483,6 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         try {
           if (event.track is lk.AudioTrack) {
             await room.startAudio();
-            await lk.AudioManager.instance.setSpeakerOutputPreferred(true);
           }
         } catch (_) {}
         _syncStateFromRoom();
@@ -492,7 +493,6 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         try {
           if (event.publication.track is lk.AudioTrack) {
             await room.startAudio();
-            await lk.AudioManager.instance.setSpeakerOutputPreferred(true);
           }
         } catch (_) {}
         _syncStateFromRoom();
@@ -506,7 +506,11 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           final payloadStr = utf8.decode(event.data);
           final map = jsonDecode(payloadStr);
           if (map is Map<String, dynamic>) {
-            _handleControlMessage(map, sender: event.participant?.identity);
+            _handleControlMessage(
+              map,
+              sender: event.participant?.identity,
+              senderParticipant: event.participant,
+            );
             if (!_dataChannelMessagesController.isClosed) {
               _dataChannelMessagesController.add(map);
             }
@@ -542,10 +546,77 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     });
   }
 
-  void _handleControlMessage(Map<String, dynamic> msg, {String? sender}) {
-    final action = msg['action'];
+  bool _isSenderPrivileged(String? sender, lk.Participant? senderParticipant) {
+    if (sender != null && sender.isNotEmpty) {
+      if (sender == _hostIdentity || _coHostIdentities.contains(sender)) {
+        return true;
+      }
+      if (sender.contains('_relay_')) {
+        return true;
+      }
+    }
+    final metaStr = senderParticipant?.metadata;
+    if (metaStr != null && metaStr.isNotEmpty) {
+      try {
+        final meta = jsonDecode(metaStr);
+        if (meta is Map) {
+          if (meta['isLeader'] == true) return true;
+          final role = (meta['role'] ?? '').toString().toLowerCase();
+          if (role == 'host' ||
+              role == 'cohost' ||
+              role == 'leader' ||
+              role == 'admin' ||
+              role == 'super_admin' ||
+              role == 'moderator') {
+            return true;
+          }
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  static const Set<String> _privilegedControlActions = {
+    'mute_all',
+    'room_audio_lock',
+    'ask_unmute',
+    'ask_video',
+    'mute_participant',
+    'stop_video',
+    'make_host',
+    'make_cohost',
+    'revoke_cohost',
+    'grant_screenshare',
+    'revoke_screenshare',
+    'remove_participant',
+    'end_meeting_for_all',
+    'admit',
+    'decline',
+    'room_state',
+    'toggle_waiting_room',
+    'breakout_start',
+    'breakout_close',
+    'breakout_broadcast',
+    'breakout_assign_participant',
+  };
+
+  void _handleControlMessage(
+    Map<String, dynamic> msg, {
+    String? sender,
+    lk.Participant? senderParticipant,
+  }) {
+    final action = msg['action']?.toString();
     final myIdentity = _room?.localParticipant?.identity ?? _lastUserId;
     final targetIdentity = msg['target_identity']?.toString();
+
+    if (action != null &&
+        _privilegedControlActions.contains(action) &&
+        !_isSenderPrivileged(sender, senderParticipant)) {
+      debugPrint(
+        '[LiveKitMeetingGateway] Ignored unauthorized control action "$action" from $sender',
+      );
+      return;
+    }
 
     if (action == 'mute_all') {
       debugPrint('[LiveKitMeetingGateway] Received mute_all control message from $sender');
@@ -618,6 +689,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _coHostIdentities.remove(targetIdentity);
       }
       if (targetIdentity == myIdentity) {
+        _isHostOrModerator = _hostIdentity == myIdentity;
         _syncStateFromRoom();
         _moderationPromptsController.add('revoked_cohost');
       }
@@ -653,7 +725,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       leaveMeeting();
     } else if (action == 'lower_hand') {
       final target = targetIdentity ?? sender;
-      if (target != null && target.isNotEmpty) {
+      if (target != null &&
+          target.isNotEmpty &&
+          (target == sender || _isSenderPrivileged(sender, senderParticipant))) {
         _handsRaised[target] = false;
         _syncStateFromRoom();
       }
@@ -1041,11 +1115,13 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _roomListener?.dispose();
       _roomListener = null;
       await room.disconnect();
+      await room.dispose();
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] _disconnectRoomInstanceOnly note: $e');
     } finally {
       _room = null;
       _isScreenShareEnabled = false;
+      MeetingPipService.instance.stopScreenShareService();
       _handsRaised.clear();
     }
   }
@@ -1314,10 +1390,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     // If currently unmuted (_isAudioMuted == false), disable microphone (false).
     final shouldEnableMicrophone = _isAudioMuted;
     try {
-      // Ensure audio context is running and speakerphone routing is enabled
+      // Ensure audio playback context is running without overriding Bluetooth/earpiece selection
       try {
         await _room?.startAudio();
-        await lk.AudioManager.instance.setSpeakerOutputPreferred(true);
       } catch (_) {}
 
       await participant.setMicrophoneEnabled(
@@ -2065,6 +2140,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _roomListener?.dispose();
       _roomListener = null;
       await room.disconnect();
+      await room.dispose();
       debugPrint('Disconnected from LiveKit meeting room safely.');
     } catch (e) {
       debugPrint('Error leaving meeting: $e');
@@ -2178,8 +2254,12 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     _breakoutTimer?.cancel();
     _roomListener?.dispose();
     _roomListener = null;
-    _room?.disconnect();
+    final room = _room;
     _room = null;
+    if (room != null) {
+      unawaited(room.disconnect().catchError((_) {}).whenComplete(() => room.dispose()));
+    }
+    MeetingPipService.instance.stopScreenShareService();
     _sessionController.close();
     _statusController.close();
     _moderationPromptsController.close();

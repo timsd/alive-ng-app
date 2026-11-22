@@ -175,6 +175,7 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen>
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'txt'],
+        withData: true,
       );
 
       if (result != null && result.files.single.bytes != null) {
@@ -213,7 +214,10 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen>
   }
 
   Future<void> _pickMedia() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.media);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.media,
+      withData: true,
+    );
     if (result != null && result.files.single.bytes != null) {
       setState(() {
         _mediaBytes = result.files.single.bytes;

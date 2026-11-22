@@ -568,7 +568,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: Text(translate('create_content')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -578,8 +578,10 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               title: Text(translate('create_event')),
               subtitle: Text(translate('create_event_description')),
               onTap: () {
-                Navigator.of(context).pop();
-                _showCreateEventForm(context, translate);
+                Navigator.of(dialogCtx).pop();
+                if (context.mounted) {
+                  _showCreateEventForm(context, translate);
+                }
               },
             ),
             const Divider(),
@@ -588,15 +590,17 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               title: Text(translate('create_announcement')),
               subtitle: Text(translate('create_announcement_description')),
               onTap: () {
-                Navigator.of(context).pop();
-                _showCreateAnnouncementForm(context, translate);
+                Navigator.of(dialogCtx).pop();
+                if (context.mounted) {
+                  _showCreateAnnouncementForm(context, translate);
+                }
               },
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
             child: Text(translate('cancel')),
           ),
         ],

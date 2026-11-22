@@ -132,7 +132,7 @@ class AppwriteChatService extends ChangeNotifier {
     try {
       final queries = [
         Query.equal('channel_id', channelId),
-        Query.orderAsc('timestamp'),
+        Query.orderDesc('timestamp'),
         Query.limit(limit),
       ];
       if (before != null) {
@@ -145,12 +145,13 @@ class AppwriteChatService extends ChangeNotifier {
         queries: queries,
       );
 
+      final chronologicalRows = response.rows.reversed.toList();
       _messageDocuments
         ..clear()
-        ..addAll(response.rows.map(_rowToDocument));
+        ..addAll(chronologicalRows.map(_rowToDocument));
       notifyListeners();
 
-      return response.rows.map(_messageFromRow).toList();
+      return chronologicalRows.map(_messageFromRow).toList();
     } catch (e) {
       _logger.error('Error loading Appwrite chat history: $e');
       throw DatabaseException('Failed to fetch channel messages',
@@ -197,11 +198,21 @@ class AppwriteChatService extends ChangeNotifier {
     final controller = StreamController<List<ChatMessage>>();
     final messages = <ChatMessage>[];
 
+    void upsertSorted(ChatMessage msg) {
+      final idx = messages.indexWhere((m) => m.id == msg.id);
+      if (idx >= 0) {
+        messages[idx] = msg;
+      } else {
+        messages.add(msg);
+        messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      }
+    }
+
     getChannelMessages(channelId).then((history) {
       if (!controller.isClosed) {
-        messages
-          ..clear()
-          ..addAll(history);
+        for (final msg in history) {
+          upsertSorted(msg);
+        }
         controller.add(List.unmodifiable(messages));
       }
     }).catchError((error) {
@@ -216,16 +227,22 @@ class AppwriteChatService extends ChangeNotifier {
 
     subscription.stream.listen(
       (event) {
-        final isCreateEvent =
-            event.events.any((name) => name.endsWith('.create') || name.contains('.documents.'));
-        if (!isCreateEvent) return;
+        final isDelete = event.events.any((name) => name.endsWith('.delete'));
+        final isCreateOrUpdate = event.events.any(
+          (name) => name.endsWith('.create') || name.endsWith('.update'),
+        );
+        if (!isDelete && !isCreateOrUpdate) return;
 
         final row = models.Row.fromMap(event.payload);
         final data = row.data;
         final messageRoomId = data['channel_id'] ?? data['roomId'];
         if (messageRoomId != channelId) return;
 
-        messages.add(_messageFromRow(row));
+        if (isDelete) {
+          messages.removeWhere((m) => m.id == row.$id);
+        } else {
+          upsertSorted(_messageFromRow(row));
+        }
         if (!controller.isClosed) {
           controller.add(List.unmodifiable(messages));
         }

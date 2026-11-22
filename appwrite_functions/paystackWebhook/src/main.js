@@ -183,7 +183,14 @@ export default async ({ req, res, log, error }) => {
       return res.text('Paystack is not configured.', 500);
     }
 
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+    const rawBody =
+      typeof req.bodyRaw === 'string'
+        ? req.bodyRaw
+        : typeof req.bodyText === 'string'
+          ? req.bodyText
+          : typeof req.body === 'string'
+            ? req.body
+            : JSON.stringify(req.body || {});
     const signature = req.headers['x-paystack-signature'];
     
     let matchedSecret = null;
@@ -239,8 +246,10 @@ export default async ({ req, res, log, error }) => {
     await writePaymentLog(databases, type, reference, 'received', event);
 
     const metadata = {
-      ...(data.metadata || {}),
+      ...metaRaw,
       processor: 'paystack',
+      domain: data.domain || (matchedSecret.startsWith('sk_test_') ? 'test' : 'live'),
+      authoritative_amount_major: Number(data.amount || 0) / 100,
       channel: data.channel,
       fees: data.fees,
       gateway_response: data.gateway_response,
@@ -433,7 +442,10 @@ async function addToProjectRaised({ databases, projectId, amount }) {
  */
 async function incrementProjectRaised(databases, metadata, log, reference, currency) {
   const projectId = String(metadata.project_id || '').trim();
-  const amount = Number(metadata.amount_ngn || metadata.amount || 0);
+  const authoritativeAmount = Number(metadata.authoritative_amount_major || 0);
+  const amount = authoritativeAmount > 0
+    ? authoritativeAmount
+    : Number(metadata.amount_ngn || metadata.amount || 0);
   if (NON_PROJECT_IDS.has(projectId) || !Number.isFinite(amount) || amount <= 0) return;
 
   const isTestMode = metadata.domain

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
@@ -26,7 +27,10 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
   List<UserStudyProgress> _userProgress = [];
   Map<String, dynamic> _statistics = {};
   bool _isLoading = true;
+  bool _hasLoadedOnce = false;
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
   StudyGuideType? _selectedType;
   StudyDifficulty? _selectedDifficulty;
 
@@ -39,12 +43,14 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
     _tabController.dispose();
     super.dispose();
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     
     try {
       final guides = await _studyGuideService.getStudyGuides(
@@ -68,6 +74,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
           _studyGuides = guides;
           _userProgress = progress;
           _statistics = stats;
+          _hasLoadedOnce = true;
         });
       }
     } catch (e) {
@@ -77,7 +84,9 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -100,7 +109,7 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
           ],
         ),
       ),
-      body: _isLoading
+      body: _isLoading && !_hasLoadedOnce
           ? const Center(child: CircularProgressIndicator())
           : TabBarView(
               controller: _tabController,
@@ -282,14 +291,18 @@ class _StudyGuideScreenState extends State<StudyGuideScreen> with TickerProvider
       child: Column(
         children: [
           TextField(
+            controller: _searchController,
             decoration: const InputDecoration(
               hintText: 'Search study guides...',
               prefixIcon: Icon(Icons.search),
               border: OutlineInputBorder(),
             ),
             onChanged: (value) {
-              setState(() => _searchQuery = value);
-              _loadData();
+              _searchQuery = value;
+              _searchDebounce?.cancel();
+              _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+                if (mounted) _loadData();
+              });
             },
           ),
           SizedBox(height: ResponsiveUtils.getResponsiveValue(context: context, mobile: 12, tablet: 16, desktop: 20)),

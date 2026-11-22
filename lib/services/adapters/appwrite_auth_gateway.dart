@@ -31,6 +31,9 @@ class AppwriteAuthGateway implements AuthGateway {
 
   /// Internal cache of the last-known domain user.
   AppUser? _cachedUser;
+  bool _hasResolvedInitialSession = false;
+
+  bool get hasResolvedInitialSession => _hasResolvedInitialSession;
 
   /// Broadcast controller for [authStateChanges].
   final StreamController<AppUser?> _authStateController =
@@ -118,6 +121,7 @@ class AppwriteAuthGateway implements AuthGateway {
       // If network failed, fall back to persisted offline user
       _cachedUser ??= await _loadPersistedOfflineUser();
     }
+    _hasResolvedInitialSession = true;
     _emitAuthState(_cachedUser);
   }
 

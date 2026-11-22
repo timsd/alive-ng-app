@@ -597,6 +597,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             description: description,
             category: category,
             isAnonymous: isAnonymous,
+            isPrivate: !isPublic,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );

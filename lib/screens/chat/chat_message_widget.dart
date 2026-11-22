@@ -662,41 +662,64 @@ class _ChatMessageWidgetState extends ConsumerState<ChatMessageWidget> {
         spacing: 8,
         runSpacing: 8,
         children: widget.message.attachments.map((attachment) {
-          final isImage = attachment
-              .toLowerCase()
-              .contains(RegExp(r'\.(jpg|jpeg|png|gif|webp)$'));
+          final lower = attachment.toLowerCase();
+          final isImage = widget.message.type == MessageType.image ||
+              lower.contains(RegExp(r'\.(jpg|jpeg|png|gif|webp)(\?|$)'));
 
           if (isImage) {
-            return ClipRRect(
+            return InkWell(
+              onTap: () => _launchUrl(attachment),
               borderRadius: BorderRadius.circular(8),
-              child: CustomImage(
-                imageUrl: attachment,
-                width: 220,
-                height: 160,
-                fit: BoxFit.cover,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CustomImage(
+                  imageUrl: attachment,
+                  width: 220,
+                  height: 160,
+                  fit: BoxFit.cover,
+                ),
               ),
             );
           }
 
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.attach_file, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  attachment.split('/').last,
-                  style: theme.textTheme.bodySmall,
+          final rawLast = Uri.tryParse(attachment)?.pathSegments.lastOrNull ??
+              attachment.split('/').last;
+          final displayName =
+              (rawLast.isEmpty || rawLast == 'view' || rawLast == 'download')
+                  ? 'Open attachment'
+                  : rawLast;
+
+          return InkWell(
+            onTap: () => _launchUrl(attachment),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
                 ),
-              ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.attach_file, size: 18),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }).toList(),

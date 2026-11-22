@@ -220,6 +220,10 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
     }
     try {
       await NotificationService.instance.initialize();
+      final pushTargetId = await NotificationService.instance.ensurePushRegistered(
+        requestPermission: true,
+        force: true,
+      );
       await _syncReminderSchedules(_settings);
       await NotificationService.instance.showNotification(
         id: DateTime.now().millisecondsSinceEpoch % 100000,
@@ -230,12 +234,18 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
         playSound: _settings.soundEnabled,
       );
       if (!mounted) return;
+      final pushReady = pushTargetId != null ||
+          (NotificationService.instance.pushToken?.isNotEmpty ?? false);
       messenger.showSnackBar(
         SnackBar(
           content: Text(
             _settings.soundEnabled
-                ? 'Test notification sent with sound'
-                : 'Test notification sent (muted)',
+                ? (pushReady
+                    ? 'Test notification sent (Push & sound active)'
+                    : 'Test notification sent with sound')
+                : (pushReady
+                    ? 'Test notification sent (Push active, sound muted)'
+                    : 'Test notification sent (muted)'),
           ),
         ),
       );

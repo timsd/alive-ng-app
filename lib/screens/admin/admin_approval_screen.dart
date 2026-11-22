@@ -47,8 +47,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
   }
 
   Future<void> _loadUsers() async {
-    final messenger = ScaffoldMessenger.of(context);
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final users = await _listUsers();
@@ -70,6 +69,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
       }
       final userProfiles = [...byEmail.values, ...deduped];
 
+      if (!mounted) return;
       setState(() {
         _pendingUsers = userProfiles
             .where((user) => user.approvalStatus == 'pending')
@@ -83,15 +83,14 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen>
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('Error loading users: ${ErrorHandler.getUserFriendlyMessage(e)}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading users: ${ErrorHandler.getUserFriendlyMessage(e)}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 

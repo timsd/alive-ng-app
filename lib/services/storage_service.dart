@@ -443,9 +443,12 @@ class StorageHelper {
       }
     } catch (_) {}
 
-    // Clear secure storage
+    // Clear session-only secure keys while preserving biometric enrollment/credentials
+    // so Biometric Sign-In keeps working after sign-out (unless user disables it or deletes account).
     try {
-      await _storage.clearSecure();
+      await _storage.removeSecure(StorageKeys.authToken);
+      await _storage.removeSecure(StorageKeys.refreshToken);
+      await _storage.removeSecure('biometric_session_credentials');
     } catch (_) {}
   }
 }

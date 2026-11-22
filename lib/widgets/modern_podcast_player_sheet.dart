@@ -106,8 +106,6 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
   // Transcript Sync State (Spotify-style)
   List<_PodcastTranscriptLine> _transcriptLines = [];
-  bool _hasExplicitTimestamps = false;
-  bool _wasTimelineNormalized = false;
   int _lastKnownDurationMs = 0;
   int _activeTranscriptIndex = -1;
   int _currentPositionMs = 0;
@@ -115,6 +113,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
   bool _userIsScrollingTranscript = false;
   Timer? _userScrollTimer;
   DateTime? _lastManualSeekAt;
+  int? _pendingSeekTargetMs;
   int _scrollGeneration = 0;
   final Map<int, GlobalKey> _transcriptItemKeys = {};
   final Map<int, double> _measuredItemHeights = {};
@@ -171,8 +170,13 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
       final newDurMs = dur.inMilliseconds;
       if ((newDurMs - _lastKnownDurationMs).abs() > 1000) {
         final updatedLines = _parseTranscriptLines();
-        final posMs = widget.audioPlayer.position.inMilliseconds;
+        final posMs =
+            _pendingSeekTargetMs ?? widget.audioPlayer.position.inMilliseconds;
         final newIndex = _findActiveTranscriptIndexIn(updatedLines, posMs);
+        if (updatedLines.length != _transcriptLines.length) {
+          _measuredItemHeights.clear();
+          _transcriptItemKeys.clear();
+        }
         setState(() {
           _transcriptLines = updatedLines;
           _currentPositionMs = posMs;
@@ -191,12 +195,22 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
     _positionSubscription = widget.audioPlayer.positionStream.listen((pos) {
       if (!mounted || _transcriptLines.isEmpty) return;
-      if (_lastManualSeekAt != null &&
-          DateTime.now().difference(_lastManualSeekAt!) <
-              const Duration(milliseconds: 350)) {
-        return;
-      }
       final currentMs = pos.inMilliseconds;
+
+      // While a manual transcript tap seek is buffering, suppress stale pre-seek
+      // position ticks so the highlight never snaps back to line 0. Release early
+      // as soon as ExoPlayer / HTML5 audio arrives near the target position.
+      if (_pendingSeekTargetMs != null && _lastManualSeekAt != null) {
+        final elapsed = DateTime.now().difference(_lastManualSeekAt!);
+        final arrivedNearTarget =
+            (currentMs - _pendingSeekTargetMs!).abs() <= 2500;
+        if (!arrivedNearTarget &&
+            elapsed < const Duration(milliseconds: 3000)) {
+          return;
+        }
+        _pendingSeekTargetMs = null;
+      }
+
       final newIndex = _findActiveTranscriptIndex(currentMs);
       final indexChanged = newIndex != _activeTranscriptIndex;
       final now = DateTime.now();
@@ -560,8 +574,6 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
         defaultSpeaker.isNotEmpty ? defaultSpeaker : 'Speaker';
 
     if (raw.isEmpty) {
-      _hasExplicitTimestamps = false;
-      _wasTimelineNormalized = false;
       return [
         _PodcastTranscriptLine(
           startMs: 0,
@@ -578,6 +590,10 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     final timestampRegex = RegExp(
       r'^(?:\[|\()?(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?(?:\s*[-–—:]\s*(?:(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?))?(?:\]|\))?\s*[-–—:]?\s*',
     );
+    // Also matches speaker-first lines such as "Speaker [01:29]: ..." or "Pastor Agana (01:29) ..."
+    final speakerBeforeTimeRegex = RegExp(
+      r'^\*?\*?([A-Za-z][A-Za-z0-9\s._-]{0,30})\*?\*?\s+(?=[\[\(]?(?:\d{1,2}:)?\d{1,3}:\d{2})',
+    );
     final cueRegex = RegExp(
       r'^(?:(\d{1,2}):)?(\d{2}):(\d{2})(?:[.,](\d{1,3}))?\s*-->\s*(?:(\d{1,2}):)?(\d{2}):(\d{2})(?:[.,](\d{1,3}))?\s*',
     );
@@ -589,11 +605,15 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
     // First pass: check whether the transcript uses explicit timestamps anywhere
     final detectedAnyTimestamp = rawLines.any((line) {
-      final t = line
+      var t = line
           .trim()
           .replaceAll(RegExp(r'^(?:[-•*]|\d+\.)\s+'), '')
           .replaceAll(RegExp(r'^\*\*'), '')
           .trim();
+      final spkPre = speakerBeforeTimeRegex.firstMatch(t);
+      if (spkPre != null) {
+        t = t.substring(spkPre.end).trim();
+      }
       return cueRegex.hasMatch(t) || timestampRegex.hasMatch(t);
     });
 
@@ -716,10 +736,21 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
           if (p.isEmpty) continue;
         }
 
+        // Handle speaker-first timestamp lines such as "Speaker [01:29]: ..."
+        String? pendingSpeakerBeforeTime;
+        final spkBefore = speakerBeforeTimeRegex.firstMatch(p);
+        if (spkBefore != null && spkBefore.group(1)!.length < 32) {
+          pendingSpeakerBeforeTime = spkBefore.group(1)!.trim();
+          p = p.substring(spkBefore.end).trim();
+        }
+
         final timeMatch = timestampRegex.firstMatch(p);
         if (timeMatch != null) {
           if (currentStartMs != null || currentTextLines.isNotEmpty) {
             commitCurrentSegment();
+          }
+          if (pendingSpeakerBeforeTime != null) {
+            currentSpeaker = pendingSpeakerBeforeTime;
           }
 
           hasExplicitTimestamps = true;
@@ -769,9 +800,6 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
       }
     }
 
-    _hasExplicitTimestamps = hasExplicitTimestamps;
-    _wasTimelineNormalized = false;
-
     if (rawSegments.isEmpty) {
       return [
         _PodcastTranscriptLine(
@@ -792,37 +820,86 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
         playerDurationMs > 0 ? playerDurationMs : (metadataSeconds * 1000);
     _lastKnownDurationMs = effectiveDurationMs;
 
+    /// Estimates spoken duration weight for a paragraph using words, syllable-length
+    /// proxy (character density), punctuation pauses, and speaker transitions.
+    double spokenWeight(String text, {bool speakerChanged = false}) {
+      final trimmed = text.trim();
+      if (trimmed.isEmpty) return 1.0;
+      final words = trimmed.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+      double weight = 0.0;
+      for (final w in words) {
+        final letters = w.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').length;
+        // Blend word count + syllable length (avg English word ~4.7 chars)
+        weight += 0.55 + (letters.clamp(1, 18) / 4.7) * 0.45;
+      }
+      final sentenceStops = RegExp(r'[.!?]+').allMatches(trimmed).length;
+      final midPauses = RegExp(r'[,;:—–-]+').allMatches(trimmed).length;
+      weight += (sentenceStops * 0.65) + (midPauses * 0.25);
+      if (speakerChanged) {
+        weight += 2.5; // Natural breath/transition pause between speakers
+      }
+      return weight.clamp(1.0, 100000.0);
+    }
+
+    List<_PodcastTranscriptLine> distributeBySpokenCadence(
+      List<_PodcastTranscriptLine> segments,
+      int totalDurationMs,
+    ) {
+      final weights = <double>[];
+      for (int i = 0; i < segments.length; i++) {
+        final speakerChanged =
+            i > 0 && segments[i].speaker != segments[i - 1].speaker;
+        weights.add(spokenWeight(segments[i].text, speakerChanged: speakerChanged));
+      }
+      final totalWeight = weights.fold<double>(0.0, (sum, w) => sum + w);
+      double accumulatedMs = 0.0;
+      final aligned = <_PodcastTranscriptLine>[];
+
+      for (int i = 0; i < segments.length; i++) {
+        final item = segments[i];
+        final itemStartMs = accumulatedMs.round();
+        final fraction = totalWeight > 0
+            ? (weights[i] / totalWeight)
+            : (1.0 / segments.length);
+        final stepMs = fraction * totalDurationMs;
+        accumulatedMs += stepMs;
+        final itemEndMs = (i == segments.length - 1)
+            ? totalDurationMs
+            : accumulatedMs.round();
+
+        aligned.add(_PodcastTranscriptLine(
+          startMs: itemStartMs,
+          endMs: itemEndMs > itemStartMs ? itemEndMs : (itemStartMs + 500),
+          time: _formatMsShort(itemStartMs),
+          speaker: item.speaker,
+          text: item.text,
+        ));
+      }
+      return aligned;
+    }
+
     if (hasExplicitTimestamps) {
       rawSegments.sort((a, b) => a.startMs.compareTo(b.startMs));
 
-      // Timeline overflow guard: if explicit timestamps significantly exceed the real audio duration
-      // (e.g., 99:15 transcript timestamps on a 59:33 MP3), proportionally rescale every cue into
-      // 0 .. effectiveDurationMs so 100% of paragraphs stay reachable and synced with the speaker!
-      List<_PodcastTranscriptLine> workingSegments = rawSegments;
-      if (effectiveDurationMs > 10000 &&
+      // Detect synthetic / overflowing timestamps (e.g. uniform 40-45s estimates
+      // ending at 99:15 on a 59:33 MP3). Linear scaling preserves the bad uniform
+      // spacing (causing short paragraphs to lag and long paragraphs to rush);
+      // spoken-cadence alignment paces each paragraph by its actual spoken weight.
+      final timestampsOverflowAudio = effectiveDurationMs > 10000 &&
           rawSegments.length >= 2 &&
-          rawSegments.last.startMs > (effectiveDurationMs * 1.05).round()) {
-        final maxStartMs = rawSegments.last.startMs;
-        // Reserve final ~1.2% (capped at 15s) for the closing segment
-        final closingTailMs = (effectiveDurationMs * 0.012).round().clamp(3000, 15000);
-        final targetSpanMs = (effectiveDurationMs - closingTailMs).clamp(1000, effectiveDurationMs);
-        final scale = targetSpanMs / maxStartMs;
-        _wasTimelineNormalized = true;
-        workingSegments = rawSegments.map((seg) {
-          final scaledStart = (seg.startMs * scale).round();
-          return seg.copyWith(
-            startMs: scaledStart,
-            time: _formatMsShort(scaledStart),
-          );
-        }).toList();
+          rawSegments.last.startMs > (effectiveDurationMs * 1.05).round();
+
+      if (timestampsOverflowAudio) {
+        return distributeBySpokenCadence(rawSegments, effectiveDurationMs);
       }
 
+      // Valid explicit timestamps within the actual audio length: preserve verbatim!
       final resolved = <_PodcastTranscriptLine>[];
-      for (int i = 0; i < workingSegments.length; i++) {
-        final seg = workingSegments[i];
+      for (int i = 0; i < rawSegments.length; i++) {
+        final seg = rawSegments[i];
         int segEnd;
-        if (i < workingSegments.length - 1) {
-          final nextStart = workingSegments[i + 1].startMs;
+        if (i < rawSegments.length - 1) {
+          final nextStart = rawSegments[i + 1].startMs;
           segEnd = nextStart > seg.startMs ? nextStart : (seg.startMs + 5000);
         } else {
           segEnd = effectiveDurationMs > seg.startMs
@@ -834,38 +911,10 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
       return resolved;
     }
 
-    // When explicit timestamps are absent, distribute audio duration proportionally
-    // by word count (accurate to spoken cadence) with double-precision milliseconds.
-    int countWords(String s) =>
-        s.trim().isEmpty ? 1 : s.trim().split(RegExp(r'\s+')).length;
-    final wordCounts = rawSegments.map((e) => countWords(e.text)).toList();
-    final totalWords = wordCounts.fold<int>(0, (sum, w) => sum + w);
+    // When explicit timestamps are absent, distribute audio duration by spoken cadence.
     final fallbackDurationMs =
         effectiveDurationMs > 0 ? effectiveDurationMs : (rawSegments.length * 15000);
-    double accumulatedMs = 0.0;
-    final redistributed = <_PodcastTranscriptLine>[];
-
-    for (int i = 0; i < rawSegments.length; i++) {
-      final item = rawSegments[i];
-      final itemStartMs = accumulatedMs.round();
-      final fraction =
-          totalWords > 0 ? (wordCounts[i] / totalWords) : (1.0 / rawSegments.length);
-      final stepMs = fraction * fallbackDurationMs;
-      accumulatedMs += stepMs;
-      final itemEndMs = (i == rawSegments.length - 1)
-          ? fallbackDurationMs
-          : accumulatedMs.round();
-
-      redistributed.add(_PodcastTranscriptLine(
-        startMs: itemStartMs,
-        endMs: itemEndMs > itemStartMs ? itemEndMs : (itemStartMs + 500),
-        time: _formatMsShort(itemStartMs),
-        speaker: item.speaker,
-        text: item.text,
-      ));
-    }
-
-    return redistributed;
+    return distributeBySpokenCadence(rawSegments, fallbackDurationMs);
   }
 
   @override
@@ -1259,14 +1308,38 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
                       return KeyedSubtree(
                         key: itemKey,
-                        child: InkWell(
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
                           onTap: () async {
                             final targetIdx = fullIdx >= 0 ? fullIdx : index;
                             final dur = widget.audioPlayer.duration;
                             var targetMs = item.startMs;
+
+                            // Guard: if the cue is beyond the actual audio length, show a message
+                            // instead of seeking to EOF (which would trigger a restart).
                             if (dur != null && dur.inMilliseconds > 0) {
-                              targetMs = targetMs.clamp(0, dur.inMilliseconds);
+                              if (targetMs >= dur.inMilliseconds) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Transcript line is beyond audio file length'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                return;
+                              }
+                              // Clamp to 1.5s before EOF to avoid hitting completion
+                              targetMs = targetMs.clamp(
+                                0,
+                                (dur.inMilliseconds - 1500)
+                                    .clamp(0, dur.inMilliseconds),
+                              );
                             }
+
+                            _userScrollTimer?.cancel();
+                            _pendingSeekTargetMs = targetMs;
                             _lastManualSeekAt = DateTime.now();
                             final wasFiltering = _transcriptQuery.isNotEmpty;
                             setState(() {
@@ -1279,15 +1352,24 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                               }
                             });
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) {
-                                _scrollToActiveIndex(targetIdx, animate: true);
+                              if (!mounted) return;
+                              _scrollToActiveIndex(targetIdx, animate: !wasFiltering);
+                              if (wasFiltering) {
+                                // Second pass after full list expands from filtered results
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (mounted && !_userIsScrollingTranscript) {
+                                    _scrollToActiveIndex(targetIdx, animate: true);
+                                  }
+                                });
                               }
                             });
                             try {
                               await widget.audioPlayer
                                   .seek(Duration(milliseconds: targetMs));
                               if (!widget.audioPlayer.playing) {
-                                await widget.audioPlayer.play();
+                                // Never await play(): in just_audio its Future resolves
+                                // only when playback pauses or completes.
+                                unawaited(widget.audioPlayer.play());
                               }
                             } catch (e) {
                               debugPrint('Transcript seek error: $e');
@@ -1440,6 +1522,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                         ],
                       ),
                     ),
+                  ),
                   ),
                   );
                 },

@@ -65,14 +65,14 @@ function parseEventHeaders(raw) {
  * `apiBase` is passed in rather than read from module scope, because the
  * endpoint is only known once the handler has seen the request.
  */
-async function updateDocument(apiBase, databaseId, collectionId, documentId, data) {
+async function updateDocument(apiBase, projectId, apiKey, databaseId, collectionId, documentId, data) {
   const res = await fetch(
     `${apiBase}/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`,
     {
       method: 'PATCH',
       headers: {
-        'X-Appwrite-Project': process.env.APPWRITE_PROJECT_ID,
-        'X-Appwrite-Key': process.env.APPWRITE_API_KEY,
+        'X-Appwrite-Project': projectId,
+        'X-Appwrite-Key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ data }),
@@ -96,28 +96,28 @@ export default async ({ req, res, log: appwriteLog, error, client }) => {
     console.log(`[bind-office] ${msg}`);
   };
 
+  const resolvedProjectId =
+    process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || '';
+  const resolvedApiKey =
+    process.env.APPWRITE_FUNCTION_API_KEY ||
+    process.env.APPWRITE_API_KEY ||
+    req.headers?.['x-appwrite-key'] ||
+    '';
+
   // Prefer the context client (its key is already scoped to this function) but
   // point it at the versioned API.
   const apiBase = withApiVersion(
     client?.config?.endpoint || req.headers['x-appwrite-endpoint'] || process.env.APPWRITE_ENDPOINT,
   );
   const sdkClient = (client ?? new Client()
-    .setProject(process.env.APPWRITE_PROJECT_ID)
-    .setKey(process.env.APPWRITE_API_KEY))
+    .setProject(resolvedProjectId)
+    .setKey(resolvedApiKey))
     .setEndpoint(apiBase);
   const db = new Databases(sdkClient);
 
   const databaseId = process.env.APPWRITE_DATABASE_ID;
 
   try {
-    // Appwrite 1.8 puts the whole new user in the request body for a
-    // users.*.create event, so read the email from there first. The
-    // x-appwrite-event / x-appwrite-user-id headers are only the event name and
-    // an id, and the first deployed version read only those -- found no user,
-    // and quietly bound nothing.
-    //
-    // Headers are still matched case-insensitively, because Appwrite's context
-    // lower-cases them but a proxy in front of the function may not.
     const headerOf = (name) => {
       const wanted = name.toLowerCase();
       for (const [k, v] of Object.entries(req.headers || {})) {
@@ -125,6 +125,14 @@ export default async ({ req, res, log: appwriteLog, error, client }) => {
       }
       return undefined;
     };
+
+    // Security: only accept Appwrite system event triggers (users.*.create) so
+    // an arbitrary HTTP caller cannot spoof another officer's email to hijack a office.
+    const triggerType = String(headerOf('x-appwrite-trigger') || '').trim().toLowerCase();
+    if (triggerType !== 'event') {
+      log(`Rejected non-event invocation (trigger=${triggerType || 'none'})`);
+      return res.json({ error: 'This function may only be invoked by Appwrite signup events.' }, 403);
+    }
 
     const rawEvents = headerOf('x-appwrite-events');
     const eventUserId = headerOf('x-appwrite-user-id');
@@ -214,7 +222,7 @@ export default async ({ req, res, log: appwriteLog, error, client }) => {
         // bound_at/bound_by, and Appwrite rejects an update naming an unknown
         // attribute outright with 'Unknown attribute', failing the whole write.
         // When the binding happened is already on the document as $updatedAt.
-        await updateDocument(apiBase, databaseId, HOLDERS, holders.documents[0].$id, {
+        await updateDocument(apiBase, resolvedProjectId, resolvedApiKey, databaseId, HOLDERS, holders.documents[0].$id, {
           user_id: user.$id,
           email: user.email,
           full_name: entry.full_name || user.name || '',
@@ -223,7 +231,7 @@ export default async ({ req, res, log: appwriteLog, error, client }) => {
 
         // Retire the registry row so a later account reusing the address cannot
         // silently inherit the office.
-        await updateDocument(apiBase, databaseId, REGISTRY, entry.$id, {
+        await updateDocument(apiBase, resolvedProjectId, resolvedApiKey, databaseId, REGISTRY, entry.$id, {
           consumed: true,
           consumed_by: user.$id,
           consumed_at: new Date().toISOString(),

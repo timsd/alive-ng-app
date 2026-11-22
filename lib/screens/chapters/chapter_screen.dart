@@ -1967,10 +1967,16 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
         await _chapterService.removeMember(existingMembership.chapterId, _currentUserId!);
       }
 
-      // Add to target chapter
-      await _chapterService.addMember(targetChapter.id, _currentUserId!, MemberRole.member);
+      // Add to target chapter as pending activation until coordinator/admin approves
+      await _chapterService.addMember(
+        targetChapter.id,
+        _currentUserId!,
+        MemberRole.member,
+        isActive: false,
+      );
 
-      // Update user record with pending chapter approval
+      // Update user record with pending chapter approval without revoking
+      // account-level approval_status.
       try {
         final tables = TablesDB(appwriteClient);
         await tables.updateRow(
@@ -1979,7 +1985,9 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
           rowId: _currentUserId!,
           data: {
             'local_chapter': targetChapter.name,
-            'approval_status': 'pending',
+            'chapter_id': targetChapter.id,
+            'chapter_approval_status': 'pending',
+            'is_chapter_verified': false,
           },
         );
       } catch (e) {

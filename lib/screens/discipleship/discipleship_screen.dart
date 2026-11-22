@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../widgets/modern_dropdown.dart';
 import 'package:go_router/go_router.dart';
@@ -39,7 +40,10 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
   DiscipleshipStatistics _statistics = DiscipleshipStatistics.empty;
 
   bool _isLoading = true;
+  bool _hasLoadedOnce = false;
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
   DiscipleshipLevel? _selectedLevel;
 
   List<DiscipleshipReport> _userReports = [];
@@ -89,6 +93,8 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -164,6 +170,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
           _officerAssignments = assignments;
           _officerReports = officerReports;
           _isLoading = false;
+          _hasLoadedOnce = true;
         });
         _updateTabController();
       }
@@ -280,7 +287,7 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
         ),
       ),
       floatingActionButton: _buildAddFab(),
-      body: _isLoading
+      body: _isLoading && !_hasLoadedOnce
           ? const Center(child: CircularProgressIndicator())
           : _authService.currentUser == null
               ? _buildGuestState()
@@ -391,14 +398,18 @@ class _DiscipleshipScreenState extends State<DiscipleshipScreen>
             children: [
               Expanded(
                 child: TextField(
+                  controller: _searchController,
                   decoration: const InputDecoration(
                     hintText: 'Search contacts...',
                     prefixIcon: Icon(Icons.search),
                     border: OutlineInputBorder(),
                   ),
                   onChanged: (value) {
-                    setState(() => _searchQuery = value);
-                    _loadData();
+                    _searchQuery = value;
+                    _searchDebounce?.cancel();
+                    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+                      if (mounted) _loadData();
+                    });
                   },
                 ),
               ),

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:appwrite/appwrite.dart' hide Locale;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -15,6 +16,8 @@ import '../utils/app_exception.dart';
 import '../utils/navigation_keys.dart';
 import 'auth_service.dart';
 import 'appwrite_push_service.dart';
+import 'storage_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 @pragma('vm:entry-point')
@@ -33,12 +36,45 @@ class NotificationService {
   final Logger _logger = Logger('NotificationService');
   late final TablesDB _tables = TablesDB(appwriteClient);
 
-  // Local notifications plugin (no Firebase dependency)
+  // Local notifications plugin (shared with ReminderService so tap handlers
+  // are never overwritten by a second plugin instance)
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
+  FlutterLocalNotificationsPlugin get localNotificationsPlugin =>
+      _localNotifications;
+
   // Global navigator key for navigation from background contexts
   static GlobalKey<NavigatorState> get navigatorKey => rootNavigatorKey;
+
+  static bool _tzInitialized = false;
+
+  /// Initializes the timezone database and configures [tz.local] to match the
+  /// device's current UTC offset so daily [zonedSchedule] reminders fire at the
+  /// exact local wall-clock time chosen by the user.
+  static void configureLocalTimeZone() {
+    if (!_tzInitialized) {
+      tz.initializeTimeZones();
+      _tzInitialized = true;
+    }
+    try {
+      final now = DateTime.now();
+      final targetOffset = now.timeZoneOffset;
+      // Prefer Africa/Lagos for WAT (UTC+1) since ALIVE Nigeria is based in Nigeria
+      if (targetOffset == const Duration(hours: 1)) {
+        tz.setLocalLocation(tz.getLocation('Africa/Lagos'));
+        return;
+      }
+      for (final loc in tz.timeZoneDatabase.locations.values) {
+        if (loc.currentTimeZone.offset == targetOffset) {
+          tz.setLocalLocation(loc);
+          return;
+        }
+      }
+    } catch (_) {
+      // Keep default tz.local if lookup fails
+    }
+  }
 
   bool _isInitialized = false;
   bool _fcmListenersAttached = false;
@@ -51,7 +87,7 @@ class NotificationService {
     if (_isInitialized) return;
 
     try {
-      tz.initializeTimeZones();
+      configureLocalTimeZone();
 
       // Initialize local notifications
       const androidSettings =
@@ -77,20 +113,49 @@ class NotificationService {
         await onAuthUserChanged(user);
       });
 
-      // Ensure Android's default FCM notification channel exists with high importance
+      // Ensure Android notification channels (sound & silent) exist with high importance
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
         final androidPlugin = _localNotifications
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>();
-        await androidPlugin?.createNotificationChannel(
-          const AndroidNotificationChannel(
-            'alive_ng_notifications',
-            'ALIVE Nigeria Notifications',
-            description: 'Ministry updates, broadcasts, and ALIVE Meet alerts',
-            importance: Importance.high,
-            playSound: true,
-          ),
-        );
+        if (androidPlugin != null) {
+          await androidPlugin.createNotificationChannel(
+            const AndroidNotificationChannel(
+              'alive_ng_notifications',
+              'ALIVE Nigeria Notifications',
+              description: 'Ministry updates, broadcasts, and ALIVE Meet alerts',
+              importance: Importance.high,
+              playSound: true,
+            ),
+          );
+          await androidPlugin.createNotificationChannel(
+            const AndroidNotificationChannel(
+              'alive_ng_notifications_silent',
+              'ALIVE Nigeria Notifications (Silent)',
+              description: 'Muted ministry updates and broadcasts',
+              importance: Importance.high,
+              playSound: false,
+            ),
+          );
+          await androidPlugin.createNotificationChannel(
+            const AndroidNotificationChannel(
+              'reminder_channel',
+              'Reminders',
+              description: 'Daily reminders for ALIVE Nigeria app',
+              importance: Importance.high,
+              playSound: true,
+            ),
+          );
+          await androidPlugin.createNotificationChannel(
+            const AndroidNotificationChannel(
+              'reminder_channel_silent',
+              'Reminders (Silent)',
+              description: 'Muted daily reminders for ALIVE Nigeria app',
+              importance: Importance.high,
+              playSound: false,
+            ),
+          );
+        }
       }
 
       // Auto-register push immediately on download/install (both guest & signed-in)
@@ -204,18 +269,26 @@ class NotificationService {
     });
 
     // Listen for foreground FCM messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       _logger.info('Foreground FCM message received: ${message.messageId}');
       final notification = message.notification;
       final data = message.data;
       final title =
           notification?.title ?? (data['title'] as String?) ?? 'ALIVE Nigeria';
       final body = notification?.body ?? (data['body'] as String?) ?? '';
-      showNotification(
+      bool playSound = true;
+      try {
+        final saved = await StorageHelper.getNotificationSettings();
+        if (saved != null && saved['sound_enabled'] is bool) {
+          playSound = saved['sound_enabled'] as bool;
+        }
+      } catch (_) {}
+      await showNotification(
         id: message.hashCode,
         title: title,
         body: body,
         payload: jsonEncode(data),
+        playSound: playSound,
       );
     });
 
@@ -226,6 +299,19 @@ class NotificationService {
     });
   }
 
+  Future<bool> _ensureFirebaseReady() async {
+    if (kIsWeb) return false;
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
+      return Firebase.apps.isNotEmpty;
+    } catch (e) {
+      _logger.warning('Firebase unavailable (e.g. non-GMS device): $e');
+      return false;
+    }
+  }
+
   Future<String?> _registerPushToken({
     String? userId,
     String? userEmail,
@@ -234,6 +320,10 @@ class NotificationService {
   }) async {
     if (kIsWeb) {
       return _registerWebPushToken();
+    }
+
+    if (!await _ensureFirebaseReady()) {
+      return null;
     }
 
     try {
@@ -320,6 +410,7 @@ class NotificationService {
   /// 'admins' and 'approvals' FCM topics based on the authenticated user's role.
   Future<void> updateAdminTopicSubscriptions(String? role) async {
     if (kIsWeb) return;
+    if (!await _ensureFirebaseReady()) return;
     try {
       final fcm = FirebaseMessaging.instance;
       final normalizedRole = (role ?? '').trim().toLowerCase();
@@ -381,41 +472,65 @@ class NotificationService {
     bool playSound = true,
   }) async {
     if (kIsWeb) return;
+    if (!_isInitialized) {
+      await initialize();
+    }
     final effectiveChannelId = playSound ? channelId : '${channelId}_silent';
     final effectiveChannelName = playSound
         ? 'ALIVE Nigeria Notifications'
         : 'ALIVE Nigeria Notifications (Silent)';
 
-    final androidDetails = AndroidNotificationDetails(
-      effectiveChannelId,
-      effectiveChannelName,
-      channelDescription: 'Default notification channel',
-      icon: 'ic_notification',
-      largeIcon: const DrawableResourceAndroidBitmap('ic_notification_large'),
-      color: const Color(0xFF0F9A07),
-      importance: Importance.high,
-      priority: Priority.high,
-      playSound: playSound,
-    );
+    NotificationDetails buildDetails({required bool includeLargeIcon}) {
+      final androidDetails = AndroidNotificationDetails(
+        effectiveChannelId,
+        effectiveChannelName,
+        channelDescription: 'Ministry updates, broadcasts, and ALIVE Meet alerts',
+        icon: 'ic_notification',
+        largeIcon: includeLargeIcon
+            ? const DrawableResourceAndroidBitmap('ic_notification_large')
+            : null,
+        color: const Color(0xFF0F9A07),
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: playSound,
+      );
 
-    final iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: playSound,
-    );
+      final iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: playSound,
+      );
 
-    final details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+      return NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+    }
 
-    await _localNotifications.show(
-      id: id,
-      title: title,
-      body: body,
-      notificationDetails: details,
-      payload: payload,
-    );
+    try {
+      await _localNotifications.show(
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: buildDetails(includeLargeIcon: true),
+        payload: payload,
+      );
+    } on PlatformException catch (e) {
+      if (e.code == 'invalid_large_icon') {
+        _logger.warning(
+          'Large notification icon unavailable on device; retrying with small icon only',
+        );
+        await _localNotifications.show(
+          id: id,
+          title: title,
+          body: body,
+          notificationDetails: buildDetails(includeLargeIcon: false),
+          payload: payload,
+        );
+      } else {
+        rethrow;
+      }
+    }
   }
 
   /// Called by the host (main.dart) when an Appwrite push arrives in background.
@@ -561,40 +676,72 @@ class NotificationService {
     required String title,
     required String body,
     required DateTime scheduledDate,
-    String channelId = 'default',
+    String channelId = 'alive_ng_notifications',
     Map<String, dynamic>? payload,
+    bool repeatDaily = false,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
-      'alive_ng_notifications',
-      'ALIVE Nigeria Notifications',
-      channelDescription: 'Ministry updates, broadcasts, and ALIVE Meet alerts',
-      icon: 'ic_notification',
-      largeIcon: DrawableResourceAndroidBitmap('ic_notification_large'),
-      color: Color(0xFF0F9A07),
-      importance: Importance.high,
-      priority: Priority.high,
-    );
+    if (kIsWeb) return;
+    if (!_isInitialized) {
+      await initialize();
+    }
+    configureLocalTimeZone();
 
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
+    NotificationDetails buildDetails({required bool includeLargeIcon}) {
+      final androidDetails = AndroidNotificationDetails(
+        'alive_ng_notifications',
+        'ALIVE Nigeria Notifications',
+        channelDescription: 'Ministry updates, broadcasts, and ALIVE Meet alerts',
+        icon: 'ic_notification',
+        largeIcon: includeLargeIcon
+            ? const DrawableResourceAndroidBitmap('ic_notification_large')
+            : null,
+        color: const Color(0xFF0F9A07),
+        importance: Importance.high,
+        priority: Priority.high,
+      );
 
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
 
-    await _localNotifications.zonedSchedule(
-      id: id,
-      title: title,
-      body: body,
-      scheduledDate: tz.TZDateTime.from(scheduledDate, tz.local),
-      notificationDetails: details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      payload: payload?.toString(),
-    );
+      return NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+    }
+
+    final encodedPayload = payload != null ? jsonEncode(payload) : null;
+    final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
+
+    try {
+      await _localNotifications.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tzDate,
+        notificationDetails: buildDetails(includeLargeIcon: true),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: repeatDaily ? DateTimeComponents.time : null,
+        payload: encodedPayload,
+      );
+    } on PlatformException catch (e) {
+      if (e.code == 'invalid_large_icon') {
+        await _localNotifications.zonedSchedule(
+          id: id,
+          title: title,
+          body: body,
+          scheduledDate: tzDate,
+          notificationDetails: buildDetails(includeLargeIcon: false),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          matchDateTimeComponents: repeatDaily ? DateTimeComponents.time : null,
+          payload: encodedPayload,
+        );
+      } else {
+        rethrow;
+      }
+    }
   }
 
   // Schedule daily verse notification
