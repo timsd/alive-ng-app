@@ -124,7 +124,7 @@ export default async ({ req, res, log, error }) => {
         const createdTime = new Date(targetCreatedAtStr).getTime();
         const now = Date.now();
         if (!isNaN(createdTime) && (now - createdTime > 15 * 60 * 1000)) {
-          log(`User ${recipientEmail} account was created at ${targetCreatedAtStr} (${Math.round((now - createdTime)/60000)} mins ago). Skipping returning user welcome email.`);
+          log(`User ${recipientEmail} account was created at ${targetCreatedAtStr} (${Math.round((now - createdTime) / 60000)} mins ago). Skipping returning user welcome email.`);
           return res.json({ ok: true, skipped: true, reason: 'returning_user_account_age' });
         }
       }
@@ -252,7 +252,7 @@ export default async ({ req, res, log, error }) => {
               isAdminCaller = true;
             }
           }
-        } catch (_) {}
+        } catch (_) { }
         if (!isAdminCaller) {
           try {
             const uRes = await fetch(
@@ -266,7 +266,7 @@ export default async ({ req, res, log, error }) => {
                 isAdminCaller = true;
               }
             }
-          } catch (_) {}
+          } catch (_) { }
         }
         if (!isAdminCaller) {
           try {
@@ -286,7 +286,7 @@ export default async ({ req, res, log, error }) => {
                 }
               }
             }
-          } catch (_) {}
+          } catch (_) { }
         }
       }
       if (!isAdminCaller) {
