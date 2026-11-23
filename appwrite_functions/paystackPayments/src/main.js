@@ -406,8 +406,29 @@ export default async ({ req, res, log, error }) => {
           try {
             const uDoc = await authDb.getDocument(databaseId, usersCollectionId, callerId);
             const r = String(uDoc.role || '').toLowerCase();
-            if (uDoc.is_admin === true || ['admin', 'super_admin'].includes(r)) {
+            if (uDoc.is_admin === true || ['admin', 'super_admin', 'treasurer'].includes(r)) {
               isAuthorizedAdmin = true;
+            }
+          } catch (_) {}
+        }
+        if (!isAuthorizedAdmin) {
+          try {
+            const holderList = await authDb.listDocuments(databaseId, 'org_office_holders', [
+              Query.equal('user_id', callerId),
+              Query.equal('is_current', true),
+              Query.limit(20),
+            ]);
+            for (const h of holderList.documents || []) {
+              const title = String(h.office_title || h.office_slug || h.title || '').toLowerCase();
+              if (
+                title.includes('treasurer') ||
+                title.includes('president') ||
+                title.includes('admin') ||
+                title.includes('finance')
+              ) {
+                isAuthorizedAdmin = true;
+                break;
+              }
             }
           } catch (_) {}
         }

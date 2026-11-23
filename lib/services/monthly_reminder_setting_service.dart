@@ -105,21 +105,19 @@ class MonthlyReminderSettingService {
   /// Reads the full admin-configured monthly reminder settings.
   static Future<MonthlyReminderConfig> getConfig() async {
     try {
-      final databases = Databases(appwriteClient);
-      // ignore: deprecated_member_use
-      final doc = await databases.getDocument(
+      final tables = TablesDB(appwriteClient);
+      final doc = await tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-        documentId: _documentId,
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
+        rowId: _documentId,
       );
-      return MonthlyReminderConfig.fromRaw(doc.data['value']);
+      return MonthlyReminderConfig.fromRaw(
+        doc.data['value'] ?? doc.data['setting_value'],
+      );
     } on AppwriteException catch (e) {
       if (e.code == 404) {
-        const defaults = MonthlyReminderConfig();
-        if (AuthService.instance.currentUser != null) {
-          await saveConfig(defaults);
-        }
-        return defaults;
+        // Never attempt admin-only app_settings writes from a read path.
+        return const MonthlyReminderConfig();
       }
       _logger.info('Monthly reminder config unavailable, using defaults: $e');
       return const MonthlyReminderConfig();
@@ -132,24 +130,38 @@ class MonthlyReminderSettingService {
   /// Saves the full admin-configured monthly reminder settings.
   static Future<bool> saveConfig(MonthlyReminderConfig config) async {
     try {
-      final databases = Databases(appwriteClient);
-      final payload = {'value': jsonEncode(config.toJson())};
+      final tables = TablesDB(appwriteClient);
+      final encoded = jsonEncode(config.toJson());
+      final payload = {
+        'key': _documentId,
+        'setting_key': _documentId,
+        'value': encoded,
+        'setting_value': encoded,
+        'category': 'notifications',
+        'is_public': true,
+      };
+      final permissions = <String>[
+        Permission.read(Role.any()),
+        Permission.read(Role.team(AppwriteBackendConfig.adminTeamId)),
+        Permission.update(Role.team(AppwriteBackendConfig.adminTeamId)),
+        Permission.delete(Role.team(AppwriteBackendConfig.adminTeamId)),
+      ];
       try {
-        // ignore: deprecated_member_use
-        await databases.updateDocument(
+        await tables.updateRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-          documentId: _documentId,
+          tableId: AppwriteBackendConfig.appSettingsCollectionId,
+          rowId: _documentId,
           data: payload,
+          permissions: permissions,
         );
       } on AppwriteException catch (e) {
         if (e.code != 404) rethrow;
-        // ignore: deprecated_member_use
-        await databases.createDocument(
+        await tables.createRow(
           databaseId: AppwriteBackendConfig.databaseId,
-          collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-          documentId: _documentId,
+          tableId: AppwriteBackendConfig.appSettingsCollectionId,
+          rowId: _documentId,
           data: payload,
+          permissions: permissions,
         );
       }
       return true;

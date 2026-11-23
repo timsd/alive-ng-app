@@ -123,6 +123,8 @@ class _StyledPdfLine {
   final double fontSize;
   final bool isBold;
   final bool isItalic;
+  final String fontName;
+  final int? badgeNumber;
   final String text;
 
   const _StyledPdfLine({
@@ -134,11 +136,40 @@ class _StyledPdfLine {
     required this.fontSize,
     required this.isBold,
     required this.isItalic,
+    this.fontName = '',
+    this.badgeNumber,
     required this.text,
   });
 
   double get width => right - left;
   double get height => bottom - top;
+
+  _StyledPdfLine copyWith({
+    double? left,
+    double? top,
+    double? right,
+    double? bottom,
+    double? fontSize,
+    bool? isBold,
+    bool? isItalic,
+    String? fontName,
+    int? badgeNumber,
+    String? text,
+  }) {
+    return _StyledPdfLine(
+      pageIndex: pageIndex,
+      left: left ?? this.left,
+      top: top ?? this.top,
+      right: right ?? this.right,
+      bottom: bottom ?? this.bottom,
+      fontSize: fontSize ?? this.fontSize,
+      isBold: isBold ?? this.isBold,
+      isItalic: isItalic ?? this.isItalic,
+      fontName: fontName ?? this.fontName,
+      badgeNumber: badgeNumber ?? this.badgeNumber,
+      text: text ?? this.text,
+    );
+  }
 }
 
 /// Structured interactive study section extracted from ANY tract PDF or markdown body.
@@ -341,6 +372,7 @@ class PdfExtractorService {
     'Isa': 'Isaiah',
     'Jer': 'Jeremiah',
     'Lam': 'Lamentations',
+    'Eze': 'Ezekiel',
     'Ezek': 'Ezekiel',
     'Dan': 'Daniel',
     'Hos': 'Hosea',
@@ -374,7 +406,7 @@ class PdfExtractorService {
   };
 
   static const String _booksPattern =
-      r'(?:[1-3]\s*)?(?:Genesis|Gen|Exodus|Exod?|Leviticus|Lev|Numbers|Num|Deuteronomy|Deut|Joshua|Josh|Judges|Judg|Ruth|Samuel|Sam|Kings|Kgs|Chronicles|Chron|Chr|Ezra|Nehemiah|Neh|Esther|Esth?|Job|Psalms?|Psa?|Proverbs|Prov|Ecclesiastes|Eccl|Song of Solomon|Song|Isaiah|Isa|Jeremiah|Jer|Lamentations|Lam|Ezekiel|Ezek|Daniel|Dan|Hosea|Hos|Joel|Amos|Obadiah|Obad|Jonah|Micah|Mic|Nahum|Nah|Habakkuk|Hab|Zephaniah|Zeph|Haggai|Hag|Zechariah|Zech|Malachi|Mal|Matthew|Matt?|Mark|Mk|Luke|Lk|John|Jn|Acts|Romans|Rom|Corinthians|Cor|Galatians|Gal|Ephesians|Eph|Philippians|Phil|Colossians|Col|Thessalonians|Thess|Timothy|Tim|Titus|Tit|Philemon|Phlm|Hebrews|Heb|James|Jas|Peter|Pet|Jude|Revelation|Rev)\.?';
+      r'(?:[1-3]\s*)?(?:Genesis|Gen|Exodus|Exod?|Leviticus|Lev|Numbers|Num|Deuteronomy|Deut|Joshua|Josh|Judges|Judg|Ruth|Samuel|Sam|Kings|Kgs|Chronicles|Chron|Chr|Ezra|Nehemiah|Neh|Esther|Esth?|Job|Psalms?|Psa?|Proverbs|Prov|Ecclesiastes|Eccl|Song of Solomon|Song|Isaiah|Isa|Jeremiah|Jer|Lamentations|Lam|Ezekiel|Ezek|Eze|Daniel|Dan|Hosea|Hos|Joel|Amos|Obadiah|Obad|Jonah|Micah|Mic|Nahum|Nah|Habakkuk|Hab|Zephaniah|Zeph|Haggai|Hag|Zechariah|Zech|Malachi|Mal|Matthew|Matt?|Mark|Mk|Luke|Lk|John|Jn|Acts|Romans|Rom|Corinthians|Cor|Galatians|Gal|Ephesians|Eph|Philippians|Phil|Colossians|Col|Thessalonians|Thess|Timothy|Tim|Titus|Tit|Philemon|Phlm|Hebrews|Heb|James|Jas|Peter|Pet|Jude|Revelation|Rev)\.?';
 
   static final RegExp _scriptureRegex = RegExp(
     r'\b(' +
@@ -475,7 +507,7 @@ class PdfExtractorService {
     );
   }
 
-  /// Normalizes invisible/non-breaking Unicode spaces & soft hyphens from PDF text streams.
+  /// Normalizes invisible/non-breaking Unicode spaces, soft hyphens & common OCR typos.
   static String _normalizePdfText(String raw) {
     return raw
         .replaceAll('\u00A0', ' ')
@@ -488,8 +520,35 @@ class PdfExtractorService {
         .replaceAll('\u201D', '"')
         .replaceAll('\u2018', "'")
         .replaceAll('\u2019', "'")
+        // OCR lowercase 'l' in "lsa. 53:5" -> "Isa. 53:5"
+        .replaceAllMapped(
+          RegExp(r'\blsa\.?(\s+\d+\s*[:.]\s*\d+)'),
+          (m) => 'Isa.${m.group(1)}',
+        )
+        // Normalize extra space after colon in Bible refs like "Gen. 2: 17." -> "Gen. 2:17."
+        .replaceAllMapped(
+          RegExp(r'(\d):\s+(\d)'),
+          (m) => '${m.group(1)}:${m.group(2)}',
+        )
+        // Normalize space before closing quote like '. "' -> '."'
+        .replaceAll('. "', '."')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+  }
+
+  /// Normalizes a PDF font name to its base family (stripping subset prefix & weight suffixes).
+  static String _normalizeFontFamily(String fontName) {
+    var f = fontName.trim();
+    final plusIdx = f.indexOf('+');
+    if (plusIdx >= 0 && plusIdx < f.length - 1) {
+      f = f.substring(plusIdx + 1);
+    }
+    f = f.toLowerCase();
+    f = f.replaceAll(
+      RegExp(r'[-,_\s]*(bold|italic|oblique|regular|roman|mt|psmt|std|medium|semibold|demi|light|black|heavy)+$'),
+      '',
+    );
+    return f.trim();
   }
 
   /// Fixes kerning gaps in stylized PDF headers like "T ruth F or Th e W orld" -> "Truth For The World".
@@ -587,6 +646,7 @@ class PdfExtractorService {
             fontSize: l.fontSize,
             isBold: isBold,
             isItalic: isItalic,
+            fontName: _normalizeFontFamily(l.fontName),
             text: cleaned,
           ));
         }
@@ -821,16 +881,65 @@ class PdfExtractorService {
       columns[targetCol].add(line);
     }
 
-    // Merge tiny same-baseline fragments inside each column (prevents "ly", "y", "P", "38315 U" splits!)
-    List<_StyledPdfLine> mergeSameBaseline(List<_StyledPdfLine> colLines) {
+    // Spatially pair standalone large question badges ("1".."25") with the first
+    // question line to their right BEFORE baseline merging, without polluting the
+    // text line's fontSize or bottom coordinate (prevents verticalGap breakages on
+    // 2-line questions and prevents 20pt digits from masking 18pt cover titles).
+    List<_StyledPdfLine> pairBadgesAndMergeBaseline(List<_StyledPdfLine> colLines) {
       if (colLines.length <= 1) return colLines;
-      colLines.sort((a, b) {
+
+      final badgeIndices = <int>{};
+      final pairedBadges = <int, int>{}; // targetIdx -> badgeNum
+
+      for (int i = 0; i < colLines.length; i++) {
+        final b = colLines[i];
+        if (!RegExp(r'^\d{1,2}\.?$').hasMatch(b.text)) continue;
+        final badgeNum = int.tryParse(b.text.replaceAll('.', ''));
+        if (badgeNum == null || badgeNum < 1 || badgeNum > 40) continue;
+        if (b.width > 42) continue;
+
+        // Find the top-most alphabetic text line immediately to the right of this badge
+        int bestTarget = -1;
+        double bestTop = double.infinity;
+        for (int j = 0; j < colLines.length; j++) {
+          if (i == j || pairedBadges.containsKey(j)) continue;
+          final t = colLines[j];
+          if (RegExp(r'^\d{1,2}\.?$').hasMatch(t.text)) continue;
+          if (!RegExp(r'[A-Za-z]{2,}').hasMatch(t.text)) continue;
+          final horizDist = t.left - b.right;
+          if (horizDist < -4 || horizDist > 65) continue;
+          // Badge may sit slightly below line 1 top (e.g. 20pt badge centered across 2 lines)
+          final overlapsVertically = t.top >= b.top - 10.0 && t.top <= b.bottom + 3.0;
+          if (overlapsVertically && t.top < bestTop) {
+            bestTop = t.top;
+            bestTarget = j;
+          }
+        }
+
+        if (bestTarget != -1) {
+          badgeIndices.add(i);
+          pairedBadges[bestTarget] = badgeNum;
+        }
+      }
+
+      final cleanedCol = <_StyledPdfLine>[];
+      for (int i = 0; i < colLines.length; i++) {
+        if (badgeIndices.contains(i)) continue;
+        final line = colLines[i];
+        final pairedNum = pairedBadges[i];
+        cleanedCol.add(
+          pairedNum != null ? line.copyWith(badgeNumber: pairedNum) : line,
+        );
+      }
+
+      if (cleanedCol.length <= 1) return cleanedCol;
+      cleanedCol.sort((a, b) {
         final dy = a.top - b.top;
         if (dy.abs() > 3.5) return a.top.compareTo(b.top);
         return a.left.compareTo(b.left);
       });
       final merged = <_StyledPdfLine>[];
-      for (final l in colLines) {
+      for (final l in cleanedCol) {
         if (merged.isEmpty) {
           merged.add(l);
           continue;
@@ -839,7 +948,6 @@ class PdfExtractorService {
         final sameBaseline = (l.top - prev.top).abs() <= 3.5;
         final horizGap = l.left - prev.right;
         if (sameBaseline && horizGap >= -4 && horizGap <= 28) {
-          // Join without space if gap is tiny kerning (< 1.5pt)
           final sep = horizGap < 1.5 ? '' : ' ';
           merged[merged.length - 1] = _StyledPdfLine(
             pageIndex: prev.pageIndex,
@@ -850,6 +958,8 @@ class PdfExtractorService {
             fontSize: max(prev.fontSize, l.fontSize),
             isBold: prev.isBold || l.isBold,
             isItalic: prev.isItalic && l.isItalic,
+            fontName: prev.fontName.isNotEmpty ? prev.fontName : l.fontName,
+            badgeNumber: prev.badgeNumber ?? l.badgeNumber,
             text: _normalizePdfText('${prev.text}$sep${l.text}'),
           );
         } else {
@@ -862,7 +972,7 @@ class PdfExtractorService {
     final result = <_StyledPdfLine>[...topBanners];
     for (final col in columns) {
       if (col.isEmpty) continue;
-      result.addAll(mergeSameBaseline(col));
+      result.addAll(pairBadgesAndMergeBaseline(col));
     }
     result.addAll(bottomBanners);
     return result;
@@ -884,8 +994,9 @@ class PdfExtractorService {
     for (int i = 0; i < pageIds.length; i++) {
       final pLines = byPage[pageIds[i]]!;
       final hasItemOne = pLines.any((l) =>
+          l.badgeNumber == 1 ||
           RegExp(r'^1[\.\)]?$').hasMatch(l.text) ||
-          RegExp(r'^1[\.\)]\s+[A-Z]').hasMatch(l.text));
+          RegExp(r'^1[\.\)]?\s+[A-Z]').hasMatch(l.text));
       if (hasItemOne) {
         firstContentPage = i;
         break;
@@ -923,6 +1034,25 @@ class PdfExtractorService {
       }
     });
     return bestSize;
+  }
+
+  /// Character-weighted dominant font family of the document body (e.g. "timesnewromanps").
+  String _computeBodyFontFamily(List<_StyledPdfLine> lines) {
+    final weightByFont = <String, int>{};
+    for (final l in lines) {
+      if (l.text.length < 15 || l.fontName.isEmpty) continue;
+      weightByFont[l.fontName] = (weightByFont[l.fontName] ?? 0) + l.text.length;
+    }
+    if (weightByFont.isEmpty) return '';
+    String bestFont = '';
+    int bestWeight = -1;
+    weightByFont.forEach((font, weight) {
+      if (weight > bestWeight) {
+        bestWeight = weight;
+        bestFont = font;
+      }
+    });
+    return bestFont;
   }
 
   /// True if text looks like a genuine heading/question rather than a mid-sentence fragment.
@@ -975,11 +1105,14 @@ class PdfExtractorService {
         .length;
 
     final bodyFontSize = _computeMedianFontSize(lines);
+    final bodyFontFamily = _computeBodyFontFamily(lines);
     final reviewNotes = <String>[];
 
-    // Compute largest font size strictly over genuine alphabetic text lines (NEVER bare digits like "1 2 3 ... 17"!)
+    // Compute largest font size strictly over genuine alphabetic non-question lines
+    // (NEVER bare digits like "1..16" or numbered questions!)
     final nonNumericLines = lines
         .where((l) =>
+            l.badgeNumber == null &&
             RegExp(r'[A-Za-z]{3,}').hasMatch(l.text) &&
             !_isPublisherOrBoilerplateLine(l.text) &&
             !_isAuthorByline(l.text) &&
@@ -1114,14 +1247,31 @@ class PdfExtractorService {
     final blocks = <Map<String, dynamic>>[];
     List<_StyledPdfLine> currentGroup = [];
 
-    // Any bold non-quote line (even line 1 of a 2-line question before the "?") is treated
-    // as a heading-style line during grouping so multi-line questions stay intact!
+    // Any bold, badged, or distinct-heading-font non-quote line (even line 1 of a 2-line question
+    // before the "?") is treated as a heading-style line during grouping so multi-line questions stay intact!
+    bool isDistinctHeadingFontLine(_StyledPdfLine l) {
+      return bodyFontFamily.isNotEmpty &&
+          l.fontName.isNotEmpty &&
+          l.fontName != bodyFontFamily &&
+          l.text.length < 130 &&
+          !l.text.startsWith('"');
+    }
+
     bool isHeadingStyleLine(_StyledPdfLine l) {
+      if (l.badgeNumber != null) return true;
       if (RegExp(r'^\d{1,2}\.?$').hasMatch(l.text) &&
           (l.isBold || l.fontSize >= bodyFontSize + 1.5)) {
         return true;
       }
-      if (l.fontSize >= bodyFontSize + 1.5 &&
+      if (isDistinctHeadingFontLine(l)) return true;
+      // Non-bold line in the body font family (e.g. 12pt TimesNewRoman verse quote or closing note)
+      // must be dramatically larger (>= +3pt) to be treated as a heading.
+      final sizeThreshold = (l.fontName.isNotEmpty &&
+              l.fontName == bodyFontFamily &&
+              !l.isBold)
+          ? bodyFontSize + 3.0
+          : bodyFontSize + 1.5;
+      if (l.fontSize >= sizeThreshold &&
           l.text.length < 115 &&
           !l.text.startsWith('"')) {
         return true;
@@ -1144,6 +1294,12 @@ class PdfExtractorService {
       final allBold = currentGroup.every((l) => l.isBold);
       final anyBold = currentGroup.any((l) => l.isBold);
       final allItalic = currentGroup.every((l) => l.isItalic);
+      final allDistinctHeadingFont =
+          currentGroup.every((l) => isDistinctHeadingFontLine(l));
+      final badgeNum = currentGroup
+          .map((l) => l.badgeNumber)
+          .whereType<int>()
+          .firstOrNull;
       final avgFont =
           currentGroup.map((l) => l.fontSize).reduce((a, b) => a + b) /
               currentGroup.length;
@@ -1154,6 +1310,8 @@ class PdfExtractorService {
         'isBold': anyBold,
         'isAllBold': allBold,
         'isAllItalic': allItalic,
+        'isDistinctHeadingFont': allDistinctHeadingFont,
+        'badgeNumber': badgeNum,
         'fontSize': avgFont,
         'left': minLeft,
         'pageIndex': currentGroup.first.pageIndex,
@@ -1187,17 +1345,7 @@ class PdfExtractorService {
         (m) => '${m.group(1)} ',
       );
 
-      final processedLine = _StyledPdfLine(
-        pageIndex: line.pageIndex,
-        left: line.left,
-        top: line.top,
-        right: line.right,
-        bottom: line.bottom,
-        fontSize: line.fontSize,
-        isBold: line.isBold,
-        isItalic: line.isItalic,
-        text: cleanedLineText,
-      );
+      final processedLine = line.copyWith(text: cleanedLineText);
 
       if (currentGroup.isEmpty) {
         currentGroup.add(processedLine);
@@ -1207,17 +1355,17 @@ class PdfExtractorService {
       final prev = currentGroup.last;
       final firstInGroup = currentGroup.first;
       final samePage = processedLine.pageIndex == prev.pageIndex;
-      // Allow hanging-indent continuation (numbered question starts left, line 2 indented right)
+      // Allow hanging-indent continuation and wrap-around below an inline drop-cap/illustration
       final leftDelta = processedLine.left - prev.left;
-      final sameColumn = leftDelta >= -55 && leftDelta <= 85;
+      final sameColumn = leftDelta >= -95 && leftDelta <= 85;
       final verticalGap = processedLine.top - prev.bottom;
       final prevIsHeading = isHeadingStyleLine(prev);
       final currIsHeading = isHeadingStyleLine(processedLine);
       final prevIsBareNum = RegExp(r'^\d{1,2}\.?$').hasMatch(prev.text);
       final currIsBareNum = RegExp(r'^\d{1,2}\.?$').hasMatch(processedLine.text);
-      final currStartsNewNumber =
+      final currStartsNewNumber = processedLine.badgeNumber != null ||
           RegExp(r'^\d{1,2}[\.\)]?\s+[A-Z]').hasMatch(processedLine.text);
-      final groupStartsNumbered =
+      final groupStartsNumbered = firstInGroup.badgeNumber != null ||
           RegExp(r'^\d{1,2}[\.\)]?\s+[A-Z]').hasMatch(firstInGroup.text);
       final prevIncompleteHeading = (prevIsHeading || groupStartsNumbered) &&
           !prev.text.endsWith('?') &&
@@ -1232,9 +1380,9 @@ class PdfExtractorService {
           !prevIsBareNum &&
           !currIsBareNum &&
           !currStartsNewNumber &&
-          verticalGap >= -5 &&
+          verticalGap >= -6 &&
           ((prevIncompleteHeading &&
-                  verticalGap <= max(prev.height * 1.15, 12.0) &&
+                  verticalGap <= max(prev.height * 1.6, 16.0) &&
                   !processedLine.text.startsWith('"') &&
                   (currIsHeading ||
                       processedLine.text.endsWith('?') ||
@@ -1309,13 +1457,25 @@ class PdfExtractorService {
       }
 
       final inlineNum = RegExp(r'^(\d{1,2})[\.\)]?\s+([A-Z].+)$').firstMatch(txt);
+      final badgeNum = blk['badgeNumber'] as int?;
       final fontSize = blk['fontSize'] as double;
       final isAllBold = blk['isAllBold'] == true;
       final isBold = blk['isBold'] == true;
+      final isDistinctHeadingFont = blk['isDistinctHeadingFont'] == true;
       final isLargerHeaderFont = fontSize >= bodyFontSize + 1.8;
 
-      if (inlineNum != null &&
-          (isBold || fontSize >= bodyFontSize + 0.8 || txt.endsWith('?')) &&
+      if (badgeNum != null && _isPlausibleHeadingText(txt)) {
+        mergedBlocks.add({
+          ...blk,
+          'num': badgeNum,
+          'text': txt,
+          'isSectionHeader': true,
+        });
+      } else if (inlineNum != null &&
+          (isBold ||
+              isDistinctHeadingFont ||
+              fontSize >= bodyFontSize + 0.8 ||
+              txt.endsWith('?')) &&
           _isPlausibleHeadingText(inlineNum.group(2)!)) {
         mergedBlocks.add({
           ...blk,
@@ -1324,7 +1484,10 @@ class PdfExtractorService {
           'isSectionHeader': true,
         });
       } else if (_isPlausibleHeadingText(txt) &&
-          ((isLargerHeaderFont && txt.length <= 95 && !txt.endsWith('.')) ||
+          ((isDistinctHeadingFont &&
+                  txt.length <= 125 &&
+                  (txt.endsWith('?') || txt.endsWith(':') || !txt.endsWith('.'))) ||
+              (isLargerHeaderFont && txt.length <= 95 && !txt.endsWith('.')) ||
               (isAllBold &&
                   txt.length <= 95 &&
                   (txt.endsWith('?') ||

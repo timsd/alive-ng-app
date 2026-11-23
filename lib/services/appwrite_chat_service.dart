@@ -163,22 +163,31 @@ class AppwriteChatService extends ChangeNotifier {
     await getChannelMessages(roomId);
   }
 
+  models.Row _rowFromRealtimePayload(Map<String, dynamic> payload) {
+    final normalized = Map<String, dynamic>.from(payload);
+    normalized[r'$tableId'] ??=
+        normalized[r'$collectionId'] ?? messagesCollectionId;
+    normalized[r'$databaseId'] ??= databaseId;
+    return models.Row.fromMap(normalized);
+  }
+
   void subscribeToRoom(String roomId) {
     _subscription?.close();
     _logger.info('Opening Appwrite realtime channel for room: $roomId');
 
     _subscription = _realtime.subscribe([
-      'databases.$databaseId.collections.$messagesCollectionId.documents',
+      'tablesdb.$databaseId.tables.$messagesCollectionId.rows',
     ]);
 
     _subscription!.stream.listen(
       (event) {
         final isCreateEvent = event.events.any((name) =>
             name.endsWith('.create') ||
+            name.contains('.rows.') ||
             name.contains('.documents.'));
         if (!isCreateEvent) return;
 
-        final document = _rowToDocument(models.Row.fromMap(event.payload));
+        final document = _rowToDocument(_rowFromRealtimePayload(event.payload));
         final data = document.data;
         final messageRoomId = data['channel_id'] ?? data['roomId'];
 
@@ -222,7 +231,7 @@ class AppwriteChatService extends ChangeNotifier {
     });
 
     final subscription = _realtime.subscribe([
-      'databases.$databaseId.collections.$messagesCollectionId.documents',
+      'tablesdb.$databaseId.tables.$messagesCollectionId.rows',
     ]);
 
     subscription.stream.listen(
@@ -233,7 +242,7 @@ class AppwriteChatService extends ChangeNotifier {
         );
         if (!isDelete && !isCreateOrUpdate) return;
 
-        final row = models.Row.fromMap(event.payload);
+        final row = _rowFromRealtimePayload(event.payload);
         final data = row.data;
         final messageRoomId = data['channel_id'] ?? data['roomId'];
         if (messageRoomId != channelId) return;

@@ -10,13 +10,13 @@ class ScriptureTextParser {
 
   static const String _bookNamesPattern =
       r'(?:1|2|3|I|II|III)?\s*(?:'
-      r'Genesis|Gen\.?|Exodus|Exod\.?|Ex\.?|Leviticus|Lev\.?|Numbers|Num\.?|'
+      r'Genesis|Gen\.?|Exodus|Exod\.?|Exo\.?|Ex\.?|Leviticus|Lev\.?|Numbers|Num\.?|'
       r'Deuteronomy|Deut\.?|Joshua|Josh\.?|Judges|Judg\.?|Ruth|'
       r'Samuel|Sam\.?|Kings|Kgs\.?|Chronicles|Chron\.?|Chr\.?|'
       r'Ezra|Nehemiah|Neh\.?|Esther|Esth\.?|Job|'
-      r'Psalms?|Ps\.?|Proverbs|Prov\.?|Ecclesiastes|Eccl\.?|'
+      r'Psalms?|Psa\.?|Ps\.?|Proverbs|Prov\.?|Ecclesiastes|Eccl\.?|'
       r'Song\s+of\s+Solomon|Song|Isaiah|Isa\.?|Jeremiah|Jer\.?|'
-      r'Lamentations|Lam\.?|Ezekiel|Ezek\.?|Daniel|Dan\.?|Hosea|Hos\.?|'
+      r'Lamentations|Lam\.?|Ezekiel|Ezek\.?|Eze\.?|Daniel|Dan\.?|Hosea|Hos\.?|'
       r'Joel|Amos|Obadiah|Obad\.?|Jonah|Micah|Mic\.?|Nahum|Nah\.?|'
       r'Habakkuk|Hab\.?|Zephaniah|Zeph\.?|Haggai|Hag\.?|Zechariah|Zech\.?|'
       r'Malachi|Mal\.?|'
@@ -78,9 +78,17 @@ class ScriptureTextParser {
           ),
           recognizer: TapGestureRecognizer()
             ..onTap = () {
+              final normalized = refText
+                  .replaceFirst(
+                      RegExp(r'^Eze\.?(?=\s)', caseSensitive: false),
+                      'Ezekiel')
+                  .replaceFirst(
+                      RegExp(r'^Exo\.?(?=\s)', caseSensitive: false), 'Exodus')
+                  .replaceFirst(
+                      RegExp(r'^Psa\.?(?=\s)', caseSensitive: false), 'Psalms');
               BibleReferenceModalSheet.show(
                 context,
-                reference: refText,
+                reference: normalized,
               );
             },
         ),

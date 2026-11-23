@@ -218,9 +218,9 @@ export default async ({ req, res, log, error }) => {
 
     const userId = req.headers['x-appwrite-user-id'];
     const trigger = (req.headers['x-appwrite-trigger'] || '').toLowerCase();
-    // Only trust internal execution when triggered by event/schedule or server API key without user header
+    // Only trust internal execution when triggered by Appwrite event/schedule
+    // (never trust client-supplied x-appwrite-key headers alone).
     const isInternal = Boolean(
-      (!userId && req.headers['x-appwrite-key']) ||
       trigger === 'event' ||
       trigger === 'schedule'
     );
@@ -233,21 +233,61 @@ export default async ({ req, res, log, error }) => {
       let isAdminCaller = false;
       const ep = process.env.APPWRITE_ENDPOINT || process.env.APPWRITE_FUNCTION_API_ENDPOINT;
       const proj = process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_FUNCTION_PROJECT_ID;
-      const key = process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
+      const key = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
       const dbId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
       const usersColId = process.env.USERS_COLLECTION_ID || '6a08943100226f5b4963';
       if (ep && proj && key && userId) {
+        const base = ep.replace(/\/v1\/?$/, '');
         try {
-          const uRes = await fetch(
-            `${ep.replace(/\/v1\/?$/, '')}/v1/databases/${dbId}/collections/${usersColId}/documents/${encodeURIComponent(userId)}`,
+          const authUserRes = await fetch(
+            `${base}/v1/users/${encodeURIComponent(userId)}`,
             { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
           );
-          if (uRes.ok) {
-            const uDoc = await uRes.json();
-            const r = String(uDoc?.role || '').toLowerCase().trim();
-            isAdminCaller = ['admin', 'super_admin', 'treasurer'].includes(r);
+          if (authUserRes.ok) {
+            const authUser = await authUserRes.json();
+            const labels = Array.isArray(authUser?.labels)
+              ? authUser.labels.map((l) => String(l).toLowerCase().trim())
+              : [];
+            if (labels.some((l) => ['admin', 'super_admin', 'treasurer', 'president'].includes(l))) {
+              isAdminCaller = true;
+            }
           }
         } catch (_) {}
+        if (!isAdminCaller) {
+          try {
+            const uRes = await fetch(
+              `${base}/v1/databases/${dbId}/collections/${usersColId}/documents/${encodeURIComponent(userId)}`,
+              { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
+            );
+            if (uRes.ok) {
+              const uDoc = await uRes.json();
+              const r = String(uDoc?.role || '').toLowerCase().trim();
+              if (uDoc?.is_admin === true || ['admin', 'super_admin', 'treasurer'].includes(r)) {
+                isAdminCaller = true;
+              }
+            }
+          } catch (_) {}
+        }
+        if (!isAdminCaller) {
+          try {
+            const eqUser = encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'user_id', values: [userId] }));
+            const eqActive = encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'is_current', values: [true] }));
+            const hRes = await fetch(
+              `${base}/v1/databases/${dbId}/collections/org_office_holders/documents?queries[]=${eqUser}&queries[]=${eqActive}`,
+              { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
+            );
+            if (hRes.ok) {
+              const hData = await hRes.json();
+              for (const h of hData?.documents || []) {
+                const title = String(h.office_title || h.office_slug || h.title || '').toLowerCase();
+                if (title.includes('treasurer') || title.includes('president') || title.includes('admin')) {
+                  isAdminCaller = true;
+                  break;
+                }
+              }
+            }
+          } catch (_) {}
+        }
       }
       if (!isAdminCaller) {
         return res.json({ error: 'Only server-side payment verification or admins may send receipts.' }, 403);

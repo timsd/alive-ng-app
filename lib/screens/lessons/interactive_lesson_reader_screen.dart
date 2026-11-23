@@ -2,8 +2,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/discipleship_models.dart';
+import '../../services/auth_service.dart';
+import '../../services/discipleship_service.dart';
 import '../../services/interactive_lessons_service.dart';
 import '../../services/pdf_extractor_service.dart';
+import '../../widgets/bible_reference_modal_sheet.dart';
+import '../../widgets/custom_image.dart';
+import '../../widgets/modern_dropdown.dart';
+import '../../widgets/scripture_rich_text.dart';
 
 class InteractiveLessonReaderScreen extends StatefulWidget {
   final InteractiveLessonItem? lesson;
@@ -58,8 +65,16 @@ class _InteractiveLessonReaderScreenState
   bool _commitmentChecked = false;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+
+  // Discipleship Tracker Sync State (Restored from pre-revamp format)
+  DiscipleshipLevel _selectedDiscipleshipLevel = DiscipleshipLevel.prospect;
+  List<DiscipleshipContact> _userContacts = [];
+  DiscipleshipContact? _matchedContact;
+  int _matchedContactStudyCount = 0;
 
   double _completionRatio = 0.0;
+  bool _isSaving = false;
   bool _showSavedBanner = false;
 
   String get _storageKey => 'alive_nigeria_notes_${_resolvedLesson.id}';
@@ -70,6 +85,7 @@ class _InteractiveLessonReaderScreenState
     _resolveLessonItem();
     _initializeLessonStructure();
     _loadSavedUserNotes();
+    _loadDisciples();
   }
 
   void _resolveLessonItem() {
@@ -102,6 +118,7 @@ class _InteractiveLessonReaderScreenState
     }
     _nameController.dispose();
     _phoneController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -251,13 +268,134 @@ class _InteractiveLessonReaderScreenState
       _commitmentChecked = data['commitment'] == true;
       _nameController.text = (data['userName'] ?? '').toString();
       _phoneController.text = (data['userPhone'] ?? '').toString();
+      _addressController.text = (data['userAddress'] ?? '').toString();
+      final savedLevel = data['discipleshipLevel']?.toString();
+      if (savedLevel != null && savedLevel.isNotEmpty) {
+        _selectedDiscipleshipLevel = DiscipleshipLevel.values.firstWhere(
+          (lvl) => lvl.name == savedLevel,
+          orElse: () => DiscipleshipLevel.prospect,
+        );
+      }
 
       if (mounted) {
         setState(() {});
         _recalculateProgress();
+        if (_nameController.text.trim().isNotEmpty) {
+          _checkExistingDiscipleMatch(_nameController.text.trim());
+        }
       }
     } catch (e) {
       debugPrint('Could not load saved lesson notes: $e');
+    }
+  }
+
+  Future<void> _loadDisciples() async {
+    try {
+      final authService = AuthService.instance;
+      final user =
+          authService.currentUser ?? await authService.getCurrentUser();
+      if (user != null) {
+        final contacts = await DiscipleshipService.instance.getContacts(
+          discipleMakerId: user.uid,
+        );
+        if (mounted) {
+          setState(() {
+            _userContacts = contacts;
+          });
+          if (_nameController.text.trim().isNotEmpty) {
+            _checkExistingDiscipleMatch(_nameController.text.trim());
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Could not load existing disciples: $e');
+    }
+  }
+
+  void _onNameChanged(String query) {
+    _checkExistingDiscipleMatch(query.trim());
+  }
+
+  void _checkExistingDiscipleMatch(String query) {
+    if (query.isEmpty) {
+      if (_matchedContact != null) {
+        setState(() {
+          _matchedContact = null;
+          _matchedContactStudyCount = 0;
+        });
+      }
+      return;
+    }
+
+    final q = query.toLowerCase();
+    DiscipleshipContact? found;
+    for (final c in _userContacts) {
+      if (c.fullName.toLowerCase() == q) {
+        found = c;
+        break;
+      }
+    }
+
+    if (found != null && found.id != _matchedContact?.id) {
+      _selectContact(found);
+    } else if (found == null && _matchedContact != null) {
+      setState(() {
+        _matchedContact = null;
+        _matchedContactStudyCount = 0;
+      });
+    }
+  }
+
+  Future<void> _selectContact(DiscipleshipContact contact) async {
+    setState(() {
+      _matchedContact = contact;
+      _nameController.text = contact.fullName;
+      if (contact.phone != null && contact.phone!.isNotEmpty) {
+        _phoneController.text = contact.phone!;
+      }
+      if (contact.address != null && contact.address!.isNotEmpty) {
+        _addressController.text = contact.address!;
+      }
+      _selectedDiscipleshipLevel = contact.currentLevel;
+    });
+
+    try {
+      final sessions = await DiscipleshipService.instance.getStudySessions(
+        contactId: contact.id,
+      );
+      if (mounted) {
+        setState(() {
+          _matchedContactStudyCount = sessions.length;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _clearMatchedContact() {
+    setState(() {
+      _matchedContact = null;
+      _matchedContactStudyCount = 0;
+      _nameController.clear();
+      _phoneController.clear();
+      _addressController.clear();
+      _selectedDiscipleshipLevel = DiscipleshipLevel.prospect;
+    });
+  }
+
+  String _formatLevelName(DiscipleshipLevel level) {
+    switch (level) {
+      case DiscipleshipLevel.prospect:
+        return 'Prospect';
+      case DiscipleshipLevel.studying:
+        return 'Studying';
+      case DiscipleshipLevel.convinced:
+        return 'Convinced';
+      case DiscipleshipLevel.committed:
+        return 'Committed';
+      case DiscipleshipLevel.baptized:
+        return 'Baptized';
+      case DiscipleshipLevel.disciple:
+        return 'Disciple';
     }
   }
 
@@ -292,6 +430,9 @@ class _InteractiveLessonReaderScreenState
   }
 
   Future<void> _saveProgressLocally() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
     final payload = {
       'lessonId': _resolvedLesson.id,
       'lessonTitle': _resolvedLesson.title,
@@ -304,6 +445,8 @@ class _InteractiveLessonReaderScreenState
       'commitment': _commitmentChecked,
       'userName': _nameController.text.trim(),
       'userPhone': _phoneController.text.trim(),
+      'userAddress': _addressController.text.trim(),
+      'discipleshipLevel': _selectedDiscipleshipLevel.name,
       'timestamp': DateTime.now().toIso8601String(),
     };
 
@@ -312,10 +455,169 @@ class _InteractiveLessonReaderScreenState
     await InteractiveLessonsService.instance
         .updateLessonProgress(_resolvedLesson.id, _completionRatio);
 
+    // Sync to Discipleship Tracker & log study session when disciple name is provided
+    bool discipleshipSynced = false;
+    String discipleshipNotice = '';
+    final fullName = _nameController.text.trim();
+
+    if (fullName.isNotEmpty) {
+      try {
+        final authService = AuthService.instance;
+        final authUser =
+            authService.currentUser ?? await authService.getCurrentUser();
+        if (authUser != null) {
+          final discipleship = DiscipleshipService.instance;
+          final bibleRefs = _sections
+              .expand((s) => s.scriptureReferences)
+              .toSet()
+              .take(8)
+              .join(', ');
+
+          DiscipleshipContact? contact = _matchedContact;
+          if (contact == null) {
+            final existing = await discipleship.getContacts(
+              discipleMakerId: authUser.uid,
+              searchQuery: fullName,
+            );
+            for (final c in existing) {
+              if (c.fullName.toLowerCase() == fullName.toLowerCase() ||
+                  (_phoneController.text.trim().isNotEmpty &&
+                      c.phone == _phoneController.text.trim())) {
+                contact = c;
+                break;
+              }
+            }
+          }
+
+          if (contact != null) {
+            if (contact.currentLevel != _selectedDiscipleshipLevel) {
+              contact = await discipleship.updateContactLevel(
+                contact.id,
+                _selectedDiscipleshipLevel,
+              );
+            }
+
+            final updatedPhone = _phoneController.text.trim().isNotEmpty
+                ? _phoneController.text.trim()
+                : contact.phone;
+            final updatedAddress = _addressController.text.trim().isNotEmpty
+                ? _addressController.text.trim()
+                : contact.address;
+
+            if (updatedPhone != contact.phone ||
+                updatedAddress != contact.address) {
+              contact = await discipleship.updateContact(contact.copyWith(
+                phone: updatedPhone,
+                address: updatedAddress,
+                lastContact: DateTime.now().toUtc(),
+              ));
+            }
+
+            await discipleship.createStudySession(
+              StudySession(
+                id: '',
+                contactId: contact.id,
+                discipleMakerId: authUser.uid,
+                type: StudyType.bibleStudy,
+                title: _resolvedLesson.title,
+                topic: _resolvedLesson.category.isNotEmpty
+                    ? _resolvedLesson.category
+                    : 'What The Bible Says Series',
+                bibleTexts: bibleRefs.isNotEmpty ? bibleRefs : _heroVerseRef,
+                date: DateTime.now(),
+                durationMinutes: 20,
+                completed: _completionRatio >= 0.8,
+                notes:
+                    'Completed: ${(_completionRatio * 100).round()}%. Lesson answers recorded.',
+                createdAt: DateTime.now(),
+              ),
+            );
+
+            final sessions =
+                await discipleship.getStudySessions(contactId: contact.id);
+            _matchedContactStudyCount = sessions.length;
+            _matchedContact = contact;
+
+            discipleshipSynced = true;
+            discipleshipNotice =
+                '✓ Logged study #${sessions.length} for ${contact.fullName} (${_formatLevelName(_selectedDiscipleshipLevel)}) in Discipleship Tracker!';
+          } else {
+            final nameParts = fullName.split(RegExp(r'\s+'));
+            final first = nameParts.first;
+            final last =
+                nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'Disciple';
+
+            final newContact = await discipleship.createContact(
+              DiscipleshipContact(
+                id: '',
+                discipleMakerId: authUser.uid,
+                firstName: first,
+                lastName: last,
+                phone: _phoneController.text.trim().isNotEmpty
+                    ? _phoneController.text.trim()
+                    : null,
+                address: _addressController.text.trim().isNotEmpty
+                    ? _addressController.text.trim()
+                    : null,
+                currentLevel: _selectedDiscipleshipLevel,
+                firstContact: DateTime.now(),
+                lastContact: DateTime.now(),
+                notes: 'Enrolled via interactive lesson: ${_resolvedLesson.title}',
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+            );
+
+            await discipleship.createStudySession(
+              StudySession(
+                id: '',
+                contactId: newContact.id,
+                discipleMakerId: authUser.uid,
+                type: StudyType.bibleStudy,
+                title: _resolvedLesson.title,
+                topic: _resolvedLesson.category.isNotEmpty
+                    ? _resolvedLesson.category
+                    : 'What The Bible Says Series',
+                bibleTexts: bibleRefs.isNotEmpty ? bibleRefs : _heroVerseRef,
+                date: DateTime.now(),
+                durationMinutes: 20,
+                completed: _completionRatio >= 0.8,
+                notes:
+                    'Initial study: ${(_completionRatio * 100).round()}% completed. Enrolled at ${_formatLevelName(_selectedDiscipleshipLevel)} stage.',
+                createdAt: DateTime.now(),
+              ),
+            );
+
+            _matchedContact = newContact;
+            _matchedContactStudyCount = 1;
+            _userContacts.add(newContact);
+
+            discipleshipSynced = true;
+            discipleshipNotice =
+                '✓ Enrolled ${newContact.fullName} as ${_formatLevelName(_selectedDiscipleshipLevel)} & logged Study #1!';
+          }
+        }
+      } catch (e) {
+        debugPrint('Discipleship sync error (saved locally): $e');
+      }
+    }
+
     if (!mounted) return;
     setState(() {
+      _isSaving = false;
       _showSavedBanner = true;
     });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          discipleshipSynced
+              ? discipleshipNotice
+              : '✓ Study responses saved to your device!',
+        ),
+        backgroundColor: _brand700,
+        duration: const Duration(seconds: 4),
+      ),
+    );
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) {
         setState(() {
@@ -323,6 +625,81 @@ class _InteractiveLessonReaderScreenState
         });
       }
     });
+  }
+
+  Future<void> _confirmResetStudy() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.refresh_rounded, color: _brand700),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Reset Study for New Prospect?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'This will clear all your answers, responses, and disciple details from this screen so you can conduct this study fresh with a new prospect.\n\nAny prior study sessions logged to your Discipleship Tracker remain safely saved.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _brand700),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reset to 0%'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_storageKey);
+
+      setState(() {
+        for (final controller in _textControllers.values) {
+          controller.clear();
+        }
+        for (final k in _checkboxStates.keys) {
+          _checkboxStates[k] = false;
+        }
+        for (final k in _decisionStates.keys) {
+          _decisionStates[k] = null;
+        }
+        _commitmentChecked = false;
+        _nameController.clear();
+        _phoneController.clear();
+        _addressController.clear();
+        _matchedContact = null;
+        _matchedContactStudyCount = 0;
+        _selectedDiscipleshipLevel = DiscipleshipLevel.prospect;
+        _showSavedBanner = false;
+        _completionRatio = 0.0;
+      });
+      await InteractiveLessonsService.instance
+          .updateLessonProgress(_resolvedLesson.id, 0.0);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Study reset to 0%! Ready for your new prospect.'),
+            backgroundColor: _brand700,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _exportStudySummary() async {
@@ -369,6 +746,10 @@ class _InteractiveLessonReaderScreenState
     if (_phoneController.text.trim().isNotEmpty) {
       buf.writeln('Phone: ${_phoneController.text.trim()}');
     }
+    if (_addressController.text.trim().isNotEmpty) {
+      buf.writeln('Location: ${_addressController.text.trim()}');
+    }
+    buf.writeln('Discipleship Stage: ${_formatLevelName(_selectedDiscipleshipLevel)}');
 
     await Clipboard.setData(ClipboardData(text: buf.toString()));
     if (!mounted) return;
@@ -379,6 +760,16 @@ class _InteractiveLessonReaderScreenState
         ),
         backgroundColor: _brand700,
       ),
+    );
+  }
+
+  void _openScripture(String reference) {
+    final normalized = PdfExtractorService.normalizeScriptureRef(reference);
+    if (normalized.isEmpty) return;
+    BibleReferenceModalSheet.show(
+      context,
+      reference: normalized,
+      initialVersion: 'NKJV',
     );
   }
 
@@ -425,6 +816,113 @@ class _InteractiveLessonReaderScreenState
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: _buildStickyBottomSaveBar(pct),
+    );
+  }
+
+  Widget _buildStickyBottomSaveBar(int pct) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F1E16) : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
+        ],
+        border: Border(
+          top: BorderSide(
+            color: isDark ? const Color(0xFF1E3D2B) : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
+        ),
+      ),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 10,
+        bottom: MediaQuery.of(context).padding.bottom + 10,
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF143021) : const Color(0xFFDCFCE7),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF22C55E).withValues(alpha: 0.4)
+                    : const Color(0xFF86EFAC),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _completionRatio >= 1.0
+                      ? Icons.check_circle
+                      : Icons.trending_up,
+                  size: 16,
+                  color: isDark
+                      ? const Color(0xFF4ADE80)
+                      : const Color(0xFF15803D),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '$pct%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? const Color(0xFF4ADE80)
+                        : const Color(0xFF15803D),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: _isSaving ? null : _saveProgressLocally,
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.cloud_done_outlined,
+                      size: 18, color: Colors.white),
+              label: Text(
+                _isSaving
+                    ? 'Saving...'
+                    : (_showSavedBanner
+                        ? 'Saved Successfully!'
+                        : 'Save Lesson Progress'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    _showSavedBanner ? const Color(0xFF047857) : _brand700,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -487,6 +985,39 @@ class _InteractiveLessonReaderScreenState
                   ),
                 ),
                 const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Reset study to 0% for a new prospect',
+                  child: InkWell(
+                    onTap: _confirmResetStudy,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _brand800,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.refresh_rounded,
+                              color: _gold400, size: 13),
+                          SizedBox(width: 3),
+                          Text(
+                            'Reset',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -608,7 +1139,7 @@ class _InteractiveLessonReaderScreenState
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      '"$_heroVerse" — $_heroVerseRef',
+                      '"$_heroVerse"',
                       style: const TextStyle(
                         color: Color(0xFFD1FAE5),
                         fontSize: 14,
@@ -617,6 +1148,42 @@ class _InteractiveLessonReaderScreenState
                         fontFamily: 'Georgia',
                       ),
                     ),
+                    if (_heroVerseRef.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () => _openScripture(_heroVerseRef),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: _gold400.withValues(alpha: 0.55),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.menu_book_outlined,
+                                  color: _gold400, size: 13),
+                              const SizedBox(width: 5),
+                              Text(
+                                _heroVerseRef,
+                                style: const TextStyle(
+                                  color: _gold400,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: _gold400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     Wrap(
                       spacing: 8,
@@ -655,9 +1222,34 @@ class _InteractiveLessonReaderScreenState
                   ],
                 );
 
+                final coverUrl = (_resolvedLesson.coverImage ??
+                        widget.lessonData?['coverImage'] ??
+                        widget.lessonData?['cover_image'] ??
+                        widget.lessonData?['imageUrl'])
+                    ?.toString()
+                    .trim() ??
+                    '';
+
+                final Widget fallbackBadgeIcon = Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF059669).withValues(alpha: 0.25),
+                    border: Border.all(
+                      color: const Color(0xFF34D399).withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.menu_book_rounded,
+                    color: Color(0xFFA7F3D0),
+                    size: 26,
+                  ),
+                );
+
                 final rightCard = Container(
-                  width: 165,
-                  padding: const EdgeInsets.all(16),
+                  width: 175,
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: const Color(0xFF022C22),
                     borderRadius: BorderRadius.circular(14),
@@ -669,22 +1261,29 @@ class _InteractiveLessonReaderScreenState
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF059669).withValues(alpha: 0.25),
-                          border: Border.all(
-                            color: const Color(0xFF34D399).withValues(alpha: 0.5),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.menu_book_rounded,
-                          color: Color(0xFFA7F3D0),
-                          size: 26,
-                        ),
-                      ),
+                      if (coverUrl.isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: coverUrl.startsWith('assets/')
+                              ? Image.asset(
+                                  coverUrl,
+                                  width: 144,
+                                  height: 112,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      fallbackBadgeIcon,
+                                )
+                              : SizedBox(
+                                  width: 144,
+                                  height: 112,
+                                  child: CustomImage(
+                                    imageUrl: coverUrl,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                        )
+                      else
+                        fallbackBadgeIcon,
                       const SizedBox(height: 10),
                       Text(
                         _resolvedLesson.category.toUpperCase(),
@@ -789,9 +1388,9 @@ class _InteractiveLessonReaderScreenState
                               color: _brand700, size: 18),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
+                            child: _buildFormattedText(
                               _introHighlight,
-                              style: const TextStyle(
+                              baseStyle: const TextStyle(
                                 color: Color(0xFF022C22),
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13.5,
@@ -1026,15 +1625,33 @@ class _InteractiveLessonReaderScreenState
                 fontFamily: 'Georgia',
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Align(
               alignment: Alignment.centerRight,
-              child: Text(
-                '— ${verses[i]['reference'] ?? ''}',
-                style: const TextStyle(
-                  color: _brand700,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+              child: InkWell(
+                onTap: () => _openScripture(verses[i]['reference'] ?? ''),
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.menu_book_outlined,
+                          color: _brand700, size: 13),
+                      const SizedBox(width: 4),
+                      Text(
+                        '— ${verses[i]['reference'] ?? ''}',
+                        style: const TextStyle(
+                          color: _brand700,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          decoration: TextDecoration.underline,
+                          decorationColor: _brand700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1133,12 +1750,27 @@ class _InteractiveLessonReaderScreenState
                               height: 1.4,
                             ),
                             children: [
-                              TextSpan(
-                                text: '${item['label']} ',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
+                              ...ScriptureTextParser.buildSpans(
+                                context,
+                                '${item['label']} ',
+                                baseStyle: const TextStyle(
+                                  color: Color(0xFF334155),
+                                  fontSize: 12.5,
+                                  height: 1.4,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                referenceColor: _brand700,
                               ),
-                              TextSpan(text: item['text'] ?? ''),
+                              ...ScriptureTextParser.buildSpans(
+                                context,
+                                item['text'] ?? '',
+                                baseStyle: const TextStyle(
+                                  color: Color(0xFF334155),
+                                  fontSize: 12.5,
+                                  height: 1.4,
+                                ),
+                                referenceColor: _brand700,
+                              ),
                             ],
                           ),
                         ),
@@ -1196,8 +1828,9 @@ class _InteractiveLessonReaderScreenState
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              ScriptureRichText(
                 f['quote'] ?? '',
+                referenceColor: _brand700,
                 style: const TextStyle(
                   color: Color(0xFF334155),
                   fontStyle: FontStyle.italic,
@@ -1207,8 +1840,9 @@ class _InteractiveLessonReaderScreenState
               ),
               if ((f['text'] ?? '').isNotEmpty) ...[
                 const SizedBox(height: 6),
-                Text(
+                ScriptureRichText(
                   f['text']!,
+                  referenceColor: _brand700,
                   style: const TextStyle(
                     color: Color(0xFF475569),
                     fontSize: 12,
@@ -1309,8 +1943,9 @@ class _InteractiveLessonReaderScreenState
             ],
           ),
           const SizedBox(height: 8),
-          Text(
+          ScriptureRichText(
             '"${testimony['text'] ?? ''}"',
+            referenceColor: _brand700,
             style: const TextStyle(
               color: Color(0xFF1E293B),
               fontSize: 13,
@@ -1410,20 +2045,41 @@ class _InteractiveLessonReaderScreenState
                       cells: [
                         for (int c = 0; c < columns.length; c++)
                           DataCell(
-                            Text(
-                              c < (rawRows[r] as List).length
+                            Builder(builder: (context) {
+                              final cellText = c < (rawRows[r] as List).length
                                   ? rawRows[r][c].toString()
-                                  : '',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: c == 0
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                                color: c == 1
+                                  : '';
+                              final isRefCol = c >= 1 ||
+                                  ScriptureTextParser.hasReferences(cellText);
+                              if (isRefCol && cellText.trim().isNotEmpty) {
+                                final refColor = c == 1
                                     ? _brand700
-                                    : const Color(0xFF334155),
-                              ),
-                            ),
+                                    : const Color(0xFF1D4ED8);
+                                return InkWell(
+                                  onTap: () => _openScripture(cellText),
+                                  child: Text(
+                                    cellText,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: refColor,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: refColor,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return Text(
+                                cellText,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: c == 0
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                  color: const Color(0xFF334155),
+                                ),
+                              );
+                            }),
                           ),
                         DataCell(
                           Checkbox(
@@ -1508,7 +2164,16 @@ class _InteractiveLessonReaderScreenState
                             style:
                                 const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          TextSpan(text: s.steps[i]['text'] ?? ''),
+                          ...ScriptureTextParser.buildSpans(
+                            context,
+                            s.steps[i]['text'] ?? '',
+                            baseStyle: const TextStyle(
+                              color: Color(0xFF334155),
+                              fontSize: 13.5,
+                              height: 1.45,
+                            ),
+                            referenceColor: _brand700,
+                          ),
                         ],
                       ),
                     ),
@@ -1565,8 +2230,9 @@ class _InteractiveLessonReaderScreenState
             ],
           ),
           const SizedBox(height: 6),
-          Text(
+          ScriptureRichText(
             noteText,
+            referenceColor: _brand700,
             style: const TextStyle(
               color: Color(0xFF78350F),
               fontSize: 12.5,
@@ -1628,8 +2294,9 @@ class _InteractiveLessonReaderScreenState
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
+              ScriptureRichText(
                 qa['text'] ?? '',
+                referenceColor: _brand700,
                 style: const TextStyle(
                   color: Color(0xFF334155),
                   fontSize: 13.5,
@@ -1906,105 +2573,228 @@ class _InteractiveLessonReaderScreenState
                   ),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _nameController,
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 12.5),
-                        decoration: InputDecoration(
-                          hintText: 'Your Name',
-                          hintStyle: const TextStyle(
-                              color: Colors.white54, fontSize: 12),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.1),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(
+                // ── Discipleship Tracker Integration Card (Pre-Revamp Format) ──
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.people_alt,
+                              color: _gold400, size: 18),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Disciple Details (Discipleship Tracker)',
+                              style: TextStyle(
+                                color: _gold400,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          if (_matchedContact != null)
+                            IconButton(
+                              icon: const Icon(Icons.clear,
+                                  color: Colors.white70, size: 18),
+                              tooltip: 'Clear selection',
+                              onPressed: _clearMatchedContact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Record who you studied with. Existing disciples will be updated with this new study; new persons will be enrolled into your Discipleship Tracker.',
+                        style: TextStyle(
+                            color: Colors.white70, fontSize: 11, height: 1.3),
+                      ),
+                      const SizedBox(height: 12),
+
+                      if (_matchedContact != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF14532D),
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Colors.white24),
+                            border: Border.all(
+                                color:
+                                    Colors.greenAccent.withValues(alpha: 0.6)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.verified,
+                                  color: Colors.greenAccent, size: 16),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Matched: ${_matchedContact!.fullName}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      '$_matchedContactStudyCount prior studies logged • Current Stage: ${_formatLevelName(_matchedContact!.currentLevel)}',
+                                      style: const TextStyle(
+                                          color: Colors.white70, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _phoneController,
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 12.5),
-                        decoration: InputDecoration(
-                          hintText: 'Phone Number / WhatsApp',
-                          hintStyle: const TextStyle(
-                              color: Colors.white54, fontSize: 12),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.1),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Colors.white24),
+                        const SizedBox(height: 12),
+                      ],
+
+                      _buildDiscipleNameAutocomplete(),
+                      const SizedBox(height: 10),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: const InputDecoration(
+                                labelText: 'Phone / WhatsApp',
+                                labelStyle: TextStyle(
+                                    color: Colors.white70, fontSize: 12),
+                                hintText: 'e.g. 08012345678',
+                                hintStyle: TextStyle(
+                                    color: Colors.white38, fontSize: 11),
+                                isDense: true,
+                                filled: true,
+                                fillColor: Colors.black26,
+                                border: OutlineInputBorder(),
+                              ),
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 12),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _addressController,
+                              decoration: const InputDecoration(
+                                labelText: 'Campus / Address',
+                                labelStyle: TextStyle(
+                                    color: Colors.white70, fontSize: 12),
+                                hintText: 'e.g. UNILAG / Hall 3',
+                                hintStyle: TextStyle(
+                                    color: Colors.white38, fontSize: 11),
+                                isDense: true,
+                                filled: true,
+                                fillColor: Colors.black26,
+                                border: OutlineInputBorder(),
+                              ),
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 12),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+
+                      Row(
+                        children: [
+                          const Text(
+                            'Stage / Level:',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.black38,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.white30),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: ModernDropdownButton<DiscipleshipLevel>(
+                                  value: _selectedDiscipleshipLevel,
+                                  dropdownColor: const Color(0xFF14241B),
+                                  isExpanded: true,
+                                  icon: const Icon(Icons.arrow_drop_down,
+                                      color: _gold400),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  items: DiscipleshipLevel.values.map((lvl) {
+                                    return DropdownMenuItem<DiscipleshipLevel>(
+                                      value: lvl,
+                                      child: Text(_formatLevelName(lvl)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (lvl) {
+                                    if (lvl != null) {
+                                      setState(() =>
+                                          _selectedDiscipleshipLevel = lvl);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 18),
 
-          // Save & Export Action Buttons
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 12,
-            runSpacing: 10,
-            children: [
-              ElevatedButton.icon(
-                onPressed: _saveProgressLocally,
-                icon: const Icon(Icons.save, size: 16),
-                label: const Text('SAVE MY ANSWERS LOCALLY'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _gold500,
-                  foregroundColor: const Color(0xFF0F172A),
-                  textStyle: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    letterSpacing: 0.6,
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+          // Single Secondary Export Action (Primary Save & Discipleship Sync is pinned in bottom bar)
+          Center(
+            child: OutlinedButton.icon(
+              onPressed: _exportStudySummary,
+              icon: const Icon(Icons.download, size: 16),
+              label: const Text('COPY / EXPORT STUDY SUMMARY'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFF34D399)),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 0.6,
                 ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
-              OutlinedButton.icon(
-                onPressed: _exportStudySummary,
-                icon: const Icon(Icons.download, size: 16),
-                label: const Text('COPY / EXPORT STUDY SUMMARY'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFF34D399)),
-                  textStyle: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    letterSpacing: 0.6,
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
+            ),
           ),
 
           if (_showSavedBanner) ...[
             const SizedBox(height: 12),
             const Text(
-              '✓ Your study notes and responses have been saved successfully to your device!',
+              '✓ Your study notes and disciple session have been saved!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: _gold400,
@@ -2015,6 +2805,94 @@ class _InteractiveLessonReaderScreenState
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildDiscipleNameAutocomplete() {
+    final query = _nameController.text.trim().toLowerCase();
+    final matches = (query.isEmpty || _matchedContact != null)
+        ? const <DiscipleshipContact>[]
+        : _userContacts.where((c) {
+            return c.fullName.toLowerCase().contains(query) ||
+                (c.phone != null && c.phone!.contains(query));
+          }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _nameController,
+          onChanged: (val) {
+            setState(() {});
+            _onNameChanged(val);
+          },
+          decoration: InputDecoration(
+            labelText: 'Disciple Name (or search existing)',
+            labelStyle: const TextStyle(color: Colors.white70, fontSize: 12),
+            hintText: 'Type name — existing disciples appear if matched',
+            hintStyle: const TextStyle(color: Colors.white38, fontSize: 11),
+            prefixIcon:
+                const Icon(Icons.person_search, color: _gold400, size: 20),
+            suffixIcon: _nameController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear,
+                        color: Colors.white54, size: 18),
+                    tooltip: 'Clear name',
+                    onPressed: _clearMatchedContact,
+                  )
+                : null,
+            isDense: true,
+            filled: true,
+            fillColor: Colors.black26,
+            border: const OutlineInputBorder(),
+          ),
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+        ),
+        if (matches.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 180),
+            decoration: BoxDecoration(
+              color: const Color(0xFF162E20),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: Colors.greenAccent.withValues(alpha: 0.4)),
+            ),
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              itemCount: matches.length,
+              separatorBuilder: (_, __) => Divider(
+                height: 1,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+              itemBuilder: (context, index) {
+                final contact = matches[index];
+                return ListTile(
+                  dense: true,
+                  visualDensity: VisualDensity.compact,
+                  title: Text(
+                    contact.fullName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${_formatLevelName(contact.currentLevel)}${contact.phone != null && contact.phone!.isNotEmpty ? ' • ${contact.phone}' : ''}',
+                    style:
+                        const TextStyle(color: Colors.white60, fontSize: 10),
+                  ),
+                  trailing: const Icon(Icons.add_task,
+                      color: Colors.greenAccent, size: 16),
+                  onTap: () => _selectContact(contact),
+                );
+              },
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -2063,9 +2941,10 @@ class _InteractiveLessonReaderScreenState
           ),
         ),
         const SizedBox(height: 6),
-        Text(
+        ScriptureRichText(
           '"$_heroVerse" — $_heroVerseRef',
           textAlign: TextAlign.center,
+          referenceColor: _brand700,
           style: const TextStyle(
             color: Color(0xFF475569),
             fontSize: 12,
@@ -2085,49 +2964,59 @@ class _InteractiveLessonReaderScreenState
     );
   }
 
-  /// Renders inline markup (__underlined__, **bold**, *italic*).
+  /// Renders inline markup (__underlined__, **bold**, *italic*) AND turns
+  /// every embedded Bible reference into a clickable link that opens
+  /// [BibleReferenceModalSheet].
   Widget _buildFormattedText(String input, {required TextStyle baseStyle}) {
     final spans = <InlineSpan>[];
     final tokenRegex = RegExp(r'__(.+?)__|\*\*(.+?)\*\*|\*(.+?)\*');
+    final isLightText = (baseStyle.color?.computeLuminance() ?? 0.0) > 0.5;
+    final refColor = isLightText ? _gold400 : _brand700;
     int lastIdx = 0;
+
+    void appendWithRefs(String text, TextStyle style) {
+      if (text.isEmpty) return;
+      spans.addAll(
+        ScriptureTextParser.buildSpans(
+          context,
+          text,
+          baseStyle: style,
+          referenceColor: refColor,
+        ),
+      );
+    }
 
     for (final match in tokenRegex.allMatches(input)) {
       if (match.start > lastIdx) {
-        spans.add(TextSpan(text: input.substring(lastIdx, match.start)));
+        appendWithRefs(input.substring(lastIdx, match.start), baseStyle);
       }
       if (match.group(1) != null) {
-        spans.add(
-          TextSpan(
-            text: match.group(1),
-            style: baseStyle.copyWith(
-              fontWeight: FontWeight.bold,
-              color: _brand900,
-              decoration: TextDecoration.underline,
-              decorationColor: _gold500,
-              decorationThickness: 2,
-            ),
+        appendWithRefs(
+          match.group(1)!,
+          baseStyle.copyWith(
+            fontWeight: FontWeight.bold,
+            color: _brand900,
+            decoration: TextDecoration.underline,
+            decorationColor: _gold500,
+            decorationThickness: 2,
           ),
         );
       } else if (match.group(2) != null) {
-        spans.add(
-          TextSpan(
-            text: match.group(2),
-            style: baseStyle.copyWith(fontWeight: FontWeight.bold),
-          ),
+        appendWithRefs(
+          match.group(2)!,
+          baseStyle.copyWith(fontWeight: FontWeight.bold),
         );
       } else if (match.group(3) != null) {
-        spans.add(
-          TextSpan(
-            text: match.group(3),
-            style: baseStyle.copyWith(fontStyle: FontStyle.italic),
-          ),
+        appendWithRefs(
+          match.group(3)!,
+          baseStyle.copyWith(fontStyle: FontStyle.italic),
         );
       }
       lastIdx = match.end;
     }
 
     if (lastIdx < input.length) {
-      spans.add(TextSpan(text: input.substring(lastIdx)));
+      appendWithRefs(input.substring(lastIdx), baseStyle);
     }
 
     return RichText(

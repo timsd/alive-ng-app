@@ -206,15 +206,14 @@ class InAppUpdateService {
     if (_updateDialogShown) return;
 
     try {
-      final databases = Databases(appwriteClient);
-      // ignore: deprecated_member_use
-      final doc = await databases.getDocument(
+      final tables = TablesDB(appwriteClient);
+      final doc = await tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
-        collectionId: AppwriteBackendConfig.appSettingsCollectionId,
-        documentId: 'app_version',
+        tableId: AppwriteBackendConfig.appSettingsCollectionId,
+        rowId: 'app_version',
       );
 
-      final dynamic rawValue = doc.data['value'];
+      final dynamic rawValue = doc.data['value'] ?? doc.data['setting_value'];
       if (rawValue == null) return;
 
       final Map<String, dynamic> data = rawValue is String

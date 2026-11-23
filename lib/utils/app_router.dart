@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/offline_bible_service.dart';
+import '../services/notification_service.dart';
 import '../screens/splash/animated_splash_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/oath/oath_screen.dart';
@@ -137,7 +138,8 @@ bool _isGuestAccessibleRoute(String path) {
       guestAccessibleRoutes.contains(normalized)) {
     return true;
   }
-  if (normalized.startsWith('/prayer-requests/')) {
+  if (normalized.startsWith('/prayer-requests/') ||
+      normalized.startsWith('/meet/')) {
     return true;
   }
   return false;
@@ -305,6 +307,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         debugPrint('Allow splash route');
         return null;
       }
+      NotificationService.instance.markSplashCompleted();
 
       // Allow onboarding route before authentication; signed-in users proceed straight to home.
       if (isOnboardingRoute) {
@@ -433,8 +436,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             final isAuthenticated =
                 ref.read(authGatewayProvider).currentUser != null;
 
-            // 1. Check if the app was launched via a shared deep link!
-            final incomingDeepLink = pendingStartupDeepLink ??
+            // 1. Check if the app was launched via a push/local notification tap
+            //    or a shared deep link (notification takes top priority so splash
+            //    never overwrites a tapped notification with /home).
+            final notificationRoute =
+                NotificationService.instance.consumePendingNotificationRoute();
+            final incomingDeepLink = notificationRoute ??
+                pendingStartupDeepLink ??
                 getInitialRoute() ??
                 getPostAuthRedirect();
             pendingStartupDeepLink = null;
@@ -859,6 +867,17 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) {
               final room = state.uri.queryParameters['room'] ?? AliveMeetConfig.communityRoom;
               return LiveKitMeetingScreen(customRoomName: room);
+            },
+          ),
+          GoRoute(
+            path: '${AppConstants.meetRoute}/:room',
+            builder: (context, state) {
+              final room = state.pathParameters['room']?.trim();
+              return LiveKitMeetingScreen(
+                customRoomName: (room != null && room.isNotEmpty)
+                    ? room
+                    : AliveMeetConfig.communityRoom,
+              );
             },
           ),
 

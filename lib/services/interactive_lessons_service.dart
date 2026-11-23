@@ -255,11 +255,23 @@ class InteractiveLessonsService extends ChangeNotifier {
         );
         tractsSynced = true;
         final contentByTractId = <String, String>{};
+        final metaByTractId = <String, Map<String, dynamic>>{};
         for (final row in contentsRes.rows) {
           final tid = (row.data['tract_id'] ?? row.$id).toString();
           final body = (row.data['content'] ?? '').toString();
           if (tid.isNotEmpty && body.trim().isNotEmpty) {
             contentByTractId[tid] = body;
+          }
+          final rawMeta = row.data['metadata'];
+          if (tid.isNotEmpty && rawMeta is String && rawMeta.trim().isNotEmpty) {
+            try {
+              final decoded = jsonDecode(rawMeta);
+              if (decoded is Map) {
+                metaByTractId[tid] = Map<String, dynamic>.from(decoded);
+              }
+            } catch (_) {}
+          } else if (tid.isNotEmpty && rawMeta is Map) {
+            metaByTractId[tid] = Map<String, dynamic>.from(rawMeta);
           }
         }
 
@@ -275,10 +287,30 @@ class InteractiveLessonsService extends ChangeNotifier {
           final title = (row.data['title'] ?? existing?.title ?? 'Untitled Lesson').toString();
           final description = (row.data['description'] ?? existing?.description ?? '').toString();
           final category = (row.data['category'] ?? existing?.category ?? 'Bible Study').toString();
-          final coverImage = (row.data['cover_image'] ?? existing?.coverImage)?.toString();
+          final coverImage = (row.data['cover_image'] ??
+                  row.data['image_url'] ??
+                  existing?.coverImage)
+              ?.toString();
           final resolvedContent = remoteContent.trim().isNotEmpty
               ? remoteContent
               : (existing?.content ?? '');
+
+          final meta = metaByTractId[tractId];
+          final rawSections = meta?['interactive_sections'] ?? meta?['interactiveSections'];
+          final parsedSections = rawSections is List
+              ? rawSections
+                  .whereType<Map>()
+                  .map((m) => Map<String, dynamic>.from(m))
+                  .toList()
+              : (existing?.interactiveSections ?? const <Map<String, dynamic>>[]);
+          final rawLessonJson = meta?['lesson_json'] ?? meta?['lessonJson'];
+          final parsedLessonJson = rawLessonJson is Map
+              ? Map<String, dynamic>.from(rawLessonJson)
+              : existing?.lessonJson;
+          final studyTime = (parsedLessonJson?['study_time'] ??
+                  existing?.duration ??
+                  '25 min')
+              .toString();
 
           merged[lessonId] = InteractiveLessonItem(
             id: lessonId,
@@ -286,7 +318,7 @@ class InteractiveLessonsService extends ChangeNotifier {
             description: description,
             category: category.isNotEmpty ? category : 'Bible Study',
             level: existing?.level ?? 'Beginner',
-            duration: existing?.duration ?? '25 min',
+            duration: studyTime,
             content: resolvedContent,
             tractId: tractId,
             coverImage: coverImage,
@@ -294,6 +326,8 @@ class InteractiveLessonsService extends ChangeNotifier {
             progress: existing?.progress ?? 0.0,
             isCompleted: existing?.isCompleted ?? false,
             isActive: existing?.isActive ?? true,
+            interactiveSections: parsedSections,
+            lessonJson: parsedLessonJson,
           );
         }
       } catch (e) {

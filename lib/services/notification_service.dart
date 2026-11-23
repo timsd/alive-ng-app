@@ -79,8 +79,32 @@ class NotificationService {
   bool _isInitialized = false;
   bool _fcmListenersAttached = false;
   bool _isRegisteringPush = false;
+  bool _splashCompleted = false;
+  bool _initialFcmMessageChecked = false;
   String? _currentToken;
   String? _lastRegisteredKey;
+  String? _pendingNotificationRoute;
+
+  /// Consumes any notification deep-link route captured during cold start
+  /// (before splash finished) and marks splash handoff complete so subsequent
+  /// notification taps navigate immediately.
+  String? consumePendingNotificationRoute() {
+    _splashCompleted = true;
+    final route = _pendingNotificationRoute;
+    _pendingNotificationRoute = null;
+    return route;
+  }
+
+  /// Marks splash handoff complete and immediately dispatches any notification
+  /// route that arrived right before splash finished.
+  void markSplashCompleted() {
+    _splashCompleted = true;
+    final route = _pendingNotificationRoute;
+    if (route != null && route.isNotEmpty) {
+      _pendingNotificationRoute = null;
+      _navigateToResolvedRoute(route);
+    }
+  }
 
   // Initialize notification service
   Future<void> initialize() async {
@@ -105,6 +129,44 @@ class NotificationService {
         settings: settings,
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
+
+      // Capture cold-start launch from a local/scheduled notification BEFORE
+      // any slow network/permission work so splash hands off to the exact route.
+      if (!kIsWeb) {
+        try {
+          final launchDetails =
+              await _localNotifications.getNotificationAppLaunchDetails();
+          if (launchDetails?.didNotificationLaunchApp == true) {
+            final launchResponse = launchDetails?.notificationResponse;
+            if (launchResponse != null) {
+              _onNotificationTapped(launchResponse);
+            }
+          }
+        } catch (e) {
+          _logger.warning('Could not read local notification launch details: $e');
+        }
+
+        // Capture cold-start FCM launch IMMEDIATELY (independent of token/network)
+        // and attach onMessageOpenedApp listener right away.
+        try {
+          if (await _ensureFirebaseReady()) {
+            final fcm = FirebaseMessaging.instance;
+            _attachFcmListenersOnce(fcm);
+            if (!_initialFcmMessageChecked) {
+              _initialFcmMessageChecked = true;
+              final initialMessage = await fcm.getInitialMessage();
+              if (initialMessage != null) {
+                _logger.info(
+                  'Launched from terminated state by push notification: ${initialMessage.messageId}',
+                );
+                handleMessageOpenedApp(initialMessage.data);
+              }
+            }
+          }
+        } catch (e) {
+          _logger.warning('Could not inspect initial FCM message: $e');
+        }
+      }
 
       // Listen for auth state changes BEFORE the (slow) permission/token steps.
       // Note: AppwriteAuthGateway also calls onAuthUserChanged() directly so
@@ -328,8 +390,22 @@ class NotificationService {
 
     try {
       final fcm = FirebaseMessaging.instance;
-      final firstAttach = !_fcmListenersAttached;
       _attachFcmListenersOnce(fcm);
+
+      // Ensure cold-start FCM message is also checked if initialize() ran
+      // before Firebase finished booting.
+      if (!_initialFcmMessageChecked) {
+        _initialFcmMessageChecked = true;
+        try {
+          final initialMessage = await fcm.getInitialMessage();
+          if (initialMessage != null) {
+            _logger.info(
+              'Launched from terminated state by push notification: ${initialMessage.messageId}',
+            );
+            handleMessageOpenedApp(initialMessage.data);
+          }
+        } catch (_) {}
+      }
 
       // Request notification permissions cleanly once via FCM (handles iOS + Android 13+)
       if (requestPermission) {
@@ -382,17 +458,6 @@ class NotificationService {
           try {
             await fcm.subscribeToTopic('all_users');
           } catch (_) {}
-        }
-
-        // Check if launched from terminated state via notification click (only once)
-        if (firstAttach) {
-          final initialMessage = await fcm.getInitialMessage();
-          if (initialMessage != null) {
-            _logger.info(
-              'Launched from terminated state by push notification: ${initialMessage.messageId}',
-            );
-            handleMessageOpenedApp(initialMessage.data);
-          }
         }
 
         return targetId;
@@ -541,131 +606,196 @@ class NotificationService {
     // Notification Service on iOS. No additional handling needed here.
     }
 
-  void handleMessageOpenedApp(Map<String, dynamic> data) {
-    _logger.info('Notification opened: ${data.keys.toList()}');
-    dismissActivePopups();
-    // Navigate based on the data payload — check route first, otherwise check type/id
-    final rawRoute = (data['route'] as String?)?.trim();
-    if (rawRoute != null &&
-        rawRoute.startsWith('/') &&
-        navigatorKey.currentState != null) {
-      navigatorKey.currentState!.context.go(rawRoute);
-    } else {
-      _navigateFromNotification(data);
+  /// Resolves the exact in-app GoRouter route from a push/local notification payload.
+  /// Supports relative routes (`/donate`), full ALIVE URLs (`https://app.alivenigeria.org/donate?projectId=...`),
+  /// and `type` + `id` structured payloads.
+  String resolveNotificationRoute(Map<String, dynamic> data) {
+    String? extractAppRoute(dynamic raw) {
+      if (raw == null) return null;
+      final s = raw.toString().trim();
+      if (s.isEmpty) return null;
+      if (s.startsWith('/')) return s;
+      final uri = Uri.tryParse(s);
+      if (uri != null &&
+          (uri.scheme == 'https' || uri.scheme == 'http' || uri.scheme == 'aliveng') &&
+          uri.path.startsWith('/') &&
+          uri.path.length > 1) {
+        return uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
+      }
+      return null;
     }
-  }
 
-  // Handle local notification tap with custom logic
-  void _onNotificationTapped(NotificationResponse response) {
-    final payload = response.payload;
-    if (payload != null) {
-      _logger.info('Local notification tapped with payload: $payload');
-
-      try {
-        // Parse the payload as JSON if it contains structured data
-        if (payload.startsWith('{')) {
-          final decoded = jsonDecode(payload);
-          if (decoded is Map) {
-            handleMessageOpenedApp(Map<String, dynamic>.from(decoded));
-          }
-        } else {
-          // Handle simple string payload
-          _logger.info('Simple payload received: $payload');
-        }
-      } catch (e) {
-        _logger.error('Error parsing notification payload: $e');
+    for (final key in const [
+      'route',
+      'deep_link',
+      'deepLink',
+      'target_route',
+      'path',
+      'url',
+      'link',
+      'action',
+    ]) {
+      final candidate = extractAppRoute(data[key]);
+      if (candidate != null && candidate != '/') {
+        return candidate;
       }
     }
-  }
 
-  // Navigate based on notification data
-  void _navigateFromNotification(Map<String, dynamic> data) {
-    final type = data['type'];
-    final id = data['id'];
-
-    _logger.info('Navigating from notification: type=$type, id=$id');
-
-    // Use the global navigator key to navigate from background contexts
-    final context = navigatorKey.currentContext;
-    if (context == null) {
-      _logger.warning('Navigation context not available');
-      return;
-    }
+    final type = (data['type'] ?? '').toString().trim().toLowerCase();
+    final rawId = (data['id'] ??
+            data['itemId'] ??
+            data['item_id'] ??
+            data['targetId'] ??
+            data['target_id'])
+        ?.toString()
+        .trim();
+    final id = (rawId != null && rawId.isNotEmpty) ? rawId : null;
 
     switch (type) {
       case 'prayer_request':
-        // Navigate to prayer request details with id: $id
-        context.go('/prayer-requests${id != null ? '/$id' : ''}');
-        _logger.info('Navigated to prayer request: $id');
-        break;
-      case 'mission':
-        // Navigate to mission details with id: $id
-        context.go('/missions${id != null ? '/$id' : ''}');
-        _logger.info('Navigated to mission: $id');
-        break;
-      case 'daily_verse':
-        // Navigate to daily verse
-        context.go('/daily');
-        _logger.info('Navigated to daily verse');
-        break;
-      case 'health_reminder':
-        // Navigate to health screen
-        context.go('/health');
-        _logger.info('Navigated to health screen');
-        break;
-      case 'study_reminder':
-        // Navigate to study screen
-        context.go('/study');
-        _logger.info('Navigated to study screen');
-        break;
-      case 'bible_memorization':
-        // Navigate to Bible game screen for memorization
-        context.go('/bible-game');
-        _logger.info('Navigated to Bible memorization game');
-        break;
+      case 'prayer_support':
+        return id != null ? '/prayer-requests/$id' : '/prayer-wall';
       case 'prayer_reminder':
-        // Navigate to prayer screen
-        context.go('/prayer');
-        _logger.info('Navigated to prayer screen');
-                break;
+      case 'prayer':
+        return '/prayer-wall';
+      case 'announcement':
+      case 'announcements':
+        return id != null
+            ? '/announcements?id=${Uri.encodeComponent(id)}'
+            : '/announcements';
+      case 'event':
+      case 'events':
+        return id != null
+            ? '/events?eventId=${Uri.encodeComponent(id)}'
+            : '/events';
+      case 'podcast':
+      case 'podcasts':
+        return id != null
+            ? '/podcasts?id=${Uri.encodeComponent(id)}'
+            : '/podcasts';
+      case 'tract':
+      case 'tracts':
+        return id != null
+            ? '/tracts?id=${Uri.encodeComponent(id)}'
+            : '/tracts';
+      case 'lesson':
+      case 'interactive_lesson':
+      case 'interactive_lessons':
+        return id != null
+            ? '/interactive-lessons?id=${Uri.encodeComponent(id)}'
+            : '/interactive-lessons';
+      case 'donation':
+      case 'donate':
+      case 'monthly_donation_reminder':
+        return '/donate';
+      case 'chat':
+      case 'message':
+      case 'chat_message':
+        return id != null
+            ? '/chat?channelId=${Uri.encodeComponent(id)}'
+            : '/chat';
+      case 'testimony':
+      case 'testimonies':
+        return '/testimonies';
+      case 'chapter':
+      case 'chapters':
+        return '/chapters';
+      case 'mission':
+      case 'missions':
       case 'mission_reminder':
-        // Navigate to missions screen
-        context.go('/missions');
-        _logger.info('Navigated to missions screen');
-        break;
+        return '/missions';
+      case 'daily_verse':
+      case 'devotional':
+        return '/daily';
+      case 'health_reminder':
+      case 'health':
+        return '/health';
+      case 'study_reminder':
+      case 'study':
+        return '/study';
+      case 'bible_memorization':
+      case 'bible_game':
+        return '/bible-game';
+      case 'bible':
+        return '/bible';
+      case 'billboard':
+      case 'showcase':
+        return '/billboard';
       case 'meeting_started':
-        // Navigate to the LiveKit meeting room when the host starts a meeting.
-        final meetingId = id ?? data['roomName'] ?? data['room'];
-        if (meetingId != null && meetingId.toString().isNotEmpty) {
-          context.go('/meet/$meetingId');
-          _logger.info('Navigated to meeting: $meetingId');
-        } else {
-          context.go('/home');
-          _logger.info('No meeting id in notification; navigated to home');
+      case 'meeting':
+      case 'conference':
+        final meetingId =
+            (id ?? data['roomName'] ?? data['room'])?.toString().trim();
+        if (meetingId != null && meetingId.isNotEmpty) {
+          return '/meet/${Uri.encodeComponent(meetingId)}';
         }
-        break;
+        return '/conference';
       case 'board_decision':
-        // Navigate to the board decisions list for admins/BOD.
-        context.go('/admin/board-decisions');
-        _logger.info('Navigated to board decisions');
-        break;
+      case 'board':
+        return '/admin/board-decisions';
       case 'admin_approval':
       case 'approvals':
       case 'approval':
       case 'pending_registration_approval':
       case 'coordinator_approval':
-        context.go('/admin-approval');
-        _logger.info('Navigated to admin approval');
-        break;
-      case 'announcement':
-        context.go('/home');
-        _logger.info('Navigated to announcement');
-        break;
+        return '/admin-approval';
       default:
-        // Navigate to home
-        context.go('/home');
-        _logger.info('Navigated to home');
-        break;
+        return '/home';
+    }
+  }
+
+  void _navigateToResolvedRoute(String targetRoute) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null || !ctx.mounted) {
+        _pendingNotificationRoute = targetRoute;
+        _logger.warning(
+          'Navigation context unavailable; queued notification route: $targetRoute',
+        );
+        return;
+      }
+      dismissActivePopups();
+      _logger.info('Navigating from notification to: $targetRoute');
+      ctx.go(targetRoute);
+    });
+  }
+
+  void handleMessageOpenedApp(Map<String, dynamic> data) {
+    _logger.info('Notification opened: ${data.keys.toList()}');
+    final targetRoute = resolveNotificationRoute(data);
+    // If splash is still active (cold start) or navigator isn't mounted yet,
+    // queue the destination so AnimatedSplashScreen hands off directly to it
+    // instead of overwriting it with /home.
+    if (!_splashCompleted || navigatorKey.currentContext == null) {
+      _pendingNotificationRoute = targetRoute;
+      _logger.info(
+        'Queued cold-start notification route for post-splash handoff: $targetRoute',
+      );
+      return;
+    }
+    _navigateToResolvedRoute(targetRoute);
+  }
+
+  // Handle local notification tap with custom logic
+  void _onNotificationTapped(NotificationResponse response) {
+    final payload = response.payload?.trim();
+    if (payload != null && payload.isNotEmpty) {
+      _logger.info('Local notification tapped with payload: $payload');
+
+      try {
+        if (payload.startsWith('{')) {
+          final decoded = jsonDecode(payload);
+          if (decoded is Map) {
+            handleMessageOpenedApp(Map<String, dynamic>.from(decoded));
+          }
+        } else if (payload.startsWith('/') || payload.startsWith('http')) {
+          handleMessageOpenedApp({'route': payload});
+        } else {
+          handleMessageOpenedApp({'type': payload});
+        }
+      } catch (e) {
+        _logger.error('Error parsing notification payload: $e');
+      }
     }
   }
 
@@ -686,11 +816,44 @@ class NotificationService {
     }
     configureLocalTimeZone();
 
+    bool playSound = true;
+    try {
+      final saved = await StorageHelper.getNotificationSettings();
+      if (saved != null && saved['sound_enabled'] is bool) {
+        playSound = saved['sound_enabled'] as bool;
+      }
+    } catch (_) {}
+
+    final resolvedChannelId =
+        channelId.trim().isNotEmpty ? channelId.trim() : 'alive_ng_notifications';
+    final (channelName, channelDescription) = switch (resolvedChannelId) {
+      'daily_verse' => (
+          'Daily Bible Verse',
+          'Daily scripture verse and devotional reminders',
+        ),
+      'health_reminders' => (
+          'Health & Wellness Reminders',
+          'Water intake, sleep, and daily health habit reminders',
+        ),
+      'study_reminders' => (
+          'Bible Study Reminders',
+          'Interactive lesson and study guide reminders',
+        ),
+      'prayer_reminders' => (
+          'Prayer Reminders',
+          'Scheduled prayer time and intercession reminders',
+        ),
+      _ => (
+          'ALIVE Nigeria Notifications',
+          'Ministry updates, broadcasts, and ALIVE Meet alerts',
+        ),
+    };
+
     NotificationDetails buildDetails({required bool includeLargeIcon}) {
       final androidDetails = AndroidNotificationDetails(
-        'alive_ng_notifications',
-        'ALIVE Nigeria Notifications',
-        channelDescription: 'Ministry updates, broadcasts, and ALIVE Meet alerts',
+        resolvedChannelId,
+        channelName,
+        channelDescription: channelDescription,
         icon: 'ic_notification',
         largeIcon: includeLargeIcon
             ? const DrawableResourceAndroidBitmap('ic_notification_large')
@@ -698,12 +861,13 @@ class NotificationService {
         color: const Color(0xFF0F9A07),
         importance: Importance.high,
         priority: Priority.high,
+        playSound: playSound,
       );
 
-      const iosDetails = DarwinNotificationDetails(
+      final iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
-        presentSound: true,
+        presentSound: playSound,
       );
 
       return NotificationDetails(

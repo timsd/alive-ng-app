@@ -54,9 +54,18 @@ function getLocalizedMessage(languageCode) {
 
 // Main function handler — called by Appwrite runtime on schedule or manual trigger.
 module.exports = async ({ req, res, log, error }) => {
-  const APPWRITE_ENDPOINT = process.env.APPWRITE_ENDPOINT || 'https://api.alivenigeria.org/v1';
-  const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || '6a3bef53002f5090dedf';
-  const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY;
+  const APPWRITE_ENDPOINT =
+    process.env.APPWRITE_FUNCTION_API_ENDPOINT ||
+    process.env.APPWRITE_ENDPOINT ||
+    'https://api.alivenigeria.org/v1';
+  const APPWRITE_PROJECT_ID =
+    process.env.APPWRITE_FUNCTION_PROJECT_ID ||
+    process.env.APPWRITE_PROJECT_ID ||
+    '6a3bef53002f5090dedf';
+  const APPWRITE_API_KEY =
+    process.env.APPWRITE_FUNCTION_API_KEY ||
+    process.env.APPWRITE_API_KEY ||
+    req.headers['x-appwrite-key'];
   const DATABASE_ID = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
   const APP_SETTINGS_COLLECTION_ID = process.env.APP_SETTINGS_COLLECTION_ID || 'app_settings';
 
@@ -281,9 +290,7 @@ module.exports = async ({ req, res, log, error }) => {
           sound: 'default',
           color: '#0F9A07',
           tag: 'monthly_donation_reminder',
-          badge: '',
           draft: false,
-          scheduledAt: '',
         });
         totalSent++;
       } catch (sendErr) {

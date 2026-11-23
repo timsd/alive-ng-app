@@ -54,13 +54,15 @@ class AppwriteProfileService {
       final dbId = AppwriteBackendConfig.databaseId;
       final usersTable = AppwriteBackendConfig.usersCollectionId;
       _usersSubscription = appwriteRealtime.subscribe([
-        'databases.$dbId.collections.$usersTable.documents.$userId',
+        'tablesdb.$dbId.tables.$usersTable.rows.$userId',
       ]);
       _usersSubscription?.stream.listen(
         (event) {
           try {
             if (event.events.any((e) => e.contains('.update') || e.contains('.create'))) {
-              final data = event.payload;
+              final data = Map<String, dynamic>.from(event.payload);
+              data[r'$tableId'] ??= data[r'$collectionId'] ?? usersTable;
+              data[r'$databaseId'] ??= dbId;
               final userDoc = models.Row.fromMap(data);
               final updatedProfile = userProfileFromDocument(
                 userDoc,

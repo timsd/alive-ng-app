@@ -1714,7 +1714,7 @@
 
         // 2. Fetch from Appwrite backend for remote sync
         try {
-          var res = await fetch('https://api.alivenigeria.org/v1/databases/6a3bef53002f5090dedf/collections/projects/documents?queries[]=' + encodeURIComponent('limit(100)'), {
+          var res = await fetch('https://api.alivenigeria.org/v1/databases/6a089307002e54291a32/collections/projects/documents?queries[]=' + encodeURIComponent(JSON.stringify({ method: 'limit', values: [100] })), {
             headers: { 'X-Appwrite-Project': '6a3bef53002f5090dedf' }
           });
           if (res.ok) {

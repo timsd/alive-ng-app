@@ -16,9 +16,10 @@ class AdminApprovalLinkHandlerScreen extends StatefulWidget {
 class _AdminApprovalLinkHandlerScreenState
     extends State<AdminApprovalLinkHandlerScreen> {
   bool _processing = true;
-  bool _result = false;
+  ApprovalLinkStatus _status = ApprovalLinkStatus.invalidOrExpired;
   bool _handled = false;
   String? _message;
+  String? _pendingRedirectPath;
 
   @override
   void didChangeDependencies() {
@@ -33,31 +34,32 @@ class _AdminApprovalLinkHandlerScreenState
     final uri = GoRouterState.of(context).uri;
     final userId = uri.queryParameters['userId']?.trim();
     final token = uri.queryParameters['token']?.trim();
+    _pendingRedirectPath = uri.toString();
 
     if (userId == null || token == null || userId.isEmpty || token.isEmpty) {
       if (!mounted) return;
       setState(() {
         _processing = false;
-        _result = false;
+        _status = ApprovalLinkStatus.invalidOrExpired;
         _message = 'Invalid approval link: missing user ID or token.';
       });
       return;
     }
 
-    final ok = await ApprovalLinkService.instance
-        .consumeTokenAndApprove(userId: userId, token: token);
+    final outcome = await ApprovalLinkService.instance
+        .consumeTokenAndApproveDetailed(userId: userId, token: token);
     if (!mounted) return;
     setState(() {
       _processing = false;
-      _result = ok;
-      _message = ok
-          ? 'User approved successfully.'
-          : 'Approval link is invalid, expired, or already used.';
+      _status = outcome.status;
+      _message = outcome.message;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final isApproved = _status == ApprovalLinkStatus.approved;
+    final needsAuth = _status == ApprovalLinkStatus.authRequired;
     return Scaffold(
       appBar: const CustomAppBar(
         title: 'Approval Link',
@@ -73,11 +75,15 @@ class _AdminApprovalLinkHandlerScreenState
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      _result ? Icons.check_circle : Icons.error,
+                      isApproved
+                          ? Icons.check_circle
+                          : (needsAuth ? Icons.lock_outline : Icons.error),
                       size: ResponsiveUtils.getResponsiveIconSize(context, 64),
-                      color: _result
+                      color: isApproved
                           ? Theme.of(context).colorScheme.tertiary
-                          : Theme.of(context).colorScheme.error,
+                          : (needsAuth
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.error),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -86,11 +92,27 @@ class _AdminApprovalLinkHandlerScreenState
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
                     const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: () => context.go(AppConstants.adminRoute),
-                      icon: const Icon(Icons.dashboard_outlined),
-                      label: const Text('Back to Admin Dashboard'),
-                    ),
+                    if (needsAuth)
+                      FilledButton.icon(
+                        onPressed: () {
+                          final redirect = _pendingRedirectPath;
+                          if (redirect != null && redirect.isNotEmpty) {
+                            context.go(
+                              '${AppConstants.authRoute}?redirect=${Uri.encodeComponent(redirect)}',
+                            );
+                          } else {
+                            context.go(AppConstants.authRoute);
+                          }
+                        },
+                        icon: const Icon(Icons.login),
+                        label: const Text('Sign In as Administrator'),
+                      )
+                    else
+                      FilledButton.icon(
+                        onPressed: () => context.go(AppConstants.adminRoute),
+                        icon: const Icon(Icons.dashboard_outlined),
+                        label: const Text('Back to Admin Dashboard'),
+                      ),
                   ],
                 ),
               ),

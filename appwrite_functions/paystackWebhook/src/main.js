@@ -214,7 +214,7 @@ export default async ({ req, res, log, error }) => {
       return res.text('Missing reference', 400);
     }
 
-    const databases = appwriteDatabases();
+    const databases = appwriteDatabases(req);
 
     // Isolate ALIVE Nigeria App transactions from the shared Membership Portal
     // on the same Paystack account. Any Paystack event without app metadata,
@@ -325,8 +325,11 @@ function isValidSignature(received, expected) {
   return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
 }
 
-function appwriteDatabases() {
-  const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;
+function appwriteDatabases(req) {
+  const apiKey =
+    process.env.APPWRITE_FUNCTION_API_KEY ||
+    process.env.APPWRITE_API_KEY ||
+    req?.headers?.['x-appwrite-key'];
   const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
   const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
   if (!apiKey || !endpoint || !projectId) {

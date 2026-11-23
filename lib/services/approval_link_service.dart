@@ -6,6 +6,26 @@ import '../config/appwrite_backend_config.dart';
 import '../main.dart';
 import 'appwrite_profile_service.dart';
 import 'auth_service.dart';
+import 'role_access_service.dart';
+
+enum ApprovalLinkStatus {
+  approved,
+  authRequired,
+  forbidden,
+  invalidOrExpired,
+}
+
+class ApprovalLinkResult {
+  final ApprovalLinkStatus status;
+  final String message;
+
+  const ApprovalLinkResult({
+    required this.status,
+    required this.message,
+  });
+
+  bool get isApproved => status == ApprovalLinkStatus.approved;
+}
 
 /// Generates and validates single-use approval tokens with expiry
 class ApprovalLinkService {
@@ -40,10 +60,36 @@ class ApprovalLinkService {
     return token;
   }
 
-  Future<bool> consumeTokenAndApprove({
+  Future<ApprovalLinkResult> consumeTokenAndApproveDetailed({
     required String userId,
     required String token,
   }) async {
+    final currentUser = AuthService.instance.currentUser ??
+        await AuthService.instance.getCurrentUser();
+    if (currentUser == null || currentUser.uid.isEmpty) {
+      return const ApprovalLinkResult(
+        status: ApprovalLinkStatus.authRequired,
+        message:
+            'Please sign in with an Administrator account to complete this approval.',
+      );
+    }
+
+    if (!RoleAccessService.instance.canAccessAdmin()) {
+      try {
+        final profile = await AuthService.instance.getCurrentUserProfile();
+        if (profile != null) {
+          RoleAccessService.instance.notifyRoleChanged(profile);
+        }
+      } catch (_) {}
+      if (!RoleAccessService.instance.canAccessAdmin()) {
+        return const ApprovalLinkResult(
+          status: ApprovalLinkStatus.forbidden,
+          message:
+              'Administrator access is required to approve member accounts.',
+        );
+      }
+    }
+
     try {
       final row = await _tables.getRow(
         databaseId: AppwriteBackendConfig.databaseId,
@@ -53,21 +99,24 @@ class ApprovalLinkService {
 
       final data = row.data;
       if (data['used'] == true || data['userId'] != userId) {
-        return false;
+        return const ApprovalLinkResult(
+          status: ApprovalLinkStatus.invalidOrExpired,
+          message: 'Approval link is invalid, expired, or already used.',
+        );
       }
 
       final expiresAt = DateTime.tryParse('${data['expiresAt'] ?? ''}');
       if (expiresAt == null || DateTime.now().isAfter(expiresAt)) {
-        return false;
+        return const ApprovalLinkResult(
+          status: ApprovalLinkStatus.invalidOrExpired,
+          message: 'This approval link has expired.',
+        );
       }
 
       final now = DateTime.now().toIso8601String();
-      final approverId =
-          AuthService.instance.currentUser?.uid ?? 'approval_link';
-
       await AppwriteProfileService().approveUserAndChapter(
         userId: userId,
-        approverUserId: approverId,
+        approverUserId: currentUser.uid,
       );
 
       await _tables.updateRow(
@@ -80,10 +129,46 @@ class ApprovalLinkService {
         },
       );
 
-      return true;
+      return const ApprovalLinkResult(
+        status: ApprovalLinkStatus.approved,
+        message: 'User approved successfully.',
+      );
+    } on AppwriteException catch (e) {
+      if (e.code == 401) {
+        return const ApprovalLinkResult(
+          status: ApprovalLinkStatus.authRequired,
+          message:
+              'Please sign in with an Administrator account to complete this approval.',
+        );
+      }
+      if (e.code == 403) {
+        return const ApprovalLinkResult(
+          status: ApprovalLinkStatus.forbidden,
+          message:
+              'Administrator access is required to approve member accounts.',
+        );
+      }
+      return const ApprovalLinkResult(
+        status: ApprovalLinkStatus.invalidOrExpired,
+        message: 'Approval link is invalid, expired, or already used.',
+      );
     } catch (_) {
-      return false;
+      return const ApprovalLinkResult(
+        status: ApprovalLinkStatus.invalidOrExpired,
+        message: 'Approval link is invalid, expired, or already used.',
+      );
     }
+  }
+
+  Future<bool> consumeTokenAndApprove({
+    required String userId,
+    required String token,
+  }) async {
+    final res = await consumeTokenAndApproveDetailed(
+      userId: userId,
+      token: token,
+    );
+    return res.isApproved;
   }
 
   String buildApprovalUrl({

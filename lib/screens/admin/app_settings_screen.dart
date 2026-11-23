@@ -200,7 +200,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         .toList();
   }
 
-  static const String _adminTeamId = '6a098ba2001455c27fdb';
+  static const String _adminTeamId = AppwriteBackendConfig.adminTeamId;
 
   bool _isSecretSettingKey(String? key) {
     final k = (key ?? '').toLowerCase();

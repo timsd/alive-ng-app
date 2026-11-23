@@ -206,6 +206,8 @@
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/study-guides" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/discipleship" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/library" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/reset-password" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/admin-approve" />
             </intent-filter>
         </activity>
 

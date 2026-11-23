@@ -626,7 +626,7 @@
 
       async function syncProjectsFromAppwrite() {
         try {
-          var res = await fetch(APPWRITE_ENDPOINT + '/databases/6a3bef53002f5090dedf/collections/projects/documents?queries[]=' + encodeURIComponent('limit(100)'), {
+          var res = await fetch(APPWRITE_ENDPOINT + '/databases/6a089307002e54291a32/collections/projects/documents?queries[]=' + encodeURIComponent(JSON.stringify({ method: 'limit', values: [100] })), {
             headers: { 'X-Appwrite-Project': APPWRITE_PROJECT_ID }
           });
           if (res.ok) {
@@ -745,9 +745,10 @@
         var settingKeys = ['usd_to_ngn', 'usd_to_ngn_rate', 'exchange_rate_usd_ngn'];
         for (var i = 0; i < settingKeys.length; i++) {
           try {
-            var queryStr = encodeURIComponent('equal("key", ["' + settingKeys[i] + '"])');
+            var eqQuery = encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'key', values: [settingKeys[i]] }));
+            var limitQuery = encodeURIComponent(JSON.stringify({ method: 'limit', values: [1] }));
             var res = await fetch(
-              APPWRITE_ENDPOINT + '/tablesdb/6a089307002e54291a32/tables/app_settings/rows?queries[]=' + queryStr + '&limit=1',
+              APPWRITE_ENDPOINT + '/tablesdb/6a089307002e54291a32/tables/app_settings/rows?queries[]=' + eqQuery + '&queries[]=' + limitQuery,
               { headers: { 'X-Appwrite-Project': APPWRITE_PROJECT_ID } }
             );
             if (res.ok) {
