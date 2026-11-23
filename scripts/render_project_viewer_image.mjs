@@ -43,7 +43,7 @@ try {
 
     // Hide the UI overlays so the screenshot is a clean 3D render.
     await page.evaluate(() => {
-      for (const sel of ['.caption', '.hint', '.scale']) {
+      for (const sel of ['.caption', '.hint', '.scale', '.compass', '.viewer-donate']) {
         const el = document.querySelector(sel);
         if (el) el.style.display = 'none';
       }
