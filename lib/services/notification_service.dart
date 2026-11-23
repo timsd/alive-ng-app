@@ -146,6 +146,11 @@ class NotificationService {
           _logger.warning('Could not read local notification launch details: $e');
         }
 
+        // Capture cold-start native Appwrite Push launch (non-GMS fallback)
+        await AppwritePushService.instance.checkInitialNativePushNotification(
+          handleMessageOpenedApp,
+        );
+
         // Capture cold-start FCM launch IMMEDIATELY (independent of token/network)
         // and attach onMessageOpenedApp listener right away.
         try {
@@ -251,6 +256,7 @@ class NotificationService {
           _logger.warning('Could not resolve user profile for admin topics: $e');
         }
       } else {
+        AppwritePushService.instance.closeNativeAppwritePushFallback();
         await updateAdminTopicSubscriptions(null);
         // Keep device reachable for `all_users` broadcasts even after sign-out.
         await ensurePushRegistered(force: true);
@@ -374,6 +380,34 @@ class NotificationService {
     }
   }
 
+  Future<String?> _activateAppwritePushFallback({
+    String? userId,
+    String? userEmail,
+  }) async {
+    final ok = await AppwritePushService.instance.activateNativeAppwritePushFallback(
+      userId: userId,
+      userEmail: userEmail,
+      onNotificationOpened: handleMessageOpenedApp,
+      onForegroundMessage: (title, body, data) async {
+        bool playSound = true;
+        try {
+          final saved = await StorageHelper.getNotificationSettings();
+          if (saved != null && saved['sound_enabled'] is bool) {
+            playSound = saved['sound_enabled'] as bool;
+          }
+        } catch (_) {}
+        await showNotification(
+          id: Object.hash(title, body, data['id'] ?? data['route']),
+          title: title,
+          body: body,
+          payload: jsonEncode(data),
+          playSound: playSound,
+        );
+      },
+    );
+    return ok ? 'appwrite_push' : null;
+  }
+
   Future<String?> _registerPushToken({
     String? userId,
     String? userEmail,
@@ -385,7 +419,13 @@ class NotificationService {
     }
 
     if (!await _ensureFirebaseReady()) {
-      return null;
+      _logger.info(
+        'FCM unavailable on this device; falling back to built-in Appwrite Push',
+      );
+      return _activateAppwritePushFallback(
+        userId: userId,
+        userEmail: userEmail,
+      );
     }
 
     try {
@@ -437,6 +477,9 @@ class NotificationService {
         token = await fcm.getToken();
       }
       if (token != null && token.isNotEmpty) {
+        // GMS FCM succeeded — ensure MQTT fallback is closed so this device
+        // never receives duplicate pushes.
+        AppwritePushService.instance.closeNativeAppwritePushFallback();
         _currentToken = token;
         _logger.info(
           'FCM token acquired: ${token.substring(0, token.length > 8 ? 8 : token.length)}...',
@@ -462,12 +505,22 @@ class NotificationService {
 
         return targetId;
       } else {
-        _logger.warning('FCM getToken returned null or empty');
-        return null;
+        _logger.warning(
+          'FCM getToken returned null or empty; falling back to built-in Appwrite Push',
+        );
+        return await _activateAppwritePushFallback(
+          userId: userId,
+          userEmail: userEmail,
+        );
       }
     } catch (e) {
-      _logger.error('Failed to register push token with Appwrite via FCM', e);
-      return null;
+      _logger.warning(
+        'FCM push registration failed ($e); falling back to built-in Appwrite Push',
+      );
+      return _activateAppwritePushFallback(
+        userId: userId,
+        userEmail: userEmail,
+      );
     }
   }
 

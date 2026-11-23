@@ -15,6 +15,14 @@ class AppwriteBackendConfig {
     'APPWRITE_FCM_PROVIDER_ID',
     defaultValue: '6a0cbd1600215f960c03',
   );
+  static const String appwritePushProviderId = String.fromEnvironment(
+    'APPWRITE_PUSH_PROVIDER_ID',
+    defaultValue: 'appwrite_push',
+  );
+  static const String pushEndpoint = String.fromEnvironment(
+    'APPWRITE_PUSH_ENDPOINT',
+    defaultValue: 'mqtts://api.alivenigeria.org:8883',
+  );
 
   // Push is native-only.
   //

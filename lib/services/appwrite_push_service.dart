@@ -20,6 +20,209 @@ class AppwritePushService {
   late final Functions _functions = Functions(appwriteClient);
   final Logger _logger = Logger('AppwritePushService');
 
+  // Hybrid Push fallback: native Appwrite Push (MQTT) for non-GMS / Huawei devices
+  // where Firebase Cloud Messaging (FCM) is unavailable.
+  Push? _nativePush;
+  final List<PushSubscription> _nativePushSubs = <PushSubscription>[];
+  void Function()? _stopNativeOpenedListener;
+  String? _activeNativePushUserId;
+  bool _initialNativePushChecked = false;
+
+  bool get isNativeAppwritePushActive => _nativePushSubs.isNotEmpty;
+
+  /// Checks whether the app was launched from a terminated state by tapping
+  /// a native Appwrite Push background notification (non-GMS fallback).
+  Future<void> checkInitialNativePushNotification(
+    void Function(Map<String, dynamic> data) onOpened,
+  ) async {
+    if (kIsWeb || _initialNativePushChecked) return;
+    _initialNativePushChecked = true;
+    try {
+      final push = _nativePush ??= Push(appwriteClient);
+      final initial = await push.getInitialNotification();
+      if (initial != null) {
+        _logger.info(
+          'Launched from native Appwrite Push notification on topic: ${initial.topic}',
+        );
+        onOpened(Map<String, dynamic>.from(initial.data));
+      }
+    } catch (e) {
+      _logger.warning('Could not read initial native Appwrite Push notification: $e');
+    }
+  }
+
+  /// Activates built-in Appwrite Push (MQTT over TLS) as an automatic fallback
+  /// when FCM is unavailable (e.g. non-GMS Android / Huawei devices).
+  Future<bool> activateNativeAppwritePushFallback({
+    String? userId,
+    String? userEmail,
+    required void Function(Map<String, dynamic> data) onNotificationOpened,
+    required Future<void> Function(
+      String title,
+      String body,
+      Map<String, dynamic> data,
+    ) onForegroundMessage,
+  }) async {
+    if (kIsWeb) return false;
+
+    String? resolvedUserId =
+        userId?.trim().isNotEmpty == true ? userId!.trim() : null;
+    String? resolvedEmail =
+        userEmail?.trim().isNotEmpty == true ? userEmail!.trim() : null;
+
+    if (resolvedUserId == null || resolvedEmail == null) {
+      try {
+        final sdkUser = await _account.get();
+        resolvedUserId ??= sdkUser.$id;
+        resolvedEmail ??= sdkUser.email;
+      } catch (_) {
+        final cached = AuthService.instance.currentUser;
+        resolvedUserId ??= cached?.uid;
+        resolvedEmail ??= cached?.email;
+      }
+    }
+
+    // Native Appwrite Push authenticates via the user's Appwrite session.
+    if (resolvedUserId == null || resolvedUserId.isEmpty) {
+      _logger.info(
+        'FCM unavailable and user is not signed in yet; native Appwrite Push fallback will activate after sign-in.',
+      );
+      return false;
+    }
+
+    if (_activeNativePushUserId == resolvedUserId && _nativePushSubs.isNotEmpty) {
+      return true;
+    }
+
+    closeNativeAppwritePushFallback();
+
+    try {
+      final clientId =
+          'alive_${sha1.convert(utf8.encode('$resolvedUserId:${defaultTargetPlatform.name}')).toString().substring(0, 20)}';
+      appwriteClient.setPushClientId(clientId);
+
+      final push = _nativePush ??= Push(appwriteClient);
+      push
+        ..onOpen(() => _logger.info('Native Appwrite Push (MQTT) connected'))
+        ..onClose(() => _logger.info('Native Appwrite Push (MQTT) disconnected'))
+        ..onError((err) => _logger.warning('Native Appwrite Push notice: $err'));
+
+      _stopNativeOpenedListener = push.onNotificationOpened((opened) {
+        _logger.info('Native Appwrite Push tapped: topic=${opened.topic}');
+        onNotificationOpened(Map<String, dynamic>.from(opened.data));
+      });
+
+      void handleIncoming(PushMessage message) {
+        try {
+          final raw = message.data.trim();
+          String title = 'ALIVE Nigeria';
+          String body = raw;
+          Map<String, dynamic> data = <String, dynamic>{};
+          if (raw.startsWith('{')) {
+            final decoded = jsonDecode(raw);
+            if (decoded is Map) {
+              final map = Map<String, dynamic>.from(decoded);
+              title = (map['title'] ?? title).toString();
+              body = (map['body'] ?? '').toString();
+              final nested = map['data'];
+              if (nested is Map) {
+                data = Map<String, dynamic>.from(nested);
+              } else {
+                data = map;
+              }
+            }
+          }
+          onForegroundMessage(title, body, data);
+        } catch (e) {
+          _logger.warning('Failed to parse native Appwrite Push payload: $e');
+        }
+      }
+
+      // 1. Subscribe to signed-in user's reserved `users/<userId>` topic
+      //    (delivers prayer support, monthly reminders, direct user pushes).
+      final userSub = await push.subscribe(
+        null,
+        handleIncoming,
+        background: true,
+        title: 'ALIVE Nigeria',
+        retry: true,
+      );
+      _nativePushSubs.add(userSub);
+
+      // 2. Subscribe to ministry-wide `all_users` broadcast topic (plus admin topics if eligible).
+      final extraTopics = <String>['all_users'];
+      bool isAdmin = AppwriteBackendConfig.isSuperAdminEmail(resolvedEmail ?? '');
+      if (!isAdmin) {
+        try {
+          final profile = await AuthService.instance.getCurrentUserProfile();
+          final role = profile?.role.toLowerCase().trim() ?? '';
+          if (role == 'admin' || role == 'super_admin') {
+            isAdmin = true;
+          }
+        } catch (_) {}
+      }
+      if (isAdmin) {
+        extraTopics.addAll(const ['admins', 'approvals']);
+      }
+
+      try {
+        final topicSub = await push.subscribe(
+          extraTopics,
+          handleIncoming,
+          background: true,
+          title: 'ALIVE Nigeria',
+          retry: true,
+        );
+        _nativePushSubs.add(topicSub);
+      } catch (e) {
+        _logger.warning('Native Appwrite Push topic subscription notice: $e');
+      }
+
+      _activeNativePushUserId = resolvedUserId;
+      _logger.info(
+        'Hybrid Push fallback active via native Appwrite Push for user $resolvedUserId (topics: users/$resolvedUserId, ${extraTopics.join(", ")})',
+      );
+
+      // Best-effort observability log in push_tokens
+      try {
+        await _upsertPushTokenRecord(
+          resolvedUserId,
+          'mqtt:$clientId',
+          'mqtt_${sha1.convert(utf8.encode(resolvedUserId)).toString().substring(0, 26)}',
+          provider: 'appwrite_push',
+        );
+      } catch (_) {}
+
+      return true;
+    } catch (e) {
+      _logger.warning('Native Appwrite Push fallback could not connect: $e');
+      closeNativeAppwritePushFallback();
+      return false;
+    }
+  }
+
+  /// Tears down any active native Appwrite Push (MQTT) session and stops
+  /// Android background delivery (called on sign-out or when FCM succeeds).
+  void closeNativeAppwritePushFallback() {
+    try {
+      _stopNativeOpenedListener?.call();
+    } catch (_) {}
+    _stopNativeOpenedListener = null;
+
+    for (final sub in _nativePushSubs) {
+      try {
+        sub.unsubscribe();
+      } catch (_) {}
+    }
+    _nativePushSubs.clear();
+
+    try {
+      _nativePush?.close();
+    } catch (_) {}
+    _nativePush = null;
+    _activeNativePushUserId = null;
+  }
+
   Future<String?> registerToken(
     String token, {
     String? userId,
@@ -384,13 +587,14 @@ class AppwritePushService {
   Future<void> _upsertPushTokenRecord(
     String userId,
     String token,
-    String targetId,
-  ) async {
+    String targetId, {
+    String provider = 'fcm',
+  }) async {
     final now = DateTime.now().toIso8601String();
     final data = {
       'user_id': userId,
       'token': token,
-      'provider': 'fcm',
+      'provider': provider,
       'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
       'updated_at': now,
     };

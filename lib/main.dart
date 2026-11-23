@@ -89,6 +89,7 @@ void main() {
     try {
       appwriteClient
           .setEndpoint(AppwriteBackendConfig.endpoint)
+          .setPushEndpoint(AppwriteBackendConfig.pushEndpoint)
           .setProject(AppwriteBackendConfig.projectId)
           .setSelfSigned(status: !kReleaseMode);
 
