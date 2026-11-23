@@ -523,18 +523,46 @@
       var PAYSTACK_FUNCTION_ID = 'paystack_payments';
       var CALLBACK_URL = window.location.origin + '/donation.html?status=callback';
 
-      var projects = {
+      function sanitizeProjectId(val) {
+        var s = String(val || '').trim();
+        if (!s || s === 'undefined' || s === 'null') return '';
+        return s;
+      }
+
+      var query = new URLSearchParams(window.location.search);
+      var urlProjectId = sanitizeProjectId(query.get('projectId') || query.get('project') || query.get('project_id'));
+      var storedProjectId = '';
+      try { storedProjectId = sanitizeProjectId(sessionStorage.getItem('selected_project_id')); } catch (_) { }
+      var projectId = urlProjectId || storedProjectId || 'general_mission_fund';
+      if (urlProjectId) {
+        try { sessionStorage.setItem('selected_project_id', urlProjectId); } catch (_) { }
+      }
+      var userChangedProject = false;
+
+      var staticProjects = {
+        general_mission_fund: {
+          id: 'general_mission_fund',
+          title: 'General Mission Fund',
+          copy: 'Choose an amount, receive a tracked reference, and complete payment through Paystack\'s secure checkout.',
+          raised: 'Raised: tracked securely',
+          goal: 'Goal: active project',
+          progress: 15,
+          raisedNum: 0,
+          goalNum: 0
+        },
         impact_hub_center: {
+          id: 'impact_hub_center',
           title: 'Impact Hub Center',
           copy: 'Community discipleship and outreach facility.',
-          raised: 'Raised: NGN ₦ 8,384,400',
+          raised: 'Raised: NGN 8,384,400',
           goal: 'Goal: NGN 35,000,000',
           progress: 24,
           raisedNum: 8384400,
           goalNum: 35000000
         },
         vehicle_purchase: {
-          title: 'Vehicle Purchase',
+          id: 'vehicle_purchase',
+          title: 'Mission Vehicle Purchase',
           copy: 'Reliable transportation for mission trips, logistics, and outreach across Nigeria.',
           raised: 'Raised: NGN 0',
           goal: 'Goal: NGN 18,000,000',
@@ -543,6 +571,7 @@
           goalNum: 18000000
         },
         media_studio_setup: {
+          id: 'media_studio_setup',
           title: 'Media Studio Setup',
           copy: 'Equipment for podcasts, teaching media, and digital discipleship content.',
           raised: 'Raised: NGN 0',
@@ -550,68 +579,111 @@
           progress: 0,
           raisedNum: 0,
           goalNum: 9000000
+        },
+        youth_discipleship: {
+          id: 'youth_discipleship',
+          title: 'Youth Discipleship & Campus Ministry',
+          copy: 'Empowering young Adventist leaders across campuses and communities in Nigeria.',
+          raised: 'Raised: tracked securely',
+          goal: 'Goal: ongoing ministry',
+          progress: 35,
+          raisedNum: 0,
+          goalNum: 0
+        },
+        tract_printing: {
+          id: 'tract_printing',
+          title: 'Bibles, Books & Tract Printing',
+          copy: 'Printing and distributing gospel tracts, Bible study guides, and literature nationwide.',
+          raised: 'Raised: tracked securely',
+          goal: 'Goal: ongoing ministry',
+          progress: 40,
+          raisedNum: 0,
+          goalNum: 0
         }
       };
+
+      var projects = Object.assign({}, staticProjects);
+      var projectSelectEl = document.getElementById('project-select');
 
       function formatMoneyNGN(val) {
         return 'NGN ' + Number(val || 0).toLocaleString('en-NG');
       }
 
-      function applyProjectsList(list) {
-        if (!Array.isArray(list) || list.length === 0) return;
-        var newProjects = {};
-        for (var i = 0; i < list.length; i++) {
-          var p = list[i];
-          var id = p.id || ('proj_' + i);
-          var goalNum = Number(p.goal || p.targetAmount || 0);
-          var raisedNum = Number(p.raised || p.raisedAmount || 0);
-          var pct = goalNum > 0 ? Math.round((raisedNum / goalNum) * 100) : 0;
-          newProjects[id] = {
-            id: id,
-            title: p.title || 'Mission Project',
-            copy: p.summary || p.description || '',
-            raised: 'Raised: ' + formatMoneyNGN(raisedNum),
-            goal: 'Goal: ' + formatMoneyNGN(goalNum),
-            progress: pct,
-            raisedNum: raisedNum,
-            goalNum: goalNum
-          };
-        }
-        projects = newProjects;
+      // Shows the interactive 3D viewer only for the Impact Hub project
+      function updateProjectViewer(id) {
+        var wrap = document.getElementById('project-viewer');
+        if (!wrap) return;
+        wrap.style.display = (id === 'impact_hub_center') ? 'block' : 'none';
+      }
 
-        var projectSelectEl = document.getElementById('project-select');
-        if (projectSelectEl) {
-          var currentVal = projectSelectEl.value || projectId;
-          projectSelectEl.innerHTML = '';
-          for (var k in projects) {
-            var opt = document.createElement('option');
-            opt.value = k;
-            opt.textContent = projects[k].title;
-            projectSelectEl.appendChild(opt);
-          }
-          if (projects[currentVal]) {
-            projectSelectEl.value = currentVal;
-            projectId = currentVal;
-          } else if (list.length > 0) {
-            projectSelectEl.value = list[0].id;
-            projectId = list[0].id;
-          }
-        }
-
-        var activeProj = projects[projectId] || projects[Object.keys(projects)[0]];
+      function renderActiveProjectCard(id) {
+        var activeProj = projects[id] || projects.general_mission_fund;
+        var titleEl = document.getElementById('project-title');
+        var copyEl = document.getElementById('project-copy');
+        var raisedEl = document.getElementById('raised-label');
+        var goalEl = document.getElementById('goal-label');
+        var progressFill = document.getElementById('progress-fill');
         if (activeProj) {
-          var titleEl = document.getElementById('project-title');
-          var copyEl = document.getElementById('project-copy');
-          var raisedEl = document.getElementById('raised-label');
-          var goalEl = document.getElementById('goal-label');
-          var progressFill = document.getElementById('progress-fill');
           if (titleEl) titleEl.textContent = activeProj.title;
           if (copyEl) copyEl.textContent = activeProj.copy;
           if (raisedEl) raisedEl.textContent = activeProj.raised;
           if (goalEl) goalEl.textContent = activeProj.goal;
           if (progressFill) progressFill.style.width = Math.max(0, Math.min(activeProj.progress, 100)) + '%';
-          updateProjectViewer(activeProj.id);
         }
+        updateProjectViewer(id);
+      }
+
+      function applyProjectsList(list) {
+        if (!Array.isArray(list) || list.length === 0) return;
+
+        // Preserve General Mission Fund & standard options while merging live Appwrite projects by real $id/id
+        var merged = { general_mission_fund: staticProjects.general_mission_fund };
+        for (var i = 0; i < list.length; i++) {
+          var p = list[i];
+          if (!p || typeof p !== 'object') continue;
+          var id = sanitizeProjectId(p.$id || p.id);
+          if (!id) continue;
+          var goalNum = Number(p.goal ?? p.target_amount ?? p.targetAmount ?? 0);
+          var raisedNum = Number(p.raised ?? p.amount_raised ?? p.raisedAmount ?? 0);
+          var pct = goalNum > 0 ? Math.round((raisedNum / goalNum) * 100) : 0;
+          merged[id] = {
+            id: id,
+            title: p.title || 'Mission Project',
+            copy: p.summary || p.description || '',
+            raised: 'Raised: ' + formatMoneyNGN(raisedNum),
+            goal: goalNum > 0 ? ('Goal: ' + formatMoneyNGN(goalNum)) : 'Goal: active project',
+            progress: pct,
+            raisedNum: raisedNum,
+            goalNum: goalNum
+          };
+        }
+        // Keep standard non-DB ministry options if not already present from DB
+        if (!merged.youth_discipleship) merged.youth_discipleship = staticProjects.youth_discipleship;
+        if (!merged.tract_printing) merged.tract_printing = staticProjects.tract_printing;
+        projects = merged;
+
+        // Never let default dropdown value override an explicit ?projectId= before user interaction
+        var desiredId = userChangedProject
+          ? sanitizeProjectId(projectSelectEl ? projectSelectEl.value : projectId)
+          : sanitizeProjectId(projectId || urlProjectId);
+        if (!desiredId || !projects[desiredId]) {
+          desiredId = 'general_mission_fund';
+        }
+        projectId = desiredId;
+
+        if (projectSelectEl) {
+          projectSelectEl.innerHTML = '';
+          for (var k in projects) {
+            if (!Object.prototype.hasOwnProperty.call(projects, k)) continue;
+            var opt = document.createElement('option');
+            opt.value = k;
+            opt.textContent = projects[k].title;
+            projectSelectEl.appendChild(opt);
+          }
+          projectSelectEl.value = projectId;
+        }
+
+        renderActiveProjectCard(projectId);
       }
 
       function loadStoredProjects() {
@@ -633,13 +705,24 @@
             var data = await res.json();
             var rows = data.documents || data.rows;
             if (Array.isArray(rows) && rows.length > 0) {
-              applyProjectsList(rows);
-              try { localStorage.setItem('alive_projects_cache', JSON.stringify(rows)); } catch (_) {}
+              var normalized = rows.map(function (r) {
+                var rid = sanitizeProjectId(r.$id || r.id);
+                return Object.assign({}, r, { id: rid });
+              }).filter(function (r) { return Boolean(r.id); });
+              if (normalized.length > 0) {
+                applyProjectsList(normalized);
+                try { localStorage.setItem('alive_projects_cache', JSON.stringify(normalized)); } catch (_) {}
+              }
             }
           }
         } catch (_) {}
       }
 
+      // Immediately apply initial project selection before async Appwrite sync
+      if (projectSelectEl && projects[projectId]) {
+        projectSelectEl.value = projectId;
+      }
+      renderActiveProjectCard(projectId);
       loadStoredProjects();
       syncProjectsFromAppwrite();
       window.addEventListener('alive_projects_updated', loadStoredProjects);
@@ -649,8 +732,6 @@
         }
       });
 
-      var query = new URLSearchParams(window.location.search);
-      var projectId = query.get('projectId') || sessionStorage.getItem('selected_project_id') || '';
       var project = projects[projectId];
       var statusEl = document.getElementById('donation-status');
       var donateBtn = document.getElementById('donate-now');
@@ -893,44 +974,27 @@
 
       renderPresets();
 
-      // Shows the interactive 3D viewer only for the Impact Hub project
-      function updateProjectViewer(id) {
-        var wrap = document.getElementById('project-viewer');
-        if (!wrap) return;
-        wrap.style.display = (id === 'impact_hub_center') ? 'block' : 'none';
-      }
-
-      if (project) {
-        document.getElementById('project-title').textContent = project.title;
-        document.getElementById('project-copy').textContent = project.copy;
-        document.getElementById('raised-label').textContent = project.raised;
-        document.getElementById('goal-label').textContent = project.goal;
-        document.getElementById('progress-fill').style.width = Math.max(0, Math.min(project.progress, 100)) + '%';
-      }
-      updateProjectViewer(projectId);
-
-      var projectSelectEl = document.getElementById('project-select');
       if (projectSelectEl) {
         if (projectId && projects[projectId]) {
           projectSelectEl.value = projectId;
         }
+        renderActiveProjectCard(projectId);
         projectSelectEl.addEventListener('change', function () {
-          var selId = this.value;
-          var selProj = projects[selId];
-          updateProjectViewer(selId);
-          if (selProj) {
-            document.getElementById('project-title').textContent = selProj.title;
-            document.getElementById('project-copy').textContent = selProj.copy;
-            document.getElementById('raised-label').textContent = selProj.raised;
-            document.getElementById('goal-label').textContent = selProj.goal;
-            document.getElementById('progress-fill').style.width = Math.max(0, Math.min(selProj.progress, 100)) + '%';
-          } else {
-            document.getElementById('project-title').textContent = 'General Mission Fund';
-            document.getElementById('project-copy').textContent = 'Choose an amount, receive a tracked reference, and complete payment through Paystack\'s secure checkout.';
-            document.getElementById('raised-label').textContent = 'Raised: tracked securely';
-            document.getElementById('goal-label').textContent = 'Goal: active project';
-            document.getElementById('progress-fill').style.width = '15%';
-          }
+          userChangedProject = true;
+          var selId = sanitizeProjectId(this.value) || 'general_mission_fund';
+          projectId = selId;
+          project = projects[selId];
+          try { sessionStorage.setItem('selected_project_id', selId); } catch (_) { }
+          try {
+            var nextUrl = new URL(window.location.href);
+            if (selId === 'general_mission_fund') {
+              nextUrl.searchParams.delete('projectId');
+            } else {
+              nextUrl.searchParams.set('projectId', selId);
+            }
+            window.history.replaceState({}, '', nextUrl.toString());
+          } catch (_) { }
+          renderActiveProjectCard(selId);
           if (window.innerWidth <= 820) {
             document.querySelector('.panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
@@ -1042,9 +1106,10 @@
               amtStr = sym + ' ' + Number(amountVal).toLocaleString();
             }
 
-            // Increment the counter on the page
-            var selProjId = (projectSelectEl ? projectSelectEl.value : projectId) || 'impact_hub_center';
-            if (projects[selProjId] && amountVal > 0) {
+            // Increment the counter on the page for the actual donated project
+            var metaProjId = sanitizeProjectId(payload.metadata && payload.metadata.project_id);
+            var selProjId = metaProjId || sanitizeProjectId(projectSelectEl ? projectSelectEl.value : projectId);
+            if (selProjId && projects[selProjId] && projects[selProjId].goalNum > 0 && amountVal > 0) {
               var p = projects[selProjId];
               p.raisedNum = (p.raisedNum || 0) + amountVal;
               var newProg = Math.round((p.raisedNum / p.goalNum) * 100);
@@ -1113,6 +1178,19 @@
             'Content-Type': 'application/json',
             'X-Appwrite-Project': APPWRITE_PROJECT_ID
           };
+          var selectedProjectId = sanitizeProjectId(projectSelectEl ? projectSelectEl.value : projectId) || 'general_mission_fund';
+          var selectedProjectObj = projects[selectedProjectId];
+          var selectedProjectTitle = (selectedProjectObj && selectedProjectObj.title)
+            ? selectedProjectObj.title
+            : ((projectSelectEl && projectSelectEl.selectedIndex >= 0)
+              ? projectSelectEl.options[projectSelectEl.selectedIndex].text.trim()
+              : 'General Mission Fund');
+          var isSpecificProject = selectedProjectId !== 'general_mission_fund';
+          var donationTypeValue = selectedProjectId === 'tract_printing' ? 'tractProduction' : 'generalSupport';
+          var callbackWithProject = isSpecificProject
+            ? (CALLBACK_URL + '&projectId=' + encodeURIComponent(selectedProjectId))
+            : CALLBACK_URL;
+
           // Guest checkout uses public execution permission, never an API key.
           var response = await fetch(
             APPWRITE_ENDPOINT + '/functions/' + PAYSTACK_FUNCTION_ID + '/executions',
@@ -1126,18 +1204,16 @@
                   reference: reference,
                   amount: amountMinor,
                   currency: billingCurrency,
-                  callback_url: CALLBACK_URL,
+                  callback_url: callbackWithProject,
                   metadata: {
                     donor_name: name,
                     donor_email: email,
-                    project_id: (projectSelectEl ? projectSelectEl.value : projectId) || 'general_mission_fund',
-                    project_title: (projectSelectEl && projectSelectEl.selectedIndex >= 0)
-                      ? projectSelectEl.options[projectSelectEl.selectedIndex].text.trim()
-                      : (project && project.title ? project.title : 'General Mission Fund'),
-                    mission_purpose: (projectSelectEl && projectSelectEl.selectedIndex >= 0)
-                      ? projectSelectEl.options[projectSelectEl.selectedIndex].text.trim()
-                      : (project && project.title ? project.title : 'General Mission Fund'),
-                    donation_type: 'generalSupport',
+                    project_id: selectedProjectId,
+                    purpose_id: selectedProjectId,
+                    project_title: selectedProjectTitle,
+                    fund_designation: selectedProjectTitle,
+                    mission_purpose: selectedProjectTitle,
+                    donation_type: donationTypeValue,
                     app_id: 'alive_nigeria_app',
                     source: 'web_donation_page',
                     currency: selectedCurrency,
@@ -1184,7 +1260,8 @@
             throw new Error('Paystack did not return a checkout URL. Please try again.');
           }
 
-          try { sessionStorage.setItem('selected_project_id', projectId || ''); } catch (_) { }
+          projectId = selectedProjectId;
+          try { sessionStorage.setItem('selected_project_id', selectedProjectId); } catch (_) { }
           setStatus('Redirecting to Paystack secure checkout...', 'success');
           window.location.href = authorizationUrl;
         } catch (err) {

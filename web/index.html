@@ -1698,6 +1698,16 @@
         }
       ];
 
+      function normalizeProjectRow(p) {
+        if (!p || typeof p !== 'object') return p;
+        var resolvedId = String(p.id || p.$id || '').trim();
+        return Object.assign({}, p, {
+          id: resolvedId,
+          goal: Number(p.goal ?? p.target_amount ?? p.targetAmount ?? 0),
+          raised: Number(p.raised ?? p.amount_raised ?? p.raisedAmount ?? 0)
+        });
+      }
+
       async function fetchProjects() {
         // 1. Check local cache from Flutter single source of truth
         try {
@@ -1705,7 +1715,7 @@
           if (raw) {
             var list = JSON.parse(raw);
             if (Array.isArray(list) && list.length > 0) {
-              _projects = list;
+              _projects = list.map(normalizeProjectRow).filter(function (p) { return p && p.id; });
               applyFiltersAndSort();
               renderProjectsList();
             }
@@ -1721,11 +1731,14 @@
             var data = await res.json();
             var rows = data.documents || data.rows;
             if (Array.isArray(rows) && rows.length > 0) {
-              _projects = rows;
-              try { localStorage.setItem('alive_projects_cache', JSON.stringify(rows)); } catch (_) { }
-              applyFiltersAndSort();
-              renderProjectsList();
-              return;
+              var normalized = rows.map(normalizeProjectRow).filter(function (p) { return p && p.id; });
+              if (normalized.length > 0) {
+                _projects = normalized;
+                try { localStorage.setItem('alive_projects_cache', JSON.stringify(normalized)); } catch (_) { }
+                applyFiltersAndSort();
+                renderProjectsList();
+                return;
+              }
             }
           }
         } catch (_) { }
@@ -1832,8 +1845,9 @@
           ${p.fund_update_text ? `<div style="margin-top:6px;color:#4B5563;line-height:1.55;">${escapeHtml(p.fund_update_text)}</div>` : ``}
           ${fundImages.length ? `<div style="display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;touch-action:pan-x pan-y;margin-top:10px;padding-bottom:4px;">${fundImages.map(url => `<img src="${escapeHtml(url)}" alt="Fund update image" style="width:96px;height:72px;object-fit:cover;border-radius:10px;flex:0 0 auto;"/>`).join('')}</div>` : ``}
         </div>` : '';
+        const pid = String(p.id || p.$id || '').trim();
         const adminVisible = !!window._isAdmin;
-        const heroMedia = p.id === 'impact_hub_center'
+        const heroMedia = pid === 'impact_hub_center'
           ? `<div class="project-3d-shell" id="project-3d-shell">
               <iframe class="project-3d-frame" src="alive_ng_3d_viewer.html" title="Impact Hub Center 3D preview" loading="lazy"></iframe>
               <div class="project-3d-bar">
@@ -1865,8 +1879,8 @@
           ${fundUpdate}
         </div>
         <div class="project-actions">
-          <button class="btn primary" style="flex:1;font-weight:700;cursor:pointer;" id="donate-${p.id}">${escapeHtml(p.cta_label || 'Donate for this item')}</button>
-          ${adminVisible ? `<button class="btn warn" style="cursor:pointer;" id="admin-note-${p.id}" title="Admins update projects inside the app">Admin Update</button>` : ``}
+          <button class="btn primary" style="flex:1;font-weight:700;cursor:pointer;" id="donate-${escapeHtml(pid)}">${escapeHtml(p.cta_label || 'Donate for this item')}</button>
+          ${adminVisible ? `<button class="btn warn" style="cursor:pointer;" id="admin-note-${escapeHtml(pid)}" title="Admins update projects inside the app">Admin Update</button>` : ``}
         </div>
       `;
         const toggle3dBtn = document.getElementById('toggle-3d-interact');
@@ -1877,12 +1891,16 @@
             toggle3dBtn.textContent = active ? 'Lock 3D (Scroll Page)' : 'Explore 3D';
           });
         }
-        document.getElementById(`donate-${p.id}`)?.addEventListener('click', () => {
-          try { sessionStorage.setItem('selected_project_id', p.id); } catch (_) { }
-          window.location.href =
-            `/donation.html?projectId=${encodeURIComponent(p.id)}`;
+        document.getElementById(`donate-${pid}`)?.addEventListener('click', () => {
+          if (pid) {
+            try { sessionStorage.setItem('selected_project_id', pid); } catch (_) { }
+            window.location.href =
+              `/donation.html?projectId=${encodeURIComponent(pid)}`;
+          } else {
+            window.location.href = '/donation.html';
+          }
         });
-        document.getElementById(`admin-note-${p.id}`)?.addEventListener('click', () => {
+        document.getElementById(`admin-note-${pid}`)?.addEventListener('click', () => {
           alert('Admins can update project details inside the ALIVE Nigeria app. Open the app and use the Admin section.');
         });
       }
