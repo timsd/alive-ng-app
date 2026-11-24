@@ -78,6 +78,35 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
   String? _selectedProjectId;
   String? _selectedProjectTitle;
+  /// All currently selected capital projects (projectId -> projectTitle) so
+  /// multi-project splits credit every selected project proportionally.
+  final Map<String, String> _selectedProjects = <String, String>{};
+
+  void _syncSelectedProjectFields() {
+    if (_selectedProjects.isEmpty) {
+      _selectedProjectId = null;
+      _selectedProjectTitle = null;
+    } else {
+      final last = _selectedProjects.entries.last;
+      _selectedProjectId = last.key;
+      _selectedProjectTitle = last.value;
+    }
+  }
+
+  void _syncPurposeId() {
+    final purposes = kAdministrativePurposes
+        .where((p) => _selectedFundDesignations.contains(p.label))
+        .toList();
+    _selectedPurposeId = purposes.length == 1 ? purposes.first.id : null;
+  }
+
+  void _clearAllDesignations() {
+    _selectedFundDesignations.clear();
+    _selectedProjects.clear();
+    _selectedProjectId = null;
+    _selectedProjectTitle = null;
+    _selectedPurposeId = null;
+  }
 
   /// Administrative purpose chosen by the donor (App Maintenance, Volunteers,
   /// ...). Null means "no specific destination" -> General Support.
@@ -217,9 +246,11 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                   const SizedBox(width: 8),
                                                                       Expanded(
                                       child: Text(
-                                        _selectedProjectTitle != null
-                                            ? 'Project: $_selectedProjectTitle'
-                                            : 'Selected Project',
+                                        _selectedProjects.length > 1
+                                            ? 'Projects (${_selectedProjects.length}): ${_selectedProjects.values.join(', ')}'
+                                            : (_selectedProjectTitle != null
+                                                ? 'Project: $_selectedProjectTitle'
+                                                : 'Selected Project'),
                                         style: theme.textTheme.labelMedium?.copyWith(
                                           fontWeight: FontWeight.bold,
                                           color: theme.colorScheme.onPrimaryContainer,
@@ -280,7 +311,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                         ),
                                       ),
                                       TextButton(
-                                        onPressed: () => setState(() => _selectedFundDesignations.clear()),
+                                        onPressed: () => setState(_clearAllDesignations),
                                         style: TextButton.styleFrom(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                           minimumSize: Size.zero,
@@ -316,6 +347,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                                             onDeleted: () {
                                               setState(() {
                                                 _selectedFundDesignations.remove(designation);
+                                                _selectedProjects.removeWhere((_, title) => title == designation);
+                                                _syncSelectedProjectFields();
+                                                _syncPurposeId();
                                               });
                                             },
                                             backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
@@ -650,28 +684,19 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       setState(() {
         if (_selectedFundDesignations.contains(title)) {
           _selectedFundDesignations.remove(title);
-          // Clear the project only when the entry being removed was the one
-          // driving the project panel, otherwise a second project stays put.
-          if (projectId != null && _selectedProjectId == projectId) {
-            _selectedProjectId = null;
-            _selectedProjectTitle = null;
+          if (projectId != null) {
+            _selectedProjects.remove(projectId);
+          } else {
+            _selectedProjects.removeWhere((_, v) => v == title);
           }
         } else {
           _selectedFundDesignations.add(title);
           if (projectId != null) {
-            _selectedProjectId = projectId;
-            _selectedProjectTitle = title;
+            _selectedProjects[projectId] = title;
           }
         }
-        // Store the purpose *id*, not its label. Every consumer compares this
-        // against an id (`_selectedPurposeId == 'app_maintenance'`, and
-        // donationPurposeById looks up by id), so assigning the label here
-        // meant the donation type stayed generalSupport and the receipt's
-        // purpose line came out empty for every administrative purpose.
-        final purposes = kAdministrativePurposes
-            .where((p) => _selectedFundDesignations.contains(p.label))
-            .toList();
-        _selectedPurposeId = purposes.length == 1 ? purposes.first.id : null;
+        _syncSelectedProjectFields();
+        _syncPurposeId();
       });
     }
 
@@ -732,12 +757,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               onTap: () {
                 // General support is the fallback: picking it clears any
                 // split rather than adding to one.
-                setState(() {
-                  _selectedFundDesignations.clear();
-                  _selectedProjectId = null;
-                  _selectedProjectTitle = null;
-                  _selectedPurposeId = null;
-                });
+                setState(_clearAllDesignations);
               },
             ),
             for (final item in kMinistryAreas)
@@ -838,12 +858,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             visualDensity: VisualDensity.compact,
             tooltip: 'Clear selection',
             icon: const Icon(Icons.clear_all, size: 18),
-            onPressed: () => setState(() {
-              _selectedFundDesignations.clear();
-              _selectedProjectId = null;
-              _selectedProjectTitle = null;
-              _selectedPurposeId = null;
-            }),
+            onPressed: () => setState(_clearAllDesignations),
           ),
         ],
       ),
@@ -1210,9 +1225,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               if (text.isNotEmpty) {
                 setState(() {
                   _selectedFundDesignations.add(text);
-                  _selectedProjectId = null;
-                  _selectedProjectTitle = null;
+                  _syncPurposeId();
                 });
+                _customDesignationController.clear();
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -1430,6 +1445,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     // Create donation record
     try {
       final designations = _selectedFundDesignations.toList();
+      final selectedProjectIds = _selectedProjects.keys.toList();
+      if (selectedProjectIds.isEmpty && _selectedProjectId != null) {
+        selectedProjectIds.add(_selectedProjectId!);
+      }
       final designationSummary = designations.isEmpty
           ? null
           : (designations.length == 1
@@ -1442,7 +1461,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         amount: totalAmount,
         currency: currency,
         paymentMethod: PaymentMethod.paystack,
-        materialTitle: purposeLabel ?? designationSummary,
+        materialTitle: designations.length > 1
+            ? designationSummary
+            : (purposeLabel ?? designationSummary),
         notes: isMonthly
             ? 'Monthly giving${designationSummary != null ? ' - $designationSummary' : ''}'
             : 'One-time donation${designationSummary != null ? ' - $designationSummary' : ''}',
@@ -1454,7 +1475,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           // project selection or the "Where should this go?" chips. The
           // server resolves this into the receipt's Purpose line.
           if (purposeId != null) 'purpose_id': purposeId,
-          if (_selectedProjectId != null) 'project_id': _selectedProjectId,
+          if (selectedProjectIds.isNotEmpty) 'project_id': selectedProjectIds.first,
+          if (selectedProjectIds.isNotEmpty) 'project_ids': selectedProjectIds,
           if (purposeLabel != null) 'project_title': purposeLabel,
           // One source of truth for fund_designation. It was previously written
           // twice in this map -- once from the resolved purpose and again from
@@ -1667,21 +1689,25 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           cleanProjectId == 'general_mission_fund') {
         return;
       }
-      _selectedProjectId = cleanProjectId;
+      String? resolvedTitle;
       try {
         final data =
             await ref.read(donationServiceProvider).getProject(cleanProjectId);
         if (data != null) {
-          _selectedProjectTitle = data.title;
+          resolvedTitle = data.title;
         } else {
-          _selectedProjectTitle = _fallbackProject(cleanProjectId)?.title;
+          resolvedTitle = _fallbackProject(cleanProjectId)?.title;
         }
       } catch (_) {
-        _selectedProjectTitle = _fallbackProject(cleanProjectId)?.title;
+        resolvedTitle = _fallbackProject(cleanProjectId)?.title;
       }
-      if (_selectedProjectTitle != null &&
-          _selectedProjectTitle!.trim().isNotEmpty) {
-        _selectedFundDesignations.add(_selectedProjectTitle!);
+      final displayTitle = (resolvedTitle != null && resolvedTitle.trim().isNotEmpty)
+          ? resolvedTitle.trim()
+          : cleanProjectId;
+      _selectedProjects[cleanProjectId] = displayTitle;
+      _syncSelectedProjectFields();
+      if (resolvedTitle != null && resolvedTitle.trim().isNotEmpty) {
+        _selectedFundDesignations.add(resolvedTitle.trim());
       }
       if (mounted) setState(() {});
       clearSelectedProjectId();
@@ -1692,8 +1718,16 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
   void _clearSelectedProject() {
     setState(() {
+      for (final title in _selectedProjects.values) {
+        _selectedFundDesignations.remove(title);
+      }
+      if (_selectedProjectTitle != null) {
+        _selectedFundDesignations.remove(_selectedProjectTitle);
+      }
+      _selectedProjects.clear();
       _selectedProjectId = null;
       _selectedProjectTitle = null;
+      _syncPurposeId();
     });
   }
 
@@ -1802,8 +1836,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
                               onDonate: () {
                                 Navigator.of(ctx).pop();
                                 setState(() {
-                                  _selectedProjectId = projects[i].id;
-                                  _selectedProjectTitle = projects[i].title;
+                                  _selectedProjects[projects[i].id] = projects[i].title;
+                                  _selectedFundDesignations.add(projects[i].title);
+                                  _syncSelectedProjectFields();
+                                  _syncPurposeId();
                                 });
                                 setSelectedProjectId(projects[i].id);
                               },

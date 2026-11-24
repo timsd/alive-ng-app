@@ -857,6 +857,8 @@ class DonationService {
           'project_title': donation!.metadata!['project_title'],
         if (donation?.metadata?['project_id'] != null)
           'project_id': donation!.metadata!['project_id'],
+        if (donation?.metadata?['project_ids'] != null)
+          'project_ids': donation!.metadata!['project_ids'],
         if (donation?.metadata?['fund_designation'] != null)
           'fund_designation': donation!.metadata!['fund_designation'],
         if (donation?.metadata?['fund_designations'] != null)

@@ -115,6 +115,15 @@ async function sendDonationReceipt(paymentData) {
       : 'General Support';
   }
 
+  // Detect Paystack test/sandbox transactions so test receipts are clearly
+  // watermarked and never CC'd into the live ministry finance inbox.
+  const isTestPayment =
+    paymentData.domain === 'test' ||
+    meta.domain === 'test' ||
+    meta.is_test === true ||
+    meta.is_test === 'true' ||
+    meta.mode === 'test';
+
   // This value can originate in donor/admin supplied metadata.
   const safeProjectName = escapeHtml(projectName);
   const safeDonorName = escapeHtml(donorName);
@@ -124,28 +133,51 @@ async function sendDonationReceipt(paymentData) {
   const safeDate = escapeHtml(date);
   const safePaymentMethod = escapeHtml(paymentMethod);
 
-  const receiptHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Donation Receipt - ALIVE Nigeria</title></head><body style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a202c;"><div style="text-align: center; border-bottom: 3px solid #1a365d; padding-bottom: 20px; margin-bottom: 20px;"><img src="' + ALIVE_LOGO_URL + '" alt="ALIVE Nigeria" width="88" height="88" style="display:block;margin:0 auto 12px;border:0;outline:none;" /><h1 style="color: #1a365d; margin: 0;">ALIVE Nigeria</h1><p style="color: #666; margin: 4px 0;">Official Donation Receipt</p><p style="color: #999; font-size: 12px; margin: 4px 0;">Valid for tax filing purposes</p></div><div style="padding: 10px 0;"><p>Dear ' + safeDonorName + ',</p><p>Thank you for your generous donation to ALIVE Nigeria. Your contribution is making a difference. Your gift of <strong>' + safeCurrency + ' ' + safeAmount + '</strong> was designated to <strong>' + safeProjectName + '</strong>. Below are the details of your donation:</p><table style="width: 100%; border-collapse: collapse; margin: 20px 0;"><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Donor Name</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeDonorName + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Purpose</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeProjectName + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Amount</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeCurrency + ' ' + safeAmount + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Reference</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeReference + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Date</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeDate + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Payment Method</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safePaymentMethod + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Project</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeProjectName + '</td></tr></table><p style="color: #4a5568; font-size: 14px;">This receipt confirms your donation to ALIVE Nigeria. Please retain this for your tax records. If you have any questions, contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a>.</p></div><div style="text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #999; font-size: 12px;"><p>ALIVE Nigeria &mdash; Thank you for your generosity.</p></div></body></html>';
+  const testBanner = isTestPayment
+    ? '<div style="background: #fff5f5; border: 2px solid #c53030; color: #9b2c2c; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-family: Arial, sans-serif; font-size: 13px;"><strong>TEST TRANSACTION &mdash; NOT A REAL PAYMENT</strong><br/>This receipt was generated in Paystack Test Mode. No real money was charged, this gift is excluded from live totals, and it is not valid for tax filing.</div>'
+    : '';
+  const modeRow = isTestPayment
+    ? '<tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #fff5f5; color: #9b2c2c;"><strong>Mode</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0; background: #fff5f5; color: #9b2c2c;"><strong>TEST / SANDBOX (No real charge)</strong></td></tr>'
+    : '';
+  const receiptTitle = isTestPayment ? '[TEST] Donation Receipt - ALIVE Nigeria' : 'Donation Receipt - ALIVE Nigeria';
+  const receiptSubtitle = isTestPayment
+    ? '<p style="color: #c53030; font-weight: bold; margin: 4px 0;">TEST Donation Receipt (Sandbox Mode)</p><p style="color: #9b2c2c; font-size: 12px; margin: 4px 0;">Not valid for tax filing &mdash; test mode only</p>'
+    : '<p style="color: #666; margin: 4px 0;">Official Donation Receipt</p><p style="color: #999; font-size: 12px; margin: 4px 0;">Valid for tax filing purposes</p>';
+  const introLine = isTestPayment
+    ? 'This confirms your <strong>TEST</strong> donation flow with ALIVE Nigeria (sandbox mode &mdash; no real charge occurred). Your test gift of <strong>' + safeCurrency + ' ' + safeAmount + '</strong> was designated to <strong>' + safeProjectName + '</strong>. Below are the details:'
+    : 'Thank you for your generous donation to ALIVE Nigeria. Your contribution is making a difference. Your gift of <strong>' + safeCurrency + ' ' + safeAmount + '</strong> was designated to <strong>' + safeProjectName + '</strong>. Below are the details of your donation:';
+  const footerCopy = isTestPayment
+    ? 'This is a <strong>TEST</strong> receipt generated in sandbox mode. No real funds were transferred. If you have any questions, contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a>.'
+    : 'This receipt confirms your donation to ALIVE Nigeria. Please retain this for your tax records. If you have any questions, contact us at <a href="mailto:app@alivenigeria.org">app@alivenigeria.org</a>.';
+
+  const receiptHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + receiptTitle + '</title></head><body style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a202c;">' + testBanner + '<div style="text-align: center; border-bottom: 3px solid ' + (isTestPayment ? '#c53030' : '#1a365d') + '; padding-bottom: 20px; margin-bottom: 20px;"><img src="' + ALIVE_LOGO_URL + '" alt="ALIVE Nigeria" width="88" height="88" style="display:block;margin:0 auto 12px;border:0;outline:none;" /><h1 style="color: #1a365d; margin: 0;">ALIVE Nigeria</h1>' + receiptSubtitle + '</div><div style="padding: 10px 0;"><p>Dear ' + safeDonorName + ',</p><p>' + introLine + '</p><table style="width: 100%; border-collapse: collapse; margin: 20px 0;">' + modeRow + '<tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Donor Name</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeDonorName + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Purpose</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeProjectName + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Amount</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeCurrency + ' ' + safeAmount + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Reference</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeReference + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Date</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeDate + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Payment Method</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safePaymentMethod + '</td></tr><tr><td style="padding: 10px; border: 1px solid #e2e8f0; background: #f7fafc;"><strong>Project</strong></td><td style="padding: 10px; border: 1px solid #e2e8f0;">' + safeProjectName + '</td></tr></table><p style="color: #4a5568; font-size: 14px;">' + footerCopy + '</p></div><div style="text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #999; font-size: 12px;"><p>ALIVE Nigeria &mdash; ' + (isTestPayment ? 'Test Mode Receipt' : 'Thank you for your generosity.') + '</p></div></body></html>';
 
   try {
     if (process.env.RESEND_API_KEY) {
       // Receipts always come from the dedicated receipts@ identity.
+      // Test receipts are NOT cc'd to the live finance inbox.
       const sender =
         process.env.RECEIPT_SENDER_EMAIL || 'ALIVE Nigeria App <receipts@app.alivenigeria.org>';
       const replyTo = process.env.REPLY_TO_EMAIL || 'app@alivenigeria.org';
+      const emailPayload = {
+        from: sender,
+        to: [email],
+        reply_to: replyTo,
+        subject: isTestPayment
+          ? '[TEST] ALIVE Nigeria Donation Receipt (No Real Charge) - ' + reference
+          : 'Your ALIVE Nigeria Donation Receipt - ' + reference,
+        html: receiptHtml
+      };
+      if (!isTestPayment) {
+        emailPayload.cc = [replyTo];
+      }
       const emailRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          from: sender,
-          to: [email],
-          cc: [replyTo],
-          reply_to: replyTo,
-          subject: 'Your ALIVE Nigeria Donation Receipt - ' + reference,
-          html: receiptHtml
-        })
+        body: JSON.stringify(emailPayload)
       });
       const resText = await emailRes.text();
       console.log('Resend receipt status:', emailRes.status, 'Response:', resText);
@@ -245,10 +277,13 @@ export default async ({ req, res, log, error }) => {
 
     await writePaymentLog(databases, type, reference, 'received', event);
 
+    const isTestTx = (data.domain || (matchedSecret.startsWith('sk_test_') ? 'test' : 'live')) === 'test';
     const metadata = {
       ...metaRaw,
       processor: 'paystack',
-      domain: data.domain || (matchedSecret.startsWith('sk_test_') ? 'test' : 'live'),
+      domain: isTestTx ? 'test' : 'live',
+      is_test: isTestTx,
+      mode: isTestTx ? 'test' : 'live',
       authoritative_amount_major: Number(data.amount || 0) / 100,
       channel: data.channel,
       fees: data.fees,
@@ -444,43 +479,92 @@ async function addToProjectRaised({ databases, projectId, amount }) {
  * the stored reference, not on this run, so a retry is a no-op.
  */
 async function incrementProjectRaised(databases, metadata, log, reference, currency) {
-  const projectId = String(metadata.project_id || '').trim();
+  const rawProjectIds = [];
+  const metaProjectIds = metadata.project_ids;
+  if (Array.isArray(metaProjectIds)) {
+    for (const id of metaProjectIds) {
+      const clean = String(id || '').trim();
+      if (clean && !NON_PROJECT_IDS.has(clean)) rawProjectIds.push(clean);
+    }
+  } else if (typeof metaProjectIds === 'string' && metaProjectIds.trim()) {
+    try {
+      const parsed = JSON.parse(metaProjectIds);
+      if (Array.isArray(parsed)) {
+        for (const id of parsed) {
+          const clean = String(id || '').trim();
+          if (clean && !NON_PROJECT_IDS.has(clean)) rawProjectIds.push(clean);
+        }
+      }
+    } catch {
+      for (const id of metaProjectIds.split(',')) {
+        const clean = String(id || '').trim();
+        if (clean && !NON_PROJECT_IDS.has(clean)) rawProjectIds.push(clean);
+      }
+    }
+  }
+  const singleProjectId = String(metadata.project_id || '').trim();
+  if (singleProjectId && !NON_PROJECT_IDS.has(singleProjectId)) {
+    rawProjectIds.push(singleProjectId);
+  }
+  const targetProjectIds = [...new Set(rawProjectIds)];
+
   const authoritativeAmount = Number(metadata.authoritative_amount_major || 0);
   const amount = authoritativeAmount > 0
     ? authoritativeAmount
     : Number(metadata.amount_ngn || metadata.amount || 0);
-  if (NON_PROJECT_IDS.has(projectId) || !Number.isFinite(amount) || amount <= 0) return;
+  if (targetProjectIds.length === 0 || !Number.isFinite(amount) || amount <= 0) return;
 
   const isTestMode = metadata.domain
     ? metadata.domain === 'test'
     : (process.env.PAYSTACK_SECRET_KEY || '').startsWith('sk_test_');
   if (isTestMode) {
-    log(`[TEST GUARD] Test payment detected - skipping project credit for ${projectId}`);
+    log(`[TEST GUARD] Test payment detected - skipping project credit for ${targetProjectIds.join(', ')}`);
     return;
   }
 
   try {
     if (await hasProjectCredit(databases, reference)) {
-      log(`Project ${projectId} already credited for ${reference}; not double counting`);
+      log(`Project(s) ${targetProjectIds.join(', ')} already credited for ${reference}; not double counting`);
       return;
     }
 
     const settled = String(currency || 'NGN').toUpperCase();
-    let creditAmount = amount;
+    let totalNgnCredit = amount;
     if (settled === 'USD') {
       const rate = Number(metadata.exchange_rate_usd_ngn ?? metadata.exchange_rate ?? 1600);
-      creditAmount = Math.round(amount * rate);
-      log(`Converting USD donation ($${amount}) to ₦${creditAmount} NGN at rate ${rate} for project ${projectId}`);
+      totalNgnCredit = Math.round(amount * rate);
+      log(`Converting USD donation ($${amount}) to ₦${totalNgnCredit} NGN at rate ${rate} for ${targetProjectIds.join(', ')}`);
     }
-    const splitCount = Number(metadata.split_count || 1);
-    if (Number.isFinite(splitCount) && splitCount > 1) {
-      creditAmount = Math.round(creditAmount / splitCount);
-      log(`Split donation (${splitCount} areas): crediting proportional share ₦${creditAmount} to ${projectId}`);
+    const designationsList = Array.isArray(metadata.fund_designations)
+      ? metadata.fund_designations.filter(Boolean)
+      : [];
+    const metaSplitCount = Number(metadata.split_count || 0);
+    const effectiveSplitCount = Math.max(
+      Number.isFinite(metaSplitCount) ? metaSplitCount : 0,
+      designationsList.length,
+      targetProjectIds.length,
+      1,
+    );
+    const creditShare = effectiveSplitCount > 1
+      ? Math.round(totalNgnCredit / effectiveSplitCount)
+      : totalNgnCredit;
+    if (effectiveSplitCount > 1) {
+      log(`Split donation (${effectiveSplitCount} areas): crediting proportional share ₦${creditShare} to each of [${targetProjectIds.join(', ')}]`);
     }
 
-    const raised = await addToProjectRaised({ databases, projectId, amount: creditAmount });
-    log(`Credited project ${projectId} to ${raised}`);
-    await markProjectCredited(databases, reference);
+    let creditedCount = 0;
+    for (const projectId of targetProjectIds) {
+      try {
+        const raised = await addToProjectRaised({ databases, projectId, amount: creditShare });
+        creditedCount++;
+        log(`Credited project ${projectId} to ${raised}`);
+      } catch (singleErr) {
+        log(`Skipping project ${projectId} raised update: ${singleErr.message}`);
+      }
+    }
+    if (creditedCount > 0) {
+      await markProjectCredited(databases, reference);
+    }
   } catch (err) {
     log(`Skipping project raised update: ${err.message}`);
   }
