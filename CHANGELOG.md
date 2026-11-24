@@ -5,7 +5,59 @@ Format: [Semantic Versioning](https://semver.org) - `MAJOR.MINOR.PATCH+BUILD`
 
 ---
 
-## Unreleased
+## [2.0.10+21] - 2026-11-21
+
+### Added
+- **Spotify-Grade Audio Architecture (Opus / HE-AAC @ 64–96 kbps)**:
+  - Extended `podcast_episodes` schema with 7 compression tracking attributes: `compressed_audio_url`, `audio_format`, `audio_bitrate`, `original_file_size`, `compressed_file_size`, `compression_ratio`, `compression_status`.
+  - Added `compressed_audio_url` and `audio_format` to `podcasts` collection.
+  - Created new Appwrite collection `audio_optimization_jobs` with 12 tracking attributes for background transcoding jobs.
+  - Updated `PodcastEpisode` model and UI playback logic to dynamically resolve and stream `compressed_audio_url` when available.
+  - Implemented `optimizeAudio` Appwrite Function (`appwrite_functions/optimizeAudio`) registered in `appwrite.config.json`.
+- **Automated Google Play Beta Track Publishing Pipeline**:
+  - Implemented automated AAB upload and edit commit via Google Play Developer API v3 (`scripts/upload_play_store_release.mjs`).
+  - Successfully published App Bundle version code `21` to Google Play Console Beta Track (Open Testing).
+- **Automated Appwrite Storage OTA Distribution**:
+  - Synchronized chunked direct upload of `app-release.apk` to `app_releases` bucket and automatic OTA version bump to `v2.0.10+21` in `app_settings`.
+- **Storage Bucket Quota Expansion**:
+  - Expanded 6 media and documents buckets to 500MB (`podcast_media`, `content_media`, `tract_files`, `board_documents`, `meeting_files`, `system_exports`).
+  - Tuned `app_releases` bucket to 200MB dedicated to Android APK distribution.
+
+### Changed
+- **Kotlin Toolchain Upgrade**:
+  - Upgraded Kotlin Gradle Plugin to `2.2.20` across `android/settings.gradle.kts` and `android/build.gradle.kts` with resolution strategy alignment.
+- **Podcast Player UI Streamlining**:
+  - Removed "Transcript timeline auto-aligned to episode audio length" banner container from `modern_podcast_player_sheet.dart` for an uncluttered listening view.
+
+---
+
+## [2.1.0] - 2026-11-20
+
+### Added
+- **Cloudflare R2 + Coolify Automated S3 Backup Pipeline**:
+  - Created dedicated S3-compatible Cloudflare R2 bucket `alive-coolify-backups` in Western Europe (`WEUR`) with zero egress fees.
+  - Registered and validated S3 storage in Coolify (`faons4g1qjkos9rqqe4lb8sv`) to automate scheduled database backups of Appwrite MariaDB (`appwrite-mariadb`).
+- **Prayer Wall Intercessory Support Notifications**:
+  - Dispatched instant push notification to prayer request authors whenever another member supports them via `I Prayed for This` (`AppwritePushService.sendPrayerSupportPush`).
+  - Added "Edit Request" capability to `ReusablePrayerCard` popup menu across both public and private prayer rooms.
+- **Centralized Deep-Link Architecture**:
+  - Unified URL routing across Podcasts, Tracts, Bible Reader/Highlights, Daily Health Nuggets, Announcements, Events, Prayer Wall, Achievements, and LiveKit Meeting rooms (`alivenigeria.org`).
+- **Comprehensive Penetration Testing & Threat Assessment**:
+  - Completed security audit and threat model covering Document-Level Security, Paystack webhook HMAC-SHA512 verification, function execution privileges, and storage upload constraints.
+
+### Changed
+- **Appwrite Schema Drift & Obsolete Table Cleanup**:
+  - Dropped obsolete `user_events` collection from live Appwrite database `6a089307002e54291a32` (HTTP 204), removed `userEventsCollectionId` from `AppwriteBackendConfig.dart`, and pruned from `appwrite_infrastructure_schema.mjs`.
+  - Synchronized 10 live table schemas (`donation_records`, `projects`, `material_downloads`, `announcements`, `dynamic_content`, `discipleship_contacts`, `discipleship_reports`, `tracts`, `podcasts`, and `podcast_episodes`).
+  - Aligned function execution timeouts (60s), scopes on `startLiveKitBroadcast`, and execution roles in `appwrite.config.json` with the production server.
+
+### Fixed
+- **Nokia G20 & 32-bit Android Device Incompatibility on Google Play**:
+  - Packaged multi-ABI binaries (`armeabi-v7a`, `arm64-v8a`, `x86_64`) in `android/app/build.gradle.kts` to support devices like the Nokia G20 (MediaTek Helio G35) that use 64-bit hardware with 32-bit ARM userspaces.
+  - Enabled `useLegacyPackaging = true` to eliminate native library page-alignment rejections.
+  - Ensured all manifest hardware features (`camera`, `microphone`, `telephony`) have `android:required="false"`.
+- **Podcast Screen Nullable Safety**:
+  - Fixed `isEmpty` nullable dereference on `podcasts_screen.dart:73, 80, 101` using null-coalescing fallback.
 
 ---
 
