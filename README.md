@@ -27,15 +27,16 @@ for payments, and Resend-backed Appwrite Functions for email.
 ## Current Stack
 
 - **Architecture:** Ports & Adapters (Hexagonal Architecture) — all 3rd-party SDKs (Appwrite, LiveKit, Paystack, SQLite) are strictly isolated behind abstract ports in `lib/services/ports/` and implemented via concrete adapters in `lib/services/adapters/`. Full details in [Architecture ADR](docs/architecture.md).
-- **Frontend:** Flutter (`v2.0.5+12`), Riverpod (pinned `^2.6.1`), GoRouter (pinned `^14.0.0`), Material 3 theming
-- **Backend:** Appwrite 1.8 (`https://api.alivenigeria.org/v1`) & Appwrite Dart SDK (`^26.1.0`), Auth, TablesDB (81 live tables), Storage (9 live buckets including `app_releases`), Functions (8 live functions in `appwrite_functions/`), Teams, Messaging topics, and Webhooks
+- **Frontend:** Flutter (`v2.0.10+21`), Riverpod (pinned `^2.6.1`), GoRouter (`^18.1.3`), Material 3 theming
+- **Backend:** Appwrite 1.8 (`https://api.alivenigeria.org/v1`) & Appwrite Dart SDK (`^28.3.0`), Auth, TablesDB (82 live tables), Storage (9 live buckets including 200MB `app_releases` and 500MB media buckets), Functions (10 live functions in `appwrite_functions/`), Teams, Messaging topics, and Webhooks
 - **Web hosting:** Coolify Docker build (`https://app.alivenigeria.org`) serving Flutter web through Nginx
+- **Backups & Object Storage:** Automated Coolify database backups to Cloudflare R2 S3 Object Storage (`alive-coolify-backups`) with zero egress fees
+- **Android Compatibility:** Multi-ABI packaging (`armeabi-v7a`, `arm64-v8a`, `x86_64`) with `useLegacyPackaging = true` for full compatibility on 32-bit ARM userspace devices (e.g. Nokia G20) and 64-bit hardware alike
 - **Meetings:** LiveKit (isolated behind `MeetingGateway` port)
 - **Payments:** Paystack (isolated behind `PaymentGateway` port; server-side functions for verification/webhooks)
 - **Email:** Resend via the `send_email` Appwrite Function
 - **Local data:** SQLite/Sqflite (confined to `*_database_helper.dart`), SharedPreferences, Secure Storage
-- **Remaining compatibility:** Firebase remains only for the FCM web/Android
-  bridge used by Appwrite Messaging push delivery.
+- **Push & Deep Links:** Appwrite Messaging with FCM Android/Web bridge, central URL routing for deep links across Bible, podcasts, tracts, prayer wall, and events
 - **Crash reporting:** GlitchTip using the Sentry-compatible Flutter SDK
 - **Analytics:** Appwrite `analytics_events` plus local session/event storage
 
