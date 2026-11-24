@@ -472,6 +472,11 @@ async function incrementProjectRaised(databases, metadata, log, reference, curre
       creditAmount = Math.round(amount * rate);
       log(`Converting USD donation ($${amount}) to ₦${creditAmount} NGN at rate ${rate} for project ${projectId}`);
     }
+    const splitCount = Number(metadata.split_count || 1);
+    if (Number.isFinite(splitCount) && splitCount > 1) {
+      creditAmount = Math.round(creditAmount / splitCount);
+      log(`Split donation (${splitCount} areas): crediting proportional share ₦${creditAmount} to ${projectId}`);
+    }
 
     const raised = await addToProjectRaised({ databases, projectId, amount: creditAmount });
     log(`Credited project ${projectId} to ${raised}`);

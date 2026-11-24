@@ -1541,6 +1541,13 @@ async function handleVerifiedPayment(paystackData, log, options = {}) {
                 log(`Converting USD donation ($${amount}) to ₦${creditAmount} NGN at rate ${rate} for project ${projId}`);
               }
             }
+            const splitCount = Number(paystackData.metadata?.split_count || 1);
+            if (Number.isFinite(splitCount) && splitCount > 1) {
+              creditAmount = Math.round(creditAmount / splitCount);
+              if (log) {
+                log(`Split donation (${splitCount} areas): crediting proportional share ₦${creditAmount} to ${projId}`);
+              }
+            }
             await addToProjectRaised({
               databases,
               projectsCollectionId,

@@ -961,13 +961,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
 
   Widget _buildDonateButton(BuildContext context, ThemeData theme) {
     final isDark = theme.brightness == Brightness.dark;
-    final isEnabled = _selectedAmount > 0;
+    final isEnabled = _selectedAmount > 0 && !_isSubmitting;
     final totalAmount =
         _coverProcessingFees ? _selectedAmount * 1.035 : _selectedAmount;
-    final userAsync = ref.watch(appwriteUserStreamProvider);
-    final isAuthenticated = userAsync.value != null;
-    final guestInfoValid = _guestEmailController.text.trim().isNotEmpty &&
-        _guestNameController.text.trim().isNotEmpty;
 
     return Column(
       children: [
@@ -1022,11 +1018,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             desktop: 64,
           ),
           child: ElevatedButton(
-            // Enable only when an amount is selected and, for guests, the
-            // name/email details have been filled in.
-            onPressed: isEnabled && (isAuthenticated || guestInfoValid)
-                ? _handleDonateClick
-                : null,
+            // Enable whenever an amount is chosen and not currently submitting;
+            // guests who have not yet filled in details get prompted via dialog.
+            onPressed: isEnabled ? _handleDonateClick : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: isDark ? const Color(0xFFE7D39B) : const Color(0xFFE5B94D),
               foregroundColor: const Color(0xFF17263B),
@@ -1048,16 +1042,41 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
               elevation: isEnabled ? 4 : 0,
               shadowColor: const Color(0xFFE5B94D).withValues(alpha: 0.4),
             ),
-            child: Text(
-              _isMonthlySelected ? 'Start Monthly Giving' : 'Donate One-Time',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: isEnabled
-                    ? const Color(0xFF17263B)
-                    : (isDark ? const Color(0xFF6B7280) : const Color(0xFF9E9E9E)),
-                letterSpacing: 0.3,
-              ),
-            ),
+            child: _isSubmitting
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Color(0xFF17263B),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Opening Secure Checkout...',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: isDark
+                              ? const Color(0xFFE7D39B)
+                              : const Color(0xFF17263B),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    _isMonthlySelected ? 'Start Monthly Giving' : 'Donate One-Time',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: isEnabled
+                          ? const Color(0xFF17263B)
+                          : (isDark ? const Color(0xFF6B7280) : const Color(0xFF9E9E9E)),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
           ),
         ),
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
@@ -1639,20 +1658,32 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
         projectId = getSelectedProjectId();
       }
 
-      if (projectId == null || projectId == 'general_mission') return;
-      _selectedProjectId = projectId;
+      final cleanProjectId = projectId?.trim();
+      if (cleanProjectId == null ||
+          cleanProjectId.isEmpty ||
+          cleanProjectId == 'undefined' ||
+          cleanProjectId == 'null' ||
+          cleanProjectId == 'general_mission' ||
+          cleanProjectId == 'general_mission_fund') {
+        return;
+      }
+      _selectedProjectId = cleanProjectId;
       try {
         final data =
-            await ref.read(donationServiceProvider).getProject(projectId);
+            await ref.read(donationServiceProvider).getProject(cleanProjectId);
         if (data != null) {
           _selectedProjectTitle = data.title;
         } else {
-          _selectedProjectTitle = _fallbackProject(projectId)?.title;
+          _selectedProjectTitle = _fallbackProject(cleanProjectId)?.title;
         }
       } catch (_) {
-        _selectedProjectTitle = _fallbackProject(projectId)?.title;
+        _selectedProjectTitle = _fallbackProject(cleanProjectId)?.title;
       }
-      setState(() {});
+      if (_selectedProjectTitle != null &&
+          _selectedProjectTitle!.trim().isNotEmpty) {
+        _selectedFundDesignations.add(_selectedProjectTitle!);
+      }
+      if (mounted) setState(() {});
       clearSelectedProjectId();
     } catch (_) {
       // ignore

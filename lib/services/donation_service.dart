@@ -958,21 +958,23 @@ class DonationService {
         };
       }
 
-      // Payment was only initialized (redirect opened, not yet confirmed).
-      // Update the local row to `initialized` so admins can see that checkout
-      // was opened (webhook later flips it to completed/success).
+      // Update the local row truthfully: only mark `initialized` if checkout
+      // actually opened; otherwise record `cancelled` or `failed`.
+      final nextStatus = paymentResult.initialized
+          ? 'initialized'
+          : (paymentResult.cancelled ? 'cancelled' : 'failed');
       try {
         await _tables.updateRow(
           databaseId: _databaseId,
           tableId: _donationsCollectionId,
           rowId: AppwriteIdUtils.toValidUid(donationId),
           data: {
-            'status': 'initialized',
+            'status': nextStatus,
             'updated_at': DateTime.now().toIso8601String(),
           },
         );
       } catch (e) {
-        _logger.error('Failed to mark donation initialized', e);
+        _logger.error('Failed to mark donation $nextStatus', e);
       }
       return {
         'success': false,

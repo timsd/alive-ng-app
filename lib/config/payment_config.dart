@@ -157,7 +157,7 @@ class PaymentConfig {
   // Webhook URLs - For server-side processing
   static const String paystackWebhookUrl = String.fromEnvironment(
     'PAYSTACK_WEBHOOK_URL',
-    defaultValue: 'https://api.alivenigeria.org/webhooks/paystack',
+    defaultValue: 'https://app.alivenigeria.org/webhooks/paystack',
   );
 
   // Payment channels to enable.

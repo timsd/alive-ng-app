@@ -1295,57 +1295,62 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
         'is_active': status == 'active',
       };
 
-      setState(() {
-        if (isEditing) {
-          final idx = _projects.indexWhere((p) => p['id'] == project['id']);
-          if (idx != -1) {
-            _projects[idx] = {
-              ..._projects[idx],
-              ...projectData,
-              'updated_at': DateTime.now().toIso8601String(),
-            };
-          }
-        } else {
-          _projects.insert(0, {
-            ...projectData,
-            'id': 'proj_${DateTime.now().millisecondsSinceEpoch}',
-            'currency': 'NGN',
-            'is_active': status == 'active',
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          });
-        }
-      });
-      _broadcastProjectsSync();
-
+      final nowIso = DateTime.now().toIso8601String();
       try {
         if (isEditing) {
+          final targetId = (project['id'] ?? project[r'$id'] ?? '').toString().trim();
           await _updateAdminDocument(
             AppwriteBackendConfig.projectsCollectionId,
-            project['id'],
+            targetId,
             {
               ...projectData,
-              'updated_at': DateTime.now().toIso8601String(),
+              'updated_at': nowIso,
             },
           );
+          if (mounted) {
+            setState(() {
+              final idx = _projects.indexWhere((p) => p['id'] == targetId);
+              if (idx != -1) {
+                _projects[idx] = {
+                  ..._projects[idx],
+                  ...projectData,
+                  'updated_at': nowIso,
+                };
+              }
+            });
+          }
+          _broadcastProjectsSync();
           ToastUtils.showSuccess('Project updated successfully');
         } else {
+          final newDocId = 'proj_${DateTime.now().millisecondsSinceEpoch}';
+          final createPayload = {
+            ...projectData,
+            'currency': 'NGN',
+            'is_active': status == 'active',
+            'created_at': nowIso,
+            'updated_at': nowIso,
+          };
           await _createAdminDocument(
             AppwriteBackendConfig.projectsCollectionId,
-            {
-              ...projectData,
-              'currency': 'NGN',
-              'is_active': status == 'active',
-              'created_at': DateTime.now().toIso8601String(),
-              'updated_at': DateTime.now().toIso8601String(),
-            },
+            createPayload,
+            documentId: newDocId,
           );
+          if (mounted) {
+            setState(() {
+              _projects.insert(0, {
+                ...createPayload,
+                'id': newDocId,
+              });
+            });
+          }
+          _broadcastProjectsSync();
           ToastUtils.showSuccess('Project created successfully');
         }
       } catch (e) {
-        debugPrint('Note: local project saved, Appwrite sync: $e');
-        ToastUtils.showSuccess(
-            isEditing ? 'Project updated successfully' : 'Project created successfully');
+        debugPrint('Appwrite project sync failed: $e');
+        ToastUtils.showError(
+          'Could not save project to server. Please check your connection and permissions.',
+        );
       }
     }
   }
@@ -1413,11 +1418,12 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     try {
       for (var project in _defaultProjects) {
         final documentId = project['id']?.toString();
+        final payload = Map<String, dynamic>.from(project)..remove('id');
         await _upsertAdminDocument(
           AppwriteBackendConfig.projectsCollectionId,
           documentId ?? ID.unique(),
           {
-            ...project,
+            ...payload,
             'is_active': project['status'] == 'active',
             'created_at': DateTime.now().toIso8601String(),
             'updated_at': DateTime.now().toIso8601String(),

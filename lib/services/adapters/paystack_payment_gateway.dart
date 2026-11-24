@@ -20,6 +20,7 @@ import '../../main.dart';
 import '../../models/payment_models.dart';
 import '../../utils/logger.dart';
 import '../../utils/error_handler.dart';
+import '../../utils/web_redirect.dart';
 import '../ports/payment_gateway.dart';
 
 /// Concrete [PaymentGateway] adapter for Paystack.
@@ -237,16 +238,19 @@ class PaystackPaymentGateway implements PaymentGateway {
   ) async {
     final bodyJson = jsonEncode(payload);
 
-    // 1. First attempt via Appwrite Functions SDK
+    // 1. First attempt via Appwrite Functions SDK (bounded timeout so UI never freezes 60s+)
     var receivedStructuredError = false;
+    var timedOutOnServer = false;
     try {
       final functions = Functions(appwriteClient);
-      final execution = await functions.createExecution(
-        functionId: AppwriteBackendConfig.paystackPaymentsFunctionId,
-        body: bodyJson,
-        xasync: false,
-        method: appwrite_enums.ExecutionMethod.pOST,
-      );
+      final execution = await functions
+          .createExecution(
+            functionId: AppwriteBackendConfig.paystackPaymentsFunctionId,
+            body: bodyJson,
+            xasync: false,
+            method: appwrite_enums.ExecutionMethod.pOST,
+          )
+          .timeout(const Duration(seconds: 22));
 
       final bodyStr = execution.responseBody.trim();
       if (bodyStr.isNotEmpty) {
@@ -271,6 +275,12 @@ class PaystackPaymentGateway implements PaymentGateway {
       if (receivedStructuredError) {
         rethrow;
       }
+      final errStr = sdkErr.toString().toLowerCase();
+      if (errStr.contains('408') ||
+          errStr.contains('timed out') ||
+          errStr.contains('timeoutexception')) {
+        timedOutOnServer = true;
+      }
       _logger.warning(
         'Appwrite SDK createExecution note: $sdkErr. Falling back to direct HTTP execution...',
       );
@@ -278,6 +288,12 @@ class PaystackPaymentGateway implements PaymentGateway {
           sdkErr.toString().contains('currency not supported')) {
         rethrow;
       }
+    }
+
+    if (timedOutOnServer) {
+      throw Exception(
+        'Payment server took too long to wake up. Please tap Donate again to retry.',
+      );
     }
 
     // 2. Direct HTTP execution fallback (works across Flutter Web and Mobile,
@@ -291,21 +307,25 @@ class PaystackPaymentGateway implements PaymentGateway {
         'Content-Type': 'application/json',
       };
       try {
-        final jwt = await Account(appwriteClient).createJWT();
+        final jwt = await Account(appwriteClient)
+            .createJWT()
+            .timeout(const Duration(seconds: 5));
         headers['X-Appwrite-JWT'] = jwt.jwt;
       } catch (_) {}
 
       final client = http.Client();
       try {
-        final response = await client.post(
-          uri,
-          headers: headers,
-          body: jsonEncode({
-            'body': bodyJson,
-            'async': false,
-            'method': 'POST',
-          }),
-        );
+        final response = await client
+            .post(
+              uri,
+              headers: headers,
+              body: jsonEncode({
+                'body': bodyJson,
+                'async': false,
+                'method': 'POST',
+              }),
+            )
+            .timeout(const Duration(seconds: 22));
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final execMap = jsonDecode(response.body);
@@ -368,10 +388,18 @@ class PaystackPaymentGateway implements PaymentGateway {
       PaymentConfig.setDynamicPublicKey(returnedPk.trim());
     }
 
-    // Flutter Web: ALWAYS redirect to Paystack authorization_url.
-    // paystack_flutter_sdk does not support Web.
+    // Flutter Web: ALWAYS redirect current tab directly to Paystack
+    // authorization_url. `window.location.assign` is never blocked by post-async
+    // popup blockers, unlike `window.open`.
     if (kIsWeb) {
       if (authUrl != null && authUrl.isNotEmpty) {
+        if (redirectWebPage(authUrl)) {
+          return PaymentResponse.redirectInitialized(
+            reference: useRef,
+            message: 'Redirecting to Paystack checkout...',
+            authorizationUrl: authUrl,
+          );
+        }
         try {
           final uri = Uri.parse(authUrl);
           final launched = await launchUrl(uri, webOnlyWindowName: '_self');
