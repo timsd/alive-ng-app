@@ -8,7 +8,7 @@ Format: [Semantic Versioning](https://semver.org) - `MAJOR.MINOR.PATCH+BUILD`
 ## [2.0.10+21] - 2026-11-21
 
 ### Added
-- **Spotify-Grade Audio Architecture (Opus / HE-AAC @ 64–96 kbps)**:
+- **Audio Architecture (Opus / HE-AAC @ 64–96 kbps)**:
   - Extended `podcast_episodes` schema with 7 compression tracking attributes: `compressed_audio_url`, `audio_format`, `audio_bitrate`, `original_file_size`, `compressed_file_size`, `compression_ratio`, `compression_status`.
   - Added `compressed_audio_url` and `audio_format` to `podcasts` collection.
   - Created new Appwrite collection `audio_optimization_jobs` with 12 tracking attributes for background transcoding jobs.
