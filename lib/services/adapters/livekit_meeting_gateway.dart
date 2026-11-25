@@ -357,6 +357,25 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           ? room.name!
           : _currentSession.roomName;
 
+      // Reconcile local screen-share state with LiveKit's authoritative
+      // publications so clicking the OS/browser top "Stop sharing" overlay
+      // immediately clears the Presenting stage & bottom Stop Share button.
+      final localParticipant = room.localParticipant;
+      if (localParticipant != null) {
+        final hasLiveLocalScreenShare = localParticipant.videoTrackPublications.any(
+          (pub) =>
+              pub.source == lk.TrackSource.screenShareVideo &&
+              pub.track != null &&
+              !pub.muted,
+        );
+        if (_isScreenShareEnabled && !hasLiveLocalScreenShare) {
+          _isScreenShareEnabled = false;
+          MeetingPipService.instance.stopScreenShareService();
+        } else if (!_isScreenShareEnabled && hasLiveLocalScreenShare) {
+          _isScreenShareEnabled = true;
+        }
+      }
+
       final participants = _collectParticipants();
       String? activeScreenShareName;
       for (final p in participants) {
@@ -479,6 +498,21 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
         _waitingKnocks.removeWhere((k) => k['id'] == event.participant.identity);
         _syncStateFromRoom();
       })
+      ..on<lk.LocalTrackPublishedEvent>((event) {
+        if (event.publication.source == lk.TrackSource.screenShareVideo) {
+          _isScreenShareEnabled = true;
+        }
+        _syncStateFromRoom();
+      })
+      ..on<lk.LocalTrackUnpublishedEvent>((event) {
+        if (event.publication.source == lk.TrackSource.screenShareVideo) {
+          _isScreenShareEnabled = false;
+          MeetingPipService.instance.stopScreenShareService();
+        }
+        _syncStateFromRoom();
+      })
+      ..on<lk.TrackPublishedEvent>((_) => _syncStateFromRoom())
+      ..on<lk.TrackUnpublishedEvent>((_) => _syncStateFromRoom())
       ..on<lk.TrackSubscribedEvent>((event) async {
         try {
           if (event.track is lk.AudioTrack) {
@@ -1477,6 +1511,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       _isScreenShareEnabled = shouldEnable;
       if (shouldEnable) {
         await MeetingPipService.instance.setRequestingScreenShare(false);
+        _attachLocalScreenShareEndedGuard(participant);
       } else {
         await MeetingPipService.instance.stopScreenShareService();
       }
@@ -1488,6 +1523,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
           await participant.setScreenShareEnabled(shouldEnable);
           _isScreenShareEnabled = true;
           await MeetingPipService.instance.setRequestingScreenShare(false);
+          _attachLocalScreenShareEndedGuard(participant);
         } catch (innerErr) {
           _isScreenShareEnabled = false;
           await MeetingPipService.instance.stopScreenShareService();
@@ -1506,6 +1542,33 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       }
     }
     _syncStateFromRoom();
+  }
+
+  /// Watches the underlying WebRTC screen-share track so stopping capture from
+  /// the OS or browser's top "Stop sharing" overlay immediately unpublishes
+  /// the track, clears the Presenting stage, and resets the bottom button.
+  void _attachLocalScreenShareEndedGuard(lk.LocalParticipant participant) {
+    try {
+      final pub = participant.videoTrackPublications.firstWhereOrNull(
+        (p) => p.source == lk.TrackSource.screenShareVideo && p.track != null,
+      );
+      final mediaTrack = pub?.track?.mediaStreamTrack;
+      if (mediaTrack == null) return;
+      final prevOnEnded = mediaTrack.onEnded;
+      mediaTrack.onEnded = () {
+        prevOnEnded?.call();
+        if (_isScreenShareEnabled) {
+          _isScreenShareEnabled = false;
+          MeetingPipService.instance.stopScreenShareService();
+          unawaited(
+            participant.setScreenShareEnabled(false).catchError((_) => null),
+          );
+          _syncStateFromRoom();
+        }
+      };
+    } catch (e) {
+      debugPrint('[LiveKitMeetingGateway] screenShare onEnded guard note: $e');
+    }
   }
 
   @override
