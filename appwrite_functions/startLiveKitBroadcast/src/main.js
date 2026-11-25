@@ -26,12 +26,18 @@ const roomPolicies = {
 const BROADCAST_ROLES = ['director', 'bod', 'trustee', 'leader', 'coordinator', 'admin'];
 
 async function getRole(userId, req) {
-  const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, '');
-  const projectId = process.env.APPWRITE_PROJECT_ID;
-  const databaseId = process.env.APPWRITE_DATABASE_ID;
+  const endpoint = (
+    process.env.APPWRITE_FUNCTION_API_ENDPOINT ||
+    process.env.APPWRITE_ENDPOINT ||
+    'https://api.alivenigeria.org/v1'
+  ).replace(/\/$/, '');
+  const projectId =
+    process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
+  const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
   const apiKey =
-    req?.headers?.['x-appwrite-key'] ||
-    process.env.APPWRITE_FUNCTION_API_KEY;
+    process.env.APPWRITE_FUNCTION_API_KEY ||
+    process.env.APPWRITE_API_KEY ||
+    req?.headers?.['x-appwrite-key'];
   const usersTableId = process.env.APPWRITE_USERS_TABLE_ID || '6a08943100226f5b4963';
   if (!endpoint || !projectId || !databaseId || !apiKey || !usersTableId) {
     throw new Error('Broadcast role verification is not configured.');
@@ -68,12 +74,18 @@ async function getRole(userId, req) {
 }
 
 async function getStreamingSettings(req) {
-  const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, '');
-  const projectId = process.env.APPWRITE_PROJECT_ID;
-  const databaseId = process.env.APPWRITE_DATABASE_ID;
+  const endpoint = (
+    process.env.APPWRITE_FUNCTION_API_ENDPOINT ||
+    process.env.APPWRITE_ENDPOINT ||
+    'https://api.alivenigeria.org/v1'
+  ).replace(/\/$/, '');
+  const projectId =
+    process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
+  const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
   const apiKey =
-    req?.headers?.['x-appwrite-key'] ||
-    process.env.APPWRITE_FUNCTION_API_KEY;
+    process.env.APPWRITE_FUNCTION_API_KEY ||
+    process.env.APPWRITE_API_KEY ||
+    req?.headers?.['x-appwrite-key'];
   const settingsTableId = process.env.APPWRITE_APP_SETTINGS_TABLE_ID || 'app_settings';
   if (!endpoint || !projectId || !databaseId || !apiKey) {
     return {};
@@ -167,30 +179,29 @@ export default async ({ req, res, error }) => {
       ? rawPlatformMode
       : 'youtube';
 
+    // Stream keys must come strictly from server env or admin app_settings,
+    // never from client-supplied request body fields.
     const youtubeKey = String(
-      body.youtubeStreamKey ||
-        body.streamKey ||
+      process.env.YOUTUBE_STREAM_KEY ||
         settings.youtube_stream_key ||
-        process.env.YOUTUBE_STREAM_KEY ||
         '',
     ).trim();
     const youtubeUrl = String(
-      settings.youtube_stream_url ||
-        process.env.YOUTUBE_STREAM_URL ||
+      process.env.YOUTUBE_STREAM_URL ||
+        settings.youtube_stream_url ||
         YOUTUBE_INGEST,
     )
       .trim()
       .replace(/\/$/, '');
 
     const facebookKey = String(
-      body.facebookStreamKey ||
+      process.env.FACEBOOK_STREAM_KEY ||
         settings.facebook_stream_key ||
-        process.env.FACEBOOK_STREAM_KEY ||
         '',
     ).trim();
     const facebookUrl = String(
-      settings.facebook_stream_url ||
-        process.env.FACEBOOK_STREAM_URL ||
+      process.env.FACEBOOK_STREAM_URL ||
+        settings.facebook_stream_url ||
         FACEBOOK_INGEST,
     )
       .trim()
@@ -212,11 +223,18 @@ export default async ({ req, res, error }) => {
       );
     }
 
-    const policy = roomPolicies[meetingType];
-    const targetRoom = body.roomName || (policy ? policy.room : null) || 'alive-meet-community';
+    const requestedPolicy = roomPolicies[meetingType];
+    const targetRoom = String(body.roomName || (requestedPolicy ? requestedPolicy.room : null) || 'alive-meet-community').trim();
+    const baseRoom = targetRoom.split('--br-')[0];
+    const inferredPolicy =
+      baseRoom === 'alive-meet-board' || baseRoom.startsWith('board-meeting-')
+        ? roomPolicies.board
+        : baseRoom === 'alive-meet-leadership'
+          ? roomPolicies.leadership
+          : requestedPolicy;
 
-    // If room policy has role restrictions, ensure user has access to that room
-    if (policy && policy.roles && !policy.roles.includes(role) && !['super_admin', 'president'].includes(role)) {
+    // Enforce role restriction strictly from the actual targetRoom
+    if (inferredPolicy && inferredPolicy.roles && !inferredPolicy.roles.includes(role) && !['super_admin', 'president'].includes(role)) {
       return res.json({ error: 'You do not have permission to broadcast from this room.' }, 403);
     }
 

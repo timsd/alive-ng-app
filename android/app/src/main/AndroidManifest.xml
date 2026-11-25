@@ -188,24 +188,33 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/meet" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/conference" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/podcasts" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/bible" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/prayer" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/events" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/announcements" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/testimonies" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/missions" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/chapters" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/donate" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/donation" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/payment" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/tracts" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/books-tracts" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/interactive-lessons" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/lessons" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/chat" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/profile" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/daily" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/health" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/kids" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/study" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/study-guide" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/study-guides" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/discipleship" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/library" />
+                <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/billboard" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/reset-password" />
                 <data android:scheme="https" android:host="app.alivenigeria.org" android:pathPrefix="/admin-approve" />
             </intent-filter>
@@ -224,8 +233,8 @@
         </activity>
         
         <!-- Local Notifications -->
-        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
-        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver" android:exported="true">
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" android:exported="false" />
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>

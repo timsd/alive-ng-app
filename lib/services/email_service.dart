@@ -143,6 +143,8 @@ class EmailService {
     final subject = 'ALIVE Board Meeting Minutes: $meetingTitle ($dateStr)';
 
     final safeTitle = htmlEscape.convert(meetingTitle);
+    final safeDocxFileName =
+        docxFileName != null ? htmlEscape.convert(docxFileName) : null;
     final htmlBody = _convertMarkdownToHtml(markdownMinutes);
 
     final html = '<!DOCTYPE html><html><body style="font-family:Arial,Helvetica,sans-serif;'
@@ -155,7 +157,7 @@ class EmailService {
         '<div style="border:1px solid #E2E8F0;border-top:none;padding:24px;border-radius:0 0 10px 10px;background:#FFFFFF;">'
         '<p style="color:#334155;font-size:14px;">Dear Board Member,</p>'
         '<p style="color:#334155;font-size:14px;">The minutes and synthesized resolutions for <strong>$safeTitle</strong> '
-        'have been officially recorded and archived in the Meeting Files repository${docxFileName != null ? " ($docxFileName)" : ""}. '
+        'have been officially recorded and archived in the Meeting Files repository${safeDocxFileName != null ? " ($safeDocxFileName)" : ""}. '
         'Below is the full synthesized record of the session:</p>'
         '<hr style="border:none;border-top:1px solid #E2E8F0;margin:16px 0;">'
         '<div style="font-size:13.5px;color:#1E293B;">$htmlBody</div>'

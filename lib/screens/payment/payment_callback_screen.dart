@@ -194,7 +194,8 @@ class _PaymentCallbackScreenState extends State<PaymentCallbackScreen> {
               ? 'Thank you! Your tract is now available in your Downloaded area.'
               : 'Thank you for your generous support! Your payment has been verified.';
         } else {
-          _message = resultPayload?['message']?.toString() ??
+          _message = resultPayload?['error']?.toString() ??
+              resultPayload?['message']?.toString() ??
               'Payment could not be verified automatically.';
         }
       });
@@ -329,18 +330,31 @@ class _PaymentCallbackScreenState extends State<PaymentCallbackScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 28),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 12,
+                  runSpacing: 8,
                   children: [
                     OutlinedButton(
                       onPressed: () => context.go(AppConstants.homeRoute),
                       child: const Text('Go Home'),
                     ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () => context.go('/tracts?tab=downloaded'),
-                      child: const Text('View Saved Tracts'),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _isVerifying = true;
+                          _message = 'Retrying payment verification...';
+                        });
+                        _verifyAndRoute();
+                      },
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Retry Verification'),
                     ),
+                    if (_isTractDonation)
+                      TextButton(
+                        onPressed: () => context.go('/tracts?tab=downloaded'),
+                        child: const Text('View Saved Tracts'),
+                      ),
                   ],
                 ),
               ],

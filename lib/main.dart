@@ -110,8 +110,12 @@ void main() {
     );
 
     Future(() async {
-      // Pre-warm offline Bible database as soon as the user enters the app
-      unawaited(OfflineBibleService().prewarmBundle());
+      // Pre-warm offline Bible database on native mobile only; on Web, lazy-load
+      // gzipped/cached bible.db when the user opens the Bible screen so cold web
+      // visitors do not auto-download ~72 MB on first load.
+      if (!kIsWeb) {
+        unawaited(OfflineBibleService().prewarmBundle());
+      }
 
       if (!kIsWeb) {
         try {
@@ -123,11 +127,13 @@ void main() {
       }
 
       if (backendReady) {
-        try {
-          await AnalyticsService.instance.initialize();
-        } catch (e) {
-          debugPrint('Appwrite analytics initialization failed: $e');
-        }
+        // Initialize push notifications immediately without blocking on
+        // Analytics network writes so cold-start notification taps resolve fast.
+        unawaited(
+          AnalyticsService.instance.initialize().catchError((e) {
+            debugPrint('Appwrite analytics initialization failed: $e');
+          }),
+        );
 
         try {
           await NotificationService.instance.initialize();

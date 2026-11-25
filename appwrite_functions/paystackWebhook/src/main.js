@@ -75,7 +75,7 @@ async function sendDonationReceipt(paymentData) {
   const amount = (paymentData.amount / 100).toLocaleString();
   const currency = paymentData.currency || 'NGN';
   const reference = paymentData.reference;
-  const date = new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
+  const date = new Date(paymentData.paid_at || Date.now()).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const donorName = (paymentData.metadata && paymentData.metadata.donor_name)
     ? paymentData.metadata.donor_name
@@ -180,15 +180,18 @@ async function sendDonationReceipt(paymentData) {
         body: JSON.stringify(emailPayload)
       });
       const resText = await emailRes.text();
-      console.log('Resend receipt status:', emailRes.status, 'Response:', resText);
       if (!emailRes.ok) {
-        console.error('Resend receipt FAILED for', email, '->', emailRes.status, resText);
+        console.error('Resend receipt FAILED ->', emailRes.status, resText);
+        return false;
       }
+      return true;
     } else {
-      console.log('Receipt generated (no email service configured):', email, reference);
+      console.log('Receipt generated (no email service configured):', reference);
+      return false;
     }
   } catch (err) {
     console.error('Failed to send receipt:', err);
+    return false;
   }
 }
 // imports moved to top of file
@@ -224,7 +227,7 @@ export default async ({ req, res, log, error }) => {
             ? req.body
             : JSON.stringify(req.body || {});
     const signature = req.headers['x-paystack-signature'];
-    
+
     let matchedSecret = null;
     for (const sec of candidateSecrets) {
       const computed = crypto.createHmac('sha512', sec).update(rawBody).digest('hex');
@@ -255,19 +258,21 @@ export default async ({ req, res, log, error }) => {
       typeof data.metadata === 'string'
         ? (() => { try { return JSON.parse(data.metadata); } catch (_) { return {}; } })()
         : (data.metadata || {});
+    const planName = String(data.plan?.name || data.plan_object?.name || '').trim();
     let isAppTx =
       metaRaw.app_id === 'alive_nigeria_app' ||
       metaRaw.source === 'alive_ng_app' ||
       metaRaw.source === 'web_donation_page' ||
       Boolean(metaRaw.donation_id) ||
       String(reference).startsWith('ALIVE') ||
-      String(reference).startsWith('don_');
+      String(reference).startsWith('don_') ||
+      planName.startsWith('ALIVE Monthly');
 
     if (!isAppTx) {
       try {
         await databases.getDocument(databaseId, donationsCollectionId, reference);
         isAppTx = true;
-      } catch (_) {}
+      } catch (_) { }
     }
 
     if (!isAppTx) {
@@ -305,17 +310,29 @@ export default async ({ req, res, log, error }) => {
             mergedMetadata = { ...parsedExisting, ...metadata };
           }
         }
-      } catch (_) {}
+      } catch (_) { }
 
       // Store the same purpose string the receipt shows, so the donation
       // record, the receipt and the admin export all agree.
       const purpose = resolvePurposeFromMetadata(mergedMetadata);
+      const settledAmountKobo = Number(data.amount || 0);
+      const settledAmountMajor = Number.isFinite(settledAmountKobo) && settledAmountKobo > 0 ? settledAmountKobo / 100 : undefined;
+      const settledCurrency = String(data.currency || '').trim().toUpperCase() || undefined;
+      const resolvedDonorName =
+        String(mergedMetadata.donor_name || '').trim() ||
+        [data.customer?.first_name, data.customer?.last_name].filter(Boolean).join(' ').trim() ||
+        String(data.customer?.email || '').trim() ||
+        'Donor';
       await updateDonation(databases, reference, {
         status: 'completed',
         transaction_id: data.id?.toString(),
+        ...(settledAmountMajor !== undefined ? { amount: settledAmountMajor, amount_kobo: Math.round(settledAmountKobo) } : {}),
+        ...(settledCurrency ? { currency: settledCurrency } : {}),
+        user_name: resolvedDonorName,
         purpose,
         project_title: purpose,
-        completed_at: new Date().toISOString(),
+        is_test: isTestTx,
+        completed_at: data.paid_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: JSON.stringify(mergedMetadata),
       }, data);
@@ -327,8 +344,10 @@ export default async ({ req, res, log, error }) => {
       if (await hasReceiptBeenSent(databases, reference)) {
         log(`Receipt already sent for ${reference}; not resending`);
       } else {
-        await sendDonationReceipt({ ...data, metadata: mergedMetadata });
-        await markReceiptSent(databases, reference);
+        const sent = await sendDonationReceipt({ ...data, metadata: mergedMetadata });
+        if (sent) {
+          await markReceiptSent(databases, reference);
+        }
       }
     } else if (type === 'charge.failed' || type === 'charge.abandoned') {
       await updateDonation(databases, reference, {
@@ -375,25 +394,46 @@ function appwriteDatabases(req) {
 }
 
 async function updateDonation(databases, reference, data, paystackData) {
+  const tryWrite = async (payload) => {
+    try {
+      await databases.updateDocument(databaseId, donationsCollectionId, reference, payload);
+    } catch (err) {
+      if (err?.code && err.code !== 404) throw err;
+      const amountKobo = Number(paystackData?.amount || 0);
+      const customerEmail = paystackData?.customer?.email || paystackData?.metadata?.email || '';
+      const donorName =
+        payload.user_name ||
+        String(paystackData?.metadata?.donor_name || '').trim() ||
+        [paystackData?.customer?.first_name, paystackData?.customer?.last_name].filter(Boolean).join(' ').trim() ||
+        customerEmail ||
+        'Donor';
+      await databases.createDocument(databaseId, donationsCollectionId, reference, {
+        reference,
+        status: 'pending',
+        ...payload,
+        processor: 'paystack',
+        amount_kobo: Number.isFinite(amountKobo) && amountKobo > 0 ? Math.round(amountKobo) : 1,
+        amount: Number.isFinite(amountKobo) && amountKobo > 0 ? amountKobo / 100 : 0,
+        currency: paystackData?.currency || 'NGN',
+        user_id: paystackData?.metadata?.user_id || paystackData?.metadata?.appwrite_user_id || 'paystack-webhook',
+        user_name: donorName,
+        user_email: customerEmail,
+        email: customerEmail,
+        type: paystackData?.metadata?.donation_type || 'generalSupport',
+        payment_method: 'paystack',
+        created_at: paystackData?.paid_at || new Date().toISOString(),
+      });
+    }
+  };
   try {
-    await databases.updateDocument(databaseId, donationsCollectionId, reference, data);
+    await tryWrite(data);
   } catch (err) {
-    const amountKobo = Number(paystackData?.amount || 0);
-    const customerEmail = paystackData?.customer?.email || paystackData?.metadata?.email || '';
-    await databases.createDocument(databaseId, donationsCollectionId, reference, {
-      reference,
-      ...data,
-      processor: 'paystack',
-      amount_kobo: Number.isFinite(amountKobo) && amountKobo > 0 ? Math.round(amountKobo) : 1,
-      amount: Number.isFinite(amountKobo) && amountKobo > 0 ? amountKobo / 100 : 0,
-      currency: paystackData?.currency || 'NGN',
-      user_id: paystackData?.metadata?.user_id || paystackData?.metadata?.appwrite_user_id || 'paystack-webhook',
-      user_email: customerEmail,
-      email: customerEmail,
-      type: paystackData?.metadata?.donation_type || 'generalSupport',
-      payment_method: 'paystack',
-      created_at: new Date().toISOString(),
-    });
+    if (String(err?.message || '').includes('is_test')) {
+      const { is_test: _ignored, ...withoutTest } = data;
+      await tryWrite(withoutTest);
+    } else {
+      throw err;
+    }
   }
 }
 
@@ -531,7 +571,8 @@ async function incrementProjectRaised(databases, metadata, log, reference, curre
     const settled = String(currency || 'NGN').toUpperCase();
     let totalNgnCredit = amount;
     if (settled === 'USD') {
-      const rate = Number(metadata.exchange_rate_usd_ngn ?? metadata.exchange_rate ?? 1600);
+      const rawRate = Number(metadata.exchange_rate_usd_ngn ?? metadata.exchange_rate);
+      const rate = Number.isFinite(rawRate) && rawRate >= 500 && rawRate <= 5000 ? rawRate : 1380;
       totalNgnCredit = Math.round(amount * rate);
       log(`Converting USD donation ($${amount}) to ₦${totalNgnCredit} NGN at rate ${rate} for ${targetProjectIds.join(', ')}`);
     }

@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'package:appwrite/appwrite.dart';
+import '../main.dart';
 import '../utils/logger.dart';
 import '../models/app_models.dart';
 import 'appwrite_admin_notification_store.dart';
 import 'approval_link_service.dart';
 import 'email_service.dart';
-import 'notification_service.dart';
 import '../config/appwrite_backend_config.dart';
 
 /// Service for sending admin notifications for new user registrations
@@ -104,29 +105,21 @@ class AdminNotificationService {
           'status': userProfile.approvalStatus,
           'success': anySuccess,
           'recipients': recipients,
-          if (approvalUrl != null) 'approval_url': approvalUrl,
         },
       );
 
       if (requiresApproval) {
         final applicantName = userProfile.fullName ?? userProfile.email;
-        final requestedRole = userProfile.requestedRole ?? userProfile.role;
-        final pushTitle = 'Action Required: New Coordinator Registration';
-        final pushBody = '$applicantName requested approval for $requestedRole. Tap to review.';
-
         try {
-          await NotificationService.instance.showNotification(
-            id: userProfile.id.hashCode,
-            title: pushTitle,
-            body: pushBody,
-            payload: jsonEncode({
-              'type': 'pending_registration_approval',
-              'route': '/admin-approval',
-              'id': userProfile.id,
-              'role': requestedRole,
-            }),
+          // Dispatch real server-side push to admins/approvals topics rather
+          // than showing a local notification on the applicant's own phone.
+          final functions = Functions(appwriteClient);
+          await functions.createExecution(
+            functionId: AppwriteBackendConfig.sendPushFunctionId,
+            body: jsonEncode({'action': 'notify_admin_approval'}),
+            xasync: true,
           );
-          _logger.info('Dispatched admin approval push notification for $applicantName');
+          _logger.info('Dispatched server-side admin approval push for $applicantName');
         } catch (pushErr) {
           _logger.warning('Admin approval push dispatch note: $pushErr');
         }

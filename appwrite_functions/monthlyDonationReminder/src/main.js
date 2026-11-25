@@ -227,10 +227,12 @@ module.exports = async ({ req, res, log, error }) => {
   }
 
   // Per-user opt-out helper reading notification_settings
-  async function isOptedOutPerUser(userId) {
+  async function isOptedOutPerUser(userId, checkMonthlyToggle) {
     try {
-      const doc = await databases.getDocument(DATABASE_ID, 'notification_settings', userId);
-      return doc?.monthly_reminder_opt_out === true || doc?.push_notifications_enabled === false;
+      const doc = await databases.getDocument(DATABASE_ID, NOTIFICATION_SETTINGS_COLLECTION_ID, userId);
+      if (doc?.push_notifications_enabled === false) return true;
+      if (checkMonthlyToggle && doc?.monthly_reminder_opt_out === true) return true;
+      return false;
     } catch (_) {
       return false;
     }
@@ -252,15 +254,17 @@ module.exports = async ({ req, res, log, error }) => {
     if (!page.users.length) break;
 
     for (const user of page.users) {
-      // Opted out? Check the per-user setting first (authoritative, written by
-      // the app), then the legacy shared list.
-      //
-      // Only checked when the admin has enabled the member toggle. While it is
-      // off, members have no way to opt out, so a stale value must not suppress
-      // a reminder the member cannot decline.
+      // Never send personalized member reminders to the shared guest push bucket.
+      if (user.$id === 'guest_push_devices') {
+        totalSkipped++;
+        continue;
+      }
+
+      // Always honor global push opt-out (`push_notifications_enabled === false`),
+      // and honor per-user monthly opt-out when the member toggle is enabled.
       let optedOut = optedOutUserIds.has(user.$id);
-      if (!optedOut && userToggleEnabled) {
-        optedOut = await isOptedOutPerUser(user.$id);
+      if (!optedOut) {
+        optedOut = await isOptedOutPerUser(user.$id, userToggleEnabled);
       }
       if (optedOut) {
         totalSkipped++;

@@ -179,6 +179,14 @@ export default async ({ req, res, log: appwriteLog, error, client }) => {
       return res.json({ ok: true, bound: false, reason: 'no email' });
     }
 
+    // Security: never bind leadership/finance offices to an unverified email
+    // address, otherwise anyone knowing a pre-registered officer's email could
+    // register without mailbox access and hijack the office.
+    if (user.emailVerification !== true) {
+      log(`user ${user.$id} email is not verified yet; deferring office binding`);
+      return res.json({ ok: true, bound: false, reason: 'email_not_verified' });
+    }
+
     // An exact, case-insensitive match on email only.
     // A person can hold more than one office -- Timothy is Treasurer *and*
     // Director Logistics. Taking only the first match left the rest of their

@@ -331,19 +331,27 @@ class DonationService {
       // If material doesn't require donation, user can download
       if (!material.requiresDonation) return true;
 
-      // Check if user has made a successful donation for this material
+      // Check if user has made a successful donation for this material (NGN or USD)
       final donationSnap = await _tables.listRows(
         databaseId: _databaseId,
         tableId: _donationsCollectionId,
         queries: [
           Query.equal('user_id', userId),
           Query.equal('material_id', materialId),
-          Query.equal('status', DonationStatus.completed.name),
-          Query.greaterThanEqual('amount', material.minimumDonation),
-          Query.limit(1),
+          Query.equal('status', ['completed', 'success']),
+          Query.limit(20),
         ],
       );
-      return donationSnap.rows.isNotEmpty;
+      for (final row in donationSnap.rows) {
+        final data = row.data;
+        final amount = (data['amount'] as num?)?.toDouble() ?? 0;
+        final currency = (data['currency'] ?? 'NGN').toString().toUpperCase();
+        final requiredMin = currency == 'USD'
+            ? DonationConstants.minimumTractDonation
+            : material.minimumDonation;
+        if (amount >= requiredMin) return true;
+      }
+      return false;
     } catch (e) {
       if (e is AppException) rethrow;
       throw DatabaseException('Failed to check download permission',
@@ -703,29 +711,38 @@ class DonationService {
   // Get donation statistics (admin)
   Future<Map<String, dynamic>> getDonationStatistics() async {
     try {
-      // Completed donations snapshot
+      // Completed live donations snapshot (excludes test transactions)
       final completedSnap = await _tables.listRows(
         databaseId: _databaseId,
         tableId: _donationsCollectionId,
-        queries: [Query.equal('status', DonationStatus.completed.name)],
+        queries: [
+          Query.equal('status', ['completed', 'success']),
+          Query.limit(500),
+        ],
       );
 
-      final totalAmount = completedSnap.rows
-          .map((row) => (row.data['amount'] as num?)?.toDouble() ?? 0)
-          .fold(0.0, (acc, amount) => acc + amount);
-
-      // Donations by type
-      final donationsByType = <String, int>{};
-      for (final type in DonationType.values) {
-        final typeSnap = await _tables.listRows(
-          databaseId: _databaseId,
-          tableId: _donationsCollectionId,
-          queries: [
-            Query.equal('type', type.name),
-            Query.equal('status', DonationStatus.completed.name),
-          ],
-        );
-        donationsByType[type.name] = typeSnap.total;
+      double totalAmountNgn = 0;
+      double totalAmountUsd = 0;
+      int liveCompletedCount = 0;
+      final donationsByType = <String, int>{
+        for (final type in DonationType.values) type.name: 0,
+      };
+      for (final row in completedSnap.rows) {
+        final data = _rowData(row);
+        final isTest = data['is_test'] == true || data['is_test'] == 'true';
+        if (isTest) continue;
+        liveCompletedCount++;
+        final amount = (data['amount'] as num?)?.toDouble() ?? 0;
+        final currency = (data['currency'] ?? 'NGN').toString().toUpperCase();
+        if (currency == 'USD') {
+          totalAmountUsd += amount;
+        } else {
+          totalAmountNgn += amount;
+        }
+        final typeKey = (data['type'] ?? '').toString();
+        if (donationsByType.containsKey(typeKey)) {
+          donationsByType[typeKey] = (donationsByType[typeKey] ?? 0) + 1;
+        }
       }
 
       // Recent donations
@@ -733,17 +750,22 @@ class DonationService {
         databaseId: _databaseId,
         tableId: _donationsCollectionId,
         queries: [
-          Query.equal('status', DonationStatus.completed.name),
+          Query.equal('status', ['completed', 'success']),
           Query.orderDesc('completed_at'),
-          Query.limit(10),
+          Query.limit(20),
         ],
       );
-      final recentDonations =
-          recentSnap.rows.map((row) => _rowData(row)).toList();
+      final recentDonations = recentSnap.rows
+          .map((row) => _rowData(row))
+          .where((d) => d['is_test'] != true && d['is_test'] != 'true')
+          .take(10)
+          .toList();
 
       return {
-        'total_amount': totalAmount,
-        'total_donations': completedSnap.total,
+        'total_amount': totalAmountNgn,
+        'total_amount_ngn': totalAmountNgn,
+        'total_amount_usd': totalAmountUsd,
+        'total_donations': liveCompletedCount,
         'donations_by_type': donationsByType,
         'recent_donations': recentDonations,
       };

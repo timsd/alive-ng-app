@@ -57,8 +57,33 @@ class _Project3DViewerScreenState extends State<Project3DViewerScreen> {
     super.dispose();
   }
 
+  bool _isAllowedViewerUrl(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return false;
+    // Allow local bundled/same-origin relative paths (no traversal, no scheme)
+    if (!trimmed.contains('://') && !trimmed.startsWith('//') && !trimmed.contains('..')) {
+      return !trimmed.toLowerCase().startsWith('javascript:') &&
+          !trimmed.toLowerCase().startsWith('data:');
+    }
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http')) {
+      return false;
+    }
+    final host = uri.host.toLowerCase();
+    return host == 'app.alivenigeria.org' ||
+        host == 'alivenigeria.org' ||
+        host.endsWith('.alivenigeria.org') ||
+        host == 'youtube.com' ||
+        host == 'www.youtube.com' ||
+        host == 'youtu.be' ||
+        host == 'www.youtube-nocookie.com' ||
+        host == 'vimeo.com' ||
+        host == 'player.vimeo.com';
+  }
+
   Future<void> _initBillboard() async {
-    final explicit = widget.viewerUrl.trim();
+    final rawExplicit = widget.viewerUrl.trim();
+    final explicit = _isAllowedViewerUrl(rawExplicit) ? rawExplicit : '';
     final fetched = await BillboardService.instance.fetchConfig();
     BillboardConfig active = fetched;
 

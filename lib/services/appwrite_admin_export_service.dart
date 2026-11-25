@@ -9,7 +9,6 @@ import '../models/donation_report_models.dart';
 import '../main.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
-import 'appwrite_profile_service.dart';
 
 class AppwriteAdminExportService {
   AppwriteAdminExportService._();
@@ -123,99 +122,33 @@ class AppwriteAdminExportService {
   }) async {
     final entries = <DonationReportEntry>[];
 
-    // 1. Load from donation_records
+    // 1. Load all rows from donation_records (paginated so reports never truncate at 250)
     try {
-      final response = await _tables.listRows(
-        databaseId: AppwriteBackendConfig.databaseId,
-        tableId: AppwriteBackendConfig.donationRecordsCollectionId,
-        queries: [
-          Query.orderDesc(r'$createdAt'),
-          Query.limit(limit),
-          if (status != null && status.isNotEmpty && status != 'all')
-            Query.equal(
-              'status',
-              status.toLowerCase() == 'completed'
-                  ? ['completed', 'success']
-                  : status.toLowerCase(),
-            ),
-        ],
+      final baseQueries = <String>[
+        Query.orderDesc(r'$createdAt'),
+        if (status != null && status.isNotEmpty && status != 'all')
+          Query.equal(
+            'status',
+            status.toLowerCase() == 'completed'
+                ? ['completed', 'success']
+                : status.toLowerCase(),
+          ),
+      ];
+      final rawRows = await _listAllDocuments(
+        AppwriteBackendConfig.donationRecordsCollectionId,
+        baseQueries: baseQueries,
       );
       entries.addAll(
-        response.rows.map((row) => DonationReportEntry.fromJson(_rowData(row))),
+        rawRows.map((row) => DonationReportEntry.fromJson(row)),
       );
-    } catch (_) {
-      try {
-        final fallback = await _tables.listRows(
-          databaseId: AppwriteBackendConfig.databaseId,
-          tableId: AppwriteBackendConfig.donationRecordsCollectionId,
-          queries: [
-            Query.limit(limit),
-            if (status != null && status.isNotEmpty && status != 'all')
-              Query.equal(
-                'status',
-                status.toLowerCase() == 'completed'
-                    ? ['completed', 'success']
-                    : status.toLowerCase(),
-              ),
-          ],
-        );
-        entries.addAll(
-          fallback.rows.map((row) => DonationReportEntry.fromJson(_rowData(row))),
-        );
-      } catch (e) {
-        _logger.warning('Could not load donation_records: $e');
-      }
+    } catch (e) {
+      _logger.warning('Could not load donation_records: $e');
     }
 
-    // 2. Also load completed tract / material download gifts
-    try {
-      final matRes = await _tables.listRows(
-        databaseId: AppwriteBackendConfig.databaseId,
-        tableId: AppwriteBackendConfig.materialDownloadsCollectionId,
-        queries: [
-          Query.greaterThan('donation_amount', 0),
-          Query.limit(limit),
-        ],
-      );
-      final profileService = AppwriteProfileService();
-      final userCache = <String, Map<String, String>>{};
-      for (final row in matRes.rows) {
-        final data = _rowData(row);
-        final userId = (data['user_id'] ?? '').toString();
-        if (userId.isNotEmpty && !userCache.containsKey(userId)) {
-          try {
-            final profile = await profileService.getUserProfileModel(userId);
-            if (profile != null) {
-              final userEmail = profile.email ?? '';
-              final name = (profile.fullName != null && profile.fullName!.trim().isNotEmpty)
-                  ? profile.fullName!.trim()
-                  : (userEmail.contains('@') ? userEmail.split('@').first : 'Donor');
-              userCache[userId] = {
-                'name': name,
-                'email': userEmail,
-              };
-            }
-          } catch (_) {}
-        }
-        if (userId.isNotEmpty && userCache.containsKey(userId)) {
-          data['user_name'] ??= userCache[userId]!['name'];
-          data['user_email'] ??= userCache[userId]!['email'];
-        }
-        // Resolve currency: if missing or default, amounts <= 200 are USD tract presets ($12, $25, $50, $100)
-        final amountNum = num.tryParse(data['donation_amount']?.toString() ?? '0')?.toDouble() ?? 0.0;
-        final rawCurrency = data['currency']?.toString();
-        if (rawCurrency == null || rawCurrency.isEmpty) {
-          data['currency'] = (amountNum > 0 && amountNum <= 200) ? 'USD' : 'NGN';
-        }
-        final entry = DonationReportEntry.fromJson(data);
-        if (entry.amount > 0 &&
-            !entries.any((e) => e.reference == entry.reference && entry.reference.isNotEmpty)) {
-          entries.add(entry);
-        }
-      }
-    } catch (e) {
-      _logger.warning('Could not load material_downloads gifts: $e');
-    }
+    // Note: `material_downloads` is intentionally NOT merged into financial
+    // revenue entries because tract donations already write authoritative rows
+    // into `donation_records` (merging `material_downloads` double-counted
+    // completed tract gifts and leaked abandoned/test checkouts into live KPIs).
 
     // Sort newest first
     entries.sort((a, b) {
@@ -242,7 +175,15 @@ class AppwriteAdminExportService {
       if (status != null &&
           status.isNotEmpty &&
           status.toLowerCase() != 'all') {
-        queries.add(Query.equal('status', status.toLowerCase()));
+        final normalizedStatus = status.toLowerCase();
+        queries.add(
+          Query.equal(
+            'status',
+            normalizedStatus == 'completed'
+                ? ['completed', 'success']
+                : normalizedStatus,
+          ),
+        );
       }
 
       final response = await _tables.listRows(
@@ -315,7 +256,15 @@ class AppwriteAdminExportService {
       if (status != null &&
           status.isNotEmpty &&
           status.toLowerCase() != 'all') {
-        queries.add(Query.equal('status', status.toLowerCase()));
+        final normalizedStatus = status.toLowerCase();
+        queries.add(
+          Query.equal(
+            'status',
+            normalizedStatus == 'completed'
+                ? ['completed', 'success']
+                : normalizedStatus,
+          ),
+        );
       }
 
       final rawRows = await _listAllDocuments(
@@ -625,11 +574,12 @@ class AppwriteAdminExportService {
   }
 
   Map<String, dynamic> _rowData(models.Row row) {
+    final data = Map<String, dynamic>.from(row.data);
     return {
       'id': row.$id,
-      ...Map<String, dynamic>.from(row.data),
       'created_at': row.$createdAt,
       'updated_at': row.$updatedAt,
+      ...data,
     };
   }
 
@@ -732,6 +682,7 @@ class AppwriteAdminExportService {
       'Net Inflow',
       'Status',
       'Purpose / Category',
+      'Split Allocation',
       'Settlement Date',
       'Notes',
     ];
@@ -959,7 +910,12 @@ class AppwriteAdminExportService {
   }
 
   String _csvCell(Object? value) {
-    final text = value is String ? value : jsonEncode(value);
+    var text = value is String ? value : jsonEncode(value);
+    // Neutralize spreadsheet formula injection (=, +, -, @, tab, CR)
+    if (text.isNotEmpty &&
+        RegExp(r'^[=+\-@\t\r]').hasMatch(text)) {
+      text = "'$text";
+    }
     return '"${text.replaceAll('"', '""')}"';
   }
 

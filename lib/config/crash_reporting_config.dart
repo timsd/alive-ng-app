@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../constants/app_constants.dart';
 
 class CrashReportingConfig {
   static const String dsn = String.fromEnvironment(
@@ -9,7 +10,10 @@ class CrashReportingConfig {
     'GLITCHTIP_ENVIRONMENT',
     defaultValue: kReleaseMode ? 'production' : 'development',
   );
-  static const String release = String.fromEnvironment('GLITCHTIP_RELEASE');
+  static const String _releaseDefine = String.fromEnvironment('GLITCHTIP_RELEASE');
+  static String get release => _releaseDefine.trim().isNotEmpty
+      ? _releaseDefine.trim()
+      : 'alive-ng-app@${AppConstants.appVersion}';
   static const String _tracesSampleRateDefine = String.fromEnvironment(
     'GLITCHTIP_TRACES_SAMPLE_RATE',
     defaultValue: '0',

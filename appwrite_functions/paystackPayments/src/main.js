@@ -186,8 +186,11 @@ async function getConfiguredUsdToNgnRate(log) {
   return { rate: FALLBACK_USD_TO_NGN, source: 'fallback' };
 }
 
-async function getPaystackConfigKeys(log, options = {}) {
-  let isTestMode = options.forceTestMode === true || process.env.PAYSTACK_TEST_MODE === 'true';
+async function getPaystackConfigKeys(log, options = {}, req = null) {
+  let isTestMode =
+    options.forceTestMode !== undefined
+      ? options.forceTestMode === true
+      : process.env.PAYSTACK_TEST_MODE === 'true';
 
   let testPublicKey = process.env.PAYSTACK_TEST_PUBLIC_KEY?.trim() || (process.env.PAYSTACK_PUBLIC_KEY?.trim()?.startsWith('pk_test_') ? process.env.PAYSTACK_PUBLIC_KEY.trim() : '');
   let testSecretKey = process.env.PAYSTACK_TEST_SECRET_KEY?.trim() || (process.env.PAYSTACK_SECRET_KEY?.trim()?.startsWith('sk_test_') ? process.env.PAYSTACK_SECRET_KEY.trim() : '');
@@ -198,7 +201,7 @@ async function getPaystackConfigKeys(log, options = {}) {
   let dynamicSecretKey = '';
 
   try {
-    const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY;
+    const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY || req?.headers?.['x-appwrite-key'];
     const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
     const projId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || '';
     if (apiKey && endpoint) {
@@ -248,8 +251,13 @@ async function getPaystackConfigKeys(log, options = {}) {
     if (!isTestMode && dynamicPublicKey.startsWith('pk_live_')) publicKey = dynamicPublicKey;
   }
 
+  // Never cross-fallback between test and live keys: if Live mode is enabled
+  // and live key is missing, fail loudly instead of silently switching to test.
   if (!secret) {
-    secret = liveSecretKey || testSecretKey || process.env.PAYSTACK_SECRET_KEY?.trim() || '';
+    const envFallback = process.env.PAYSTACK_SECRET_KEY?.trim() || '';
+    if ((isTestMode && envFallback.startsWith('sk_test_')) || (!isTestMode && envFallback.startsWith('sk_live_'))) {
+      secret = envFallback;
+    }
   }
 
   // CRITICAL FAIL-SAFE: Paystack test and live keys must NEVER be mismatched.
@@ -290,9 +298,9 @@ export default async ({ req, res, log, error }) => {
       return res.json({ error: 'Raw card data must be submitted only to Paystack checkout.' }, 400);
     }
 
-    const paystackConfig = await getPaystackConfigKeys(log, {
-      forceTestMode: body?.test_mode !== undefined ? (body.test_mode === true || body.test_mode === 'true') : undefined,
-    });
+    // Always resolve test/live mode authoritatively from server app_settings/env
+    // (never allow an unauthenticated client to override test_mode).
+    const paystackConfig = await getPaystackConfigKeys(log, {}, req);
     let secret = paystackConfig.secret;
     let publicKey = paystackConfig.publicKey;
     const candidateKeys = [
@@ -339,10 +347,16 @@ export default async ({ req, res, log, error }) => {
       });
       let verifyData = await verifyRes.json();
 
-      // If verification failed with invalid key / auth error, attempt alternative key fallback
-      if (!verifyData.status && (verifyData.message?.toLowerCase().includes('key') || verifyRes.status === 401)) {
+      // If verification failed with invalid key/auth or not found (e.g. just after mode switch), retry once with alternate keys
+      const verifyMsg = String(verifyData.message || '').toLowerCase();
+      if (
+        !verifyData.status &&
+        (verifyMsg.includes('key') ||
+          verifyMsg.includes('not found') ||
+          verifyRes.status === 401 ||
+          verifyRes.status === 404)
+      ) {
         for (const altSecret of candidateKeys.filter((k) => k !== secret)) {
-          log(`Retrying verification with alternative key: ${altSecret.substring(0, 10)}...`);
           const retryRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
             headers: {
               Authorization: `Bearer ${altSecret}`,
@@ -350,7 +364,7 @@ export default async ({ req, res, log, error }) => {
             },
           });
           const retryData = await retryRes.json();
-          if (retryData.status || !retryData.message?.toLowerCase().includes('key')) {
+          if (retryData.status) {
             verifyRes = retryRes;
             verifyData = retryData;
             secret = altSecret;
@@ -365,15 +379,30 @@ export default async ({ req, res, log, error }) => {
       if (pData.status === 'success') {
         await handleVerifiedPayment(pData, log);
       }
+      // Return only non-PII verification fields to unauthenticated callers
+      const rawMeta = pData.metadata && typeof pData.metadata === 'object' ? pData.metadata : {};
+      const safeMeta = {
+        ...(rawMeta.project_id ? { project_id: rawMeta.project_id } : {}),
+        ...(rawMeta.project_ids ? { project_ids: rawMeta.project_ids } : {}),
+        ...(rawMeta.project_title ? { project_title: rawMeta.project_title } : {}),
+        ...(rawMeta.fund_designations ? { fund_designations: rawMeta.fund_designations } : {}),
+        ...(rawMeta.donation_type ? { donation_type: rawMeta.donation_type } : {}),
+        ...(rawMeta.category ? { category: rawMeta.category } : {}),
+        ...(rawMeta.material_id ? { material_id: rawMeta.material_id } : {}),
+        ...(rawMeta.original_currency ? { original_currency: rawMeta.original_currency } : {}),
+        ...(rawMeta.original_amount ? { original_amount: rawMeta.original_amount } : {}),
+        ...(rawMeta.exchange_rate ? { exchange_rate: rawMeta.exchange_rate } : {}),
+      };
       return res.json({
         success: pData.status === 'success',
         status: pData.status,
         reference: pData.reference,
         amount: pData.amount / 100,
         currency: pData.currency,
+        domain: pData.domain,
+        is_test: pData.domain === 'test',
         paid_at: pData.paid_at,
-        customer: pData.customer,
-        metadata: pData.metadata,
+        metadata: safeMeta,
       });
     }
 
@@ -476,11 +505,14 @@ export default async ({ req, res, log, error }) => {
       }
 
       let syncDb = null;
-      if (process.env.APPWRITE_API_KEY && process.env.APPWRITE_ENDPOINT) {
+      const syncApiKey = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
+      const syncEndpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
+      const syncProjId = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || '';
+      if (syncApiKey && syncEndpoint) {
         const syncClient = new Client()
-          .setEndpoint(process.env.APPWRITE_ENDPOINT)
-          .setProject(process.env.APPWRITE_PROJECT_ID || '')
-          .setKey(process.env.APPWRITE_API_KEY);
+          .setEndpoint(syncEndpoint)
+          .setProject(syncProjId)
+          .setKey(syncApiKey);
         syncDb = new Databases(syncClient);
       }
       let synced = 0;
@@ -585,11 +617,12 @@ export default async ({ req, res, log, error }) => {
         return fnError(`Could not list subscriptions: ${listErr.message}`, 502);
       }
 
+      const INACTIVE_SUB_STATUSES = new Set(['cancelled', 'non-renewing', 'complete', 'completed']);
       const owned = subscriptions.filter(
         (sub) =>
           typeof sub?.customer?.email === 'string' &&
           sub.customer.email.trim().toLowerCase() === donorEmail &&
-          String(sub?.status || '').toLowerCase() !== 'cancelled',
+          !INACTIVE_SUB_STATUSES.has(String(sub?.status || '').toLowerCase()),
       );
 
       if (action === 'list_subscriptions') {
@@ -748,7 +781,7 @@ export default async ({ req, res, log, error }) => {
           );
           let exchangeRate = clientRate;
           let rateSource = 'client';
-          if (!Number.isFinite(exchangeRate) || exchangeRate <= 100) {
+          if (!isValidRate(exchangeRate)) {
             const resolved = await getConfiguredUsdToNgnRate(log);
             exchangeRate = resolved.rate;
             rateSource = resolved.source;
@@ -938,7 +971,7 @@ export default async ({ req, res, log, error }) => {
       );
       let exchangeRate = clientRate;
       let rateSource = 'client';
-      if (!Number.isFinite(exchangeRate) || exchangeRate <= 100) {
+      if (!isValidRate(exchangeRate)) {
         const resolved = await getConfiguredUsdToNgnRate(log);
         exchangeRate = resolved.rate;
         rateSource = resolved.source;
@@ -1107,6 +1140,7 @@ async function isAliveAppTransaction(txData, databases) {
       ? (() => { try { return JSON.parse(txData.metadata); } catch (_) { return {}; } })()
       : (txData?.metadata || {});
   const ref = String(txData?.reference || '').trim();
+  const planName = String(txData?.plan_object?.name || txData?.plan?.name || '').trim();
 
   if (
     meta.app_id === 'alive_nigeria_app' ||
@@ -1114,7 +1148,8 @@ async function isAliveAppTransaction(txData, databases) {
     meta.source === 'web_donation_page' ||
     Boolean(meta.donation_id) ||
     ref.startsWith('ALIVE') ||
-    ref.startsWith('don_')
+    ref.startsWith('don_') ||
+    planName.startsWith('ALIVE Monthly')
   ) {
     return true;
   }
@@ -1180,9 +1215,10 @@ async function createDynamicPlan({ secret, candidateKeys = [], log, name, amount
     });
     let planJson = await createPlanRes.json();
 
+    const sameModePrefix = activeSecret.startsWith('sk_test_') ? 'sk_test_' : 'sk_live_';
     if (!planJson?.status && (planJson?.message?.toLowerCase().includes('key') || createPlanRes.status === 401)) {
-      for (const altKey of candidateKeys.filter((k) => k && k !== activeSecret)) {
-        if (log) log(`Plan creation returned "${planJson?.message}". Retrying with fallback key ${altKey.substring(0, 10)}...`);
+      for (const altKey of candidateKeys.filter((k) => k && k !== activeSecret && k.startsWith(sameModePrefix))) {
+        if (log) log(`Plan creation returned "${planJson?.message}". Retrying with alternate same-mode key...`);
         const retryRes = await fetch('https://api.paystack.co/plan', {
           method: 'POST',
           headers: {
@@ -1557,7 +1593,7 @@ async function handleVerifiedPayment(paystackData, log, options = {}) {
                 paystackData.metadata?.exchange_rate_usd_ngn ?? paystackData.metadata?.exchange_rate,
               );
               let rate = clientRate;
-              if (!Number.isFinite(rate) || rate <= 100) {
+              if (!isValidRate(rate)) {
                 const resolved = await getConfiguredUsdToNgnRate(log);
                 rate = resolved.rate;
               }
@@ -1623,7 +1659,7 @@ async function handleVerifiedPayment(paystackData, log, options = {}) {
       }
     } else if (process.env.RESEND_API_KEY && customerEmail) {
       try {
-        const dateStr = new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
+        const dateStr = new Date(paystackData.paid_at || Date.now()).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
         const currency = paystackData.currency || 'NGN';
         const formattedAmount = amount.toLocaleString();
         // Purpose and donor name can originate from metadata, so both are

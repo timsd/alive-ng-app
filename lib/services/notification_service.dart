@@ -719,12 +719,12 @@ class NotificationService {
       case 'event':
       case 'events':
         return id != null
-            ? '/events?eventId=${Uri.encodeComponent(id)}'
+            ? '/events?id=${Uri.encodeComponent(id)}'
             : '/events';
       case 'podcast':
       case 'podcasts':
         return id != null
-            ? '/podcasts?id=${Uri.encodeComponent(id)}'
+            ? '/podcasts?podcastId=${Uri.encodeComponent(id)}'
             : '/podcasts';
       case 'tract':
       case 'tracts':

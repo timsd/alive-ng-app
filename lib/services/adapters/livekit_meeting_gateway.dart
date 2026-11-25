@@ -551,9 +551,6 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       if (sender == _hostIdentity || _coHostIdentities.contains(sender)) {
         return true;
       }
-      if (sender.contains('_relay_')) {
-        return true;
-      }
     }
     final metaStr = senderParticipant?.metadata;
     if (metaStr != null && metaStr.isNotEmpty) {

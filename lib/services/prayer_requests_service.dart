@@ -22,7 +22,11 @@ class PrayerRequestsService {
 
   Future<List<PrayerRequest>> fetchPrayerRequests({String? category}) async {
     try {
-      final queries = <String>[Query.orderDesc('created_at'), Query.limit(200)];
+      final queries = <String>[
+        Query.equal('is_private', false),
+        Query.orderDesc('created_at'),
+        Query.limit(200),
+      ];
       if (category != null && category.trim().isNotEmpty) {
         queries.add(Query.equal('category', category.trim()));
       }

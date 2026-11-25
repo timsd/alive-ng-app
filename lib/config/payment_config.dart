@@ -120,7 +120,7 @@ class PaymentConfig {
             databaseId: AppwriteBackendConfig.databaseId,
             tableId: AppwriteBackendConfig.appSettingsCollectionId,
             queries: [
-              Query.limit(50),
+              Query.limit(200),
             ],
           )
           .timeout(const Duration(seconds: 6));

@@ -344,20 +344,21 @@ class InAppUpdateService {
                 },
                 child: const Text('Later'),
               ),
-            TextButton.icon(
-              icon: const Icon(Icons.download_rounded, size: 16),
-              label: const Text('Direct APK', style: TextStyle(fontSize: 12)),
-              onPressed: () async {
-                if (!forceUpdate) {
-                  _updateDialogShown = false;
-                  Navigator.of(dialogCtx).pop();
-                }
-                final uri = Uri.parse(updateUrl);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              },
-            ),
+            if (const String.fromEnvironment('DISTRIBUTION_CHANNEL') == 'direct')
+              TextButton.icon(
+                icon: const Icon(Icons.download_rounded, size: 16),
+                label: const Text('Direct APK', style: TextStyle(fontSize: 12)),
+                onPressed: () async {
+                  if (!forceUpdate) {
+                    _updateDialogShown = false;
+                    Navigator.of(dialogCtx).pop();
+                  }
+                  final uri = Uri.parse(updateUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+              ),
             ElevatedButton.icon(
               icon: const Icon(Icons.shop_two_rounded, size: 18),
               onPressed: () async {

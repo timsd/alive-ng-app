@@ -22,7 +22,7 @@
     "appwrite:function-vars": "node scripts/upsert_appwrite_function_variables.mjs",
     "appwrite:deploy-functions": "node scripts/upsert_appwrite_function_variables.mjs --deploy",
     "appwrite:deploy-livekit": "node scripts/upsert_appwrite_function_variables.mjs --deploy --only-function=createLiveKitToken",
-    "appwrite:deploy-send-email": "node scripts/upsert_appwrite_function_variables.mjs --deploy",
+    "appwrite:deploy-send-email": "node scripts/upsert_appwrite_function_variables.mjs --deploy --only-function=sendEmail",
     "smoke:web-routes": "node test/integration/web_route_smoke_test.js",
     "build:apk": "node scripts/sync_version_from_pubspec.mjs && node scripts/build_android_release.mjs apk",
     "build:aab": "node scripts/sync_version_from_pubspec.mjs && node scripts/build_android_release.mjs aab",
@@ -32,12 +32,12 @@
     "backup:monitor": "node scripts/r2_backup_monitor.mjs"
   },
   "dependencies": {
-    "node-appwrite": "22.1.3",
-    "puppeteer": "^24.39.0"
+    "node-appwrite": "22.1.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.2",
-    "appwrite-cli": "^27.3.0"
+    "appwrite-cli": "^27.3.0",
+    "puppeteer": "^24.39.0"
   }
 }

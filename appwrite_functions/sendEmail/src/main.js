@@ -22,6 +22,71 @@ const ALIVE_LOGO_URL =
   'https://app.alivenigeria.org/assets/assets/images/alive_logo.svg';
 const ALIVE_APP_URL = process.env.ALIVE_APP_URL || 'https://app.alivenigeria.org';
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function checkIsAdminCaller({ req, userId }) {
+  const ep = process.env.APPWRITE_ENDPOINT || process.env.APPWRITE_FUNCTION_API_ENDPOINT;
+  const proj = process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_FUNCTION_PROJECT_ID;
+  const key = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
+  const dbId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
+  const usersColId = process.env.USERS_COLLECTION_ID || '6a08943100226f5b4963';
+  if (!ep || !proj || !key || !userId) return false;
+  const base = ep.replace(/\/v1\/?$/, '');
+  try {
+    const authUserRes = await fetch(
+      `${base}/v1/users/${encodeURIComponent(userId)}`,
+      { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
+    );
+    if (authUserRes.ok) {
+      const authUser = await authUserRes.json();
+      const labels = Array.isArray(authUser?.labels)
+        ? authUser.labels.map((l) => String(l).toLowerCase().trim())
+        : [];
+      if (labels.some((l) => ['admin', 'super_admin', 'treasurer', 'president', 'director', 'bod', 'trustee'].includes(l))) {
+        return true;
+      }
+    }
+  } catch (_) { }
+  try {
+    const uRes = await fetch(
+      `${base}/v1/databases/${dbId}/collections/${usersColId}/documents/${encodeURIComponent(userId)}`,
+      { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
+    );
+    if (uRes.ok) {
+      const uDoc = await uRes.json();
+      const r = String(uDoc?.role || '').toLowerCase().trim();
+      if (uDoc?.is_admin === true || ['admin', 'super_admin', 'treasurer', 'president', 'director', 'bod', 'trustee'].includes(r)) {
+        return true;
+      }
+    }
+  } catch (_) { }
+  try {
+    const eqUser = encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'user_id', values: [userId] }));
+    const eqActive = encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'is_current', values: [true] }));
+    const hRes = await fetch(
+      `${base}/v1/databases/${dbId}/collections/org_office_holders/documents?queries[]=${eqUser}&queries[]=${eqActive}`,
+      { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
+    );
+    if (hRes.ok) {
+      const hData = await hRes.json();
+      for (const h of hData?.documents || []) {
+        const title = String(h.office_title || h.office_slug || h.title || '').toLowerCase();
+        if (title.includes('treasurer') || title.includes('president') || title.includes('admin') || title.includes('secretary')) {
+          return true;
+        }
+      }
+    }
+  } catch (_) { }
+  return false;
+}
+
 export default async ({ req, res, log, error }) => {
   try {
     const apiKey = process.env.RESEND_API_KEY;
@@ -40,7 +105,6 @@ export default async ({ req, res, log, error }) => {
       body = req.body;
     } else {
       const src = raw || (typeof req.body === 'string' ? req.body : '{}');
-      log(`[debug] body type=${typeof req.body}, raw type=${typeof req.bodyRaw}, src=${src.substring(0, 120)}`);
       body = JSON.parse(src || '{}');
     }
     // Two distinct senders, on purpose.
@@ -69,11 +133,24 @@ export default async ({ req, res, log, error }) => {
       (typeof body.cc === 'string' && body.cc.trim()) ||
       replyTo;
 
+    const trigger = (req.headers['x-appwrite-trigger'] || '').toLowerCase();
+    const isInternal = Boolean(trigger === 'event' || trigger === 'schedule');
+    const callerUserId = String(req.headers['x-appwrite-user-id'] || '').trim();
+
     // 1. Handle automatic Welcome Email on user registration / creation event
-    const isUserCreateEvent = event.startsWith('users.') && event.endsWith('.create');
+    const isUserCreateEvent = isInternal && event.startsWith('users.') && event.endsWith('.create');
     const isExplicitWelcome = body.action === 'send_welcome' && body.email;
 
     if (isUserCreateEvent || isExplicitWelcome) {
+      if (isExplicitWelcome && !isUserCreateEvent) {
+        if (!callerUserId) {
+          return res.json({ error: 'Authentication required.' }, 401);
+        }
+        const canTriggerWelcome = await checkIsAdminCaller({ req, userId: callerUserId });
+        if (!canTriggerWelcome) {
+          return res.json({ error: 'Only admins or system events may trigger welcome emails.' }, 403);
+        }
+      }
       const recipientEmail = body.email;
       if (!recipientEmail || !validateEmail(recipientEmail)) {
         log(`No valid email found in user creation event. Skipping welcome email.`);
@@ -216,87 +293,31 @@ export default async ({ req, res, log, error }) => {
       return res.json({ error: 'Method not allowed. Use POST.' }, 405);
     }
 
-    const userId = req.headers['x-appwrite-user-id'];
-    const trigger = (req.headers['x-appwrite-trigger'] || '').toLowerCase();
-    // Only trust internal execution when triggered by Appwrite event/schedule
-    // (never trust client-supplied x-appwrite-key headers alone).
-    const isInternal = Boolean(
-      trigger === 'event' ||
-      trigger === 'schedule'
-    );
+    const userId = callerUserId;
     if (!userId && !isInternal) {
       return res.json({ error: 'Authentication required.' }, 401);
-    }
-
-    // Prevent regular members from forging official donation receipts
-    if (isReceipt && !isInternal) {
-      let isAdminCaller = false;
-      const ep = process.env.APPWRITE_ENDPOINT || process.env.APPWRITE_FUNCTION_API_ENDPOINT;
-      const proj = process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_FUNCTION_PROJECT_ID;
-      const key = process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'];
-      const dbId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
-      const usersColId = process.env.USERS_COLLECTION_ID || '6a08943100226f5b4963';
-      if (ep && proj && key && userId) {
-        const base = ep.replace(/\/v1\/?$/, '');
-        try {
-          const authUserRes = await fetch(
-            `${base}/v1/users/${encodeURIComponent(userId)}`,
-            { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
-          );
-          if (authUserRes.ok) {
-            const authUser = await authUserRes.json();
-            const labels = Array.isArray(authUser?.labels)
-              ? authUser.labels.map((l) => String(l).toLowerCase().trim())
-              : [];
-            if (labels.some((l) => ['admin', 'super_admin', 'treasurer', 'president'].includes(l))) {
-              isAdminCaller = true;
-            }
-          }
-        } catch (_) { }
-        if (!isAdminCaller) {
-          try {
-            const uRes = await fetch(
-              `${base}/v1/databases/${dbId}/collections/${usersColId}/documents/${encodeURIComponent(userId)}`,
-              { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
-            );
-            if (uRes.ok) {
-              const uDoc = await uRes.json();
-              const r = String(uDoc?.role || '').toLowerCase().trim();
-              if (uDoc?.is_admin === true || ['admin', 'super_admin', 'treasurer'].includes(r)) {
-                isAdminCaller = true;
-              }
-            }
-          } catch (_) { }
-        }
-        if (!isAdminCaller) {
-          try {
-            const eqUser = encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'user_id', values: [userId] }));
-            const eqActive = encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'is_current', values: [true] }));
-            const hRes = await fetch(
-              `${base}/v1/databases/${dbId}/collections/org_office_holders/documents?queries[]=${eqUser}&queries[]=${eqActive}`,
-              { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
-            );
-            if (hRes.ok) {
-              const hData = await hRes.json();
-              for (const h of hData?.documents || []) {
-                const title = String(h.office_title || h.office_slug || h.title || '').toLowerCase();
-                if (title.includes('treasurer') || title.includes('president') || title.includes('admin')) {
-                  isAdminCaller = true;
-                  break;
-                }
-              }
-            }
-          } catch (_) { }
-        }
-      }
-      if (!isAdminCaller) {
-        return res.json({ error: 'Only server-side payment verification or admins may send receipts.' }, 403);
-      }
     }
 
     const to = validateEmail(body.to);
     const subject = validateSubject(body.subject);
     const html = validateHtml(body.html);
+
+    // Prevent regular members from forging official donation receipts or using
+    // ALIVE's verified domain as an arbitrary email relay to third parties.
+    // Non-admin signed-in users may only send system/support notifications
+    // addressed directly to the ministry inbox (replyTo / app@alivenigeria.org).
+    const ministryInbox = (process.env.REPLY_TO_EMAIL || defaultReplyTo).toLowerCase().trim();
+    const isAdminOnlyTarget = isReceipt || to.toLowerCase().trim() !== ministryInbox;
+    if (!isInternal && isAdminOnlyTarget) {
+      const isAdminCaller = await checkIsAdminCaller({ req, userId });
+      if (!isAdminCaller) {
+        return res.json({
+          error: isReceipt
+            ? 'Only server-side payment verification or admins may send receipts.'
+            : 'Only administrators may send outbound emails to external recipients.',
+        }, 403);
+      }
+    }
 
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -352,7 +373,7 @@ function getWelcomeEmailHtml(name) {
           <!-- Body Content -->
           <tr>
             <td style="padding: 36px 32px;">
-              <h2 style="margin: 0 0 16px; color: #17263B; font-size: 20px; font-weight: 700;">Welcome, ${name}!</h2>
+              <h2 style="margin: 0 0 16px; color: #17263B; font-size: 20px; font-weight: 700;">Welcome, ${escapeHtml(name)}!</h2>
               <p style="margin: 0 0 18px; line-height: 1.6; color: #475569; font-size: 15px;">
                 We are thrilled to welcome you to the <strong>ALIVE Nigeria</strong> community. Your account is now active and ready to explore!
               </p>

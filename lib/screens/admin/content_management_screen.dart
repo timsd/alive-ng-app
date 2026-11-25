@@ -1272,14 +1272,21 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     if (result == true) {
       final fundUpdateImages =
           _projectImageList(fundUpdateImagesController.text).take(10).toList();
+      final originalRaised =
+          (project?['raised'] ?? project?['amount_raised'] ?? 0).toString();
+      final parsedRaised = double.tryParse(raisedController.text) ?? 0;
+      final raisedWasEdited =
+          !isEditing || raisedController.text.trim() != originalRaised.trim();
       final projectData = {
         'title': titleController.text,
         'summary': summaryController.text,
         'description': descriptionController.text,
         'goal': double.tryParse(goalController.text) ?? 0,
         'target_amount': double.tryParse(goalController.text) ?? 0,
-        'raised': double.tryParse(raisedController.text) ?? 0,
-        'amount_raised': double.tryParse(raisedController.text) ?? 0,
+        // Avoid overwriting live donation increments when admin only edits
+        // metadata fields like title/summary/status.
+        if (raisedWasEdited) 'raised': parsedRaised,
+        if (raisedWasEdited) 'amount_raised': parsedRaised,
         'image_url': imageUrlController.text,
         'viewer_url': viewerUrlController.text.trim(),
         'cta_label': ctaLabelController.text.trim(),
@@ -1292,7 +1299,7 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
           'fund_update_updated_at': DateTime.now().toIso8601String(),
         'priority': int.tryParse(priorityController.text) ?? 100,
         'status': status,
-        'is_active': status == 'active',
+        'is_active': status == 'active' || status == 'planning',
       };
 
       final nowIso = DateTime.now().toIso8601String();

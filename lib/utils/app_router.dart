@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -273,7 +274,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final currentUser = ref.read(authGatewayProvider).currentUser;
       final isAuthenticated = currentUser != null;
       if (isAuthenticated) {
-        unawaited(OfflineBibleService().prewarmBundle());
+        if (!kIsWeb) {
+          unawaited(OfflineBibleService().prewarmBundle());
+        }
         if (isPersistableRoute(state.uri.path)) {
           unawaited(saveLastActiveRoute(currentUri));
         }
@@ -988,10 +991,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
 
-          // Private Prayer Room Route
+          // Private Prayer Room Route (authenticated members only)
           GoRoute(
             path: AppConstants.privatePrayerRoomRoute,
             builder: (context, state) => const PrivatePrayerRoomScreen(),
+            redirect: (context, state) {
+              if (ref.read(authGatewayProvider).currentUser == null) {
+                return AppConstants.authRoute;
+              }
+              return null;
+            },
           ),
 
           // Library Route
@@ -1005,7 +1014,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppConstants.podcastsRoute,
             builder: (context, state) {
               final episodeId = state.uri.queryParameters['episodeId'];
-              final podcastId = state.uri.queryParameters['podcastId'];
+              final podcastId = state.uri.queryParameters['podcastId'] ??
+                  state.uri.queryParameters['id'];
               return PodcastsScreen(
                 initialEpisodeId: episodeId,
                 initialPodcastId: podcastId,
@@ -1089,7 +1099,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppConstants.eventsRoute,
             builder: (context, state) => EventsScreen(
               initialTab: state.uri.queryParameters['tab'] ?? 'events',
-              initialItemId: state.uri.queryParameters['id'],
+              initialItemId: state.uri.queryParameters['id'] ??
+                  state.uri.queryParameters['eventId'],
             ),
           ),
           GoRoute(

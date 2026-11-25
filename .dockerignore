@@ -19,6 +19,15 @@ windows/flutter/ephemeral/
 .env.*
 *.jks
 *.keystore
+android/key.properties
+android/play-store-service-account.json
+config/*.json
+appwrite_functions/
+store_assets/
+.deploy_payloads/
+scratch/
+test/
+tests/
 firebase-admin-key*.json
 service-account-*.json
 GoogleService-Info.plist

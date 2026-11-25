@@ -172,6 +172,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
   void dispose() {
     _animationController.dispose();
     _customAmountController.dispose();
+    _customDesignationController.dispose();
     _guestNameController.dispose();
     _guestEmailController.dispose();
     super.dispose();

@@ -107,6 +107,10 @@ class NotificationSettingsService {
           await NotificationService.instance.ensurePushRegistered(force: true);
         } else {
           await AppwritePushService.instance.unsubscribeCurrentTarget('all_users');
+          await AppwritePushService.instance.unsubscribeCurrentTarget('admins');
+          await AppwritePushService.instance.unsubscribeCurrentTarget('approvals');
+          AppwritePushService.instance.closeNativeAppwritePushFallback();
+          await NotificationService.instance.updateAdminTopicSubscriptions(null);
         }
       }
       ToastUtils.showSuccess('Your notification preferences have been saved');

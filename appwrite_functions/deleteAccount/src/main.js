@@ -65,10 +65,10 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: 'Account deletion service is not configured.' }, 500);
   }
 
-  // Capture the member's details BEFORE the delete, because afterwards the
-  // account no longer exists and there is nothing left to look up. Without
-  // this the confirmation email has no recipient.
-  let memberEmail = String(body.email || '').trim();
+  // Capture the member's details BEFORE the delete, strictly from Appwrite
+  // Auth (never trust caller-supplied body.email so a throwaway account cannot
+  // send closure emails to arbitrary third-party addresses).
+  let memberEmail = '';
   let memberName = '';
   try {
     const whoRes = await fetch(
@@ -83,7 +83,7 @@ export default async ({ req, res, log, error }) => {
     );
     if (whoRes.ok) {
       const who = await whoRes.json();
-      memberEmail = memberEmail || String(who?.email || '');
+      memberEmail = String(who?.email || '').trim();
       memberName = String(who?.name || '').trim();
     }
   } catch (lookupErr) {
@@ -119,7 +119,13 @@ export default async ({ req, res, log, error }) => {
         const from =
           process.env.SENDER_EMAIL || 'ALIVE Nigeria App <msg@app.alivenigeria.org>';
         const replyTo = process.env.REPLY_TO_EMAIL || 'app@alivenigeria.org';
-        const greeting = memberName ? memberName.split(' ')[0] : 'Friend';
+        const rawGreeting = memberName ? memberName.split(' ')[0] : 'Friend';
+        const greeting = String(rawGreeting)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
 
         const mailRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',

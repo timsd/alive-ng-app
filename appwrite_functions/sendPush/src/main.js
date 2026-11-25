@@ -222,11 +222,10 @@ async function handleUnregisterGuestDevice({
   log,
   res,
 }) {
+  // Require the raw FCM token to prove device ownership rather than allowing
+  // unauthenticated deletion by targetId alone.
   const token = String(body.token || '').trim();
-  const rawTargetId = String(body.targetId || '').trim();
-  const targetId = rawTargetId.startsWith('guest_')
-    ? rawTargetId
-    : (token.length >= 40 ? guestTargetIdFor(token) : '');
+  const targetId = token.length >= 40 ? guestTargetIdFor(token) : '';
 
   if (!targetId || !targetId.startsWith('guest_')) {
     return res.json({ success: true, removed: false });
@@ -425,7 +424,12 @@ export default async ({ req, res, log, error }) => {
       }
 
       const requestTitle = String(prayerDoc.title || 'your prayer request').trim();
-      const intercessorName = String(body.intercessorName || '').trim() || 'A fellow believer';
+      let intercessorName = 'A fellow believer';
+      try {
+        const callerAuth = await usersApi.get(callerUserId);
+        const resolved = String(callerAuth?.name || '').trim();
+        if (resolved) intercessorName = resolved;
+      } catch (_) {}
       const prayerCount = Number(prayerDoc.prayer_count || 1);
       const route = `/prayer-wall?prayerId=${encodeURIComponent(requestId)}`;
       const pushTitle = '🙏 Someone Prayed for Your Request';
@@ -461,6 +465,47 @@ export default async ({ req, res, log, error }) => {
         requestId,
         route,
       });
+    }
+
+    // Dedicated action when a new coordinator/staff account awaits admin approval.
+    // Verifies server-side that the caller's own profile is pending approval, then
+    // dispatches a real push to the `admins` and `approvals` topics.
+    if (action === 'notify_admin_approval') {
+      if (!callerUserId) {
+        return res.json({ error: 'Authentication required.' }, 401);
+      }
+      let callerDoc;
+      try {
+        callerDoc = await databases.getDocument(databaseId, USERS_COLLECTION_ID, callerUserId);
+      } catch (_) {
+        return res.json({ error: 'User profile not found.' }, 404);
+      }
+      const approvalStatus = String(callerDoc?.approval_status || '').toLowerCase().trim();
+      if (approvalStatus !== 'pending' && callerDoc?.is_approved === true) {
+        return res.json({ success: true, skipped: true, reason: 'Account already approved.' });
+      }
+      const applicantName = String(callerDoc?.full_name || callerDoc?.name || 'New Applicant').trim();
+      const requestedRole = String(callerDoc?.role || 'coordinator').trim();
+      const message = await messaging.createPush({
+        messageId: ID.unique(),
+        title: 'Action Required: New Coordinator Registration',
+        body: `${applicantName} requested ${requestedRole} approval. Tap to review.`,
+        topics: ['admins', 'approvals'],
+        users: [],
+        targets: [],
+        data: {
+          type: 'admin_approval',
+          applicant_id: callerUserId,
+          route: '/admin-approval',
+        },
+        icon: 'ic_notification',
+        color: '#0F9A07',
+        sound: 'default',
+        priority: 'high',
+        draft: false,
+      });
+      log(`Admin approval push dispatched: msg=${message.$id}, applicant=${callerUserId}`);
+      return res.json({ success: true, messageId: message.$id });
     }
 
     // Require an authenticated admin/office-holder caller for general push broadcasts.

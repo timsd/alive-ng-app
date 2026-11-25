@@ -35,7 +35,6 @@ class CrashReportingService {
         // 1. Filter out pure network dropouts / offline connectivity disconnects
         if (fullStr.contains('err_internet_disconnected') ||
             fullStr.contains('socketexception') ||
-            fullStr.contains('clientexception') ||
             fullStr.contains('failed host lookup') ||
             fullStr.contains('connection refused') ||
             fullStr.contains('connection reset') ||

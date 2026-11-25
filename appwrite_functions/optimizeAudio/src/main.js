@@ -1,4 +1,4 @@
-import { Client, Databases, Storage, ID, Query } from 'node-appwrite';
+import { Client, Databases, Storage, Users, ID, Query } from 'node-appwrite';
 
 /**
  * Audio Optimization Function for ALIVE Nigeria Ministry
@@ -13,15 +13,45 @@ export default async ({ req, res, log, error }) => {
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || 'https://api.alivenigeria.org/v1')
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || '6a3bef53002f5090dedf')
-    .setKey(req.headers['x-appwrite-key'] || process.env.APPWRITE_API_KEY || '');
+    .setKey(process.env.APPWRITE_FUNCTION_API_KEY || process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'] || '');
 
   const databases = new Databases(client);
   const storage = new Storage(client);
+  const users = new Users(client);
 
   const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
+  const usersTableId = process.env.APPWRITE_USERS_TABLE_ID || '6a08943100226f5b4963';
   const bucketId = 'podcast_media';
 
   try {
+    const trigger = String(req.headers['x-appwrite-trigger'] || '').trim().toLowerCase();
+    const isInternal = trigger === 'event' || trigger === 'schedule';
+    const callerUserId = String(req.headers['x-appwrite-user-id'] || '').trim();
+    if (!isInternal) {
+      if (!callerUserId) {
+        return res.json({ success: false, error: 'Authentication required.' }, 401);
+      }
+      let authorized = false;
+      try {
+        const authUser = await users.get(callerUserId);
+        const labels = Array.isArray(authUser?.labels) ? authUser.labels.map((l) => String(l).toLowerCase()) : [];
+        if (labels.some((l) => ['admin', 'super_admin', 'leader', 'director', 'bod', 'trustee'].includes(l))) {
+          authorized = true;
+        }
+      } catch (_) {}
+      if (!authorized) {
+        try {
+          const uDoc = await databases.getDocument(databaseId, usersTableId, callerUserId);
+          const r = String(uDoc?.role || '').toLowerCase().trim();
+          if (uDoc?.is_admin === true || ['admin', 'super_admin', 'leader', 'director', 'bod', 'trustee'].includes(r)) {
+            authorized = true;
+          }
+        } catch (_) {}
+      }
+      if (!authorized) {
+        return res.json({ success: false, error: 'Admin or media leader privileges required.' }, 403);
+      }
+    }
     let payload = {};
     if (req.body) {
       try {

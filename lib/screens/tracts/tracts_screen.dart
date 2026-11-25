@@ -969,6 +969,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
       } catch (_) {
         canDownload = false;
       }
+      bool donatedNow = false;
       if (!canDownload && material.requiresDonation) {
         if (!mounted) return;
         final donated = await showDialog<bool>(
@@ -979,6 +980,7 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
           ),
         );
         if (donated != true) return;
+        donatedNow = true;
       }
 
       String? downloadUrl;
@@ -989,7 +991,10 @@ class _TractsScreenState extends ConsumerState<TractsScreen>
       }
       downloadUrl ??= await _resolveTractPdfUrl(tract);
 
-      await donationService.recordDownload(material.id, material.title);
+      // Avoid recording a duplicate download entry when DonationDialog already recorded it.
+      if (!donatedNow) {
+        await donationService.recordDownload(material.id, material.title);
+      }
       if (mounted) {
         // Bring user directly to Downloaded tab
         _tabController.animateTo(1);

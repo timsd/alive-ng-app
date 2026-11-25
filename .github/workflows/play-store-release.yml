@@ -61,6 +61,21 @@ jobs:
             echo "storeFile=android/app/upload-keystore.jks"
           } > android/key.properties
 
+      - name: Provision Firebase & production env files
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          PRODUCTION_ENV_JSON_BASE64: ${{ secrets.PRODUCTION_ENV_JSON_BASE64 }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
+          fi
+          mkdir -p config
+          if [ -n "$PRODUCTION_ENV_JSON_BASE64" ]; then
+            echo "$PRODUCTION_ENV_JSON_BASE64" | base64 --decode > config/production_env.json
+          else
+            echo '{}' > config/production_env.json
+          fi
+
       - name: Sync version from pubspec.yaml
         run: node scripts/sync_version_from_pubspec.mjs
 

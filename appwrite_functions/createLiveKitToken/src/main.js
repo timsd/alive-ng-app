@@ -50,12 +50,18 @@ const roomPolicies = {
 };
 
 async function getRole(userId, req) {
-  const endpoint = process.env.APPWRITE_ENDPOINT?.replace(/\/$/, '');
-  const projectId = process.env.APPWRITE_PROJECT_ID;
-  const databaseId = process.env.APPWRITE_DATABASE_ID;
+  const endpoint = (
+    process.env.APPWRITE_FUNCTION_API_ENDPOINT ||
+    process.env.APPWRITE_ENDPOINT ||
+    'https://api.alivenigeria.org/v1'
+  ).replace(/\/$/, '');
+  const projectId =
+    process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
+  const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
   const apiKey =
-    req.headers['x-appwrite-key'] ||
-    process.env.APPWRITE_FUNCTION_API_KEY;
+    process.env.APPWRITE_FUNCTION_API_KEY ||
+    process.env.APPWRITE_API_KEY ||
+    req.headers['x-appwrite-key'];
   const usersTableId = process.env.APPWRITE_USERS_TABLE_ID || '6a08943100226f5b4963';
   if (!endpoint || !projectId || !databaseId || !apiKey || !usersTableId) {
     throw new Error('Private ALIVE Meet rooms are not configured for role verification.');
@@ -340,29 +346,45 @@ export default async ({ req, res, log, error }) => {
     }
 
     if (!roomName || !identity) return res.json({ error: 'Invalid ALIVE Meet request.' }, 400);
-    const isSelfOrRelay =
-      identity === authenticatedUserId ||
-      String(identity).startsWith(`${authenticatedUserId}_relay_`);
-    if (!isSelfOrRelay && !isInternal) {
-      return res.json({ error: 'Cannot create a token for another user.' }, 403);
-    }
 
     const targetRoom = String(roomName).trim();
-    const policy = roomPolicies[meetingType] || roomPolicies.custom;
-
     const isLeader = ['admin', 'super_admin', 'president', 'bod', 'director', 'trustee', 'leader', 'coordinator'].includes(role);
     const isAdmin = ['admin', 'super_admin', 'president', 'bod', 'director', 'trustee'].includes(role);
 
-    // Permission enforcement:
-    // 1. Role-restricted rooms (e.g. board, leadership) require matching roles (super_admin/president always allowed)
+    const isSelf = identity === authenticatedUserId;
+    const isAuthorizedRelay =
+      (isLeader || isInternal) &&
+      String(identity).startsWith(`${authenticatedUserId}_relay_`);
+    if (!isSelf && !isAuthorizedRelay && !isInternal) {
+      return res.json({ error: 'Cannot create a token for another user or unauthorized relay.' }, 403);
+    }
+
+    // Derive room access policy strictly from the actual targetRoom (including
+    // breakout rooms `--br-`) so a client cannot bypass Board/Leadership room
+    // restrictions by passing `meetingType: "custom"`.
+    const baseRoom = targetRoom.split('--br-')[0];
+    const effectiveType = inferMeetingType(baseRoom);
+    const policy = roomPolicies[effectiveType] || roomPolicies[meetingType] || roomPolicies.custom;
+
+    // 1. Role-restricted rooms (board, leadership) ALWAYS require matching roles
     if (policy.roles && !policy.roles.includes(role) && !['super_admin', 'president'].includes(role)) {
       return res.json({ error: 'You do not have access to this ALIVE Meet room.' }, 403);
     }
 
-    // 2. Fixed-room policy validation for non-leaders (allow breakout rooms under the same policy room)
-    const isBreakoutOfPolicyRoom = Boolean(policy.room && targetRoom.startsWith(`${policy.room}--br-`));
-    if (policy.room && targetRoom !== policy.room && !isBreakoutOfPolicyRoom && !isLeader) {
-      return res.json({ error: 'Only ALIVE leaders and administrators can start new meeting rooms.' }, 403);
+    // 2. Non-leaders may join standard public rooms (community, prayer, quick)
+    // and their breakout rooms, or any currently active non-restricted custom
+    // room via invite link, but cannot spin up brand-new arbitrary rooms.
+    const PUBLIC_ROOMS = new Set(['alive-meet-community', 'alive-meet-prayer', 'alive-meet-quick']);
+    if (!isLeader && !PUBLIC_ROOMS.has(baseRoom) && !isInternal) {
+      let roomExists = false;
+      try {
+        const roomService = new RoomServiceClient(rawServiceUrl, apiKey, apiSecret);
+        const existing = await roomService.listRooms([targetRoom]);
+        roomExists = Array.isArray(existing) && existing.some((r) => r.name === targetRoom && Number(r.numParticipants || 0) > 0);
+      } catch (_) {}
+      if (!roomExists) {
+        return res.json({ error: 'Only ALIVE leaders and administrators can start new meeting rooms.' }, 403);
+      }
     }
 
     // Trigger targeted push notification when a leader/admin starts a meeting
@@ -457,14 +479,13 @@ export default async ({ req, res, log, error }) => {
                 users: targetUsers.slice(i, i + 100),
               });
             }
-          }
-          if (targetTopics && targetTopics.length > 0) {
+          } else if (targetTopics && targetTopics.length > 0) {
             await messaging.createPush({
               ...basePushPayload,
               messageId: ID.unique(),
               topics: targetTopics,
             });
-          } else if (!targetUsers || targetUsers.length === 0) {
+          } else {
             await messaging.createPush({
               ...basePushPayload,
               messageId: ID.unique(),

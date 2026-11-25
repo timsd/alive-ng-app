@@ -137,21 +137,28 @@ class DailyVerseRepository {
   String _normalizeDate(dynamic value) {
     if (value is String && value.contains('T')) return value;
     if (value is String && value.isNotEmpty) {
-      return DateTime.parse(value).toIso8601String();
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) return parsed.toIso8601String();
     }
     return DateTime.now().toIso8601String();
   }
 
-  String _extractBook(String reference) => reference.split(' ').first;
+  String _extractBook(String reference) {
+    final trimmed = reference.trim();
+    final match = RegExp(r'^(.*?)\s+\d+(?::\d+)?').firstMatch(trimmed);
+    if (match != null) return match.group(1)!.trim();
+    return trimmed.split(' ').first;
+  }
+
   int _extractChapter(String reference) {
-    final parts = reference.split(' ');
-    if (parts.length < 2) return 1;
-    return int.tryParse(parts[1].split(':').first) ?? 1;
+    final match = RegExp(r'\s(\d+)(?::\d+)?\s*$').firstMatch(reference.trim());
+    if (match != null) return int.tryParse(match.group(1)!) ?? 1;
+    return 1;
   }
 
   int _extractVerseNumber(String reference) {
     final parts = reference.split(':');
     if (parts.length < 2) return 1;
-    return int.tryParse(parts[1]) ?? 1;
+    return int.tryParse(parts.last.split('-').first.trim()) ?? 1;
   }
 }

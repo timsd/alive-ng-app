@@ -150,7 +150,24 @@ class _DonationDialogState extends State<DonationDialog> {
         throw Exception(paymentResult['message'] ?? 'Payment failed');
       }
 
-      // Record download immediately upon payment confirmation/initialization
+      // If checkout was only initialized (redirect/external browser), do NOT
+      // unlock or record the download yet — wait for verified completion.
+      if (paymentResult['success'] != true) {
+        if (mounted) {
+          Navigator.of(context).pop(false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Checkout opened for $symbol${_donationAmount.toStringAsFixed(2)}. Your tract will unlock automatically once payment is confirmed.',
+              ),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Record download only after confirmed payment success
       await _donationService.recordDownload(
         widget.material.id,
         widget.material.title,
@@ -164,9 +181,7 @@ class _DonationDialogState extends State<DonationDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              paymentResult['initialized'] == true
-                  ? 'Payment opened for $symbol${_donationAmount.toStringAsFixed(2)}. ${widget.material.title} is now available in your Downloaded area.'
-                  : 'Thank you for your generous gift of $symbol${_donationAmount.toStringAsFixed(2)}! ${widget.material.title} is now in your Downloaded area.',
+              'Thank you for your generous gift of $symbol${_donationAmount.toStringAsFixed(2)}! ${widget.material.title} is now in your Downloaded area.',
             ),
             backgroundColor: Theme.of(context).colorScheme.tertiary,
             duration: const Duration(seconds: 5),

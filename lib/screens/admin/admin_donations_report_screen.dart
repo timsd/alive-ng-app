@@ -230,8 +230,13 @@ class _AdminDonationsReportContentState
 
       // Status filter
       final status = d.status;
-      if (_statusFilter != 'all' && status != _statusFilter.toLowerCase()) {
-        return false;
+      if (_statusFilter != 'all') {
+        final target = _statusFilter.toLowerCase();
+        if (target == 'completed') {
+          if (status != 'completed' && status != 'success') return false;
+        } else if (status != target) {
+          return false;
+        }
       }
 
       // Date filter
@@ -286,14 +291,32 @@ class _AdminDonationsReportContentState
     }
   }
 
+  (DateTime?, DateTime?) _resolveActiveDateRange() {
+    final now = DateTime.now();
+    switch (_datePreset) {
+      case 'today':
+        return (DateTime(now.year, now.month, now.day), null);
+      case 'week':
+        return (now.subtract(const Duration(days: 7)), null);
+      case 'month':
+        return (DateTime(now.year, now.month, 1), null);
+      case 'custom':
+        return (_customStartDate, _customEndDate);
+      case 'all':
+      default:
+        return (null, null);
+    }
+  }
+
   Future<void> _exportReport(String format) async {
     setState(() => _isExporting = true);
     try {
+      final (exportStart, exportEnd) = _resolveActiveDateRange();
       final result =
           await AppwriteAdminExportService.instance.exportDonationsReport(
         format: format,
-        startDate: _datePreset == 'custom' ? _customStartDate : null,
-        endDate: _datePreset == 'custom' ? _customEndDate : null,
+        startDate: exportStart,
+        endDate: exportEnd,
         status: _statusFilter == 'all' ? null : _statusFilter,
         modeFilter: _modeFilter,
       );

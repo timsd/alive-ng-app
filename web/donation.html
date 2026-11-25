@@ -1022,8 +1022,18 @@
       }
 
       function showSuccessDialog(amountStr, refStr, redirectUrl, buttonLabel) {
+        function escapeHtmlText(str) {
+          return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
         var targetUrl = redirectUrl || '/';
-        var label = buttonLabel || 'Return to Home Now';
+        var label = escapeHtmlText(buttonLabel || 'Return to Home Now');
+        var safeAmountStr = amountStr ? escapeHtmlText(amountStr) : '';
+        var safeRefStr = refStr ? escapeHtmlText(refStr) : '';
         var modal = document.createElement('div');
         modal.id = 'payment-success-modal';
         modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
@@ -1032,10 +1042,10 @@
         modal.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:460px;width:100%;padding:32px 28px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);position:relative;animation:popIn 0.3s ease-out;">'
           + '<div style="width:72px;height:72px;background:#ecfdf5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#10b981;font-size:38px;">✓</div>'
           + '<h2 style="font-size:24px;font-weight:800;color:#0f172a;margin:0 0 10px;">Thank You!</h2>'
-          + '<p style="font-size:15px;color:#475569;margin:0 0 20px;line-height:1.5;">Your donation was successful and verified. An official receipt has been sent to your email.</p>'
-          + (amountStr ? '<div style="background:#f8fafc;border-radius:16px;padding:16px;margin:0 0 20px;border:1px solid #e2e8f0;text-align:left;">'
-            + '<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;"><span style="color:#64748b;">Amount:</span><strong style="color:#0f172a;">' + amountStr + '</strong></div>'
-            + (refStr ? '<div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#64748b;">Reference:</span><code style="color:#0f172a;background:#e2e8f0;padding:2px 6px;border-radius:6px;">' + refStr + '</code></div>' : '')
+          + '<p style="font-size:15px;color:#475569;margin:0 0 20px;line-height:1.5;">Your donation was successful and verified. A receipt has been sent to your email.</p>'
+          + (safeAmountStr ? '<div style="background:#f8fafc;border-radius:16px;padding:16px;margin:0 0 20px;border:1px solid #e2e8f0;text-align:left;">'
+            + '<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;"><span style="color:#64748b;">Amount:</span><strong style="color:#0f172a;">' + safeAmountStr + '</strong></div>'
+            + (safeRefStr ? '<div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#64748b;">Reference:</span><code style="color:#0f172a;background:#e2e8f0;padding:2px 6px;border-radius:6px;">' + safeRefStr + '</code></div>' : '')
             + '</div>' : '')
           + '<button id="btn-go-home" style="width:100%;padding:14px 20px;border-radius:14px;background:#1a365d;color:#fff;border:none;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:12px;transition:background 0.2s;">' + label + '</button>'
           + '<p id="redirect-timer" style="font-size:13px;color:#94a3b8;margin:0;">Redirecting automatically in ' + countdown + 's...</p>'
@@ -1064,9 +1074,8 @@
         statusEl.className = 'status-message';
 
         if (!ref) {
-          statusEl.textContent = 'Payment completed. Thank you for your generous support!';
-          statusEl.className = 'status-message success';
-          showSuccessDialog(null, null);
+          statusEl.textContent = 'No payment reference was returned. If you completed a payment, check your email for a receipt or try again.';
+          statusEl.className = 'status-message error';
           return;
         }
 
@@ -1095,29 +1104,30 @@
           }
 
           if (payload && (payload.status === 'success' || payload.success)) {
-            var amountVal = payload.amount || 0;
-            var cur = payload.currency || 'NGN';
+            var amountVal = Number(payload.amount || 0);
+            var cur = String(payload.currency || 'NGN').toUpperCase();
             var amtStr;
-            if (payload.metadata && (payload.metadata.original_currency === 'USD' || payload.metadata.currency === 'USD')) {
+            if (cur === 'NGN' && payload.metadata && (payload.metadata.original_currency === 'USD' || payload.metadata.currency === 'USD')) {
               var origUsd = Number(payload.metadata.original_amount || (amountVal / exchangeRate));
-              amtStr = '$' + origUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USD (₦' + Number(amountVal).toLocaleString() + ' NGN)';
+              amtStr = '$' + origUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USD (₦' + amountVal.toLocaleString() + ' NGN)';
             } else {
               var sym = currencySymbols[cur] || cur;
-              amtStr = sym + ' ' + Number(amountVal).toLocaleString();
+              amtStr = sym + ' ' + amountVal.toLocaleString();
             }
 
-            // Increment the counter on the page for the actual donated project
+            // Increment the counter on the page for real (non-test) donations in NGN
             var metaProjId = sanitizeProjectId(payload.metadata && payload.metadata.project_id);
             var selProjId = metaProjId || sanitizeProjectId(projectSelectEl ? projectSelectEl.value : projectId);
-            if (selProjId && projects[selProjId] && projects[selProjId].goalNum > 0 && amountVal > 0) {
+            if (!payload.is_test && selProjId && projects[selProjId] && projects[selProjId].goalNum > 0 && amountVal > 0) {
               var p = projects[selProjId];
-              p.raisedNum = (p.raisedNum || 0) + amountVal;
+              var ngnAddition = cur === 'USD' ? Math.round(amountVal * exchangeRate) : amountVal;
+              p.raisedNum = (p.raisedNum || 0) + ngnAddition;
               var newProg = Math.round((p.raisedNum / p.goalNum) * 100);
-              document.getElementById('raised-label').textContent = 'Raised: ' + cur + ' ' + p.raisedNum.toLocaleString();
+              document.getElementById('raised-label').textContent = 'Raised: ₦' + p.raisedNum.toLocaleString();
               document.getElementById('progress-fill').style.width = Math.min(newProg, 100) + '%';
             }
 
-            statusEl.textContent = '✓ Payment verified! Thank you for your donation of ' + amtStr + '.';
+            statusEl.textContent = (payload.is_test ? '✓ [TEST] ' : '✓ ') + 'Payment verified! Thank you for your donation of ' + amtStr + '.';
             statusEl.className = 'status-message success';
             var meta = payload.metadata || {};
             var isTract = Boolean(meta.donation_type === 'tractProduction' || meta.category === 'tract_production' || meta.material_id);
@@ -1125,14 +1135,13 @@
             var btnLbl = isTract ? 'View Downloaded Tract' : 'Return to Home Now';
             showSuccessDialog(amtStr, ref, redirUrl, btnLbl);
           } else {
-            statusEl.textContent = 'Payment received. A receipt will be sent to your email once fully confirmed.';
-            statusEl.className = 'status-message success';
-            showSuccessDialog(null, ref, '/', 'Return to Home Now');
+            var errMsg = (payload && (payload.error || payload.message)) || 'Payment could not be verified or was cancelled.';
+            statusEl.textContent = '⚠️ ' + errMsg + ' (Ref: ' + ref + ')';
+            statusEl.className = 'status-message error';
           }
         } catch (err) {
-          statusEl.textContent = 'Payment recorded. Thank you for your support!';
-          statusEl.className = 'status-message success';
-          showSuccessDialog(null, ref, '/', 'Return to Home Now');
+          statusEl.textContent = '⚠️ Could not verify payment right now. If you were charged, your receipt will arrive via email shortly (Ref: ' + ref + ').';
+          statusEl.className = 'status-message error';
         }
       }
 

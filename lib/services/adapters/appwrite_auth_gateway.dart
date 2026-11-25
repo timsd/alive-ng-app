@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/auth_models.dart';
 import '../appwrite_auth_service.dart';
+import '../appwrite_push_service.dart';
 import '../notification_service.dart';
 import '../ports/auth_gateway.dart';
 
@@ -289,6 +290,24 @@ class AppwriteAuthGateway implements AuthGateway {
 
   @override
   Future<void> signOut() async {
+    // Clean up Appwrite push targets & privileged topic subscriptions BEFORE
+    // destroying the session so the device stops receiving admin/private pushes
+    // and avoids duplicate broadcasts after reverting to guest mode.
+    if (!kIsWeb) {
+      try {
+        await Future.wait([
+          AppwritePushService.instance.unsubscribeCurrentTarget('admins'),
+          AppwritePushService.instance.unsubscribeCurrentTarget('approvals'),
+          AppwritePushService.instance.unsubscribeCurrentTarget('all_users'),
+        ]).timeout(const Duration(seconds: 4));
+      } catch (_) {}
+      try {
+        await AppwritePushService.instance
+            .deleteCurrentTarget()
+            .timeout(const Duration(seconds: 4));
+      } catch (_) {}
+      AppwritePushService.instance.closeNativeAppwritePushFallback();
+    }
     try {
       await _service.logout();
     } catch (_) {}

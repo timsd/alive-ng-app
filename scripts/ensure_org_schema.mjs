@@ -85,10 +85,15 @@ async function ensureTable(table, columns) {
     console.log(`  = ${table} (exists)`);
   } catch (e) {
     if (e.status !== 404) throw e;
+    const isOrgPrivilegeTable = table === 'org_offices' || table === 'org_office_holders';
+    const adminTeam = process.env.APPWRITE_ADMIN_TEAM_ID || '6a098ba2001455c27fdb';
+    const perms = isOrgPrivilegeTable
+      ? ['read("users")', `create("team:${adminTeam}")`, `update("team:${adminTeam}")`, `delete("team:${adminTeam}")`]
+      : ['read("users")', 'create("users")', 'update("users")', `delete("team:${adminTeam}")`];
     await api('POST', `/databases/${databaseId}/collections`, {
       collectionId: table,
       name: table,
-      permissions: ['read("any")', 'create("users")', 'update("users")', 'delete("users")'],
+      permissions: perms,
       documentSecurity: false,
       enabled: true,
     });

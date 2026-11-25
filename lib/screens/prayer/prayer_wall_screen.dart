@@ -253,7 +253,7 @@ class _PrayerWallScreenState extends ConsumerState<PrayerWallScreen>
             itemBuilder: (context, index) {
               final request = orderedRequests[index];
               final userRole = RoleAccessService.instance.getCurrentUserRole()?.toLowerCase() ?? 'member';
-              const adminRoles = {'admin', 'bod', 'trustee', 'director'};
+              const adminRoles = {'admin', 'super_admin', 'president', 'bod', 'trustee', 'director'};
               final canModerate = adminRoles.contains(userRole);
               final isOwner = user?.uid == request.userId || (user != null && canModerate);
               final author = request.isAnonymous

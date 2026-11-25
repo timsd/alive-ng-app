@@ -432,7 +432,7 @@ class PaystackPaymentGateway implements PaymentGateway {
             ? returnedPk.trim()
             : PaymentConfig.paystackPublicKey;
         final ok =
-            await paystack.initialize(effectivePk, true);
+            await paystack.initialize(effectivePk, kDebugMode);
         if (ok) {
           final response = await paystack.launch(accessCode);
           if (response.status == 'success') {

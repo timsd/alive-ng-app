@@ -134,10 +134,7 @@ class RoleVisibility extends StatelessWidget {
         .map((r) => r.trim().toLowerCase().replaceAll('-', '_'))
         .toSet();
 
-    if (normalized != null &&
-        (normalizedAllowed.contains(normalized) ||
-            (normalized == 'admin' &&
-                normalizedAllowed.contains('super_admin')))) {
+    if (normalized != null && normalizedAllowed.contains(normalized)) {
       return child;
     }
 
