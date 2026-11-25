@@ -69,7 +69,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   bool _isJoining = false;
   bool _isBroadcasting = false;
   String _streamingPlatforms = 'youtube';
-  bool _notifyMembers = true;
+  bool _notifyMembers = false;
   String _targetAudience = 'general';
   String _selectedTargetChapter = ChapterConstants.availableChapters.first;
   bool _requireHostApproval = false;

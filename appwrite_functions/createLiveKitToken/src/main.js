@@ -75,14 +75,14 @@ async function getRole(userId, req) {
   // Try standard Appwrite Databases endpoint (collections/documents) first
   let response = await fetch(
     `${endpoint}/databases/${databaseId}/collections/${usersTableId}/documents/${encodeURIComponent(userId)}`,
-    { headers },
+    { headers, signal: AbortSignal.timeout(8000) },
   );
 
   // Fallback to TablesDB route if standard collections route returns 404
   if (response.status === 404) {
     const tableResponse = await fetch(
       `${endpoint}/tablesdb/${databaseId}/tables/${usersTableId}/rows/${encodeURIComponent(userId)}`,
-      { headers },
+      { headers, signal: AbortSignal.timeout(8000) },
     );
     if (tableResponse.ok) {
       response = tableResponse;
@@ -471,27 +471,34 @@ export default async ({ req, res, log, error }) => {
             draft: false,
           };
 
-          if (targetUsers && targetUsers.length > 0) {
-            for (let i = 0; i < targetUsers.length; i += 100) {
+          const dispatchPush = async () => {
+            if (targetUsers && targetUsers.length > 0) {
+              for (let i = 0; i < targetUsers.length; i += 100) {
+                await messaging.createPush({
+                  ...basePushPayload,
+                  messageId: ID.unique(),
+                  users: targetUsers.slice(i, i + 100),
+                });
+              }
+            } else if (targetTopics && targetTopics.length > 0) {
               await messaging.createPush({
                 ...basePushPayload,
                 messageId: ID.unique(),
-                users: targetUsers.slice(i, i + 100),
+                topics: targetTopics,
+              });
+            } else {
+              await messaging.createPush({
+                ...basePushPayload,
+                messageId: ID.unique(),
+                topics: ['all_users'],
               });
             }
-          } else if (targetTopics && targetTopics.length > 0) {
-            await messaging.createPush({
-              ...basePushPayload,
-              messageId: ID.unique(),
-              topics: targetTopics,
-            });
-          } else {
-            await messaging.createPush({
-              ...basePushPayload,
-              messageId: ID.unique(),
-              topics: ['all_users'],
-            });
-          }
+          };
+          // Cap push dispatch wait to 8s so token generation can never hit Appwrite's 30s sync timeout
+          await Promise.race([
+            dispatchPush(),
+            new Promise((resolve) => setTimeout(resolve, 8000)),
+          ]);
           if (log) log(`Targeted meeting notification dispatched for ${targetAudience} (${targetChapter}) -> users=${targetUsers.length}, topics=${targetTopics.join(',')}`);
         }
       } catch (pushErr) {

@@ -918,26 +918,40 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
   }) async {
     final bodyJson = jsonEncode(body);
 
-    // 1. Attempt standard SDK execution first
-    try {
-      final functions = Functions(appwriteClient);
-      final execution = await functions.createExecution(
-        functionId: functionId,
-        body: bodyJson,
-        xasync: false,
-        method: appwrite_enums.ExecutionMethod.pOST,
-      );
+    // 1. Attempt standard SDK execution first (with one automatic retry on
+    // cold-start 408 timeout once the Appwrite runtime container warms up).
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final functions = Functions(appwriteClient);
+        final execution = await functions.createExecution(
+          functionId: functionId,
+          body: bodyJson,
+          xasync: false,
+          method: appwrite_enums.ExecutionMethod.pOST,
+        );
 
-      final rawBody = execution.responseBody;
-      if (rawBody.isNotEmpty) {
-        final decoded = jsonDecode(rawBody);
-        if (decoded is Map<String, dynamic>) return decoded;
+        final rawBody = execution.responseBody;
+        if (rawBody.isNotEmpty) {
+          final decoded = jsonDecode(rawBody);
+          if (decoded is Map<String, dynamic>) return decoded;
+        }
+        break;
+      } catch (sdkErr) {
+        final errStr = sdkErr.toString().toLowerCase();
+        final isTimeout = errStr.contains('timed out') || errStr.contains('408');
+        if (attempt == 0 && isTimeout) {
+          debugPrint(
+            '[LiveKitMeetingGateway] Cold-start timeout on $functionId; retrying once after warmup...',
+          );
+          await Future.delayed(const Duration(milliseconds: 1200));
+          continue;
+        }
+        debugPrint(
+          '[LiveKitMeetingGateway] Functions SDK createExecution note: $sdkErr. '
+          'Falling back to robust direct HTTP execution...',
+        );
+        break;
       }
-    } catch (sdkErr) {
-      debugPrint(
-        '[LiveKitMeetingGateway] Functions SDK createExecution note: $sdkErr. '
-        'Falling back to robust direct HTTP execution...',
-      );
     }
 
     // 2. Direct HTTP execution fallback
