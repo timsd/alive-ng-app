@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../widgets/modern_dropdown.dart';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../../services/file_picker_facade.dart';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -917,16 +916,9 @@ class _TractFormDialogState extends State<_TractFormDialog> {
     if (result != null && result.files.single.bytes != null) {
       final bytes = result.files.single.bytes!;
       final fileName = result.files.single.name;
-      int detectedPages = 6;
-      try {
-        final pdfDoc = PdfDocument(inputBytes: bytes);
-        detectedPages = pdfDoc.pages.count;
-        pdfDoc.dispose();
-      } catch (e) {
-        debugPrint('Could not auto-detect PDF page count: $e');
-      }
 
       ExtractedTractArticle? extracted;
+      String? extractError;
       try {
         extracted = await PdfExtractorService().extractAndFormatArticle(
           bytes,
@@ -936,8 +928,12 @@ class _TractFormDialogState extends State<_TractFormDialog> {
               : null,
         );
       } catch (e) {
+        extractError = ErrorHandler.getUserFriendlyMessage(e);
         debugPrint('Auto-extract preview failed: $e');
       }
+
+      final detectedPages =
+          (extracted != null && extracted.pageCount > 0) ? extracted.pageCount : 6;
 
       if (!mounted) return;
       setState(() {
@@ -963,6 +959,24 @@ class _TractFormDialogState extends State<_TractFormDialog> {
           }
         }
       });
+
+      if (extractError != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF attached, but text extraction failed: $extractError'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      } else if (extracted != null && extracted.totalWordCount == 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'PDF attached, but no selectable text was found (it may be a scanned image PDF).',
+            ),
+            backgroundColor: Colors.orange.shade800,
+          ),
+        );
+      }
 
       if (extracted != null && extracted.interactiveSections.isNotEmpty && mounted) {
         final warnCount = extracted.reviewNotes.length;

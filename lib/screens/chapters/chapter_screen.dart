@@ -155,6 +155,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
         }
       }
 
+      if (!mounted) return;
       setState(() {
         _chapters = chapters;
         _userMemberships = memberships;
@@ -164,8 +165,8 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Unable to load chapter data right now.')),
         );

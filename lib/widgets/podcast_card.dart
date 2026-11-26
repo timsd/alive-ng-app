@@ -6,11 +6,15 @@ import 'custom_image.dart';
 class PodcastCard extends StatelessWidget {
   final Podcast podcast;
   final VoidCallback? onTap;
+  final bool? isSubscribedOverride;
+  final VoidCallback? onToggleSubscribe;
 
   const PodcastCard({
     super.key,
     required this.podcast,
     this.onTap,
+    this.isSubscribedOverride,
+    this.onToggleSubscribe,
   });
 
   @override
@@ -138,28 +142,47 @@ class PodcastCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              podcast.isSubscribed
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                              size: 15,
-                              color: podcast.isSubscribed
-                                  ? colorScheme.primary
-                                  : colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              podcast.isSubscribed ? 'Subscribed' : 'Subscribe',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 11),
-                                fontWeight: FontWeight.w600,
-                                color: podcast.isSubscribed ? colorScheme.primary : null,
+                        Builder(
+                          builder: (_) {
+                            final subscribed =
+                                isSubscribedOverride ?? podcast.isSubscribed;
+                            return InkWell(
+                              onTap: onToggleSubscribe,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      subscribed
+                                          ? Icons.favorite_rounded
+                                          : Icons.favorite_border_rounded,
+                                      size: 15,
+                                      color: subscribed
+                                          ? colorScheme.primary
+                                          : colorScheme.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      subscribed ? 'Subscribed' : 'Subscribe',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontSize:
+                                            ResponsiveUtils.getResponsiveFontSize(
+                                                context, 11),
+                                        fontWeight: FontWeight.w600,
+                                        color:
+                                            subscribed ? colorScheme.primary : null,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       ],
                     ),

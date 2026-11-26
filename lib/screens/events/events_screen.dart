@@ -69,12 +69,14 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       final eventsResponse = await service.listEvents();
       final announcementsResponse = await service.listAnnouncements();
 
+      if (!mounted) return;
       setState(() {
         _events = eventsResponse;
         _announcements = announcementsResponse;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = ErrorHandler.getUserFriendlyMessage(e);
         _isLoading = false;

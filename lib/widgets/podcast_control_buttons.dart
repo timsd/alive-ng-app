@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -111,14 +112,18 @@ class PodcastControlButtons extends StatelessWidget {
                             ? Icons.pause_rounded
                             : Icons.play_arrow_rounded,
                       ),
-                onPressed: () {
+                onPressed: () async {
                   if (isPlaying) {
-                    audioPlayer.pause();
+                    await audioPlayer.pause();
                   } else {
                     if (state?.processingState == ProcessingState.completed) {
-                      audioPlayer.seek(Duration.zero);
+                      await audioPlayer.seek(Duration.zero);
                     }
-                    audioPlayer.play();
+                    unawaited(
+                      audioPlayer.play().catchError((Object e) {
+                        debugPrint('Podcast play control warning: $e');
+                      }),
+                    );
                   }
                 },
               ),

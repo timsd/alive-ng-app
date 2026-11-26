@@ -193,13 +193,52 @@ class TractService {
     }
   }
 
+  UserTractAnswer _userTractAnswerFromRow(dynamic row) {
+    final data = Map<String, dynamic>.from(row.data as Map);
+    final rawAnswers = data['answers'];
+    final decodedMap = <String, String>{};
+    if (rawAnswers is String && rawAnswers.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawAnswers);
+        if (decoded is Map) {
+          decoded.forEach((k, v) => decodedMap[k.toString()] = v?.toString() ?? '');
+        }
+      } catch (_) {}
+    } else if (rawAnswers is Map) {
+      rawAnswers.forEach((k, v) => decodedMap[k.toString()] = v?.toString() ?? '');
+    }
+    return UserTractAnswer(
+      id: row.$id.toString(),
+      userId: data['user_id']?.toString() ?? '',
+      tractId: data['tract_id']?.toString() ?? '',
+      answers: decodedMap,
+      completedAt: DateTime.tryParse(data['completed_at']?.toString() ?? '') ??
+          DateTime.now(),
+      isCompleted: data['is_completed'] == true,
+      score: _intValue(data['score']),
+    );
+  }
+
   // Get user answers for a tract
   Future<UserTractAnswer?> getUserAnswers(String userId, String tractId) async {
     try {
-      if (kIsWeb) return null;
+      if (kIsWeb) {
+        final res = await _tables.listRows(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: 'user_tract_answers',
+          queries: [
+            Query.equal('user_id', userId),
+            Query.equal('tract_id', tractId),
+            Query.limit(1),
+          ],
+        );
+        if (res.rows.isEmpty) return null;
+        return _userTractAnswerFromRow(res.rows.first);
+      }
       return await _dbHelper.getUserAnswer(userId, tractId);
     } catch (e) {
       _logger.error('Error getting user answers', e);
+      if (kIsWeb) return null;
       throw DatabaseException('Failed to get user answers', originalError: e);
     }
   }
@@ -207,10 +246,21 @@ class TractService {
   // Get user progress for all tracts
   Future<List<UserTractAnswer>> getUserProgress(String userId) async {
     try {
-      if (kIsWeb) return [];
+      if (kIsWeb) {
+        final res = await _tables.listRows(
+          databaseId: AppwriteBackendConfig.databaseId,
+          tableId: 'user_tract_answers',
+          queries: [
+            Query.equal('user_id', userId),
+            Query.limit(200),
+          ],
+        );
+        return res.rows.map(_userTractAnswerFromRow).toList();
+      }
       return await _dbHelper.getUserProgress(userId);
     } catch (e) {
       _logger.error('Error getting user progress', e);
+      if (kIsWeb) return [];
       throw DatabaseException('Failed to get user progress', originalError: e);
     }
   }

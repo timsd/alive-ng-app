@@ -813,7 +813,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
       withData: true,
     );
 
-    if (result != null && result.files.single.bytes != null) {
+    if (result != null && result.files.single.bytes != null && mounted) {
       setState(() {
         _selectedCoverImageBytes = result.files.single.bytes;
         _selectedCoverImageName = result.files.single.name;
@@ -836,6 +836,7 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
         );
         return;
       }
+      if (!mounted) return;
       setState(() {
         _selectedAudioBytes = bytes;
         _selectedAudioName = result.files.single.name;
@@ -983,9 +984,11 @@ class _PodcastFormDialogState extends State<_PodcastFormDialog> {
           ),
         );
       } finally {
-        setState(() {
-          _isUploading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isUploading = false;
+          });
+        }
       }
     }
   }

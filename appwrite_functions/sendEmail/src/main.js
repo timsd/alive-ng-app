@@ -39,6 +39,7 @@ async function checkIsAdminCaller({ req, userId }) {
   const usersColId = process.env.USERS_COLLECTION_ID || '6a08943100226f5b4963';
   if (!ep || !proj || !key || !userId) return false;
   const base = ep.replace(/\/v1\/?$/, '');
+  let userEmail = '';
   try {
     const authUserRes = await fetch(
       `${base}/v1/users/${encodeURIComponent(userId)}`,
@@ -46,10 +47,19 @@ async function checkIsAdminCaller({ req, userId }) {
     );
     if (authUserRes.ok) {
       const authUser = await authUserRes.json();
+      userEmail = String(authUser?.email || '').toLowerCase().trim();
+      const superAdminEmails = (process.env.APPWRITE_SUPER_ADMIN_EMAILS || '')
+        .toLowerCase()
+        .split(',')
+        .map((e) => e.trim())
+        .filter(Boolean);
+      if (userEmail && superAdminEmails.includes(userEmail)) {
+        return true;
+      }
       const labels = Array.isArray(authUser?.labels)
         ? authUser.labels.map((l) => String(l).toLowerCase().trim())
         : [];
-      if (labels.some((l) => ['admin', 'super_admin', 'treasurer', 'president', 'director', 'bod', 'trustee'].includes(l))) {
+      if (labels.some((l) => ['admin', 'super_admin', 'treasurer', 'president', 'director', 'bod', 'trustee', 'leader'].includes(l))) {
         return true;
       }
     }
@@ -62,24 +72,37 @@ async function checkIsAdminCaller({ req, userId }) {
     if (uRes.ok) {
       const uDoc = await uRes.json();
       const r = String(uDoc?.role || '').toLowerCase().trim();
-      if (uDoc?.is_admin === true || ['admin', 'super_admin', 'treasurer', 'president', 'director', 'bod', 'trustee'].includes(r)) {
+      if (uDoc?.is_admin === true || ['admin', 'super_admin', 'treasurer', 'president', 'director', 'bod', 'trustee', 'leader'].includes(r)) {
         return true;
       }
     }
   } catch (_) { }
   try {
-    const eqUser = encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'user_id', values: [userId] }));
     const eqActive = encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'is_current', values: [true] }));
-    const hRes = await fetch(
-      `${base}/v1/databases/${dbId}/collections/org_office_holders/documents?queries[]=${eqUser}&queries[]=${eqActive}`,
-      { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
-    );
-    if (hRes.ok) {
-      const hData = await hRes.json();
-      for (const h of hData?.documents || []) {
-        const title = String(h.office_title || h.office_slug || h.title || '').toLowerCase();
-        if (title.includes('treasurer') || title.includes('president') || title.includes('admin') || title.includes('secretary')) {
-          return true;
+    const queries = [
+      encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'user_id', values: [userId] })),
+      ...(userEmail ? [encodeURIComponent(JSON.stringify({ method: 'equal', attribute: 'email', values: [userEmail] }))] : []),
+    ];
+    for (const qField of queries) {
+      const hRes = await fetch(
+        `${base}/v1/databases/${dbId}/collections/org_office_holders/documents?queries[]=${qField}&queries[]=${eqActive}`,
+        { headers: { 'X-Appwrite-Project': proj, 'X-Appwrite-Key': key } }
+      );
+      if (hRes.ok) {
+        const hData = await hRes.json();
+        for (const h of hData?.documents || []) {
+          const title = String(h.office_title || h.office_slug || h.title || '').toLowerCase();
+          if (
+            title.includes('treasurer') ||
+            title.includes('president') ||
+            title.includes('admin') ||
+            title.includes('secretary') ||
+            title.includes('director') ||
+            title.includes('board') ||
+            title.includes('chair')
+          ) {
+            return true;
+          }
         }
       }
     }
@@ -127,11 +150,20 @@ export default async ({ req, res, log, error }) => {
       (typeof body.replyTo === 'string' && body.replyTo.trim()) ||
       process.env.REPLY_TO_EMAIL ||
       defaultReplyTo;
-    // Every outbound email is also CC'd to the support mailbox unless the
-    // caller overrides it, so there is a complete copy of all correspondence.
-    const ccAddress =
-      (typeof body.cc === 'string' && body.cc.trim()) ||
-      replyTo;
+    // Parse CC as either an array or a comma-separated string, validate every
+    // address individually, deduplicate against `to`, and include the archive
+    // mailbox cleanly so Resend never rejects comma-joined strings (HTTP 422).
+    const rawCcItems = Array.isArray(body.cc)
+      ? body.cc
+      : typeof body.cc === 'string' && body.cc.trim()
+        ? body.cc.split(',')
+        : [replyTo];
+    const ccList = [...new Set(
+      rawCcItems
+        .map((addr) => String(addr || '').trim())
+        .filter((addr) => addr && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)),
+    )];
+    const ccAddress = ccList[0] || replyTo;
 
     const trigger = (req.headers['x-appwrite-trigger'] || '').toLowerCase();
     const isInternal = Boolean(trigger === 'event' || trigger === 'schedule');
@@ -319,20 +351,27 @@ export default async ({ req, res, log, error }) => {
       }
     }
 
+    const filteredCc = ccList.filter(
+      (addr) => addr.toLowerCase() !== to.toLowerCase().trim(),
+    );
+    const resendPayload = {
+      from,
+      to: [to],
+      reply_to: replyTo,
+      subject,
+      html,
+    };
+    if (filteredCc.length > 0) {
+      resendPayload.cc = filteredCc;
+    }
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from,
-        to: [to],
-        cc: [ccAddress],
-        reply_to: replyTo,
-        subject,
-        html,
-      }),
+      body: JSON.stringify(resendPayload),
     });
 
     const responseBody = await response.text();

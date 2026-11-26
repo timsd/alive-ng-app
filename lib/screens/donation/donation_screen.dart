@@ -1438,8 +1438,19 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       return;
     }
 
-    // Adjust amount to include processing fees if selected
-    final totalAmount = _coverProcessingFees ? (amount * 1.035) : amount;
+    // Adjust amount to include processing fees if selected:
+    // Paystack NGN local fee: 1.5% + ₦100 (waived under ₦2,500), capped at ₦2,000.
+    // International / USD fee: 3.5%.
+    final double feeAmount;
+    if (!_coverProcessingFees) {
+      feeAmount = 0.0;
+    } else if (currency == 'NGN') {
+      final rawFee = (amount * 0.015) + (amount >= 2500 ? 100.0 : 0.0);
+      feeAmount = rawFee > 2000.0 ? 2000.0 : rawFee;
+    } else {
+      feeAmount = amount * 0.035;
+    }
+    final totalAmount = amount + feeAmount;
 
     setState(() => _isSubmitting = true);
 
@@ -1472,6 +1483,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
           'recurring': isMonthly,
           'currency': currency,
           'source': 'donation_screen_v2',
+          'base_amount': amount,
+          if (_coverProcessingFees) 'processing_fee_covered': feeAmount,
           // The single destination for this gift, whether it came from a
           // project selection or the "Where should this go?" chips. The
           // server resolves this into the receipt's Purpose line.

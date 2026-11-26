@@ -92,12 +92,23 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   final ScrollController _chatScrollController = ScrollController();
 
   // ALIVE Scribe background transcription & intelligence
+  // Preserved across PiP minimize/restore so transcript is never wiped mid-meeting.
+  static AliveScribeService? _retainedScribeService;
+  static String? _retainedScribeRoom;
   AliveScribeService? _scribeService;
   bool _isScribeRecording = false;
   bool _hasAutoStartedScribe = false;
   bool _hasSavedMinutesForSession = false;
   bool _isSavingMinutes = false;
   String? _savedMinutesFileName;
+
+  void _disposeRetainedScribe() {
+    final active = _scribeService ?? _retainedScribeService;
+    _scribeService = null;
+    _retainedScribeService = null;
+    _retainedScribeRoom = null;
+    active?.dispose();
+  }
 
   @override
   void initState() {
@@ -177,6 +188,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
           }
         }
       } else if (data['type'] == 'alive_scribe_control') {
+        if (data['isHost'] == false) return;
         final action = data['action'];
         if (action == 'start_recording') {
           if (!_isScribeRecording) {
@@ -316,7 +328,23 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   }
 
   void _ensureScribeInitialized(MeetingGateway gateway) {
+    final currentRoom = gateway.currentSession.roomName.trim().isNotEmpty
+        ? gateway.currentSession.roomName.trim()
+        : _roomController.text.trim();
     if (_scribeService != null) return;
+    if (_retainedScribeService != null &&
+        _retainedScribeRoom != null &&
+        _retainedScribeRoom == currentRoom) {
+      _scribeService = _retainedScribeService;
+      _isScribeRecording = _scribeService!.isListening;
+      _hasAutoStartedScribe = _isScribeRecording || _scribeService!.transcript.isNotEmpty;
+      return;
+    }
+    if (_retainedScribeService != null && _retainedScribeRoom != currentRoom) {
+      _retainedScribeService!.dispose();
+      _retainedScribeService = null;
+      _retainedScribeRoom = null;
+    }
     final user = ref.read(currentUserProvider);
     final userId = user?.uid ?? 'user_${DateTime.now().millisecondsSinceEpoch}';
     final userName = user?.displayNameOrFallback ?? 'Attendee';
@@ -331,24 +359,43 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       localUserName: userName,
       localUserRole: role,
     );
+    _retainedScribeService = _scribeService;
+    _retainedScribeRoom = currentRoom;
   }
+
+  bool get _canControlScribeForRoom =>
+      RoleAccessService.instance.canStartConferencing() ||
+      widget.isModerator ||
+      _isLocalHost ||
+      _isLocalCoHost;
 
   Future<void> _startScribeRecording({bool isRemoteTrigger = false, bool showNotice = false}) async {
     final gateway = ref.read(meetingGatewayProvider);
     _ensureScribeInitialized(gateway);
     if (_scribeService == null) return;
 
+    bool started = true;
     if (!_scribeService!.isListening) {
-      await _scribeService!.startListening();
+      started = await _scribeService!.startListening();
+    }
+    if (!started) {
+      if (mounted) {
+        setState(() => _isScribeRecording = false);
+        _showMessage(
+          'Microphone speech recognition could not start. Check mic permission and try again.',
+        );
+      }
+      return;
     }
     if (mounted) {
       setState(() => _isScribeRecording = true);
     }
 
-    if (!isRemoteTrigger) {
+    if (!isRemoteTrigger && _canControlScribeForRoom) {
       gateway.sendDataChannelMessage({
         'type': 'alive_scribe_control',
         'action': 'start_recording',
+        'isHost': true,
       });
     }
 
@@ -365,11 +412,12 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       setState(() => _isScribeRecording = false);
     }
 
-    if (!isRemoteTrigger && mounted) {
+    if (!isRemoteTrigger && mounted && _canControlScribeForRoom) {
       final gateway = ref.read(meetingGatewayProvider);
       gateway.sendDataChannelMessage({
         'type': 'alive_scribe_control',
         'action': 'stop_recording',
+        'isHost': true,
       });
     }
   }
@@ -552,6 +600,11 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
               '[ALIVE Scribe] Board meeting minutes emailed to aliveng.bod@alivenigeria.org');
         } catch (emailErr) {
           debugPrint('[ALIVE Scribe] Note sending board email: $emailErr');
+          if (mounted) {
+            _showMessage(
+              'Minutes saved to Meeting Files, but Board email delivery failed. You can share the document manually.',
+            );
+          }
         }
       }
     } catch (e) {
@@ -2071,8 +2124,13 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     }
 
     if (!isLeader) {
-      await _autoSaveAndPromptMinutes();
+      // Only auto-save if this member is the last person leaving the room,
+      // preventing premature partial minutes from locking out the host's final minutes.
+      if ((session?.participants.length ?? 0) <= 1) {
+        await _autoSaveAndPromptMinutes();
+      }
       await gateway.leaveMeeting();
+      _disposeRetainedScribe();
       return true;
     }
 
@@ -2083,6 +2141,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       }
       await _autoSaveAndPromptMinutes();
       await gateway.endMeetingForAll();
+      _disposeRetainedScribe();
       _showMessage('Meeting ended.');
       return true;
     }
@@ -2199,6 +2258,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       }
       await _autoSaveAndPromptMinutes();
       await gateway.endMeetingForAll();
+      _disposeRetainedScribe();
       _showMessage('Meeting ended for all participants.');
       return true;
     } else if (action == 'leave') {
@@ -2207,6 +2267,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
       }
       await _autoSaveAndPromptMinutes();
       await gateway.leaveMeeting();
+      _disposeRetainedScribe();
       return true;
     }
 
@@ -2386,7 +2447,17 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     _moderationSub?.cancel();
     _dataChannelSub?.cancel();
     _sessionSub?.cancel();
-    _scribeService?.dispose();
+    // Preserve active ALIVE Scribe instance when minimizing into PiP overlay;
+    // only dispose it when the meeting is actually disconnected/ended.
+    if (!_isMinimizing && _scribeService != _retainedScribeService) {
+      _scribeService?.dispose();
+    } else if (!_isMinimizing) {
+      final isStillConnected =
+          ref.read(meetingGatewayProvider).currentSession.isConnected;
+      if (!isStillConnected) {
+        _disposeRetainedScribe();
+      }
+    }
     _inMeetingChatController.dispose();
     _chatScrollController.dispose();
     _roomController.dispose();

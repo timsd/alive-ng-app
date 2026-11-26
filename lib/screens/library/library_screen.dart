@@ -26,34 +26,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   final AppwriteLibraryService _libraryService =
       AppwriteLibraryService.instance;
 
-  // Single mockup/placeholder item per category
-  final List<Map<String, dynamic>> _allBooks = [
-    {
-      'title': 'Steps to Christ',
-      'author': 'Ellen G. White',
-      'category': 'Devotional',
-      'language': 'en'
-    },
-  ];
-
-  final List<Map<String, dynamic>> _allArticles = [
-    {
-      'title': 'Understanding Bible Prophecy',
-      'author': 'ALIVE Ministry',
-      'category': 'Bible',
-      'language': 'en'
-    },
-  ];
-
-  final List<Map<String, dynamic>> _allVideos = [
-    {
-      'title': 'Bible Study Methods',
-      'author': 'ALIVE Media',
-      'category': 'Bible Study',
-      'duration': '18:30',
-      'language': 'en'
-    },
-  ];
+  final List<Map<String, dynamic>> _allBooks = [];
+  final List<Map<String, dynamic>> _allArticles = [];
+  final List<Map<String, dynamic>> _allVideos = [];
+  bool _isLoading = true;
+  String? _loadError;
 
   @override
   void initState() {
@@ -63,6 +40,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }
 
   Future<void> _loadLibraryContent() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
       final results = await Future.wait([
         _libraryService.listBooks(),
@@ -71,23 +54,24 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       ]);
       if (!mounted) return;
       setState(() {
-        if (results[0].isNotEmpty) {
-          _allBooks
-            ..clear()
-            ..addAll(results[0]);
-        }
-        if (results[1].isNotEmpty) {
-          _allArticles
-            ..clear()
-            ..addAll(results[1]);
-        }
-        if (results[2].isNotEmpty) {
-          _allVideos
-            ..clear()
-            ..addAll(results[2]);
-        }
+        _allBooks
+          ..clear()
+          ..addAll(results[0]);
+        _allArticles
+          ..clear()
+          ..addAll(results[1]);
+        _allVideos
+          ..clear()
+          ..addAll(results[2]);
+        _isLoading = false;
       });
-    } catch (_) {}
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = ErrorHandler.getUserFriendlyMessage(e);
+      });
+    }
   }
 
   @override
@@ -147,14 +131,47 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
           // Tab Content
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildBooksTab(),
-                _buildArticlesTab(),
-                _buildVideosTab(),
-              ],
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _loadError != null &&
+                        _allBooks.isEmpty &&
+                        _allArticles.isEmpty &&
+                        _allVideos.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.cloud_off_rounded,
+                                size: 48,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _loadError!,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              const SizedBox(height: 16),
+                              FilledButton.icon(
+                                onPressed: _loadLibraryContent,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildBooksTab(),
+                          _buildArticlesTab(),
+                          _buildVideosTab(),
+                        ],
+                      ),
           ),
         ],
       ),

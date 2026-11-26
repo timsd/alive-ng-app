@@ -123,21 +123,23 @@ class _InteractiveLessonReaderScreenState
   }
 
   void _initializeLessonStructure() {
-    // 1. Load pre-parsed interactiveSections if available; otherwise parse on the fly
+    // 1. Load pre-parsed interactiveSections & lessonJson if available;
+    //    otherwise parse ONCE on the fly to avoid redundant regex work.
+    ExtractedTractArticle? onTheFlyExtracted;
     if (_resolvedLesson.interactiveSections.isNotEmpty) {
       _sections = _resolvedLesson.interactiveSections
           .map((m) => ExtractedLessonSection.fromJson(m))
           .toList();
     } else {
-      final extracted = PdfExtractorService().structureAsWordPressContent(
+      onTheFlyExtracted = PdfExtractorService().structureAsWordPressContent(
         _resolvedLesson.content,
         fallbackTitle: _resolvedLesson.title,
       );
-      _sections = extracted.interactiveSections;
-      _lessonJson = extracted.lessonJson;
+      _sections = onTheFlyExtracted.interactiveSections;
     }
 
     _lessonJson = _resolvedLesson.lessonJson ??
+        onTheFlyExtracted?.lessonJson ??
         PdfExtractorService()
             .structureAsWordPressContent(
               _resolvedLesson.content,

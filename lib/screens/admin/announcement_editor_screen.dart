@@ -814,7 +814,7 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
         initialTime: TimeOfDay.fromDateTime(_expiresAt ?? DateTime.now()),
       );
 
-      if (time != null) {
+      if (time != null && mounted) {
         setState(() {
           _expiresAt = DateTime(
             date.year,
@@ -975,7 +975,9 @@ class _AnnouncementEditorScreenState extends State<AnnouncementEditorScreen> {
     } catch (e) {
       ToastUtils.showError('Error saving announcement: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 }

@@ -13,7 +13,6 @@ build/
 firebase/
 functions/node_modules/
 node_modules/
-oldfirebasedelete/
 windows/flutter/ephemeral/
 .env
 .env.*

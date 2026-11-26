@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,7 +10,6 @@ import 'package:just_audio/just_audio.dart';
 import '../../services/podcast_audio_service.dart';
 import '../../widgets/podcast_search_bar.dart';
 import '../../widgets/podcast_card.dart';
-import '../../widgets/podcast_episode_card.dart';
 import '../../models/podcast_models.dart';
 import '../../widgets/custom_image.dart';
 import '../../widgets/modern_podcast_player_sheet.dart';
@@ -35,18 +35,58 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedCategory = 'all';
-  final List<Map<String, dynamic>> _downloadedEpisodes = const [];
+  static const String _subscribedPrefsKey = 'podcast_subscribed_ids';
+  Set<String> _subscribedIds = {};
   String? _handledDeepLinkKey;
   bool _isResolvingDeepLink = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _audioService.addListener(_onAudioUpdate);
+    _loadSubscribedIds();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeHandleInitialDeepLink();
     });
+  }
+
+  Future<void> _loadSubscribedIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList(_subscribedPrefsKey) ?? const [];
+      if (mounted) {
+        setState(() => _subscribedIds = saved.toSet());
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleSubscribe(Podcast podcast) async {
+    final next = Set<String>.from(_subscribedIds);
+    final isNowSub = !next.contains(podcast.id);
+    if (isNowSub) {
+      next.add(podcast.id);
+    } else {
+      next.remove(podcast.id);
+    }
+    setState(() => _subscribedIds = next);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_subscribedPrefsKey, next.toList());
+    } catch (_) {}
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isNowSub
+                ? 'Subscribed to ${podcast.title}'
+                : 'Unsubscribed from ${podcast.title}',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -157,7 +197,6 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
           tabs: const [
             Tab(icon: Icon(Icons.headset), text: 'All Shows'),
             Tab(icon: Icon(Icons.favorite), text: 'Subscribed'),
-            Tab(icon: Icon(Icons.download), text: 'Downloaded'),
           ],
         ),
       ),
@@ -203,7 +242,6 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               children: [
                 _buildAllShowsTab(),
                 _buildSubscribedTab(),
-                _buildDownloadedTab(),
               ],
             ),
           ),
@@ -231,22 +269,6 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
         checkmarkColor: Theme.of(context).colorScheme.primary,
       ),
     );
-  }
-
-  List<Map<String, dynamic>> _getFilteredDownloadedEpisodes() {
-    return _downloadedEpisodes.where((episode) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          episode['title'].toString().toLowerCase().contains(_searchQuery) ||
-          episode['podcastTitle']
-              .toString()
-              .toLowerCase()
-              .contains(_searchQuery);
-
-      final matchesCategory = _selectedCategory == 'all' ||
-          episode['category'] == _selectedCategory;
-
-      return matchesSearch && matchesCategory;
-    }).toList();
   }
 
   Widget _buildEmptyPodcastState(BuildContext context) {
@@ -364,8 +386,12 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                 itemCount: filteredPodcasts.length,
                 itemBuilder: (context, index) {
                   final podcast = filteredPodcasts[index];
+                  final isSub =
+                      _subscribedIds.contains(podcast.id) || podcast.isSubscribed;
                   return PodcastCard(
                     podcast: podcast,
+                    isSubscribedOverride: isSub,
+                    onToggleSubscribe: () => _toggleSubscribe(podcast),
                     onTap: () => _showPodcastDetails(context, podcast),
                   );
                 },
@@ -392,7 +418,8 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               podcast.category.name == _selectedCategory;
           return matchesSearch &&
               matchesCategory &&
-              podcast.isSubscribed == true;
+              (_subscribedIds.contains(podcast.id) ||
+                  podcast.isSubscribed == true);
         }).toList();
 
         if (filteredSubscribed.isEmpty) {
@@ -420,7 +447,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Subscribe to podcasts to see them here',
+                  'Tap Subscribe on any show to save it here',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context)
                             .colorScheme
@@ -437,90 +464,12 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
           padding: ResponsiveUtils.getResponsivePadding(context),
           itemCount: filteredSubscribed.length,
           itemBuilder: (context, index) {
+            final podcast = filteredSubscribed[index];
             return PodcastCard(
-              podcast: filteredSubscribed[index],
-              onTap: () =>
-                  _showPodcastDetails(context, filteredSubscribed[index]),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildDownloadedTab() {
-    final filteredEpisodes = _getFilteredDownloadedEpisodes();
-
-    if (filteredEpisodes.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.download_outlined,
-              size: 64,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No downloaded episodes found',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.7),
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Download episodes to listen offline',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.5),
-                  ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListenableBuilder(
-      listenable: _audioService,
-      builder: (context, _) {
-        return ListView.builder(
-          padding: ResponsiveUtils.getResponsivePadding(context),
-          itemCount: filteredEpisodes.length,
-          itemBuilder: (context, index) {
-            final ep = filteredEpisodes[index];
-            final isCurrent = _audioService.isCurrentEpisode(ep);
-            final isPlaying = isCurrent && _audioService.isPlaying;
-
-            return PodcastEpisodeCard(
-              title: ep['title'],
-              podcastTitle: ep['podcastTitle'],
-              duration: ep['duration'],
-              isPlaying: isPlaying,
-              onPlay: () {
-                if (isPlaying) {
-                  _audioService.pause();
-                } else if (isCurrent) {
-                  _audioService.resume();
-                } else {
-                  _playEpisode(context, ep);
-                }
-              },
-              onDownload: () => _downloadEpisode(context, ep),
-              onShare: () {
-                PodcastShareHelper.shareEpisode(
-                  context,
-                  episode: ep,
-                );
-              },
+              podcast: podcast,
+              isSubscribedOverride: true,
+              onToggleSubscribe: () => _toggleSubscribe(podcast),
+              onTap: () => _showPodcastDetails(context, podcast),
             );
           },
         );

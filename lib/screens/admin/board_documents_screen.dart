@@ -59,6 +59,7 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     try {
       final docs = await _boardService.getBoardDocuments();
 
+      if (!mounted) return;
       setState(() {
         _documents = docs.map((doc) => BoardDocument.fromJson(doc)).toList();
         _isLoading = false;
@@ -72,8 +73,8 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
+        setState(() => _isLoading = false);
       }
-      setState(() => _isLoading = false);
     }
   }
 

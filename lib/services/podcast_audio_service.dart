@@ -37,7 +37,30 @@ class _RangeSeekingAudioSource extends StreamAudioSource {
       req.headers['Range'] = rangeHeader;
       req.headers['Accept-Encoding'] = 'identity';
 
-      final streamed = await client.send(req);
+      final streamed = await client
+          .send(req)
+          .timeout(const Duration(seconds: 20));
+      if (streamed.statusCode == 416) {
+        // Range Not Satisfiable (often requested right at EOF by ExoPlayer).
+        // Parse total length from Content-Range: bytes */TOTAL if present and return clean EOF.
+        int? totalLength = _knownSourceLength;
+        final cr = streamed.headers['content-range'];
+        if (cr != null) {
+          final m = RegExp(r'bytes\s+\*/(\d+)').firstMatch(cr);
+          if (m != null) {
+            totalLength = int.tryParse(m.group(1)!) ?? totalLength;
+          }
+        }
+        client.close();
+        return StreamAudioResponse(
+          sourceLength: totalLength,
+          contentLength: 0,
+          offset: effectiveStart,
+          stream: const Stream<List<int>>.empty(),
+          contentType: _knownContentType,
+          rangeRequestsSupported: totalLength != null,
+        );
+      }
       if (streamed.statusCode != 200 && streamed.statusCode != 206) {
         client.close();
         throw Exception('Audio HTTP ${streamed.statusCode}');
@@ -135,7 +158,7 @@ class PodcastAudioService extends ChangeNotifier {
   factory PodcastAudioService() => _instance;
   PodcastAudioService._internal();
 
-  static bool _backgroundAudioInitialized = false;
+  static Future<void>? _initFuture;
   AudioPlayer? _player;
   StreamSubscription<PlayerState>? _playerStateSub;
   Map<String, dynamic>? _currentEpisode;
@@ -145,21 +168,23 @@ class PodcastAudioService extends ChangeNotifier {
   /// Lazily initializes [JustAudioBackground] right before first podcast play
   /// so cold app launch never blocks the Android main thread (ANR) and
   /// AudioService is not left running when the user never plays podcasts.
-  static Future<void> _ensureBackgroundAudioInitialized() async {
-    if (_backgroundAudioInitialized || kIsWeb) return;
-    _backgroundAudioInitialized = true;
-    try {
-      await JustAudioBackground.init(
-        androidNotificationChannelId:
-            'com.alive.alivengandroidapp.channel.audio',
-        androidNotificationChannelName: 'ALIVE Podcasts',
-        androidNotificationOngoing: false,
-        androidStopForegroundOnPause: true,
-        androidNotificationIcon: 'drawable/ic_notification',
-      );
-    } catch (e) {
+  /// Uses a shared Future so concurrent taps await the same initialization.
+  static Future<void> _ensureBackgroundAudioInitialized() {
+    if (kIsWeb) return Future.value();
+    if (_initFuture != null) return _initFuture!;
+    final future = JustAudioBackground.init(
+      androidNotificationChannelId:
+          'com.alive.alivengandroidapp.channel.audio',
+      androidNotificationChannelName: 'ALIVE Podcasts',
+      androidNotificationOngoing: false,
+      androidStopForegroundOnPause: true,
+      androidNotificationIcon: 'drawable/ic_notification',
+    ).catchError((Object e) {
       debugPrint('JustAudioBackground lazy init note: $e');
-    }
+      _initFuture = null;
+    });
+    _initFuture = future;
+    return future;
   }
 
   AudioPlayer _getOrCreatePlayer() {
@@ -198,40 +223,46 @@ class PodcastAudioService extends ChangeNotifier {
     await _ensureBackgroundAudioInitialized();
     final activePlayer = _getOrCreatePlayer();
     final same = isCurrentEpisode(episode);
-    _currentEpisode = episode;
-    _currentPodcastTitle = podcastTitle ?? episode['podcastTitle']?.toString();
-    _currentCoverImage = coverImage ?? episode['coverImage']?.toString();
+    final nextPodcastTitle = podcastTitle ?? episode['podcastTitle']?.toString();
+    final nextCoverImage = coverImage ?? episode['coverImage']?.toString();
 
     if (same &&
         activePlayer.duration != null &&
         activePlayer.duration! > Duration.zero) {
       // If it's already the active episode, don't re-fetch URL or reset position!
+      _currentEpisode = episode;
+      _currentPodcastTitle = nextPodcastTitle;
+      _currentCoverImage = nextCoverImage;
       if (activePlayer.processingState == ProcessingState.completed) {
         await activePlayer.seek(Duration.zero);
       }
       if (!activePlayer.playing) {
         // NOTE: In just_audio, play() does not complete until paused/finished!
-        unawaited(activePlayer.play());
+        unawaited(
+          activePlayer.play().catchError((Object e) {
+            debugPrint('Podcast play() warning: $e');
+          }),
+        );
       }
       notifyListeners();
       return;
     }
 
-    // New episode or fresh start
+    // New episode or fresh start — only commit active metadata after setAudioSource succeeds
     try {
       final episodeId =
           (episode['id'] ?? episode['title'] ?? audioUrl).toString();
       final episodeTitle =
           (episode['title'] ?? 'ALIVE Podcast Episode').toString();
-      final podcastAlbum = _currentPodcastTitle ?? 'ALIVE Nigeria Podcasts';
+      final podcastAlbum = nextPodcastTitle ?? 'ALIVE Nigeria Podcasts';
       final speaker = (episode['speaker'] ??
               episode['author'] ??
               episode['host'] ??
               podcastAlbum)
           .toString();
-      final parsedArt = (_currentCoverImage != null &&
-              _currentCoverImage!.trim().startsWith('http'))
-          ? Uri.tryParse(_currentCoverImage!.trim())
+      final parsedArt = (nextCoverImage != null &&
+              nextCoverImage.trim().startsWith('http'))
+          ? Uri.tryParse(nextCoverImage.trim())
           : null;
 
       final uri = Uri.parse(audioUrl);
@@ -253,9 +284,16 @@ class PodcastAudioService extends ChangeNotifier {
       }
 
       await activePlayer.setAudioSource(source);
+      _currentEpisode = episode;
+      _currentPodcastTitle = nextPodcastTitle;
+      _currentCoverImage = nextCoverImage;
       // Do NOT await play() — in just_audio its Future resolves only
       // when playback finishes or pauses, which would block opening the player sheet!
-      unawaited(activePlayer.play());
+      unawaited(
+        activePlayer.play().catchError((Object e) {
+          debugPrint('Podcast play() warning: $e');
+        }),
+      );
       notifyListeners();
     } catch (e) {
       debugPrint('Error playing podcast audio: $e');
@@ -268,13 +306,17 @@ class PodcastAudioService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void resume() {
+  Future<void> resume() async {
     final activePlayer = _player;
     if (activePlayer == null) return;
     if (activePlayer.processingState == ProcessingState.completed) {
-      activePlayer.seek(Duration.zero);
+      await activePlayer.seek(Duration.zero);
     }
-    unawaited(activePlayer.play());
+    unawaited(
+      activePlayer.play().catchError((Object e) {
+        debugPrint('Podcast resume() warning: $e');
+      }),
+    );
     notifyListeners();
   }
 

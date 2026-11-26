@@ -1182,9 +1182,17 @@ class NotificationService {
 
       if (!settings.pushNotificationsEnabled) return;
 
-      final timeParts = settings.reminderTime.split(':');
-      final hour = int.parse(timeParts[0]);
-      final minute = int.parse(timeParts[1]);
+      // Supports both single ("07:00") and multi-slot ("07:00, 20:00") reminder strings
+      final primarySlot = settings.reminderTime.split(',').first.trim();
+      final timeParts = primarySlot.split(':');
+      final hour =
+          (timeParts.isNotEmpty ? int.tryParse(timeParts[0].trim()) : null)
+                  ?.clamp(0, 23) ??
+              7;
+      final minute =
+          (timeParts.length > 1 ? int.tryParse(timeParts[1].trim()) : null)
+                  ?.clamp(0, 59) ??
+              0;
 
       final now = DateTime.now();
       var scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);

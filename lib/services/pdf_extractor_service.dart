@@ -308,6 +308,7 @@ class ExtractedTractArticle {
   final List<String> sections;
   final List<String> headings;
   final int totalWordCount;
+  final int pageCount;
   final String primaryPaletteId;
   final List<ExtractedLessonSection> interactiveSections;
   final String? introSummary;
@@ -327,6 +328,7 @@ class ExtractedTractArticle {
     required this.sections,
     required this.headings,
     required this.totalWordCount,
+    this.pageCount = 0,
     this.primaryPaletteId = 'emerald_forest',
     this.interactiveSections = const [],
     this.introSummary,
@@ -340,6 +342,31 @@ class ExtractedTractArticle {
     this.lessonJson = const {},
     this.reviewNotes = const [],
   });
+}
+
+String _extractPdfTextInIsolate(
+    ({Uint8List bytes, bool isTrifoldTract}) args) {
+  final service = PdfExtractorService();
+  final parsed = service._extractStyledLinesWithMeta(
+    args.bytes,
+    isTrifoldTract: args.isTrifoldTract,
+  );
+  return service._renderStyledLinesToAnnotatedMarkdown(parsed.lines);
+}
+
+ExtractedTractArticle _extractPdfArticleInIsolate(
+  ({Uint8List bytes, String defaultTitle, bool isTrifoldTract}) args,
+) {
+  final service = PdfExtractorService();
+  final parsed = service._extractStyledLinesWithMeta(
+    args.bytes,
+    isTrifoldTract: args.isTrifoldTract,
+  );
+  return service._buildArticleFromStyledLines(
+    parsed.lines,
+    fallbackTitle: args.defaultTitle,
+    pageCount: parsed.pageCount,
+  );
 }
 
 /// 100% Offline, Typographic & Spatial Layout-Driven PDF Extractor.
@@ -461,23 +488,33 @@ class PdfExtractorService {
   }
 
   /// Extracts raw ordered text from PDF or TXT bytes using spatial & typographic analysis.
-  Future<String> extractTextFromBytes(Uint8List bytes, String fileName) async {
+  /// Offloads heavy PDF parsing to a background isolate on native platforms so UI stays smooth.
+  Future<String> extractTextFromBytes(
+    Uint8List bytes,
+    String fileName, {
+    bool isTrifoldTract = false,
+  }) async {
     final extension = fileName.split('.').last.toLowerCase();
-    try {
-      if (extension == 'pdf') {
-        final styledLines = _extractStyledLinesFromPdf(bytes);
-        return _renderStyledLinesToAnnotatedMarkdown(styledLines);
-      } else if (extension == 'txt') {
-        return utf8.decode(bytes).trim();
-      } else {
+    if (extension == 'pdf') {
+      final text = kIsWeb
+          ? _extractPdfTextInIsolate(
+              (bytes: bytes, isTrifoldTract: isTrifoldTract),
+            )
+          : await compute(
+              _extractPdfTextInIsolate,
+              (bytes: bytes, isTrifoldTract: isTrifoldTract),
+            );
+      if (text.trim().isEmpty) {
         throw Exception(
-          'Unsupported file format: .$extension. Please upload a PDF or TXT file.',
+          'No selectable text found in this PDF. It appears to be a scanned image PDF — please run OCR or paste the text manually.',
         );
       }
-    } catch (e) {
-      debugPrint('Error extracting text: $e');
+      return text;
+    } else if (extension == 'txt') {
+      return utf8.decode(bytes, allowMalformed: true).trim();
+    } else {
       throw Exception(
-        'Failed to parse document. Ensure the file is valid and readable.',
+        'Unsupported file format: .$extension. Please upload a PDF or TXT file.',
       );
     }
   }
@@ -487,20 +524,34 @@ class PdfExtractorService {
     Uint8List bytes,
     String fileName, {
     String? fallbackTitle,
+    bool isTrifoldTract = true,
   }) async {
     final extension = fileName.split('.').last.toLowerCase();
     final defaultTitle =
         fallbackTitle ?? fileName.replaceAll(RegExp(r'\.[^.]+$'), '');
 
     if (extension == 'pdf') {
-      final styledLines = _extractStyledLinesFromPdf(bytes);
-      return _buildArticleFromStyledLines(
-        styledLines,
-        fallbackTitle: defaultTitle,
-      );
+      return kIsWeb
+          ? _extractPdfArticleInIsolate((
+              bytes: bytes,
+              defaultTitle: defaultTitle,
+              isTrifoldTract: isTrifoldTract,
+            ))
+          : await compute(
+              _extractPdfArticleInIsolate,
+              (
+                bytes: bytes,
+                defaultTitle: defaultTitle,
+                isTrifoldTract: isTrifoldTract,
+              ),
+            );
     }
 
-    final rawText = await extractTextFromBytes(bytes, fileName);
+    final rawText = await extractTextFromBytes(
+      bytes,
+      fileName,
+      isTrifoldTract: isTrifoldTract,
+    );
     return structureAsWordPressContent(
       rawText,
       fallbackTitle: defaultTitle,
@@ -606,15 +657,34 @@ class PdfExtractorService {
   // ===========================================================================
   // STEP 1: EXTRACT TYPOGRAPHY + GEOMETRY FROM PDF (syncfusion_flutter_pdf)
   // ===========================================================================
-  List<_StyledPdfLine> _extractStyledLinesFromPdf(Uint8List bytes) {
-    final PdfDocument document = PdfDocument(inputBytes: bytes);
+  ({List<_StyledPdfLine> lines, int pageCount}) _extractStyledLinesWithMeta(
+    Uint8List bytes, {
+    bool isTrifoldTract = false,
+  }) {
+    late final PdfDocument document;
+    try {
+      document = PdfDocument(inputBytes: bytes);
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('password') ||
+          msg.contains('encrypt') ||
+          msg.contains('security')) {
+        throw Exception(
+          'This PDF is password-protected or encrypted. Please unlock it before uploading.',
+        );
+      }
+      throw Exception(
+        'Could not open this PDF file. Please ensure it is a valid, uncorrupted PDF.',
+      );
+    }
+    final int totalPages = document.pages.count;
     final PdfTextExtractor extractor = PdfTextExtractor(document);
     final pageMap = <int, List<_StyledPdfLine>>{};
     final pageHeights = <int, double>{};
     final pageWidths = <int, double>{};
 
     try {
-      for (int pageIdx = 0; pageIdx < document.pages.count; pageIdx++) {
+      for (int pageIdx = 0; pageIdx < totalPages; pageIdx++) {
         final pageSize = document.pages[pageIdx].size;
         pageHeights[pageIdx] = pageSize.height;
         pageWidths[pageIdx] = pageSize.width;
@@ -673,7 +743,11 @@ class PdfExtractorService {
       allStyled.addAll(orderedPageLines);
     }
 
-    return _orderPagesByLogicalSequence(allStyled);
+    // Only rotate pages for explicit 2-page trifold tract spreads (never scramble normal multi-page docs)
+    final orderedLines = (isTrifoldTract && totalPages == 2)
+        ? _orderPagesByLogicalSequence(allStyled)
+        : allStyled;
+    return (lines: orderedLines, pageCount: totalPages);
   }
 
   /// Removes repeated running headers/footers across pages (even with slight OCR
@@ -1085,6 +1159,7 @@ class PdfExtractorService {
   ExtractedTractArticle _buildArticleFromStyledLines(
     List<_StyledPdfLine> lines, {
     String? fallbackTitle,
+    int pageCount = 0,
   }) {
     if (lines.isEmpty) {
       return ExtractedTractArticle(
@@ -1093,7 +1168,10 @@ class PdfExtractorService {
         sections: const [],
         headings: const [],
         totalWordCount: 0,
-        reviewNotes: const ['No readable text could be extracted from this PDF.'],
+        pageCount: pageCount,
+        reviewNotes: const [
+          'No selectable text could be extracted from this PDF (it may be a scanned image PDF).'
+        ],
       );
     }
 
@@ -1829,6 +1907,7 @@ class PdfExtractorService {
       sections: [fullBody],
       headings: headings,
       totalWordCount: wordCount,
+      pageCount: pageCount,
       primaryPaletteId: primaryPalette.id,
       interactiveSections: interactiveSections,
       introSummary: introSummary,

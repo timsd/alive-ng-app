@@ -1442,7 +1442,9 @@ class _ContentManagementScreenState extends State<ContentManagementScreen>
     } catch (e) {
       debugPrint('Error seeding projects: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

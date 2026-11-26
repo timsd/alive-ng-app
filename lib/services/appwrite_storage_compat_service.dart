@@ -395,17 +395,42 @@ class AppwriteStorageCompatService {
   Future<String> _resolveFileId(String bucketId, String objectName) async {
     final leafName = objectName.split('/').last;
     try {
-      final list = await _storage.listFiles(
+      // Fast server-side search first (handles buckets with >100 files)
+      final searched = await _storage.listFiles(
         bucketId: bucketId,
+        search: leafName,
         queries: [Query.limit(100)],
       );
-      for (final file in list.files) {
+      for (final file in searched.files) {
         if (file.$id == objectName ||
             file.$id == leafName ||
             file.name == objectName ||
             file.name == leafName) {
           return file.$id;
         }
+      }
+
+      // Fallback cursor-paginated scan (up to 500 files)
+      String? cursor;
+      for (int page = 0; page < 5; page++) {
+        final queries = <String>[
+          Query.limit(100),
+          if (cursor != null) Query.cursorAfter(cursor),
+        ];
+        final list = await _storage.listFiles(
+          bucketId: bucketId,
+          queries: queries,
+        );
+        for (final file in list.files) {
+          if (file.$id == objectName ||
+              file.$id == leafName ||
+              file.name == objectName ||
+              file.name == leafName) {
+            return file.$id;
+          }
+        }
+        if (list.files.length < 100) break;
+        cursor = list.files.last.$id;
       }
     } catch (_) {}
     return _stableFileId(objectName);

@@ -140,7 +140,8 @@ class AppwriteMeetingFileService {
   }
 
   List<String> _ownerPermissions(String uploaderId) {
-    final perms = <String>[Permission.read(Role.any())];
+    // Confidential meeting minutes must require an authenticated user (never Role.any()).
+    final perms = <String>[Permission.read(Role.users())];
     final looksReal = uploaderId.isNotEmpty &&
         uploaderId != 'alive-scribe' &&
         !uploaderId.startsWith('user_') &&
@@ -150,6 +151,35 @@ class AppwriteMeetingFileService {
       perms.add(Permission.delete(Role.user(uploaderId)));
     }
     return perms;
+  }
+
+  String _mimeTypeForExtension(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'doc':
+        return 'application/msword';
+      case 'pdf':
+        return 'application/pdf';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'md':
+      case 'markdown':
+        return 'text/markdown';
+      case 'txt':
+        return 'text/plain';
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return 'application/octet-stream';
+    }
   }
 
   Future<void> _saveLocalMeetingFile(Map<String, dynamic> fileData) async {
@@ -182,7 +212,10 @@ class AppwriteMeetingFileService {
   }) async {
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileType = fileName.split('.').last.toLowerCase();
+      final fileType = fileName.contains('.')
+          ? fileName.split('.').last.toLowerCase()
+          : 'bin';
+      final mimeType = _mimeTypeForExtension(fileType);
       final createdAt = DateTime.now().toUtc().toIso8601String();
 
       String uploadedBucketId = AppwriteBackendConfig.meetingFilesBucketId;
@@ -196,7 +229,7 @@ class AppwriteMeetingFileService {
           file: InputFile.fromBytes(
             bytes: data,
             filename: '${timestamp}_$fileName',
-            contentType: 'text/markdown',
+            contentType: mimeType,
           ),
           permissions: _ownerPermissions(uploaderId),
         );
@@ -209,39 +242,41 @@ class AppwriteMeetingFileService {
             errStr.contains('typeerror')) {
           _logger.info('File uploaded with ID $fileId (handled SDK deserialization quirk)');
           storageSucceeded = true;
-        } else {
-        _logger.warning(
-            'Primary meeting_files bucket failed: $storageErr, trying content_media bucket...');
-        try {
-          uploadedBucketId = AppwriteBackendConfig.contentMediaBucketId;
-          fileId = ID.unique();
-          await _storage.createFile(
-            bucketId: uploadedBucketId,
-            fileId: fileId,
-            file: InputFile.fromBytes(
-              bytes: data,
-              filename: '${timestamp}_$fileName',
-              contentType: 'text/markdown',
-            ),
-            permissions: _ownerPermissions(uploaderId),
-          );
-          storageSucceeded = true;
-        } catch (secondaryErr) {
-          final secStr = secondaryErr.toString().toLowerCase();
-          if (secondaryErr is TypeError ||
-              secStr.contains('subtype of type') ||
-              secStr.contains('minified:') ||
-              secStr.contains('typeerror')) {
+        } else if (const {'pdf', 'png', 'jpg', 'jpeg', 'webp', 'mp3', 'mp4'}.contains(fileType)) {
+          _logger.warning(
+              'Primary meeting_files bucket failed: $storageErr, trying content_media bucket...');
+          try {
+            uploadedBucketId = AppwriteBackendConfig.contentMediaBucketId;
+            fileId = ID.unique();
+            await _storage.createFile(
+              bucketId: uploadedBucketId,
+              fileId: fileId,
+              file: InputFile.fromBytes(
+                bytes: data,
+                filename: '${timestamp}_$fileName',
+                contentType: mimeType,
+              ),
+              permissions: _ownerPermissions(uploaderId),
+            );
             storageSucceeded = true;
-          } else {
-            _logger.warning('Secondary bucket also failed: $secondaryErr. Proceeding with database record.');
+          } catch (secondaryErr) {
+            final secStr = secondaryErr.toString().toLowerCase();
+            if (secondaryErr is TypeError ||
+                secStr.contains('subtype of type') ||
+                secStr.contains('minified:') ||
+                secStr.contains('typeerror')) {
+              storageSucceeded = true;
+            } else {
+              _logger.warning('Secondary bucket also failed: $secondaryErr');
+            }
           }
-        }
+        } else {
+          _logger.warning('Primary meeting_files bucket upload failed for .$fileType: $storageErr');
         }
       }
 
       final fileUrl = storageSucceeded
-          ? getMeetingFileDownloadUrl(fileId)
+          ? getMeetingFileDownloadUrl(fileId, bucketId: uploadedBucketId, fileName: fileName)
           : '';
 
       final rowData = {
@@ -261,14 +296,14 @@ class AppwriteMeetingFileService {
         'updated_at': createdAt,
       };
 
-      // Always save to local cache so minutes are preserved under any network conditions
+      // Cache metadata only locally (never decode binary .docx/PDFs into SharedPreferences/localStorage)
       await _saveLocalMeetingFile({
         'id': fileId,
         ...rowData,
-        'content_text': utf8.decode(data, allowMalformed: true),
+        'is_local_only': !storageSucceeded,
       });
 
-      // Attempt cloud persistence (TablesDB with fallback to Databases)
+      bool dbSucceeded = false;
       try {
         await _tables.createRow(
           databaseId: AppwriteBackendConfig.databaseId,
@@ -276,21 +311,35 @@ class AppwriteMeetingFileService {
           rowId: ID.unique(),
           data: rowData,
         );
+        dbSucceeded = true;
       } catch (tableErr) {
-        _logger.warning('TablesDB createRow note: $tableErr. Saved to local meeting files.');
+        _logger.warning('TablesDB createRow note: $tableErr');
+      }
+
+      if (!storageSucceeded && !dbSucceeded) {
+        throw Exception('Cloud upload failed for "$fileName". Please check your connection and try again.');
       }
     } catch (e) {
       _logger.error('Error uploading meeting file: $e');
-      // Defensively avoid throwing if the file has already been persisted locally
+      rethrow;
     }
   }
 
-  String getMeetingFileDownloadUrl(String filePath) {
+  String getMeetingFileDownloadUrl(
+    String filePath, {
+    String? bucketId,
+    String? fileName,
+  }) {
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       return filePath;
     }
+    final targetBucket = bucketId ?? AppwriteBackendConfig.meetingFilesBucketId;
+    final ext = (fileName ?? filePath).split('.').last.toLowerCase();
+    // Office documents (.docx/.doc/.xlsx/.pptx) must use /download so browsers
+    // save the binary archive rather than rendering raw PK ZIP bytes inline.
+    final action = const {'docx', 'doc', 'xlsx', 'pptx'}.contains(ext) ? 'download' : 'view';
     return '${AppwriteBackendConfig.endpoint}/storage/buckets/'
-        '${AppwriteBackendConfig.meetingFilesBucketId}/files/$filePath/view'
+        '$targetBucket/files/$filePath/$action'
         '?project=${AppwriteBackendConfig.projectId}';
   }
 

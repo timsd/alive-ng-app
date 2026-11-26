@@ -66,7 +66,9 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
 
   Future<void> _loadFiles() async {
     try {
-      setState(() => _isLoading = true);
+      if (mounted) {
+        setState(() => _isLoading = true);
+      }
 
       final files = await _meetingFileService.getMeetingFiles();
 

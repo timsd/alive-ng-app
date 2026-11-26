@@ -145,7 +145,13 @@ class EmailService {
     final safeTitle = htmlEscape.convert(meetingTitle);
     final safeDocxFileName =
         docxFileName != null ? htmlEscape.convert(docxFileName) : null;
-    final htmlBody = _convertMarkdownToHtml(markdownMinutes);
+    // Cap oversized verbatim transcripts so multi-hour Board meetings stay well
+    // under Resend/function HTML body limits while keeping the full summary,
+    // decisions, and action items intact.
+    final cappedMarkdown = markdownMinutes.length > 45000
+        ? '${markdownMinutes.substring(0, 45000)}\n\n---\n*Transcript truncated for email delivery. Open the archived .docx file in Meeting Files for the complete verbatim record.*'
+        : markdownMinutes;
+    final htmlBody = _convertMarkdownToHtml(cappedMarkdown);
 
     final html = '<!DOCTYPE html><html><body style="font-family:Arial,Helvetica,sans-serif;'
         'color:#17263B;max-width:760px;margin:0 auto;padding:24px;line-height:1.6;">'
@@ -167,23 +173,23 @@ class EmailService {
         '</body></html>';
 
     final primary = recipients.first;
-    final ccRecipients = recipients.length > 1
-        ? recipients.sublist(1).join(', ')
-        : primary;
+    final extraCc = recipients.length > 1
+        ? recipients.sublist(1).where((r) => r.toLowerCase() != primary.toLowerCase()).join(', ')
+        : null;
 
     await sendCustomEmail(
       toEmail: primary,
       toName: 'ALIVE Board of Directors',
       subject: subject,
       html: html,
-      cc: ccRecipients,
+      cc: (extraCc != null && extraCc.isNotEmpty) ? extraCc : null,
     );
 
     // Mark as sent so neither auto-save nor manual save sends it again
     await _markBoardEmailSent(meetingTitle);
   }
 
-  /// Converts simple Markdown syntax from Scribe into clean HTML.
+  /// Converts Markdown syntax from Scribe (including tables, blockquotes & rules) into clean HTML.
   static String _convertMarkdownToHtml(String markdown) {
     if (markdown.trim().isEmpty) {
       return '<p><em>No transcript content available.</em></p>';
@@ -191,36 +197,91 @@ class EmailService {
     final lines = markdown.split('\n');
     final buf = StringBuffer();
     bool inList = false;
+    bool inTable = false;
+    bool tableHeaderWritten = false;
+
+    void closeBlocks() {
+      if (inList) {
+        buf.writeln('</ul>');
+        inList = false;
+      }
+      if (inTable) {
+        buf.writeln('</tbody></table>');
+        inTable = false;
+        tableHeaderWritten = false;
+      }
+    }
 
     for (final rawLine in lines) {
       final line = rawLine.trim();
       if (line.isEmpty) {
+        closeBlocks();
+        continue;
+      }
+
+      if (line == '---' || line == '***' || line == '___') {
+        closeBlocks();
+        buf.writeln('<hr style="border:none;border-top:1px solid #E2E8F0;margin:14px 0;">');
+        continue;
+      }
+
+      if (line.startsWith('|') && line.endsWith('|') && line.length > 2) {
         if (inList) {
           buf.writeln('</ul>');
           inList = false;
+        }
+        final cells = line
+            .substring(1, line.length - 1)
+            .split('|')
+            .map((c) => c.trim())
+            .toList();
+        final isSeparator = cells.every((c) => RegExp(r'^:?-+:?$').hasMatch(c));
+        if (isSeparator) continue;
+        if (!inTable) {
+          buf.writeln('<table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;">');
+          inTable = true;
+          buf.writeln('<thead><tr>');
+          for (final c in cells) {
+            buf.writeln('<th style="text-align:left;padding:8px;border:1px solid #CBD5E1;background:#F1F5F9;color:#0F172A;">${_formatInline(c)}</th>');
+          }
+          buf.writeln('</tr></thead><tbody>');
+          tableHeaderWritten = true;
+        } else {
+          if (!tableHeaderWritten) {
+            buf.writeln('<tbody>');
+            tableHeaderWritten = true;
+          }
+          buf.writeln('<tr>');
+          for (final c in cells) {
+            buf.writeln('<td style="padding:8px;border:1px solid #E2E8F0;vertical-align:top;">${_formatInline(c)}</td>');
+          }
+          buf.writeln('</tr>');
         }
         continue;
       }
 
-      if (line.startsWith('# ')) {
+      if (inTable) {
+        buf.writeln('</tbody></table>');
+        inTable = false;
+        tableHeaderWritten = false;
+      }
+
+      if (line.startsWith('> ')) {
         if (inList) {
           buf.writeln('</ul>');
           inList = false;
         }
+        buf.writeln('<blockquote style="margin:8px 0;padding:8px 12px;border-left:3px solid #16A34A;background:#F8FAFC;color:#475569;">${_formatInline(line.substring(2).trim())}</blockquote>');
+      } else if (line.startsWith('# ')) {
+        closeBlocks();
         buf.writeln(
             '<h1 style="color:#064E3B;margin:18px 0 8px;font-size:20px;">${htmlEscape.convert(line.substring(2).trim())}</h1>');
       } else if (line.startsWith('## ')) {
-        if (inList) {
-          buf.writeln('</ul>');
-          inList = false;
-        }
+        closeBlocks();
         buf.writeln(
             '<h2 style="color:#14532D;margin:16px 0 6px;font-size:17px;border-bottom:1px solid #E2E8F0;padding-bottom:4px;">${htmlEscape.convert(line.substring(3).trim())}</h2>');
       } else if (line.startsWith('### ')) {
-        if (inList) {
-          buf.writeln('</ul>');
-          inList = false;
-        }
+        closeBlocks();
         buf.writeln(
             '<h3 style="color:#166534;margin:12px 0 4px;font-size:15px;">${htmlEscape.convert(line.substring(4).trim())}</h3>');
       } else if (line.startsWith('* ') || line.startsWith('- ')) {
@@ -231,16 +292,11 @@ class EmailService {
         final itemText = _formatInline(line.substring(2).trim());
         buf.writeln('<li style="margin-bottom:4px;">$itemText</li>');
       } else {
-        if (inList) {
-          buf.writeln('</ul>');
-          inList = false;
-        }
+        closeBlocks();
         buf.writeln('<p style="margin:6px 0 10px;">${_formatInline(line)}</p>');
       }
     }
-    if (inList) {
-      buf.writeln('</ul>');
-    }
+    closeBlocks();
     return buf.toString();
   }
 

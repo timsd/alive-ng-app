@@ -176,17 +176,28 @@ class _AdminKidsStoriesScreenState extends State<AdminKidsStoriesScreen>
           result.files.single.name,
         );
 
+        if (!mounted) return;
+        if (text.trim().isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'No selectable text found in this document. If it is a scanned PDF, please run OCR or enter the story manually.',
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+          return;
+        }
+
         setState(() {
           _contentController.text = text;
         });
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: const Text('Document successfully extracted!'),
-                backgroundColor: Theme.of(context).colorScheme.tertiary),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: const Text('Document successfully extracted!'),
+              backgroundColor: Theme.of(context).colorScheme.tertiary),
+        );
       }
     } catch (e) {
       if (mounted) {

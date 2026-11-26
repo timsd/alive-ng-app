@@ -85,6 +85,30 @@ void main() {
       CrashReportingService.instance.captureFlutterError(details);
     };
 
+    if (kReleaseMode) {
+      ErrorWidget.builder = (FlutterErrorDetails details) {
+        return Material(
+          color: Colors.transparent,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.error_outline_rounded, size: 36, color: Colors.orange),
+                  SizedBox(height: 8),
+                  Text(
+                    'Something went wrong displaying this section.',
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      };
+    }
+
     var backendReady = false;
     try {
       appwriteClient
@@ -671,15 +695,16 @@ class MainNavigationScreen extends ConsumerWidget {
                   'icon': Icons.explore_rounded,
                   'label': 'app_tour',
                   'onTap': () {
-                    // Capture GoRouter from the active screen context before closing
-                    // the More bottom sheet, then navigate cleanly to Home first.
-                    final router = GoRouter.maybeOf(context);
-                    Navigator.of(context).pop();
-                    router?.go(AppConstants.homeRoute);
-                    Future.delayed(const Duration(milliseconds: 180), () {
-                      final navContext = rootNavigatorKey.currentContext;
-                      if (navContext != null && navContext.mounted) {
-                        AppTourService.maybeStartTour(navContext, force: true);
+                    // `_buildMoreItem` already pops the More bottom sheet before calling onTap;
+                    // use the root navigator context to navigate to Home and start the tour.
+                    final navContext = rootNavigatorKey.currentContext;
+                    if (navContext != null && navContext.mounted) {
+                      GoRouter.maybeOf(navContext)?.go(AppConstants.homeRoute);
+                    }
+                    Future.delayed(const Duration(milliseconds: 220), () {
+                      final activeCtx = rootNavigatorKey.currentContext;
+                      if (activeCtx != null && activeCtx.mounted) {
+                        AppTourService.maybeStartTour(activeCtx, force: true);
                       }
                     });
                   },
@@ -704,7 +729,12 @@ class MainNavigationScreen extends ConsumerWidget {
                   'icon': Icons.logout_rounded,
                   'label': 'sign_out',
                   'authOnly': true,
-                  'onTap': () => _showSignOutDialog(context, ref),
+                  'onTap': () {
+                    final rootCtx = rootNavigatorKey.currentContext;
+                    if (rootCtx != null && rootCtx.mounted) {
+                      _showSignOutDialog(rootCtx, ref);
+                    }
+                  },
                 },
               ];
 

@@ -577,14 +577,82 @@ int _levenshteinDistance(String a, String b) {
   return dp[a.length][b.length];
 }
 
-/// Normalizes text for recitation comparison: removes punctuation, normalizes spacing, and converts to lowercase.
+const Map<String, String> _biblicalWordEquivalences = {
+  // Digits <-> spoken numbers (STT often emits digits for verses)
+  '1': 'one',
+  '2': 'two',
+  '3': 'three',
+  '4': 'four',
+  '5': 'five',
+  '6': 'six',
+  '7': 'seven',
+  '8': 'eight',
+  '9': 'nine',
+  '10': 'ten',
+  '11': 'eleven',
+  '12': 'twelve',
+  '13': 'thirteen',
+  '14': 'fourteen',
+  '15': 'fifteen',
+  '16': 'sixteen',
+  '17': 'seventeen',
+  '18': 'eighteen',
+  '19': 'nineteen',
+  '20': 'twenty',
+  '30': 'thirty',
+  '40': 'forty',
+  '50': 'fifty',
+  '70': 'seventy',
+  '100': 'hundred',
+  '1000': 'thousand',
+  // Common KJV <-> modern speech equivalences
+  'believeth': 'believes',
+  'saith': 'says',
+  'hath': 'has',
+  'shalt': 'shall',
+  'doth': 'does',
+  'doeth': 'does',
+  'whosoever': 'whoever',
+  'strengtheneth': 'strengthens',
+  'loveth': 'loves',
+  'knoweth': 'knows',
+  'liveth': 'lives',
+  'cometh': 'comes',
+  'goeth': 'goes',
+  'giveth': 'gives',
+  'maketh': 'makes',
+  'speaketh': 'speaks',
+  'walketh': 'walks',
+  'heareth': 'hears',
+  'seeth': 'sees',
+  'unto': 'to',
+  'thou': 'you',
+  'thee': 'you',
+  'thy': 'your',
+  'thine': 'your',
+  'ye': 'you',
+  'art': 'are',
+  'wilt': 'will',
+  'hast': 'has',
+  'shouldest': 'should',
+  'wouldest': 'would',
+};
+
+/// Normalizes text for recitation comparison: joins apostrophes cleanly ("God's" -> "gods"),
+/// converts numerals to words, aligns common KJV/modern forms, and strips punctuation.
 String _normalizeBiblicalVoiceText(String text) {
   if (text.trim().isEmpty) return '';
-  return text
+  final cleaned = text
       .toLowerCase()
+      .replaceAll(RegExp(r"['’]"), '')
       .replaceAll(RegExp(r'[^\w\s]'), ' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
+  if (cleaned.isEmpty) return '';
+  return cleaned
+      .split(' ')
+      .map((w) => _biblicalWordEquivalences[w] ?? w)
+      .join(' ');
 }
 
 /// Checks whether a spoken word matches the target word in the selected Bible version.
@@ -720,16 +788,25 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
 
     _initializeSpeech();
     _initializeTts();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(bibleGameProvider.notifier).setListening(false);
+      }
+    });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      // Anti-cheat: user minimized or switched app, rotate verse
+    // Only react to full backgrounding (`paused`), NOT `inactive` (which fires
+    // during system microphone permission dialogs and notification shades).
+    if (state == AppLifecycleState.paused) {
+      if (_speechReady) {
+        _speech.cancel().catchError((_) {});
+      }
       if (mounted) {
         _hintAutoAdvanceTimer?.cancel();
         _hintAutoAdvanceTimer = null;
+        ref.read(bibleGameProvider.notifier).setListening(false);
         ref.read(bibleGameProvider.notifier).loadNewVerse();
       }
     }
@@ -924,43 +1001,78 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     }
   }
 
-  void _initializeSpeech() async {
+  Future<bool> _initializeSpeech() async {
     try {
       _speech = stt.SpeechToText();
       _speechEnabled = await _speech.initialize(
-        onError: (error) => debugPrint('Speech recognition error: $error'),
-        onStatus: (status) => debugPrint('Speech recognition status: $status'),
+        onError: (error) {
+          debugPrint('Speech recognition error: $error');
+          if (!mounted) return;
+          setState(() => _voiceLevel = 0.0);
+          if (ref.read(bibleGameProvider).isListening) {
+            if (_bufferedTranscript.trim().isNotEmpty && !_isProcessingVoiceFinal) {
+              _stopListening();
+            } else {
+              ref.read(bibleGameProvider.notifier).setListening(false);
+            }
+          }
+        },
+        onStatus: (status) {
+          debugPrint('Speech recognition status: $status');
+          if ((status == 'done' || status == 'notListening') && mounted) {
+            setState(() => _voiceLevel = 0.0);
+            if (ref.read(bibleGameProvider).isListening) {
+              if (_bufferedTranscript.trim().isNotEmpty && !_isProcessingVoiceFinal) {
+                _stopListening();
+              } else {
+                ref.read(bibleGameProvider.notifier).setListening(false);
+              }
+            }
+          }
+        },
+        options: [
+          stt.SpeechToText.webDoNotAggregate,
+        ],
       );
       _speechReady = true;
 
       // Resolve the best available STT locale from the fallback chain
       if (_speechEnabled) {
-        final locales = await _speech.locales();
-        final availableIds = locales.map((l) => l.localeId).toSet();
-        for (final candidate in _localeFallbackChain) {
-          if (availableIds.contains(candidate)) {
-            _resolvedSttLocale = candidate;
-            debugPrint('STT locale resolved: $candidate');
-            break;
+        try {
+          final locales = await _speech.locales();
+          final availableIds = locales.map((l) => l.localeId).toSet();
+          for (final candidate in _localeFallbackChain) {
+            if (availableIds.contains(candidate)) {
+              _resolvedSttLocale = candidate;
+              debugPrint('STT locale resolved: $candidate');
+              break;
+            }
           }
-        }
-        // If none of the preferred locales are available, try any 'en' locale
-        if (!_localeFallbackChain.contains(_resolvedSttLocale) ||
-            !availableIds.contains(_resolvedSttLocale)) {
-          final fallback = availableIds.firstWhere(
-            (id) => id.startsWith('en'),
-            orElse: () => 'en-US',
-          );
-          _resolvedSttLocale = fallback;
-          debugPrint('STT locale fallback to: $fallback');
+          // If none of the preferred locales are available, try any 'en' locale
+          if (!_localeFallbackChain.contains(_resolvedSttLocale) ||
+              !availableIds.contains(_resolvedSttLocale)) {
+            final fallback = availableIds.firstWhere(
+              (id) => id.startsWith('en'),
+              orElse: () => 'en-US',
+            );
+            _resolvedSttLocale = fallback;
+            debugPrint('STT locale fallback to: $fallback');
+          }
+        } catch (e) {
+          debugPrint('STT locale resolution warning: $e');
         }
       }
 
       if (mounted) {
         setState(() {});
       }
+      return _speechEnabled;
     } catch (error) {
       debugPrint('Speech recognition initialization failed: $error');
+      _speechReady = true;
+      _speechEnabled = false;
+      if (mounted) setState(() {});
+      return false;
     }
   }
 
@@ -1003,7 +1115,28 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
 
   void _startListening() async {
     if (!_speechReady || !_speechEnabled) {
-      _initializeSpeech();
+      final ok = await _initializeSpeech();
+      if (!ok || !mounted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Microphone speech recognition is unavailable. Grant microphone permission or switch to Fill Gaps mode.',
+              ),
+              action: SnackBarAction(
+                label: 'Fill Gaps',
+                onPressed: () {
+                  ref
+                      .read(bibleGameProvider.notifier)
+                      .setGameMode(GameMode.fillInTheGap);
+                },
+              ),
+            ),
+          );
+        }
+        return;
+      }
     }
     if (_speechEnabled && _speechReady) {
       _bufferedTranscript = '';
@@ -1015,33 +1148,48 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
         await _tts.stop();
       }
       _voiceLevel = 0.0;
-      await _speech.listen(
-        onResult: (result) {
-          _bufferedTranscript = result.recognizedWords;
-          if (mounted && result.recognizedWords.isNotEmpty) {
-            ref.read(bibleGameProvider.notifier).updateUserInput(
-                  _cleanVoiceTranscript(result.recognizedWords),
-                );
-          }
-          if (result.finalResult && !_isProcessingVoiceFinal) {
-            _stopListening();
-          }
-        },
-        onSoundLevelChange: (level) {
-          if (!mounted) return;
-          final normalized = ((level - 1.0) / 8.0).clamp(0.0, 1.0);
-          setState(() => _voiceLevel = normalized);
-        },
-        // Uses best available: en-NG → en-GB → en-US
-        listenOptions: stt.SpeechListenOptions(
-          partialResults: true,
-          cancelOnError: false,
-          listenMode: stt.ListenMode.dictation,
-          listenFor: const Duration(seconds: 90),
-          pauseFor: const Duration(seconds: 7),
-          localeId: _resolvedSttLocale,
-        ),
-      );
+      try {
+        await _speech.listen(
+          onResult: (result) {
+            _bufferedTranscript = result.recognizedWords;
+            if (mounted && result.recognizedWords.isNotEmpty) {
+              ref.read(bibleGameProvider.notifier).updateUserInput(
+                    _cleanVoiceTranscript(result.recognizedWords),
+                  );
+            }
+            if (result.finalResult && !_isProcessingVoiceFinal) {
+              _stopListening();
+            }
+          },
+          onSoundLevelChange: (level) {
+            if (!mounted) return;
+            final normalized = ((level - 1.0) / 8.0).clamp(0.0, 1.0);
+            setState(() => _voiceLevel = normalized);
+          },
+          // Uses best available: en-GB → en-US → en-NG
+          listenOptions: stt.SpeechListenOptions(
+            partialResults: true,
+            cancelOnError: false,
+            listenMode: stt.ListenMode.dictation,
+            listenFor: const Duration(seconds: 90),
+            pauseFor: const Duration(seconds: 7),
+            localeId: _resolvedSttLocale,
+          ),
+        );
+      } catch (e) {
+        debugPrint('Speech listen failed: $e');
+        if (mounted) {
+          setState(() => _voiceLevel = 0.0);
+          ref.read(bibleGameProvider.notifier).setListening(false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Could not start voice capture. Please check microphone permissions and try again.',
+              ),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -1155,7 +1303,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     _flipController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     if (_speechReady) {
-      _speech.stop();
+      _speech.cancel().catchError((_) {});
     }
     if (_ttsReady) {
       _tts.stop();
@@ -1961,9 +2109,9 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 16),
-              // Clickable mic that captures the recitation.
-              if (_speechEnabled) _buildVoiceMicButton(isListening: isListening),
-              if (_speechEnabled) const SizedBox(height: 12),
+              // Clickable mic that captures the recitation (or prompts retry / Fill Gaps fallback).
+              _buildVoiceMicButton(isListening: isListening),
+              const SizedBox(height: 12),
               // Note: the card only flips once 3 attempts have been used.
               if (!canFlip)
                 Padding(
@@ -2065,15 +2213,15 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
       children: [
         Center(
           child: GestureDetector(
-            onTap: _speechEnabled
-                ? (isListening ? _stopListening : _startListening)
-                : null,
+            onTap: isListening ? _stopListening : _startListening,
             child: Container(
               width: 64,
               height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isListening ? cs.error : cs.primary,
+                color: !_speechEnabled && _speechReady
+                    ? cs.secondary
+                    : (isListening ? cs.error : cs.primary),
                 boxShadow: [
                   BoxShadow(
                     color: (isListening ? cs.error : cs.primary)
@@ -2084,13 +2232,37 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
                 ],
               ),
               child: Icon(
-                isListening ? Icons.stop : Icons.mic,
+                !_speechEnabled && _speechReady
+                    ? Icons.mic_off_rounded
+                    : (isListening ? Icons.stop : Icons.mic),
                 color: cs.onPrimary,
                 size: 30,
               ),
             ),
           ),
         ),
+        if (!_speechEnabled && _speechReady) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              TextButton.icon(
+                onPressed: _startListening,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Enable Mic'),
+              ),
+              TextButton.icon(
+                onPressed: () => ref
+                    .read(bibleGameProvider.notifier)
+                    .setGameMode(GameMode.fillInTheGap),
+                icon: const Icon(Icons.edit_note, size: 16),
+                label: const Text('Use Fill Gaps'),
+              ),
+            ],
+          ),
+        ],
         if (isListening) ...[
           const SizedBox(height: 12),
           VoiceActivityBars(

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
@@ -272,7 +273,12 @@ class _LeaderMeetingTranscriptionScreenState
     if (_scribeService!.isListening) {
       await _scribeService!.stopListening();
     } else {
-      await _scribeService!.startListening();
+      final started = await _scribeService!.startListening();
+      if (!started && mounted) {
+        ToastUtils.showWarning(
+          'Microphone speech recognition unavailable. Please grant microphone permission and try again.',
+        );
+      }
     }
     if (mounted) setState(() {});
   }
@@ -302,7 +308,7 @@ class _LeaderMeetingTranscriptionScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'ALIVE Scribe will compile the executive overview, timestamped resolutions, assigned action items table, and full cleaned transcript into a markdown file and store it in the Meeting Files repository.',
+              'ALIVE Scribe will compile the executive overview, timestamped resolutions, assigned action items table, and full cleaned transcript into an official Word (.docx) minutes document and store it in the Meeting Files repository.',
             ),
             const SizedBox(height: 12),
             Container(
@@ -451,8 +457,65 @@ class _LeaderMeetingTranscriptionScreenState
               ),
               const SizedBox(height: 12),
               ListTile(
+                leading: const Icon(Icons.copy_rounded, color: Color(0xFF2563EB)),
+                title: const Text('Copy Markdown to Clipboard'),
+                subtitle: const Text('Copy formatted meeting minutes text'),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  await Clipboard.setData(ClipboardData(text: markdown));
+                  if (mounted) {
+                    ToastUtils.showSuccess('Minutes copied to clipboard.');
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.description_rounded, color: Color(0xFF1B365D)),
+                title: const Text('Export & Share Word (.docx)'),
+                subtitle: const Text('Generate official Board/Council Word document'),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  try {
+                    final meetingTitle = _meetingTitleController.text.trim();
+                    final officialMinutesJson =
+                        _scribeService?.generateOfficialMinutesJson(
+                              meetingTitle: meetingTitle,
+                              meetingType: _meetingType,
+                            ) ??
+                            markdown;
+                    final bytes =
+                        await DocxReportGenerator.generateMeetingMinutesDocx(
+                      meetingTitle: meetingTitle,
+                      meetingType: _meetingType,
+                      markdownContent: officialMinutesJson,
+                    );
+                    final dateClean =
+                        DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+                    final sanitizedTitle = meetingTitle
+                        .replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+                    final fileName = 'Minutes_${sanitizedTitle}_$dateClean.docx';
+                    await SharePlus.instance.share(
+                      ShareParams(
+                        files: [
+                          XFile.fromData(
+                            bytes,
+                            name: fileName,
+                            mimeType:
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                          ),
+                        ],
+                        subject: '$meetingTitle - Official Minutes (.docx)',
+                      ),
+                    );
+                  } catch (e) {
+                    if (mounted) {
+                      ToastUtils.showError('Could not export Word document: $e');
+                    }
+                  }
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.share_rounded, color: Color(0xFF00897B)),
-                title: const Text('Share'),
+                title: const Text('Share Text Minutes'),
                 subtitle: const Text('Send verified minutes through system share'),
                 onTap: () async {
                   Navigator.of(ctx).pop();

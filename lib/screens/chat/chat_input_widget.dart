@@ -64,7 +64,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   void dispose() {
     _tagDebounce?.cancel();
     if (_isDictating) {
-      _speech.stop().catchError((_) {});
+      _speech.cancel().catchError((_) {});
     }
     widget.controller.removeListener(_onTextChanged);
     super.dispose();
@@ -253,62 +253,99 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
       return;
     }
     if (!_speechReady) {
-      _speechReady = await _speech.initialize(
-        onError: (_) {
-          if (mounted) {
-            setState(() {
-              _isDictating = false;
-              _voiceLevel = 0.0;
-            });
-          }
-        },
-        onStatus: (status) {
-          if ((status == 'done' || status == 'notListening') && mounted) {
-            setState(() {
-              _isDictating = false;
-              _voiceLevel = 0.0;
-            });
-          }
-        },
-      );
+      try {
+        _speechReady = await _speech.initialize(
+          onError: (_) {
+            if (mounted) {
+              setState(() {
+                _isDictating = false;
+                _voiceLevel = 0.0;
+              });
+            }
+          },
+          onStatus: (status) {
+            if ((status == 'done' || status == 'notListening') && mounted) {
+              setState(() {
+                _isDictating = false;
+                _voiceLevel = 0.0;
+              });
+            }
+          },
+          options: [
+            stt.SpeechToText.webDoNotAggregate,
+          ],
+        );
+      } catch (e) {
+        debugPrint('Chat dictation init error: $e');
+        _speechReady = false;
+      }
     }
-    if (!_speechReady || !mounted) return;
+    if (!_speechReady) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Microphone dictation is unavailable. Please allow microphone permission and try again.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
     _baseTextBeforeDictation = widget.controller.text.trim();
     setState(() {
       _isDictating = true;
       _voiceLevel = 0.0;
     });
-    await _speech.listen(
-      onSoundLevelChange: (level) {
-        if (!mounted) return;
-        final normalized = ((level - 1.0) / 8.0).clamp(0.0, 1.0);
-        setState(() => _voiceLevel = normalized);
-      },
-      onResult: (result) {
-        if (!mounted) return;
-        final spoken = result.recognizedWords.trim();
-        final combined = _baseTextBeforeDictation.isEmpty
-            ? spoken
-            : (spoken.isEmpty
-                ? _baseTextBeforeDictation
-                : '$_baseTextBeforeDictation $spoken');
-        widget.controller.value = TextEditingValue(
-          text: combined,
-          selection: TextSelection.collapsed(offset: combined.length),
+    try {
+      await _speech.listen(
+        onSoundLevelChange: (level) {
+          if (!mounted) return;
+          final normalized = ((level - 1.0) / 8.0).clamp(0.0, 1.0);
+          setState(() => _voiceLevel = normalized);
+        },
+        onResult: (result) {
+          if (!mounted) return;
+          final spoken = result.recognizedWords.trim();
+          final combined = _baseTextBeforeDictation.isEmpty
+              ? spoken
+              : (spoken.isEmpty
+                  ? _baseTextBeforeDictation
+                  : '$_baseTextBeforeDictation $spoken');
+          widget.controller.value = TextEditingValue(
+            text: combined,
+            selection: TextSelection.collapsed(offset: combined.length),
+          );
+          if (result.finalResult) {
+            setState(() {
+              _isDictating = false;
+              _voiceLevel = 0.0;
+            });
+          }
+        },
+        listenOptions: stt.SpeechListenOptions(
+          partialResults: true,
+          cancelOnError: false,
+          listenMode: stt.ListenMode.dictation,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Chat dictation listen error: $e');
+      if (mounted) {
+        setState(() {
+          _isDictating = false;
+          _voiceLevel = 0.0;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not start voice dictation. Please check microphone access and try again.',
+            ),
+          ),
         );
-        if (result.finalResult) {
-          setState(() {
-            _isDictating = false;
-            _voiceLevel = 0.0;
-          });
-        }
-      },
-      listenOptions: stt.SpeechListenOptions(
-        partialResults: true,
-        cancelOnError: false,
-        listenMode: stt.ListenMode.dictation,
-      ),
-    );
+      }
+    }
   }
 
   Future<void> _stopVoiceDictation({bool cancel = false}) async {

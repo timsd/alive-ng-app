@@ -574,48 +574,71 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
         defaultSpeaker.isNotEmpty ? defaultSpeaker : 'Speaker';
 
     if (raw.isEmpty) {
-      return [
-        _PodcastTranscriptLine(
-          startMs: 0,
-          endMs: 60000,
-          time: '00:00',
-          speaker: resolvedDefaultSpeaker,
-          text:
-              'Welcome to this episode. Foundational truths for discipleship and spiritual growth.',
-        ),
-      ];
+      return const [];
     }
 
     // Matches timestamp: [00:30], [00:30.500], (00:30), 00:30, [01:15:30], [00:30 - 01:00], etc.
     final timestampRegex = RegExp(
       r'^(?:\[|\()?(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?(?:\s*[-–—:]\s*(?:(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?))?(?:\]|\))?\s*[-–—:]?\s*',
     );
+    final bracketedTimeRegex = RegExp(
+      r'^[\[\(](?:\d{1,2}:)?\d{1,3}:\d{2}',
+    );
     // Also matches speaker-first lines such as "Speaker [01:29]: ..." or "Pastor Agana (01:29) ..."
     final speakerBeforeTimeRegex = RegExp(
       r'^\*?\*?([A-Za-z][A-Za-z0-9\s._-]{0,30})\*?\*?\s+(?=[\[\(]?(?:\d{1,2}:)?\d{1,3}:\d{2})',
     );
+    final bibleBookPrefixRegex = RegExp(
+      r'^(?:[1-3]\s*)?(?:Genesis|Gen|Exodus|Exod?|Leviticus|Lev|Numbers|Num|Deuteronomy|Deut|Joshua|Josh|Judges|Judg|Ruth|Samuel|Sam|Kings|Kgs|Chronicles|Chr|Ezra|Nehemiah|Neh|Esther|Job|Psalms?|Ps|Proverbs|Prov|Ecclesiastes|Eccl|Isaiah|Isa|Jeremiah|Jer|Lamentations|Lam|Ezekiel|Ezek|Daniel|Dan|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Matt?|Mark|Luke|John|Acts|Romans|Rom|Corinthians|Cor|Galatians|Gal|Ephesians|Eph|Philippians|Phil|Colossians|Col|Thessalonians|Thess|Timothy|Tim|Titus|Philemon|Hebrews|Heb|James|Jas|Peter|Pet|Jude|Revelation|Rev)\.?$',
+      caseSensitive: false,
+    );
     final cueRegex = RegExp(
-      r'^(?:(\d{1,2}):)?(\d{2}):(\d{2})(?:[.,](\d{1,3}))?\s*-->\s*(?:(\d{1,2}):)?(\d{2}):(\d{2})(?:[.,](\d{1,3}))?\s*',
+      r'^(?:(\d{1,2}):)?(\d{2}):(\d{2})(?:[.,](\d{1,3}))?\s*-->\s*(?:(\d{1,2}):)?(\d{2}):(\d{2})(?:[.,](\d{1,3}))?(?:\s+[^\r\n]*)?$',
     );
     final speakerRegex = RegExp(
       r'^\*?\*?([A-Za-z][A-Za-z0-9\s._-]{0,30})\*?\*?:\s+',
     );
+    final vttHeaderRegex = RegExp(
+      r'^(?:WEBVTT(?:\s.*)?|NOTE(?:\s.*)?|STYLE|REGION|Kind:\s*.*|Language:\s*.*|\d{1,5})$',
+      caseSensitive: false,
+    );
+    final vttVoiceTagRegex = RegExp(r'<v(?:\.[^>\s]+)?\s+([^>]+)>', caseSensitive: false);
 
     final rawLines = raw.split(RegExp(r'\r?\n'));
 
-    // First pass: check whether the transcript uses explicit timestamps anywhere
-    final detectedAnyTimestamp = rawLines.any((line) {
+    // First pass: check whether the transcript uses genuine explicit timestamps
+    // (require SRT/VTT cues, bracketed timestamps, or >=2 non-Bible-verse timestamp lines)
+    int explicitTimestampLineCount = 0;
+    bool hasCueOrBracketedTime = false;
+    for (final line in rawLines) {
       var t = line
           .trim()
           .replaceAll(RegExp(r'^(?:[-•*]|\d+\.)\s+'), '')
           .replaceAll(RegExp(r'^\*\*'), '')
           .trim();
+      if (t.isEmpty) continue;
+      if (cueRegex.hasMatch(t)) {
+        hasCueOrBracketedTime = true;
+        explicitTimestampLineCount++;
+        continue;
+      }
       final spkPre = speakerBeforeTimeRegex.firstMatch(t);
       if (spkPre != null) {
+        final candidatePrefix = spkPre.group(1)!.trim();
+        if (bibleBookPrefixRegex.hasMatch(candidatePrefix)) {
+          continue; // Scripture reference like "John 3:16", not a speaker timestamp
+        }
         t = t.substring(spkPre.end).trim();
       }
-      return cueRegex.hasMatch(t) || timestampRegex.hasMatch(t);
-    });
+      if (bracketedTimeRegex.hasMatch(t)) {
+        hasCueOrBracketedTime = true;
+        explicitTimestampLineCount++;
+      } else if (timestampRegex.hasMatch(t)) {
+        explicitTimestampLineCount++;
+      }
+    }
+    final detectedAnyTimestamp =
+        hasCueOrBracketedTime || explicitTimestampLineCount >= 2;
 
     final rawSegments = <_PodcastTranscriptLine>[];
 
@@ -631,14 +654,14 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     }
 
     void commitCurrentSegment() {
-      final combinedText = currentTextLines.join(' ').trim();
+      final combinedText = _cleanMojibake(currentTextLines.join(' ').trim());
       if (combinedText.isNotEmpty || currentStartMs != null) {
         final startMs = currentStartMs ?? 0;
         final formattedTime = currentTimeStr ?? _formatMsShort(startMs);
 
         rawSegments.add(_PodcastTranscriptLine(
           startMs: startMs,
-          endMs: currentEndMs ?? (startMs + 30000),
+          endMs: currentEndMs ?? -1,
           time: formattedTime,
           speaker: currentSpeaker,
           text: combinedText.isEmpty ? '...' : combinedText,
@@ -680,6 +703,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
       }
 
       for (var p in expandedParas) {
+        p = _cleanMojibake(p);
         final spkMatch = speakerRegex.firstMatch(p);
         String segSpeaker = resolvedDefaultSpeaker;
         if (spkMatch != null && spkMatch.group(1)!.length < 32) {
@@ -702,10 +726,21 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
         if (p.isEmpty) {
           continue;
         }
-        // Skip standalone SRT cue sequence numbers ("1", "2", "3") or "WEBVTT" header
-        if (RegExp(r'^(?:WEBVTT|\d{1,5})$', caseSensitive: false).hasMatch(p)) {
+        // Skip SRT cue sequence numbers & WebVTT metadata headers
+        if (vttHeaderRegex.hasMatch(p)) {
           continue;
         }
+
+        // Extract WebVTT <v Speaker> voice spans and strip HTML/VTT markup tags
+        final voiceMatch = vttVoiceTagRegex.firstMatch(p);
+        if (voiceMatch != null) {
+          final vSpeaker = voiceMatch.group(1)?.trim() ?? '';
+          if (vSpeaker.isNotEmpty && vSpeaker.length < 36) {
+            currentSpeaker = vSpeaker;
+          }
+        }
+        p = p.replaceAll(RegExp(r'<[^>]+>'), '').trim();
+        if (p.isEmpty) continue;
 
         // Strip leading bullet / numbered / bold markers like "* ", "- ", "1. ", "**"
         p = p
@@ -731,15 +766,16 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
           final es = int.tryParse(cueMatch.group(7) ?? '0') ?? 0;
           final ems = parseFracMs(cueMatch.group(8));
           currentEndMs = ((eh * 3600) + (em * 60) + es) * 1000 + ems;
-
-          p = p.substring(cueMatch.end).trim();
-          if (p.isEmpty) continue;
+          continue;
         }
 
         // Handle speaker-first timestamp lines such as "Speaker [01:29]: ..."
+        // while avoiding false matches on Bible verses ("John 3:16 ...")
         String? pendingSpeakerBeforeTime;
         final spkBefore = speakerBeforeTimeRegex.firstMatch(p);
-        if (spkBefore != null && spkBefore.group(1)!.length < 32) {
+        if (spkBefore != null &&
+            spkBefore.group(1)!.length < 32 &&
+            !bibleBookPrefixRegex.hasMatch(spkBefore.group(1)!.trim())) {
           pendingSpeakerBeforeTime = spkBefore.group(1)!.trim();
           p = p.substring(spkBefore.end).trim();
         }
@@ -801,15 +837,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
     }
 
     if (rawSegments.isEmpty) {
-      return [
-        _PodcastTranscriptLine(
-          startMs: 0,
-          endMs: 60000,
-          time: '00:00',
-          speaker: resolvedDefaultSpeaker,
-          text: 'Foundational truths for discipleship and spiritual growth.',
-        ),
-      ];
+      return const [];
     }
 
     // Prefer live AudioPlayer duration so transcript timing matches the actual audio file
@@ -898,13 +926,24 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
       for (int i = 0; i < rawSegments.length; i++) {
         final seg = rawSegments[i];
         int segEnd;
+        final hasValidExplicitEnd = seg.endMs > seg.startMs;
         if (i < rawSegments.length - 1) {
           final nextStart = rawSegments[i + 1].startMs;
-          segEnd = nextStart > seg.startMs ? nextStart : (seg.startMs + 5000);
+          if (hasValidExplicitEnd && seg.endMs <= nextStart) {
+            segEnd = seg.endMs;
+          } else {
+            segEnd = nextStart > seg.startMs ? nextStart : (seg.startMs + 5000);
+          }
         } else {
-          segEnd = effectiveDurationMs > seg.startMs
-              ? effectiveDurationMs
-              : (seg.startMs + 30000);
+          if (hasValidExplicitEnd) {
+            segEnd = effectiveDurationMs > 0
+                ? seg.endMs.clamp(seg.startMs + 500, effectiveDurationMs)
+                : seg.endMs;
+          } else {
+            segEnd = effectiveDurationMs > seg.startMs
+                ? effectiveDurationMs
+                : (seg.startMs + 30000);
+          }
         }
         resolved.add(seg.copyWith(endMs: segEnd));
       }
@@ -1246,11 +1285,39 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
 
           // Transcript List with live real-time audio synchronization
           Expanded(
-            child: Stack(
+            child: _transcriptLines.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.subtitles_off_outlined,
+                            size: 44,
+                            color: colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.6),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No transcript available for this episode yet.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : Stack(
               children: [
                 NotificationListener<ScrollNotification>(
                   onNotification: (notification) {
                     if (notification.metrics.axis == Axis.vertical) {
+                      final isUserDragUpdate =
+                          notification is ScrollUpdateNotification &&
+                              notification.dragDetails != null;
                       if (notification is UserScrollNotification) {
                         if (notification.direction != ScrollDirection.idle) {
                           _userScrollTimer?.cancel();
@@ -1260,10 +1327,10 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                             });
                           }
                         } else {
-                          // Drag released: resume sync after brief delay
+                          // Give listeners ample time (12s) to read ahead before auto-sync resumes
                           _userScrollTimer?.cancel();
                           _userScrollTimer =
-                              Timer(const Duration(milliseconds: 2400), () {
+                              Timer(const Duration(seconds: 12), () {
                             if (mounted) {
                               setState(() {
                                 _userIsScrollingTranscript = false;
@@ -1271,6 +1338,13 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                               _scrollToActiveIndex(_activeTranscriptIndex,
                                   animate: true);
                             }
+                          });
+                        }
+                      } else if (isUserDragUpdate) {
+                        _userScrollTimer?.cancel();
+                        if (!_userIsScrollingTranscript) {
+                          setState(() {
+                            _userIsScrollingTranscript = true;
                           });
                         }
                       }
@@ -1372,6 +1446,7 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                                 unawaited(widget.audioPlayer.play());
                               }
                             } catch (e) {
+                              _pendingSeekTargetMs = null;
                               debugPrint('Transcript seek error: $e');
                             }
                           },
@@ -1435,32 +1510,42 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                               ),
                               if (isActive) ...[
                                 const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.primary
-                                        .withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.graphic_eq_rounded,
-                                          size: 11,
-                                          color: colorScheme.primary),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'PLAYING',
-                                        style: TextStyle(
-                                          fontSize: 9.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: colorScheme.primary,
-                                          letterSpacing: 0.5,
-                                        ),
+                                Builder(
+                                  builder: (_) {
+                                    final isAudioPlaying =
+                                        widget.audioPlayer.playing;
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.primary
+                                            .withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4),
                                       ),
-                                    ],
-                                  ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            isAudioPlaying
+                                                ? Icons.graphic_eq_rounded
+                                                : Icons.pause_circle_outline_rounded,
+                                            size: 11,
+                                            color: colorScheme.primary,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            isAudioPlaying ? 'PLAYING' : 'PAUSED',
+                                            style: TextStyle(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: colorScheme.primary,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                               const SizedBox(width: 6),

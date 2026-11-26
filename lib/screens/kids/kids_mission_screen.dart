@@ -994,6 +994,7 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
 
   bool _listening = false;
   bool _speechAvailable = false;
+  bool _hasScoredSession = false;
   double _voiceLevel = 0.0;
   String _transcript = '';
   int? _score;
@@ -1048,7 +1049,7 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
   @override
   void dispose() {
     _answerController.dispose();
-    _speech.stop();
+    _speech.cancel().catchError((_) {});
     super.dispose();
   }
 
@@ -1060,13 +1061,24 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
           if ((status == 'done' || status == 'notListening') &&
               mounted &&
               _listening) {
-            setState(() => _listening = false);
+            setState(() {
+              _listening = false;
+              _voiceLevel = 0.0;
+            });
             _scoreRecitation();
           }
         },
         onError: (_) {
-          if (mounted) setState(() => _listening = false);
+          if (mounted) {
+            setState(() {
+              _listening = false;
+              _voiceLevel = 0.0;
+            });
+          }
         },
+        options: [
+          stt.SpeechToText.webDoNotAggregate,
+        ],
       );
       if (mounted) setState(() {});
     } catch (_) {
@@ -1077,7 +1089,12 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
   Future<void> _toggleListening() async {
     if (_listening) {
       await _speech.stop();
-      if (mounted) setState(() => _listening = false);
+      if (mounted) {
+        setState(() {
+          _listening = false;
+          _voiceLevel = 0.0;
+        });
+      }
       _scoreRecitation();
       return;
     }
@@ -1091,42 +1108,59 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
         return;
       }
     }
+    _hasScoredSession = false;
     setState(() {
       _transcript = '';
       _score = null;
       _voiceLevel = 0.0;
       _listening = true;
     });
-    await _speech.listen(
-      listenOptions: stt.SpeechListenOptions(
-        localeId: 'en_US',
-        cancelOnError: true,
-        partialResults: false, // avoids duplicated transcripts
-        listenMode: stt.ListenMode.dictation,
-      ),
-      onSoundLevelChange: (level) {
-        if (!mounted) return;
-        final normalized = ((level - 1.0) / 8.0).clamp(0.0, 1.0);
-        setState(() => _voiceLevel = normalized);
-      },
-      onResult: (result) {
-        if (!mounted) return;
-        setState(() => _transcript = result.recognizedWords);
-        if (result.finalResult) {
-          setState(() {
-            _listening = false;
-            _voiceLevel = 0.0;
-          });
-          _scoreRecitation();
-        }
-      },
-    );
+    try {
+      await _speech.listen(
+        listenOptions: stt.SpeechListenOptions(
+          localeId: 'en-US',
+          cancelOnError: true,
+          partialResults: true,
+          listenMode: stt.ListenMode.dictation,
+        ),
+        onSoundLevelChange: (level) {
+          if (!mounted) return;
+          final normalized = ((level - 1.0) / 8.0).clamp(0.0, 1.0);
+          setState(() => _voiceLevel = normalized);
+        },
+        onResult: (result) {
+          if (!mounted) return;
+          setState(() => _transcript = result.recognizedWords);
+          if (result.finalResult) {
+            setState(() {
+              _listening = false;
+              _voiceLevel = 0.0;
+            });
+            _scoreRecitation();
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('Kids mission speech listen error: $e');
+      if (mounted) {
+        setState(() {
+          _listening = false;
+          _voiceLevel = 0.0;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Could not start voice capture. Please check microphone permission and try again.'),
+        ));
+      }
+    }
   }
 
   void _scoreRecitation() {
+    if (_hasScoredSession) return;
     if (_transcript.trim().isEmpty) return;
     final expected = _expectedText;
     if (expected == null) return;
+    _hasScoredSession = true;
     final score = MissionScoring.scoreRecitation(expected, _transcript);
     setState(() => _score = score);
     if (score >= MissionScoring.recitationPassThreshold) {

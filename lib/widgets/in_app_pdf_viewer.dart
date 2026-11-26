@@ -1,7 +1,10 @@
 import 'dart:typed_data';
+import 'package:appwrite/appwrite.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdfrx/pdfrx.dart';
+import '../config/appwrite_backend_config.dart';
+import '../main.dart';
 import '../utils/error_handler.dart';
 import '../widgets/custom_app_bar.dart';
 
@@ -53,6 +56,40 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
     _loadDocumentBytes();
   }
 
+  static bool _isValidPdfBytes(Uint8List bytes) {
+    if (bytes.length < 5) return false;
+    // Allow optional leading whitespace/BOM before %PDF-
+    final limit = bytes.length < 64 ? bytes.length - 5 : 59;
+    for (int i = 0; i <= limit; i++) {
+      if (bytes[i] == 0x25 && // %
+          bytes[i + 1] == 0x50 && // P
+          bytes[i + 2] == 0x44 && // D
+          bytes[i + 3] == 0x46 && // F
+          bytes[i + 4] == 0x2D) { // -
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static ({String bucketId, String fileId})? _parseAppwriteStorageTarget(
+      String url) {
+    final uri = Uri.tryParse(url);
+    final endpointUri = Uri.tryParse(AppwriteBackendConfig.endpoint);
+    if (uri == null || endpointUri == null) return null;
+    if (uri.host.toLowerCase() != endpointUri.host.toLowerCase()) return null;
+    final segs = uri.pathSegments;
+    final bIdx = segs.indexOf('buckets');
+    final fIdx = segs.indexOf('files');
+    if (bIdx == -1 ||
+        fIdx == -1 ||
+        bIdx + 1 >= segs.length ||
+        fIdx + 1 >= segs.length) {
+      return null;
+    }
+    return (bucketId: segs[bIdx + 1], fileId: segs[fIdx + 1]);
+  }
+
   Future<void> _loadDocumentBytes({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
@@ -60,6 +97,13 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
     });
 
     if (widget.pdfBytes != null && widget.pdfBytes!.isNotEmpty) {
+      if (!_isValidPdfBytes(widget.pdfBytes!)) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'The selected file is not a valid PDF document.';
+        });
+        return;
+      }
       setState(() {
         _bytes = widget.pdfBytes;
         _isLoading = false;
@@ -89,34 +133,62 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
     }
 
     try {
-      final uri = Uri.parse(url);
-      http.Response? response;
+      Uint8List? downloadedBytes;
 
-      // Resilient attempt with quick automatic retry on transient mobile packet drops
-      for (int attempt = 1; attempt <= 2; attempt++) {
+      // For Appwrite Storage URLs, fetch via authenticated Appwrite Storage SDK first
+      // so private buckets (e.g. board_documents / meeting_files) work seamlessly.
+      final storageTarget = _parseAppwriteStorageTarget(url);
+      if (storageTarget != null) {
         try {
-          response = await http.get(uri).timeout(
-                const Duration(seconds: 25),
-              );
-          if (response.statusCode >= 200 && response.statusCode < 300) {
-            break;
-          }
-        } catch (e) {
-          if (attempt == 2) rethrow;
-          await Future.delayed(const Duration(milliseconds: 800));
+          downloadedBytes = await Storage(appwriteClient)
+              .getFileView(
+                bucketId: storageTarget.bucketId,
+                fileId: storageTarget.fileId,
+              )
+              .timeout(const Duration(seconds: 25));
+        } catch (sdkErr) {
+          debugPrint('Appwrite Storage authenticated PDF fetch fallback: $sdkErr');
         }
       }
 
-      if (response != null && response.statusCode >= 200 && response.statusCode < 300) {
-        if (!mounted) return;
-        _putPdfCache(url, response.bodyBytes);
-        setState(() {
-          _bytes = response!.bodyBytes;
-          _isLoading = false;
-        });
-      } else {
-        throw 'Server returned status ${response?.statusCode ?? 500}';
+      if (downloadedBytes == null || downloadedBytes.isEmpty) {
+        final uri = Uri.parse(url);
+        http.Response? response;
+
+        // Resilient attempt with quick automatic retry on transient mobile packet drops
+        for (int attempt = 1; attempt <= 2; attempt++) {
+          try {
+            response = await http.get(uri).timeout(
+                  const Duration(seconds: 25),
+                );
+            if (response.statusCode >= 200 && response.statusCode < 300) {
+              break;
+            }
+          } catch (e) {
+            if (attempt == 2) rethrow;
+            await Future.delayed(const Duration(milliseconds: 800));
+          }
+        }
+
+        if (response != null &&
+            response.statusCode >= 200 &&
+            response.statusCode < 300) {
+          downloadedBytes = response.bodyBytes;
+        } else {
+          throw 'Server returned status ${response?.statusCode ?? 500}';
+        }
       }
+
+      if (!_isValidPdfBytes(downloadedBytes)) {
+        throw 'The server did not return a valid PDF document (you may not have permission to view this file).';
+      }
+
+      if (!mounted) return;
+      _putPdfCache(url, downloadedBytes);
+      setState(() {
+        _bytes = downloadedBytes;
+        _isLoading = false;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {

@@ -148,9 +148,12 @@ class AliveScribeService {
   bool _isListening = false;
   bool _isRestarting = false;
   bool _isStartingStt = false;
+  bool _isDisposed = false;
+  bool _standaloneMode = false;
   String _currentSessionWords = '';
   List<String> _committedSessionWords = [];
   int _consecutiveSttErrors = 0;
+  static const int _maxConsecutiveSttErrors = 8;
   DateTime? _lastLocalSpeakingAt;
   final ValueNotifier<double> voiceLevelNotifier = ValueNotifier<double>(0.0);
 
@@ -198,16 +201,24 @@ class AliveScribeService {
   }) : _gateway = gateway {
     _meetingStartTime = DateTime.now();
     _attendees.add(localUserName);
+    if (localUserRole.trim().isNotEmpty) {
+      _attendeeRoles[localUserName] = localUserRole.trim();
+    }
     _listenToDataChannel();
     _listenToSessionMicState();
   }
 
   bool get _isLocalMicActive =>
-      _gateway.currentSession.isConnected &&
-      !_gateway.currentSession.isAudioMuted;
+      _standaloneMode ||
+      (_gateway.currentSession.isConnected &&
+          !_gateway.currentSession.isAudioMuted);
 
   void _listenToSessionMicState() {
     _sessionSub = _gateway.sessionStream.listen((session) {
+      if (_isDisposed) return;
+      if (session.isConnected && _standaloneMode) {
+        _standaloneMode = false;
+      }
       for (final p in session.participants) {
         if (p.isLocal && p.isSpeaking) {
           _lastLocalSpeakingAt = DateTime.now();
@@ -215,12 +226,14 @@ class AliveScribeService {
         }
       }
       if (!_isListening) return;
-      if (session.isConnected && !session.isAudioMuted) {
-        if (!_speechToText.isListening && !_isRestarting) {
+      if (_isLocalMicActive) {
+        if (!_speechToText.isListening &&
+            !_isRestarting &&
+            _consecutiveSttErrors < _maxConsecutiveSttErrors) {
           _startSttSession();
         }
       } else {
-        voiceLevelNotifier.value = 0.0;
+        if (!_isDisposed) voiceLevelNotifier.value = 0.0;
         if (_speechToText.isListening || _hasPendingSpeech) {
           _commitPendingSpeech();
           _speechToText.stop().catchError((_) {});
@@ -313,22 +326,36 @@ class AliveScribeService {
   //  Local Audio Capture & Speech-to-Text
   // ──────────────────────────────────────────────────────────
   Future<bool> initializeSpeech() async {
+    if (_isDisposed) return false;
     if (_isSttInitialized) return true;
     try {
       _isSttInitialized = await _speechToText.initialize(
         onError: (err) {
+          if (_isDisposed) return;
           debugPrint('[AliveScribeService] STT error: $err');
           _consecutiveSttErrors++;
           _commitPendingSpeech();
+          if (_consecutiveSttErrors >= _maxConsecutiveSttErrors) {
+            debugPrint(
+                '[AliveScribeService] STT error circuit breaker tripped ($_consecutiveSttErrors errors). Stopping auto-restart.');
+            _isListening = false;
+            _standaloneMode = false;
+            _watchdogTimer?.cancel();
+            _watchdogTimer = null;
+            if (!_isDisposed) voiceLevelNotifier.value = 0.0;
+            return;
+          }
           if (_isListening) {
             _restartListening(fromError: true);
           }
         },
         onStatus: (status) {
+          if (_isDisposed) return;
           debugPrint('[AliveScribeService] STT status: $status');
           if ((status == 'notListening' || status == 'done') &&
               _isListening &&
-              _isLocalMicActive) {
+              _isLocalMicActive &&
+              _consecutiveSttErrors < _maxConsecutiveSttErrors) {
             _commitPendingSpeech();
             _restartListening(immediate: true);
           }
@@ -371,30 +398,41 @@ class AliveScribeService {
     }
   }
 
-  Future<void> startListening() async {
+  Future<bool> startListening() async {
+    if (_isDisposed) return false;
+    _standaloneMode = !_gateway.currentSession.isConnected;
     _isListening = true;
     _currentSessionWords = '';
     _committedSessionWords = [];
     _consecutiveSttErrors = 0;
 
     // Only initialize and run local microphone STT when the user's meeting
-    // microphone is actually enabled. Muted attendees still receive remote
-    // Scribe packets via the LiveKit DataChannel without activating their mic.
+    // microphone is actually enabled (or when running in standalone dictation mode).
+    // Muted meeting attendees still receive remote Scribe packets via DataChannel.
     if (_isLocalMicActive) {
       if (!_isSttInitialized) {
         final ok = await initializeSpeech();
-        if (!ok) return;
+        if (!ok || _isDisposed) {
+          _isListening = false;
+          _standaloneMode = false;
+          return false;
+        }
       }
-      if (_isListening && _isLocalMicActive) {
+      if (_isListening && _isLocalMicActive && !_isDisposed) {
         _startSttSession();
       }
     }
 
     // Active Watchdog: continuously monitors STT engine health and revives listening
-    // ONLY while the local microphone is active in the meeting.
+    // ONLY while the local microphone is active and errors remain below the circuit breaker.
     _watchdogTimer?.cancel();
     _watchdogTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
-      if (!_isListening) return;
+      if (_isDisposed || !_isListening) return;
+      if (_consecutiveSttErrors >= _maxConsecutiveSttErrors) {
+        _watchdogTimer?.cancel();
+        _watchdogTimer = null;
+        return;
+      }
       if (!_isLocalMicActive) {
         if (_speechToText.isListening) {
           _commitPendingSpeech();
@@ -404,13 +442,14 @@ class AliveScribeService {
       }
       if (!_isSttInitialized) {
         final ok = await initializeSpeech();
-        if (!ok || !_isListening || !_isLocalMicActive) return;
+        if (!ok || _isDisposed || !_isListening || !_isLocalMicActive) return;
       }
       if (!_speechToText.isListening && !_isRestarting) {
         debugPrint('[AliveScribeService] Watchdog: reviving idle STT listener...');
         _startSttSession();
       }
     });
+    return true;
   }
 
   static const MethodChannel _nativeChannel =
@@ -422,11 +461,13 @@ class AliveScribeService {
   }
 
   Future<void> _startSttSession() async {
-    if (!_isListening ||
+    if (_isDisposed ||
+        !_isListening ||
         !_isLocalMicActive ||
         !_isSttInitialized ||
         _isStartingStt ||
-        _speechToText.isListening) {
+        _speechToText.isListening ||
+        _consecutiveSttErrors >= _maxConsecutiveSttErrors) {
       return;
     }
 
@@ -438,7 +479,7 @@ class AliveScribeService {
       _committedSessionWords = [];
       await _speechToText.listen(
         onResult: (result) {
-          if (!_isListening || !_isLocalMicActive) return;
+          if (_isDisposed || !_isListening || !_isLocalMicActive) return;
           final rawText = result.recognizedWords;
           if (rawText.trim().isEmpty) return;
 
@@ -456,7 +497,7 @@ class AliveScribeService {
           // the word-aligned uncommitted delta so revisions never slice or duplicate.
           _speechPauseCommitTimer?.cancel();
           _speechPauseCommitTimer = Timer(const Duration(milliseconds: 1800), () {
-            if (_isListening && _hasPendingSpeech) {
+            if (!_isDisposed && _isListening && _hasPendingSpeech) {
               _commitPendingSpeech();
             }
           });
@@ -466,6 +507,7 @@ class AliveScribeService {
           }
         },
         onSoundLevelChange: (level) {
+          if (_isDisposed) return;
           if (!_isListening || !_isLocalMicActive) {
             if (voiceLevelNotifier.value != 0.0) voiceLevelNotifier.value = 0.0;
             return;
@@ -512,6 +554,7 @@ class AliveScribeService {
 
     if (_isLikelyRemoteSpeakerBleed) {
       debugPrint('[AliveScribeService] Suppressed probable remote speaker bleed');
+      _committedSessionWords = trimmed.split(RegExp(r'\s+'));
       return;
     }
 
@@ -535,13 +578,19 @@ class AliveScribeService {
   }
 
   void _restartListening({bool immediate = false, bool fromError = false}) {
-    if (!_isListening || !_isLocalMicActive || _isRestarting) return;
+    if (_isDisposed ||
+        !_isListening ||
+        !_isLocalMicActive ||
+        _isRestarting ||
+        _consecutiveSttErrors >= _maxConsecutiveSttErrors) {
+      return;
+    }
     _isRestarting = true;
 
     if (immediate && !fromError) {
       Future.microtask(() {
         _isRestarting = false;
-        if (_isListening && _isLocalMicActive) {
+        if (!_isDisposed && _isListening && _isLocalMicActive) {
           _startSttSession();
         }
       });
@@ -553,7 +602,7 @@ class AliveScribeService {
     final delayMs = fromError ? (150 << shift).clamp(150, 2000) : 40;
     Future.delayed(Duration(milliseconds: delayMs), () {
       _isRestarting = false;
-      if (_isListening && _isLocalMicActive) {
+      if (!_isDisposed && _isListening && _isLocalMicActive) {
         _startSttSession();
       }
     });
@@ -561,12 +610,17 @@ class AliveScribeService {
 
   Future<void> stopListening() async {
     _isListening = false;
-    voiceLevelNotifier.value = 0.0;
+    _standaloneMode = false;
+    if (!_isDisposed) {
+      voiceLevelNotifier.value = 0.0;
+    }
     _watchdogTimer?.cancel();
     _watchdogTimer = null;
     _speechPauseCommitTimer?.cancel();
     _speechPauseCommitTimer = null;
-    _commitPendingSpeech();
+    if (!_isDisposed) {
+      _commitPendingSpeech();
+    }
     try {
       await _speechToText.stop();
     } catch (_) {}
@@ -725,6 +779,7 @@ class AliveScribeService {
   //  Packet Ingestion & Intelligent Turn Consolidation
   // ──────────────────────────────────────────────────────────
   void _handleIncomingPacket(ScribeTranscriptPacket packet) {
+    if (_isDisposed || packet.text.trim().isEmpty) return;
     _attendees.add(packet.speakerName);
     _speakingAttendees.add(packet.speakerName);
     if (packet.speakerRole.trim().isNotEmpty) {
@@ -1365,7 +1420,9 @@ class AliveScribeService {
       return bestTitle;
     }
     // Generic fallback: extract concise phrase from opening sentence
-    final firstSentence = _splitIntoSentences(segment.first.text).first;
+    final sentences = _splitIntoSentences(segment.first.text);
+    final firstSentence =
+        sentences.isNotEmpty ? sentences.first : segment.first.text.trim();
     final cleaned = firstSentence.replaceAll(RegExp(r'^(okay|all right|so|next|now)[,\s]+', caseSensitive: false), '').trim();
     if (cleaned.length <= 64 && cleaned.length >= 8) {
       return cleaned;
@@ -1580,7 +1637,7 @@ class AliveScribeService {
             'sn': aIdx == 0 ? '${i + 1}' : '',
             'agenda': aIdx == 0 ? seg.title : '',
             'timestamp_range': aIdx == 0 ? rangeStr : '',
-            'start_seconds': startSec + aIdx,
+            'start_seconds': startSec,
             'discussion': aIdx == 0
                 ? discussion
                 : 'Follow-up deliverable noted at [${act.timestampFormatted}] by ${act.speakerName}.',
@@ -1801,13 +1858,27 @@ class AliveScribeService {
   }
 
   void dispose() {
-    stopListening();
+    if (_isDisposed) return;
+    _isDisposed = true;
+    _isListening = false;
+    _standaloneMode = false;
+    _watchdogTimer?.cancel();
+    _watchdogTimer = null;
+    _speechPauseCommitTimer?.cancel();
+    _speechPauseCommitTimer = null;
+    _speechToText.stop().catchError((_) {});
     _sessionSub?.cancel();
     _dataChannelSub?.cancel();
     voiceLevelNotifier.dispose();
-    _transcriptStreamController.close();
-    _decisionsStreamController.close();
-    _actionItemsStreamController.close();
+    if (!_transcriptStreamController.isClosed) {
+      _transcriptStreamController.close();
+    }
+    if (!_decisionsStreamController.isClosed) {
+      _decisionsStreamController.close();
+    }
+    if (!_actionItemsStreamController.isClosed) {
+      _actionItemsStreamController.close();
+    }
   }
 }
 

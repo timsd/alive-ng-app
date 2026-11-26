@@ -186,17 +186,28 @@ class _AdminKidsMissionsScreenState extends State<AdminKidsMissionsScreen>
           result.files.single.name,
         );
 
+        if (!mounted) return;
+        if (text.trim().isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'No selectable text found in this document. If it is a scanned PDF, please run OCR or enter instructions manually.',
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+          return;
+        }
+
         setState(() {
           _instructionsController.text = text;
         });
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Document successfully extracted!'),
-                backgroundColor: Colors.green),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Document successfully extracted!'),
+              backgroundColor: Colors.green),
+        );
       }
     } catch (e) {
       if (mounted) {
