@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../models/app_models.dart' show TaskAssignment;
 import '../models/chapter_models.dart';
 import '../utils/app_exception.dart';

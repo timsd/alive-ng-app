@@ -7,7 +7,7 @@ import 'package:in_app_update/in_app_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/appwrite_backend_config.dart';
-import '../main.dart' show appwriteClient;
+import 'appwrite_client.dart' show appwriteClient;
 import '../utils/navigation_keys.dart';
 
 class InAppUpdateService {

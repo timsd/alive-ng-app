@@ -10,7 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../config/meeting_links_config.dart';
 import '../../constants/app_constants.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/meeting_provider.dart';
 import '../../services/role_access_service.dart';

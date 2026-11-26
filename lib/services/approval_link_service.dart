@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import 'appwrite_profile_service.dart';
 import 'auth_service.dart';
 import 'role_access_service.dart';

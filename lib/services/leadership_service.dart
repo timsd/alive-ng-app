@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../models/leadership_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/appwrite_upsert_helper.dart';

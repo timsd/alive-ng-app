@@ -4,7 +4,7 @@ import 'package:appwrite/appwrite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/appwrite_backend_config.dart';
 import '../config/default_content_data.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../utils/logger.dart';
 
 /// Single source of truth for Appwrite `content_pages` with local fallback.

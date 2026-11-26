@@ -8,7 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/appwrite_backend_config.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../services/billboard_service.dart';
 import '../../utils/error_handler.dart';
 import '../../widgets/custom_app_bar.dart';

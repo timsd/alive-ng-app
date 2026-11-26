@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../models/donation_models.dart';
 
 /// Admin utility to sync Appwrite Storage tracts into the

@@ -16,7 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/appwrite_backend_config.dart';
 import '../../config/payment_config.dart';
-import '../../main.dart';
+import '../appwrite_client.dart';
 import '../../models/payment_models.dart';
 import '../../utils/logger.dart';
 import '../../utils/error_handler.dart';

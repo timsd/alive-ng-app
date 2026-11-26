@@ -6,7 +6,7 @@ import 'package:appwrite/models.dart' as models;
 
 import '../config/appwrite_backend_config.dart';
 import '../models/donation_report_models.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 

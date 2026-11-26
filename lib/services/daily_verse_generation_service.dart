@@ -3,7 +3,7 @@ import 'package:appwrite/appwrite.dart' hide Locale;
 import 'package:flutter/foundation.dart';
 import '../constants/bible_verses.dart' as verse_data;
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../models/app_models.dart' show DailyVerse;
 import 'bible_source.dart';
 import '../utils/logger.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/modern_dropdown.dart';
 import '../../services/appwrite_facade.dart';
 import '../../config/appwrite_backend_config.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/appwrite_upsert_helper.dart';

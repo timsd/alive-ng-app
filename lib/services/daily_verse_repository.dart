@@ -2,7 +2,7 @@ import '../utils/appwrite_id_utils.dart';
 import 'package:appwrite/appwrite.dart' hide Locale;
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../models/app_models.dart';
 import '../utils/logger.dart';
 

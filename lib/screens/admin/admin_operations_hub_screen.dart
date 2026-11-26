@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../config/appwrite_backend_config.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../services/auth_service.dart';
 import '../../utils/appwrite_upsert_helper.dart';
 import '../../utils/error_handler.dart';

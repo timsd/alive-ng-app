@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../services/appwrite_facade.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../constants/app_constants.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/layout_fix_utils.dart';

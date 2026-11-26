@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../models/app_models.dart';
 import '../models/leadership_models.dart' show RoleHistoryRecord;
 import '../utils/appwrite_upsert_helper.dart';

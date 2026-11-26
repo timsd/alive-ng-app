@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../models/notification_settings.dart';
 import '../utils/toast_utils.dart';
 import '../utils/logger.dart';

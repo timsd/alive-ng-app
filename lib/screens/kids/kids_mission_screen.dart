@@ -9,7 +9,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../services/appwrite_facade.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../constants/app_constants.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../utils/responsive_utils.dart';
 import '../../models/kids_missions.dart';

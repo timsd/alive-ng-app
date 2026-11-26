@@ -60,17 +60,23 @@ class _MeetingFloatingOverlayState
 
   @override
   Widget build(BuildContext context) {
-    final gateway = ref.watch(meetingGatewayProvider);
-    final sessionAsync = ref.watch(meetingSessionStreamProvider);
     final isMinimized = ref.watch(isMeetingMinimizedProvider);
     final isPipMode = ref.watch(isMeetingPipModeProvider);
+
+    // Gate BEFORE watching meetingGatewayProvider / meetingSessionStreamProvider
+    // so LiveKitMeetingGateway is never instantiated on cold boot and never
+    // rebuilds on SpeakingChangedEvent unless the floating overlay is visible.
+    if (!isMinimized || isPipMode) {
+      return const SizedBox.shrink();
+    }
+
+    final gateway = ref.watch(meetingGatewayProvider);
+    final sessionAsync = ref.watch(meetingSessionStreamProvider);
 
     final session = sessionAsync.value ?? gateway.currentSession;
     final isConnected = session.isConnected;
 
-    // Render portrait floating overlay whenever meeting is active and minimized
-    // in-app, and not currently in OS-level Picture-in-Picture mode.
-    if (!isConnected || !isMinimized || isPipMode) {
+    if (!isConnected) {
       return const SizedBox.shrink();
     }
 

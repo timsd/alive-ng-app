@@ -98,16 +98,44 @@ class BibleDatabaseHelper {
 
       // Ensure the databases directory exists
       await Directory(databasesPath).create(recursive: true);
+      final tmpFile = File('$path.tmp');
       try {
+        if (tmpFile.existsSync()) {
+          await tmpFile.delete();
+        }
         final data = await rootBundle.load(_prebuiltAssetPath);
         final bytes = data.buffer.asUint8List(
           data.offsetInBytes,
           data.lengthInBytes,
         );
-        await dbFile.writeAsBytes(bytes, flush: true);
-        debugPrint('[BibleDB] Pre-built bible.db copied to $path '
+        // Write in zero-copy 256 KB slices to a sibling .tmp file and atomically
+        // rename() into place so low-RAM devices avoid double-buffering the full
+        // 75 MB file and an OS kill mid-copy never leaves a corrupt database.
+        const int chunkSize = 256 * 1024;
+        final sink = tmpFile.openWrite(mode: FileMode.writeOnly);
+        try {
+          for (int offset = 0; offset < bytes.length; offset += chunkSize) {
+            final end = (offset + chunkSize > bytes.length)
+                ? bytes.length
+                : offset + chunkSize;
+            sink.add(Uint8List.sublistView(bytes, offset, end));
+          }
+          await sink.flush();
+        } finally {
+          await sink.close();
+        }
+        if (dbFile.existsSync()) {
+          await dbFile.delete();
+        }
+        await tmpFile.rename(path);
+        debugPrint('[BibleDB] Pre-built bible.db atomically installed to $path '
             '(${(bytes.length / 1024 / 1024).toStringAsFixed(1)} MB)');
       } catch (e) {
+        try {
+          if (tmpFile.existsSync()) {
+            await tmpFile.delete();
+          }
+        } catch (_) {}
         // Surfaced rather than swallowed: this used to log and continue,
         // leaving an empty database that looks healthy from the outside. The
         // reader surfaces this as an error so a broken install is visible

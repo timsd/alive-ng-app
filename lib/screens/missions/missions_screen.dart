@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/appwrite_facade.dart';
 
 import '../../config/appwrite_backend_config.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../providers/language_provider.dart';
 import '../../models/app_models.dart';
 import '../../widgets/bible_reference_widget.dart';

@@ -20,6 +20,7 @@ class RoleAccessService {
 
   UserProfile? _cachedUserProfile;
   DateTime? _cacheTimestamp;
+  Future<UserProfile?>? _refreshInFlight;
 
   final StreamController<UserProfile> _roleChangeController =
       StreamController<UserProfile>.broadcast();
@@ -137,31 +138,37 @@ class RoleAccessService {
     _cacheTimestamp = DateTime.now();
   }
 
-  /// Refresh user profile cache
+  /// Refresh user profile cache (deduplicated across concurrent callers)
   Future<void> _refreshUserProfileCache() async {
-    try {
-      final profile = await _authService.getCurrentUserProfile();
-      if (profile != null) {
-        _cachedUserProfile = profile;
-        _cacheTimestamp = DateTime.now();
-      }
-    } catch (e) {
-      _logger.error('Failed to refresh user profile cache: $e');
-    }
+    await getCurrentUserProfile();
   }
 
-  /// Get current user profile (async version)
+  /// Get current user profile (async version, coalescing concurrent fetches)
   Future<UserProfile?> getCurrentUserProfile() async {
-    try {
-      final profile = await _authService.getCurrentUserProfile();
-      if (profile != null) {
-        _cachedUserProfile = profile;
-        _cacheTimestamp = DateTime.now();
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        final profile = await _authService.getCurrentUserProfile();
+        if (profile != null) {
+          _cachedUserProfile = profile;
+          _cacheTimestamp = DateTime.now();
+        }
+        return profile;
+      } catch (e) {
+        _logger.error('Failed to get current user profile: $e');
+        return _cachedUserProfile;
       }
-      return profile;
-    } catch (e) {
-      _logger.error('Failed to get current user profile: $e');
-      return null;
+    }();
+
+    _refreshInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_refreshInFlight, future)) {
+        _refreshInFlight = null;
+      }
     }
   }
 
@@ -616,6 +623,7 @@ class RoleAccessService {
   void clearCache() {
     _cachedUserProfile = null;
     _cacheTimestamp = null;
+    _refreshInFlight = null;
   }
 
   /// Force refresh the user profile cache

@@ -3,7 +3,7 @@ import '../utils/appwrite_upsert_helper.dart';
 import 'dart:convert';
 import 'package:appwrite/appwrite.dart' as aw;
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
 

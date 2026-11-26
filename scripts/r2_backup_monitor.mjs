@@ -16,7 +16,15 @@ const r2Token = process.env.CLOUDFLARE_R2_TOKEN || '';
 const r2AccountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID || '';
 const r2Bucket = process.env.CLOUDFLARE_R2_BUCKET || 'alive-coolify-backups';
 
-const coolifyUrl = (process.env.COOLIFY_API_URL || 'http://51.170.140.31:8000').replace(/\/$/, '');
+const cfAccessClientId = process.env.CF_ACCESS_CLIENT_ID || '';
+const cfAccessClientSecret = process.env.CF_ACCESS_CLIENT_SECRET || '';
+const coolifyDirectUrl = (process.env.COOLIFY_DIRECT_API_URL || 'http://51.170.140.31:8000').replace(/\/$/, '');
+const coolifyPublicUrl = (process.env.COOLIFY_API_URL || '').replace(/\/$/, '');
+// Use direct Coolify API URL while port 8000 is open; once port 8000 is closed,
+// set CF_ACCESS_CLIENT_ID & CF_ACCESS_CLIENT_SECRET to authenticate through Cloudflare Access.
+const coolifyUrl = (cfAccessClientId && cfAccessClientSecret && coolifyPublicUrl)
+  ? coolifyPublicUrl
+  : coolifyDirectUrl;
 const coolifyToken = process.env.COOLIFY_API_TOKEN;
 const coolifyS3Uuid = process.env.COOLIFY_S3_STORAGE_UUID || 'faons4g1qjkos9rqqe4lb8sv';
 
@@ -62,7 +70,16 @@ async function checkAll() {
   console.log('---------------------------------');
   try {
     if (coolifyToken) {
-      const cHeaders = { 'Authorization': `Bearer ${coolifyToken}`, 'Accept': 'application/json' };
+      const cHeaders = {
+        'Authorization': `Bearer ${coolifyToken}`,
+        'Accept': 'application/json',
+        ...(cfAccessClientId && cfAccessClientSecret
+          ? {
+              'CF-Access-Client-Id': cfAccessClientId,
+              'CF-Access-Client-Secret': cfAccessClientSecret,
+            }
+          : {}),
+      };
       const s3Res = await fetch(`${coolifyUrl}/api/v1/s3-storages/${coolifyS3Uuid}`, { headers: cHeaders });
       if (s3Res.ok) {
         const s3Data = await s3Res.json();

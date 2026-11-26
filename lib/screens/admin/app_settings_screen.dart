@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../config/payment_config.dart';
 import '../../constants/app_constants.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';

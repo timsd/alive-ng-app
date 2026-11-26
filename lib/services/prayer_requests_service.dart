@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../models/app_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
@@ -20,28 +22,72 @@ class PrayerRequestsService {
   final AuthService _authService = AuthService.instance;
   final Logger _logger = Logger('PrayerRequestsService');
 
+  static const String _publicCachePrefix = 'prayer_wall_public_cache_v1_';
+  static const String _userCachePrefix = 'prayer_wall_user_cache_v1_';
+  static const Duration _networkTimeout = Duration(seconds: 12);
+
+  Future<void> _savePrayerCache(
+      String key, List<Map<String, dynamic>> rawMaps) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, jsonEncode(rawMaps));
+    } catch (_) {}
+  }
+
+  Future<List<PrayerRequest>?> _loadPrayerCache(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(key);
+      if (raw == null || raw.isEmpty) return null;
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .whereType<Map>()
+          .map((m) => PrayerRequest.fromJson(Map<String, dynamic>.from(m)))
+          .toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<List<PrayerRequest>> fetchPrayerRequests({String? category}) async {
+    final normalizedCat = category?.trim() ?? '';
+    final cacheKey =
+        '$_publicCachePrefix${normalizedCat.isEmpty ? 'all' : normalizedCat.toLowerCase()}';
     try {
       final queries = <String>[
         Query.equal('is_private', false),
         Query.orderDesc('created_at'),
         Query.limit(200),
       ];
-      if (category != null && category.trim().isNotEmpty) {
-        queries.add(Query.equal('category', category.trim()));
+      if (normalizedCat.isNotEmpty) {
+        queries.add(Query.equal('category', normalizedCat));
       }
 
-      final response = await _tables.listRows(
-        databaseId: AppwriteBackendConfig.databaseId,
-        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
-        queries: queries,
-      );
+      final response = await _tables
+          .listRows(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+            queries: queries,
+          )
+          .timeout(_networkTimeout);
 
-      return response.rows
-          .map((doc) => PrayerRequest.fromJson(_documentData(doc)))
+      final rawMaps = response.rows
+          .map(_documentData)
+          .where((data) => data['is_private'] != true)
+          .toList();
+      await _savePrayerCache(cacheKey, rawMaps);
+
+      return rawMaps
+          .map(PrayerRequest.fromJson)
           .where((r) => !r.isPrivate)
           .toList();
     } catch (e) {
+      final cached = await _loadPrayerCache(cacheKey);
+      if (cached != null) {
+        _logger.warning(
+            'Serving ${cached.length} cached prayer requests due to network error: $e');
+        return cached.where((r) => !r.isPrivate).toList();
+      }
       _logger.error('Error fetching prayer requests', e);
       throw DatabaseException(
         'Failed to fetch prayer requests',
@@ -51,21 +97,30 @@ class PrayerRequestsService {
   }
 
   Future<List<PrayerRequest>> fetchUserPrayerRequests(String userId) async {
+    final cacheKey = '$_userCachePrefix$userId';
     try {
-      final response = await _tables.listRows(
-        databaseId: AppwriteBackendConfig.databaseId,
-        tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
-        queries: [
-          Query.equal('user_id', userId),
-          Query.orderDesc('created_at'),
-          Query.limit(200),
-        ],
-      );
+      final response = await _tables
+          .listRows(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+            queries: [
+              Query.equal('user_id', userId),
+              Query.orderDesc('created_at'),
+              Query.limit(200),
+            ],
+          )
+          .timeout(_networkTimeout);
 
-      return response.rows
-          .map((doc) => PrayerRequest.fromJson(_documentData(doc)))
-          .toList();
+      final rawMaps = response.rows.map(_documentData).toList();
+      await _savePrayerCache(cacheKey, rawMaps);
+      return rawMaps.map(PrayerRequest.fromJson).toList();
     } catch (e) {
+      final cached = await _loadPrayerCache(cacheKey);
+      if (cached != null) {
+        _logger.warning(
+            'Serving ${cached.length} cached user prayer requests due to network error: $e');
+        return cached;
+      }
       _logger.error('Error fetching user prayer requests', e);
       throw DatabaseException(
         'Failed to fetch your prayer requests',

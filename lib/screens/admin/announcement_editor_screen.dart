@@ -3,7 +3,7 @@ import '../../widgets/modern_dropdown.dart';
 import '../../services/appwrite_facade.dart';
 import '../../services/appwrite_push_service.dart';
 import '../../config/appwrite_backend_config.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../constants/app_routes_catalog.dart';

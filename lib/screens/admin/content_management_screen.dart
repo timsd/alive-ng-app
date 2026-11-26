@@ -6,7 +6,7 @@ import '../../widgets/modern_dropdown.dart';
 import '../../services/appwrite_facade.dart';
 import 'package:intl/intl.dart';
 import '../../config/appwrite_backend_config.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../widgets/role_guard.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/toast_utils.dart';

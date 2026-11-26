@@ -2,7 +2,7 @@ import 'package:appwrite/appwrite.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../main.dart';
+import '../services/appwrite_client.dart';
 import '../models/app_models.dart';
 import '../services/appwrite_profile_service.dart';
 

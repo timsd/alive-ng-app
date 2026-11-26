@@ -2,11 +2,12 @@
 
 FROM ghcr.io/cirruslabs/flutter:stable AS build
 
+# Pin Flutter SDK to an immutable release tag for reproducible production builds
+ARG FLUTTER_VERSION=3.47.9
 RUN git config --global --add safe.directory /sdks/flutter \
     && cd /sdks/flutter \
-    && git remote set-branches origin '*' \
-    && git fetch --depth=1 origin stable \
-    && git checkout -B stable origin/stable \
+    && git fetch --depth=1 origin tag "${FLUTTER_VERSION}" \
+    && git checkout --force FETCH_HEAD \
     && flutter doctor
 
 WORKDIR /app
@@ -23,7 +24,8 @@ RUN echo "Build ID: ${BUILD_ID}"
 ENV DART_VM_OPTIONS="--old_gen_heap_size=2048"
 RUN flutter config --enable-web \
     && dart scripts/configure_web.dart \
-    && nice -n 19 flutter build web --release --no-tree-shake-icons --no-wasm-dry-run --no-source-maps --dart2js-optimization=O1 ${FLUTTER_BUILD_ARGS}
+    && nice -n 19 flutter build web --release --tree-shake-icons --no-wasm-dry-run --no-source-maps --dart2js-optimization=O2 ${FLUTTER_BUILD_ARGS} \
+    && find build/web -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.css' -o -name '*.wasm' -o -name '*.db' -o -name '*.json' -o -name '*.svg' -o -name '*.html' \) -exec gzip -k -6 {} +
 
 FROM nginx:1.27-alpine
 

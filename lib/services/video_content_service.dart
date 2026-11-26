@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../utils/appwrite_upsert_helper.dart';
 import '../utils/logger.dart';
 

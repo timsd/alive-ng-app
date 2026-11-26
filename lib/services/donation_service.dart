@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../config/payment_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import 'payment_service.dart';
 import 'ports/payment_gateway.dart';
 import '../models/donation_models.dart';

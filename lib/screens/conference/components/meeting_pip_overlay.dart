@@ -41,6 +41,7 @@ class _MeetingPipOverlayState extends ConsumerState<MeetingPipOverlay> {
                 AppLifecycleState.resumed) {
               return;
             }
+            if (!ref.read(hasActiveMeetingSessionProvider)) return;
             final gateway = ref.read(meetingGatewayProvider);
             final session = gateway.currentSession;
             if (!session.isConnected) return;
@@ -59,11 +60,13 @@ class _MeetingPipOverlayState extends ConsumerState<MeetingPipOverlay> {
       },
       onPipAction: (action) async {
         if (!mounted) return;
+        if (!ref.read(hasActiveMeetingSessionProvider)) return;
         final gateway = ref.read(meetingGatewayProvider);
         if (action == 'toggle_mic') {
           await gateway.toggleAudio();
         } else if (action == 'leave_meeting') {
           LiveKitMeetingScreen.disposeGlobalRetainedScribe();
+          ref.read(hasActiveMeetingSessionProvider.notifier).state = false;
           await gateway.leaveMeeting();
         }
       },
@@ -99,9 +102,31 @@ class _MeetingPipOverlayState extends ConsumerState<MeetingPipOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final sessionAsync = ref.watch(meetingSessionStreamProvider);
+    final hasActiveMeeting = ref.watch(hasActiveMeetingSessionProvider);
     final isPipMode = ref.watch(isMeetingPipModeProvider);
 
+    // Avoid instantiating LiveKitMeetingGateway on cold boot when no meeting is active.
+    if (!hasActiveMeeting && !isPipMode) {
+      MeetingPipService.instance.setMeetingActive(false);
+      return const SizedBox.shrink();
+    }
+
+    if (!isPipMode) {
+      // Only watch connection & mute state outside PiP so SpeakingChangedEvent
+      // does not rebuild the root overlay widget.
+      final status = ref.watch(
+        meetingSessionStreamProvider.select(
+          (s) => (s.value?.isConnected ?? false, s.value?.isAudioMuted),
+        ),
+      );
+      MeetingPipService.instance.setMeetingActive(
+        status.$1,
+        isMuted: status.$2,
+      );
+      return const SizedBox.shrink();
+    }
+
+    final sessionAsync = ref.watch(meetingSessionStreamProvider);
     final session = sessionAsync.value;
     final isConnected = session?.isConnected ?? false;
 
@@ -111,7 +136,7 @@ class _MeetingPipOverlayState extends ConsumerState<MeetingPipOverlay> {
       isMuted: session?.isAudioMuted,
     );
 
-    if (!isPipMode || !isConnected || session == null) {
+    if (!isConnected || session == null) {
       return const SizedBox.shrink();
     }
 

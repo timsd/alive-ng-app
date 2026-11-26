@@ -1,12 +1,16 @@
 import '../utils/appwrite_id_utils.dart';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:appwrite/appwrite.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart' show getDatabasesPath;
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import 'auth_service.dart';
 import '../models/tract_models.dart';
 import 'tract_database_helper.dart';
@@ -65,6 +69,17 @@ class TractService {
           } catch (_) {}
         }
         if (remoteTracts.isNotEmpty) {
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(
+              _cacheKey,
+              jsonEncode(remoteTracts.map((t) => t.toJson()).toList()),
+            );
+            await prefs.setString(
+              _lastUpdateKey,
+              DateTime.now().toUtc().toIso8601String(),
+            );
+          } catch (_) {}
           return remoteTracts;
         }
       } catch (e) {
@@ -76,6 +91,19 @@ class TractService {
         if (localTracts.isNotEmpty) {
           return localTracts;
         }
+      } else {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final raw = prefs.getString(_cacheKey);
+          if (raw != null && raw.isNotEmpty) {
+            final decoded = jsonDecode(raw) as List<dynamic>;
+            final cached = decoded
+                .whereType<Map>()
+                .map((m) => Tract.fromJson(Map<String, dynamic>.from(m)))
+                .toList();
+            if (cached.isNotEmpty) return cached;
+          }
+        } catch (_) {}
       }
 
       // Return default tracts if nothing found remotely or locally
@@ -394,38 +422,71 @@ class TractService {
     }
   }
 
-  // Download tract PDF for offline use
+  /// Downloads and caches the actual tract PDF bytes to app storage on mobile
+  /// so downloaded tracts open reliably offline; returns the resolved URL on Web.
   Future<String?> downloadTractPDF(String tractId, String pdfUrl) async {
     try {
       final tract = await getTractById(tractId);
       // getTractById throws NotFoundException if null
 
-      // For "What the Bible Says" series, use the lesson number to get the PDF
+      String? resolvedUrl;
+      // For "What the Bible Says" series, use the lesson number to resolve the PDF URL
       if (tract!.category == 'Bible Study') {
         final lessonMatch = RegExp(r'Lesson (\d+)').firstMatch(tract.title);
         if (lessonMatch != null) {
           final lessonNumber = int.parse(lessonMatch.group(1)!);
           final fileName = 'lesson_$lessonNumber.pdf';
-          // On web, return the Appwrite Storage download URL.
-          final url = await _storageService.downloadTractPDF(fileName);
-          if (url != null) {
-            if (!kIsWeb) {
-              await _dbHelper.updateTractPdfPath(tractId, url);
-            }
+          resolvedUrl = await _storageService.downloadTractPDF(fileName);
+        }
+      }
+
+      resolvedUrl ??=
+          pdfUrl.trim().isNotEmpty ? pdfUrl.trim() : (tract.pdfUrl ?? '').trim();
+      if (resolvedUrl.isEmpty) {
+        return null;
+      }
+
+      if (kIsWeb) {
+        return resolvedUrl;
+      }
+
+      // Persist actual PDF bytes locally on mobile for true offline reading.
+      final baseDir = await getDatabasesPath();
+      final tractsDir = Directory(p.join(baseDir, 'offline_tracts'));
+      await tractsDir.create(recursive: true);
+      final safeId = tractId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final localPath = p.join(tractsDir.path, '$safeId.pdf');
+      final localFile = File(localPath);
+      final tmpFile = File('$localPath.tmp');
+
+      try {
+        final uri = Uri.parse(resolvedUrl);
+        final response =
+            await http.get(uri).timeout(const Duration(seconds: 30));
+        if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+          await tmpFile.writeAsBytes(response.bodyBytes, flush: true);
+          if (localFile.existsSync()) {
+            await localFile.delete();
           }
-          return url;
+          await tmpFile.rename(localPath);
+          await _dbHelper.updateTractPdfPath(tractId, localPath);
+          return localPath;
+        }
+      } catch (downloadErr) {
+        try {
+          if (tmpFile.existsSync()) await tmpFile.delete();
+        } catch (_) {}
+        _logger.warning(
+            'Could not download PDF bytes for $tractId, checking local cache: $downloadErr');
+        if (localFile.existsSync() && await localFile.length() > 0) {
+          await _dbHelper.updateTractPdfPath(tractId, localPath);
+          return localPath;
         }
       }
 
-      // For other tracts, use the PDF URL directly (store URL instead of downloading to local filesystem)
-      if (pdfUrl.isNotEmpty) {
-        if (!kIsWeb) {
-          await _dbHelper.updateTractPdfPath(tractId, pdfUrl);
-        }
-        return pdfUrl;
-      }
-
-      return null;
+      // Fallback to remote URL if direct byte download failed and no local copy exists.
+      await _dbHelper.updateTractPdfPath(tractId, resolvedUrl);
+      return resolvedUrl;
     } catch (e) {
       if (e is AppException) rethrow;
       _logger.error('Error downloading tract PDF', e);

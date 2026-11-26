@@ -6,7 +6,7 @@ import 'package:form_builder_validators/form_builder_validators.dart';
 import '../../services/appwrite_facade.dart';
 
 import '../../config/appwrite_backend_config.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../utils/responsive_utils.dart';

@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:appwrite/appwrite.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../utils/logger.dart';
 import '../models/app_models.dart';
 import 'appwrite_admin_notification_store.dart';

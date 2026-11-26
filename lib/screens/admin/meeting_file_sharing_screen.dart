@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../constants/app_constants.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../services/file_picker_facade.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';

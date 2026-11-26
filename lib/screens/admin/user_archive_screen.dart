@@ -2,7 +2,7 @@ import '../../services/appwrite_facade.dart';
 import '../../utils/error_handler.dart';
 import 'package:flutter/material.dart';
 import '../../config/appwrite_backend_config.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../models/app_models.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';

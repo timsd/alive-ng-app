@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdfrx/pdfrx.dart';
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import '../services/appwrite_client.dart';
 import '../utils/error_handler.dart';
 import '../widgets/custom_app_bar.dart';
 

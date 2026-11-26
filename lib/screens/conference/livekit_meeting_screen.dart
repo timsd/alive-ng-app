@@ -10,7 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../config/meeting_links_config.dart';
 import '../../constants/chapters.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../models/chat_models.dart';
 import '../../models/meeting_models.dart';
 import '../../providers/appwrite_auth_provider.dart';
@@ -164,6 +164,10 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
     _sessionSub = gateway.sessionStream.listen((session) {
       if (!mounted) return;
+      final activeNotifier = ref.read(hasActiveMeetingSessionProvider.notifier);
+      if (activeNotifier.state != session.isConnected) {
+        activeNotifier.state = session.isConnected;
+      }
       if (session.isConnected) {
         _ensureScribeInitialized(gateway);
         if (session.isInBreakoutRoom) {

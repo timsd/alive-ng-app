@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/appwrite_backend_config.dart';
 import '../config/org_structure.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../utils/logger.dart';
 import 'appwrite_facade.dart';
 

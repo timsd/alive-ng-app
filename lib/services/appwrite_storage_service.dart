@@ -4,7 +4,7 @@ import 'package:appwrite/src/enums.dart';
 import 'package:flutter/foundation.dart';
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 
 class AppwriteStorageService {
   AppwriteStorageService._();

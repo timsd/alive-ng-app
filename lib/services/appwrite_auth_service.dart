@@ -9,7 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../utils/appwrite_upsert_helper.dart';
 import '../utils/web_launch_params.dart';
 import 'package:url_launcher/url_launcher.dart';

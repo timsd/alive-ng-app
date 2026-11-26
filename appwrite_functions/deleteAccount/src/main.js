@@ -107,7 +107,7 @@ export default async ({ req, res, log, error }) => {
     log(`Deleted auth account ${targetId}`);
 
     // ── Server-side PII & privilege cascade cleanup (matches Privacy Policy §7.3) ──
-    const dbId = process.env.APPWRITE_DATABASE_ID || '6a08941e0002e4756157';
+    const dbId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
     const usersColId = process.env.APPWRITE_USERS_COLLECTION_ID || '6a08943100226f5b4963';
     const base = endpoint.replace(/\/+$/, '');
     const authHeaders = {
@@ -148,19 +148,8 @@ export default async ({ req, res, log, error }) => {
       await deleteDocSafe('push_tokens', tokDoc.$id);
     }
 
-    // 3. Unbind any org_office_holders rows so deleted account no longer holds office
-    for (const hDoc of await listUserDocs('org_office_holders')) {
-      try {
-        await fetch(
-          `${base}/databases/${dbId}/collections/org_office_holders/documents/${encodeURIComponent(hDoc.$id)}`,
-          {
-            method: 'PATCH',
-            headers: authHeaders,
-            body: JSON.stringify({ data: { user_id: null, is_current: false } }),
-          },
-        );
-      } catch (_) {}
-    }
+    // 3. Preserve `org_office_holders` rows intact for organizational/leadership
+    //    historical archive records (never deleted or wiped on account closure).
 
     // 4. Delete private prayer requests authored by this user
     for (const pDoc of await listUserDocs('prayer_requests')) {

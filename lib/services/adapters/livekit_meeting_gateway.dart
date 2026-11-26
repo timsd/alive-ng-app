@@ -16,7 +16,7 @@ import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as lk;
 
 import '../../config/appwrite_backend_config.dart';
-import '../../main.dart';
+import '../appwrite_client.dart';
 import '../../models/meeting_models.dart';
 import '../meeting_pip_service.dart';
 import '../ports/meeting_gateway.dart';

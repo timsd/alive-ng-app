@@ -37,3 +37,8 @@ final isMeetingMinimizedProvider = StateProvider<bool>((ref) => false);
 
 /// Tracks whether the app is currently displayed in OS Picture-in-Picture mode.
 final isMeetingPipModeProvider = StateProvider<bool>((ref) => false);
+
+/// Lightweight gate indicating whether an ALIVE Meet session is currently active.
+/// Prevents root overlays from eagerly instantiating [LiveKitMeetingGateway] on
+/// cold boot before the user ever opens conferencing.
+final hasActiveMeetingSessionProvider = StateProvider<bool>((ref) => false);

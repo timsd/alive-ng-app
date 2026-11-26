@@ -10,7 +10,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:go_router/go_router.dart';
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../utils/logger.dart';
 import '../utils/app_exception.dart';
 import '../utils/navigation_keys.dart';

@@ -10,7 +10,7 @@ import '../../services/appwrite_profile_service.dart';
 import '../../services/chapter_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/appwrite_id_utils.dart';
-import '../../main.dart';
+import '../../services/appwrite_client.dart';
 import '../../config/appwrite_backend_config.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/overview_stat_card.dart';

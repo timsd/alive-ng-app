@@ -5,7 +5,7 @@ import 'package:appwrite/appwrite.dart';
 import 'package:intl/intl.dart';
 
 import '../config/appwrite_backend_config.dart';
-import '../main.dart';
+import 'appwrite_client.dart';
 import '../models/discipleship_models.dart';
 import '../utils/app_exception.dart';
 import '../utils/logger.dart';
