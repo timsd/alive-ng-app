@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/discipleship_models.dart';
 import '../../services/auth_service.dart';
@@ -702,67 +701,6 @@ class _InteractiveLessonReaderScreenState
         );
       }
     }
-  }
-
-  Future<void> _exportStudySummary() async {
-    await _saveProgressLocally();
-    final buf = StringBuffer();
-    buf.writeln('==================================================');
-    buf.writeln('ALIVE NIGERIA SERIES • WHAT THE BIBLE SAYS');
-    buf.writeln(_resolvedLesson.title.toUpperCase());
-    buf.writeln('==================================================\n');
-
-    for (final s in _sections) {
-      buf.writeln('${s.number}. ${s.title}');
-      for (final v in s.verseQuotes) {
-        buf.writeln('   "${v['quote']}" — ${v['reference']}');
-      }
-      final note = _textControllers['q_${s.number}']?.text.trim() ?? '';
-      if (note.isNotEmpty) {
-        buf.writeln('   My Reflection: $note');
-      }
-      for (final qa in s.qaItems) {
-        final letter = qa['letter'] ?? 'A';
-        final qaNote =
-            _textControllers['q_${s.number}_${letter.toLowerCase()}']
-                    ?.text
-                    .trim() ??
-                '';
-        if (qaNote.isNotEmpty) {
-          buf.writeln('   [$letter] ${qa['question']}: $qaNote');
-        }
-      }
-      buf.writeln();
-    }
-
-    buf.writeln('--- PERSONAL COMMITMENT ---');
-    for (final q in _decisionQuestions) {
-      final ans = _decisionStates[q['id']!];
-      final ansLabel = ans == null ? 'Not answered' : (ans ? 'YES' : 'NO');
-      buf.writeln('${q['text']} -> $ansLabel');
-    }
-    buf.writeln('Prayer Commitment Checked: ${_commitmentChecked ? "YES" : "NO"}');
-    if (_nameController.text.trim().isNotEmpty) {
-      buf.writeln('Name: ${_nameController.text.trim()}');
-    }
-    if (_phoneController.text.trim().isNotEmpty) {
-      buf.writeln('Phone: ${_phoneController.text.trim()}');
-    }
-    if (_addressController.text.trim().isNotEmpty) {
-      buf.writeln('Location: ${_addressController.text.trim()}');
-    }
-    buf.writeln('Discipleship Stage: ${_formatLevelName(_selectedDiscipleshipLevel)}');
-
-    await Clipboard.setData(ClipboardData(text: buf.toString()));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Study Summary copied to clipboard & saved to your device!',
-        ),
-        backgroundColor: _brand700,
-      ),
-    );
   }
 
   void _openScripture(String reference) {
@@ -2769,32 +2707,8 @@ class _InteractiveLessonReaderScreenState
               ],
             ),
           ),
-          const SizedBox(height: 18),
-
-          // Single Secondary Export Action (Primary Save & Discipleship Sync is pinned in bottom bar)
-          Center(
-            child: OutlinedButton.icon(
-              onPressed: _exportStudySummary,
-              icon: const Icon(Icons.download, size: 16),
-              label: const Text('COPY / EXPORT STUDY SUMMARY'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Color(0xFF34D399)),
-                textStyle: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  letterSpacing: 0.6,
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ),
-
           if (_showSavedBanner) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             const Text(
               '✓ Your study notes and disciple session have been saved!',
               textAlign: TextAlign.center,
