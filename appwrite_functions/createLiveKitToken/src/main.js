@@ -93,7 +93,27 @@ async function getRole(userId, req) {
     throw new Error(`Unable to verify ALIVE Meet role (${response.status}).`);
   }
   const profile = await response.json();
-  return String(profile.role || 'member').trim().toLowerCase();
+  if (profile.is_archived === true) {
+    return 'member';
+  }
+  const rawRole = String(profile.role || 'member').trim().toLowerCase();
+  const isApproved =
+    profile.is_approved === true ||
+    String(profile.approval_status || '').trim().toLowerCase() === 'approved';
+  const elevatedRoles = new Set([
+    'admin',
+    'super_admin',
+    'leader',
+    'director',
+    'bod',
+    'trustee',
+    'coordinator',
+    'staff',
+  ]);
+  if (elevatedRoles.has(rawRole) && !isApproved) {
+    return 'member';
+  }
+  return rawRole;
 }
 
 const VALID_TOPICS = new Set([

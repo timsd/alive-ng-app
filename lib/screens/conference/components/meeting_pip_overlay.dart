@@ -63,6 +63,7 @@ class _MeetingPipOverlayState extends ConsumerState<MeetingPipOverlay> {
         if (action == 'toggle_mic') {
           await gateway.toggleAudio();
         } else if (action == 'leave_meeting') {
+          LiveKitMeetingScreen.disposeGlobalRetainedScribe();
           await gateway.leaveMeeting();
         }
       },

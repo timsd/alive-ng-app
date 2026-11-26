@@ -36,7 +36,9 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
   String _searchQuery = '';
   String _selectedCategory = 'all';
   static const String _subscribedPrefsKey = 'podcast_subscribed_ids';
+  static const String _unsubscribedPrefsKey = 'podcast_unsubscribed_ids';
   Set<String> _subscribedIds = {};
+  Set<String> _unsubscribedIds = {};
   String? _handledDeepLinkKey;
   bool _isResolvingDeepLink = false;
 
@@ -51,28 +53,46 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
     });
   }
 
+  bool _isPodcastSubscribed(Podcast podcast) {
+    if (_unsubscribedIds.contains(podcast.id)) return false;
+    if (_subscribedIds.contains(podcast.id)) return true;
+    return podcast.isSubscribed;
+  }
+
   Future<void> _loadSubscribedIds() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getStringList(_subscribedPrefsKey) ?? const [];
+      final savedSub = prefs.getStringList(_subscribedPrefsKey) ?? const [];
+      final savedUnsub = prefs.getStringList(_unsubscribedPrefsKey) ?? const [];
       if (mounted) {
-        setState(() => _subscribedIds = saved.toSet());
+        setState(() {
+          _subscribedIds = savedSub.toSet();
+          _unsubscribedIds = savedUnsub.toSet();
+        });
       }
     } catch (_) {}
   }
 
   Future<void> _toggleSubscribe(Podcast podcast) async {
-    final next = Set<String>.from(_subscribedIds);
-    final isNowSub = !next.contains(podcast.id);
+    final currentlySub = _isPodcastSubscribed(podcast);
+    final nextSub = Set<String>.from(_subscribedIds);
+    final nextUnsub = Set<String>.from(_unsubscribedIds);
+    final isNowSub = !currentlySub;
     if (isNowSub) {
-      next.add(podcast.id);
+      nextSub.add(podcast.id);
+      nextUnsub.remove(podcast.id);
     } else {
-      next.remove(podcast.id);
+      nextSub.remove(podcast.id);
+      nextUnsub.add(podcast.id);
     }
-    setState(() => _subscribedIds = next);
+    setState(() {
+      _subscribedIds = nextSub;
+      _unsubscribedIds = nextUnsub;
+    });
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_subscribedPrefsKey, next.toList());
+      await prefs.setStringList(_subscribedPrefsKey, nextSub.toList());
+      await prefs.setStringList(_unsubscribedPrefsKey, nextUnsub.toList());
     } catch (_) {}
     if (mounted) {
       ScaffoldMessenger.of(context).clearSnackBars();
@@ -386,8 +406,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
                 itemCount: filteredPodcasts.length,
                 itemBuilder: (context, index) {
                   final podcast = filteredPodcasts[index];
-                  final isSub =
-                      _subscribedIds.contains(podcast.id) || podcast.isSubscribed;
+                  final isSub = _isPodcastSubscribed(podcast);
                   return PodcastCard(
                     podcast: podcast,
                     isSubscribedOverride: isSub,
@@ -418,8 +437,7 @@ class _PodcastsScreenState extends ConsumerState<PodcastsScreen>
               podcast.category.name == _selectedCategory;
           return matchesSearch &&
               matchesCategory &&
-              (_subscribedIds.contains(podcast.id) ||
-                  podcast.isSubscribed == true);
+              _isPodcastSubscribed(podcast);
         }).toList();
 
         if (filteredSubscribed.isEmpty) {

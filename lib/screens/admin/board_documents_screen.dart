@@ -8,6 +8,7 @@ import '../../models/board_models.dart';
 import '../../services/appwrite_board_service.dart';
 import '../../services/appwrite_storage_compat_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/role_access_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/text_formatter.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -84,8 +85,33 @@ class _BoardDocumentsScreenState extends State<BoardDocumentsScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _canViewDocument(BoardDocument doc) {
+    final roleService = RoleAccessService.instance;
+    if (roleService.canAccessAdmin() || roleService.isSuperAdmin()) return true;
+    final role = roleService.getCurrentUserRole()?.toLowerCase().trim() ?? '';
+    switch (doc.accessLevel.toLowerCase().trim()) {
+      case 'public':
+        return true;
+      case 'board_only':
+        return role == 'bod' || role == 'trustee' || role == 'director' || role == 'leader';
+      case 'trustees_only':
+        return role == 'trustee';
+      case 'admin_only':
+        return false;
+      default:
+        return role == 'bod' || role == 'trustee' || role == 'director';
+    }
+  }
+
   List<BoardDocument> get _filteredDocuments {
     return _documents.where((document) {
+      if (!_canViewDocument(document)) return false;
       final categoryMatch =
           _selectedCategory == 'all' || document.category == _selectedCategory;
       final accessMatch = _selectedAccessLevel == 'all' ||

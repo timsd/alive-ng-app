@@ -1146,6 +1146,7 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
       ref.read(bibleGameProvider.notifier).setListening(true);
       if (_ttsReady) {
         await _tts.stop();
+        if (!mounted) return;
       }
       _voiceLevel = 0.0;
       try {
@@ -1198,6 +1199,10 @@ class _BibleGameScreenState extends ConsumerState<BibleGameScreen>
     _isProcessingVoiceFinal = true;
     if (_speechReady) {
       await _speech.stop();
+      if (!mounted) {
+        _isProcessingVoiceFinal = false;
+        return;
+      }
     }
     if (mounted) {
       setState(() => _voiceLevel = 0.0);

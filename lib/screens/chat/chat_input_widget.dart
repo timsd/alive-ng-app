@@ -306,7 +306,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
           setState(() => _voiceLevel = normalized);
         },
         onResult: (result) {
-          if (!mounted) return;
+          if (!mounted || !_isDictating) return;
           final spoken = result.recognizedWords.trim();
           final combined = _baseTextBeforeDictation.isEmpty
               ? spoken
@@ -349,11 +349,16 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   }
 
   Future<void> _stopVoiceDictation({bool cancel = false}) async {
-    try {
-      await _speech.stop();
-    } catch (_) {}
-    if (!mounted) return;
-    if (cancel) {
+    if (mounted) {
+      setState(() {
+        _isDictating = false;
+        _voiceLevel = 0.0;
+      });
+    } else {
+      _isDictating = false;
+      _voiceLevel = 0.0;
+    }
+    if (cancel && mounted) {
       widget.controller.value = TextEditingValue(
         text: _baseTextBeforeDictation,
         selection: TextSelection.collapsed(
@@ -361,10 +366,9 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
         ),
       );
     }
-    setState(() {
-      _isDictating = false;
-      _voiceLevel = 0.0;
-    });
+    try {
+      await _speech.stop();
+    } catch (_) {}
   }
 
   void _handleSubmitted() {
@@ -438,6 +442,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   }
 
   void _handleImageAttachment(XFile image) async {
+    if (!mounted) return;
     setState(() {
       _isUploading = true;
     });
@@ -504,6 +509,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
   }
 
   void _handleFileAttachment(PlatformFile file) async {
+    if (!mounted) return;
     setState(() {
       _isUploading = true;
     });

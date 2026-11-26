@@ -95,16 +95,38 @@ class PrayerRequestsService {
           .toList();
 
       final requests = <PrayerRequest>[];
-      for (final id in requestIds) {
+      const chunkSize = 50;
+      for (int i = 0; i < requestIds.length; i += chunkSize) {
+        final chunk = requestIds.sublist(
+          i,
+          i + chunkSize > requestIds.length ? requestIds.length : i + chunkSize,
+        );
         try {
-          final doc = await _tables.getRow(
+          final rows = await _tables.listRows(
             databaseId: AppwriteBackendConfig.databaseId,
             tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
-            rowId: id,
+            queries: [
+              Query.equal(r'$id', chunk),
+              Query.limit(chunk.length),
+            ],
           );
-          requests.add(PrayerRequest.fromJson(_documentData(doc)));
+          for (final doc in rows.rows) {
+            requests.add(PrayerRequest.fromJson(_documentData(doc)));
+          }
         } catch (_) {
-          // Ignore deleted or private requests that no longer resolve.
+          // Fallback to individual lookups if batch query fails on an older index.
+          for (final id in chunk) {
+            try {
+              final doc = await _tables.getRow(
+                databaseId: AppwriteBackendConfig.databaseId,
+                tableId: AppwriteBackendConfig.prayerRequestsCollectionId,
+                rowId: id,
+              );
+              requests.add(PrayerRequest.fromJson(_documentData(doc)));
+            } catch (_) {
+              // Ignore deleted or private requests that no longer resolve.
+            }
+          }
         }
       }
       requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));

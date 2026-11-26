@@ -123,7 +123,9 @@
             "commands": "npm install",
             "scopes": [
                 "users.read",
-                "users.write"
+                "users.write",
+                "databases.read",
+                "databases.write"
             ]
         },
         {

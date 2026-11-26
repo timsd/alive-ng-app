@@ -87,21 +87,25 @@ void main() {
 
     if (kReleaseMode) {
       ErrorWidget.builder = (FlutterErrorDetails details) {
-        return Material(
-          color: Colors.transparent,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.error_outline_rounded, size: 36, color: Colors.orange),
-                  SizedBox(height: 8),
-                  Text(
-                    'Something went wrong displaying this section.',
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+        return const Directionality(
+          textDirection: TextDirection.ltr,
+          child: Material(
+            color: Colors.transparent,
+            child: Center(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline_rounded,
+                        size: 36, color: Colors.orange),
+                    SizedBox(height: 8),
+                    Text(
+                      'Something went wrong displaying this section.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

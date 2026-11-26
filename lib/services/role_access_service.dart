@@ -391,18 +391,19 @@ class RoleAccessService {
     return false;
   }
 
-  /// Check if user is a board member (BOD/Trustee)
+  /// Check if user is an approved, non-archived board member (BOD/Trustee/Director/Admin)
   bool _isUserBoardMember() {
     final profile = _getCachedUserProfile();
-    if (profile == null) return false;
+    if (profile == null || profile.isArchived) return false;
+    final effectiveRole = getCurrentUserRole()?.toLowerCase().trim();
+    if (effectiveRole == null) return false;
 
-    // Check if user has leadership role or admin role (board members)
-    return profile.role == 'leader' ||
-        profile.role == 'director' ||
-        profile.role == 'bod' ||
-        profile.role == 'trustee' ||
-        profile.role == 'admin' ||
-        profile.role == 'super_admin';
+    return effectiveRole == 'leader' ||
+        effectiveRole == 'director' ||
+        effectiveRole == 'bod' ||
+        effectiveRole == 'trustee' ||
+        effectiveRole == 'admin' ||
+        effectiveRole == 'super_admin';
   }
 
   /// Check if user is archived

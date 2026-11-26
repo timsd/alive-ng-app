@@ -27,24 +27,41 @@ class InAppPdfViewerScreen extends StatefulWidget {
   }) : assert(pdfUrl != null || pdfBytes != null,
             'Either pdfUrl or pdfBytes must be provided');
 
+  /// Clears all in-memory cached PDFs (called on user sign-out so confidential
+  /// Board/Meeting documents are never retained across sessions).
+  static void clearCache() {
+    _InAppPdfViewerScreenState._clearPdfCache();
+  }
+
   @override
   State<InAppPdfViewerScreen> createState() => _InAppPdfViewerScreenState();
 }
 
 class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
   static const int _maxCachedPdfs = 5;
+  static const int _maxCacheTotalBytes = 30 * 1024 * 1024; // 30 MB cap
   static final Map<String, Uint8List> _pdfMemoryCache = {};
 
+  static void _clearPdfCache() {
+    _pdfMemoryCache.clear();
+  }
+
   static void _putPdfCache(String key, Uint8List bytes) {
+    if (bytes.lengthInBytes > _maxCacheTotalBytes) return;
     _pdfMemoryCache.remove(key);
     _pdfMemoryCache[key] = bytes;
-    while (_pdfMemoryCache.length > _maxCachedPdfs) {
-      _pdfMemoryCache.remove(_pdfMemoryCache.keys.first);
+    int totalBytes = _pdfMemoryCache.values
+        .fold<int>(0, (sum, b) => sum + b.lengthInBytes);
+    while (_pdfMemoryCache.length > _maxCachedPdfs ||
+        totalBytes > _maxCacheTotalBytes) {
+      final oldestKey = _pdfMemoryCache.keys.first;
+      totalBytes -= _pdfMemoryCache.remove(oldestKey)?.lengthInBytes ?? 0;
     }
   }
 
   final PdfViewerController _pdfController = PdfViewerController();
   Uint8List? _bytes;
+  int _reloadGeneration = 0;
   bool _isLoading = true;
   String? _errorMessage;
   int _currentPage = 1;
@@ -94,6 +111,10 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      if (forceRefresh) {
+        _bytes = null;
+        _reloadGeneration++;
+      }
     });
 
     if (widget.pdfBytes != null && widget.pdfBytes!.isNotEmpty) {
@@ -277,7 +298,7 @@ class _InAppPdfViewerScreenState extends State<InAppPdfViewerScreen> {
           else if (_bytes != null)
             PdfViewer.data(
               _bytes!,
-              sourceName: widget.title,
+              sourceName: '${widget.pdfUrl ?? widget.title}#$_reloadGeneration',
               controller: _pdfController,
               params: PdfViewerParams(
                 backgroundColor: theme.scaffoldBackgroundColor,

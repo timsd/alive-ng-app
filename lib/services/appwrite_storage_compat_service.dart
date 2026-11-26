@@ -305,6 +305,10 @@ class AppwriteStorageCompatService {
     try {
       final sanitizedFilename = objectName.split('/').last;
       final fileId = ID.unique();
+      final bool isConfidentialBucket =
+          bucketId == AppwriteBackendConfig.boardDocumentsBucketId ||
+              bucketId == AppwriteBackendConfig.meetingFilesBucketId ||
+              bucketId == AppwriteBackendConfig.systemExportsBucketId;
       try {
         final file = await _storage.createFile(
           bucketId: bucketId,
@@ -315,7 +319,9 @@ class AppwriteStorageCompatService {
             contentType: contentType,
           ),
           permissions: [
-            Permission.read(Role.any()),
+            Permission.read(
+              isConfidentialBucket ? Role.users() : Role.any(),
+            ),
           ],
         );
         return _downloadUrl(bucketId, file.$id);

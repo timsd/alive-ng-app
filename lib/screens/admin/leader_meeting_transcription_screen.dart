@@ -503,6 +503,7 @@ class _LeaderMeetingTranscriptionScreenState
                                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                           ),
                         ],
+                        fileNameOverrides: [fileName],
                         subject: '$meetingTitle - Official Minutes (.docx)',
                       ),
                     );

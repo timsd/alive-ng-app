@@ -40,12 +40,18 @@ class _BodTrusteesScreenState extends State<BodTrusteesScreen> {
         final userProfile = await _profileService.getUserProfileModel(user.uid);
         _currentUserId = user.uid;
 
-        final role = userProfile?.role ?? '';
-        _hasAccess = role == 'admin' ||
-            role == 'super_admin' ||
-            role == 'leader' ||
-            role == 'bod' ||
-            role == 'trustee' ||
+        final isApproved = userProfile != null &&
+            !userProfile.isArchived &&
+            (userProfile.isApproved ||
+                userProfile.approvalStatus.toLowerCase() == 'approved');
+        final role = userProfile?.role.toLowerCase().trim() ?? '';
+        _hasAccess = (isApproved &&
+                (role == 'admin' ||
+                    role == 'super_admin' ||
+                    role == 'leader' ||
+                    role == 'director' ||
+                    role == 'bod' ||
+                    role == 'trustee')) ||
             RoleAccessService.instance.canAccessAdmin();
       }
     } catch (_) {

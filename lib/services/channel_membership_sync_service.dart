@@ -322,8 +322,27 @@ class ChannelMembershipSyncService {
             ],
           );
           for (final doc in allChannels.rows) {
-            final desc = (doc.data['description'] ?? '').toString();
-            final isSecluded = doc.data['exclude_leadership'] == true ||
+            final channelType = (doc.data['type'] ?? '').toString().toLowerCase().trim();
+            if (channelType == 'direct') {
+              continue; // Never auto-add leadership into private 1-on-1 DMs
+            }
+            final desc = (doc.data['description'] ?? '').toString().toLowerCase();
+            bool settingsSecluded = false;
+            final rawSettings = doc.data['settings'];
+            if (rawSettings is Map) {
+              settingsSecluded = rawSettings['exclude_leadership'] == true ||
+                  rawSettings['is_secluded'] == true;
+            } else if (rawSettings is String && rawSettings.trim().startsWith('{')) {
+              try {
+                final decoded = jsonDecode(rawSettings);
+                if (decoded is Map) {
+                  settingsSecluded = decoded['exclude_leadership'] == true ||
+                      decoded['is_secluded'] == true;
+                }
+              } catch (_) {}
+            }
+            final isSecluded = settingsSecluded ||
+                doc.data['exclude_leadership'] == true ||
                 doc.data['is_secluded'] == true ||
                 desc.contains('[secluded]');
             if (!isSecluded) {

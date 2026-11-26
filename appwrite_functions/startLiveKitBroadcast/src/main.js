@@ -60,6 +60,9 @@ async function getRole(userId, req) {
   }
   if (!response.ok) throw new Error(`Unable to verify broadcast role (${response.status}).`);
   const profile = await response.json();
+  if (profile.is_archived === true) {
+    throw new Error('Archived accounts are not permitted to broadcast.');
+  }
   const role = String(profile.role || 'member').trim().toLowerCase();
   const email = String(profile.email || '').trim().toLowerCase();
   const superAdminEmails = (process.env.APPWRITE_SUPER_ADMIN_EMAILS || '')
@@ -69,6 +72,13 @@ async function getRole(userId, req) {
     .filter(Boolean);
   if (superAdminEmails.includes(email)) {
     return 'admin';
+  }
+  const approvalStatus = String(profile.approval_status || '').trim().toLowerCase();
+  const isApproved =
+    profile.is_approved === true &&
+    (approvalStatus === '' || approvalStatus === 'approved');
+  if (!isApproved) {
+    return 'member';
   }
   return role;
 }

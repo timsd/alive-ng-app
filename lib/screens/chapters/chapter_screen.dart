@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../widgets/modern_dropdown.dart';
 import '../../utils/error_handler.dart';
@@ -45,6 +46,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
 
   bool _isLoading = true;
   String _searchQuery = '';
+  Timer? _searchDebounce;
   WorkersType? _selectedType;
   String? _currentUserId;
 
@@ -102,6 +104,7 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -697,7 +700,10 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
             ),
             onChanged: (value) {
               setState(() => _searchQuery = value);
-              _loadData();
+              _searchDebounce?.cancel();
+              _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+                if (mounted) _loadData();
+              });
             },
           ),
           const SizedBox(height: 12),
@@ -1976,21 +1982,35 @@ class _ChapterScreenState extends ConsumerState<ChapterScreen>
         isActive: false,
       );
 
-      // Update user record with pending chapter approval without revoking
-      // account-level approval_status.
+      // Update user record with pending chapter join without revoking
+      // account-level approval_status. Try full payload first and fall back
+      // without `chapter_approval_status` if that column is absent on live schema.
       try {
         final tables = TablesDB(appwriteClient);
-        await tables.updateRow(
-          databaseId: AppwriteBackendConfig.databaseId,
-          tableId: AppwriteBackendConfig.usersCollectionId,
-          rowId: _currentUserId!,
-          data: {
-            'local_chapter': targetChapter.name,
-            'chapter_id': targetChapter.id,
-            'chapter_approval_status': 'pending',
-            'is_chapter_verified': false,
-          },
-        );
+        try {
+          await tables.updateRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.usersCollectionId,
+            rowId: _currentUserId!,
+            data: {
+              'local_chapter': targetChapter.name,
+              'chapter_id': targetChapter.id,
+              'chapter_approval_status': 'pending',
+              'is_chapter_verified': false,
+            },
+          );
+        } catch (_) {
+          await tables.updateRow(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.usersCollectionId,
+            rowId: _currentUserId!,
+            data: {
+              'local_chapter': targetChapter.name,
+              'chapter_id': targetChapter.id,
+              'is_chapter_verified': false,
+            },
+          );
+        }
       } catch (e) {
         debugPrint('Profile update note: $e');
       }

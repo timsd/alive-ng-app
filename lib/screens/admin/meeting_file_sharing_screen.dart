@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:appwrite/appwrite.dart' as appwrite;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../config/appwrite_backend_config.dart';
 import '../../constants/app_constants.dart';
+import '../../main.dart';
 import '../../services/file_picker_facade.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,6 +14,7 @@ import '../../services/appwrite_meeting_file_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/role_access_service.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/in_app_pdf_viewer.dart';
 import '../../widgets/loading_widget.dart';
 import '../../utils/app_exception.dart';
 import '../../utils/toast_utils.dart';
@@ -565,15 +570,78 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
 
   Future<void> _downloadFile(MeetingFile file) async {
     try {
-      // Get the download URL from Appwrite Storage.
-      final downloadUrl =
-          _meetingFileService.getMeetingFileDownloadUrl(file.filePath);
+      final storage = appwrite.Storage(appwriteClient);
+      String bucketId = AppwriteBackendConfig.meetingFilesBucketId;
+      String fileId = file.filePath.trim();
 
-      // Launch the URL to download the file
+      // Extract bucketId & fileId from fileUrl if present
+      final uri = Uri.tryParse(file.fileUrl.isNotEmpty ? file.fileUrl : fileId);
+      if (uri != null && uri.pathSegments.contains('buckets')) {
+        final segs = uri.pathSegments;
+        final bIdx = segs.indexOf('buckets');
+        final fIdx = segs.indexOf('files');
+        if (bIdx + 1 < segs.length) bucketId = segs[bIdx + 1];
+        if (fIdx + 1 < segs.length) fileId = segs[fIdx + 1];
+      }
+
+      Uint8List? bytes;
+      if (fileId.isNotEmpty && !fileId.startsWith('http')) {
+        try {
+          bytes = await storage.getFileDownload(
+            bucketId: bucketId,
+            fileId: fileId,
+          );
+        } catch (_) {
+          // Fallback to content_media if file was stored there
+          if (bucketId != AppwriteBackendConfig.contentMediaBucketId) {
+            try {
+              bytes = await storage.getFileDownload(
+                bucketId: AppwriteBackendConfig.contentMediaBucketId,
+                fileId: fileId,
+              );
+            } catch (_) {}
+          }
+        }
+      }
+
+      if (bytes != null && bytes.isNotEmpty) {
+        final lowerName = file.fileName.toLowerCase();
+        if (lowerName.endsWith('.pdf') && mounted) {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => InAppPdfViewerScreen(
+                title: file.fileName,
+                pdfBytes: bytes,
+              ),
+            ),
+          );
+          return;
+        }
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [
+              XFile.fromData(
+                bytes,
+                name: file.fileName,
+                mimeType: _mimeTypeForFileName(file.fileName),
+              ),
+            ],
+            fileNameOverrides: [file.fileName],
+            subject: file.fileName,
+          ),
+        );
+        return;
+      }
+
+      // Final fallback to direct URL (only if authenticated SDK fetch wasn't possible)
+      final downloadUrl = _meetingFileService.getMeetingFileDownloadUrl(
+        file.fileUrl.isNotEmpty ? file.fileUrl : file.filePath,
+        fileName: file.fileName,
+        bucketId: bucketId,
+      );
       if (await canLaunchUrl(Uri.parse(downloadUrl))) {
         await launchUrl(Uri.parse(downloadUrl),
             mode: LaunchMode.externalApplication);
-
         if (mounted) {
           ToastUtils.showSuccess('Downloading ${file.fileName}...');
         }
@@ -584,6 +652,26 @@ class _MeetingFileSharingScreenState extends State<MeetingFileSharingScreen> {
       if (mounted) {
         ToastUtils.showError('Error downloading file: $e');
       }
+    }
+  }
+
+  String _mimeTypeForFileName(String name) {
+    final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+    switch (ext) {
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'pdf':
+        return 'application/pdf';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'md':
+        return 'text/markdown';
+      case 'txt':
+        return 'text/plain';
+      default:
+        return 'application/octet-stream';
     }
   }
 
@@ -635,6 +723,7 @@ class MeetingFile {
   final String id;
   final String fileName;
   final String filePath;
+  final String fileUrl;
   final String fileType;
   final int fileSize;
   final String description;
@@ -646,6 +735,7 @@ class MeetingFile {
     required this.id,
     required this.fileName,
     required this.filePath,
+    this.fileUrl = '',
     required this.fileType,
     required this.fileSize,
     required this.description,
@@ -669,6 +759,7 @@ class MeetingFile {
       id: (json['id'] ?? json['\$id'] ?? json['file_name'] ?? '').toString(),
       fileName: json['file_name'] ?? json['name'] ?? '',
       filePath: json['file_path'] ?? json['file_url'] ?? '',
+      fileUrl: (json['file_url'] ?? '').toString(),
       fileType: json['file_type'] ?? '',
       fileSize: (json['file_size'] is num) ? (json['file_size'] as num).toInt() : 0,
       description: json['description'] ?? '',

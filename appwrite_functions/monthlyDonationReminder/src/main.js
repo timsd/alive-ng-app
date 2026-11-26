@@ -158,8 +158,15 @@ module.exports = async ({ req, res, log, error }) => {
     if (!isAdmin) {
       try {
         const uDoc = await databases.getDocument(DATABASE_ID, '6a08943100226f5b4963', callerUserId);
-        const r = String(uDoc.role || '').toLowerCase();
-        if (uDoc.is_admin === true || ['admin', 'super_admin'].includes(r)) isAdmin = true;
+        const approvalStatus = String(uDoc?.approval_status || '').trim().toLowerCase();
+        const isApprovedActive =
+          uDoc?.is_archived !== true &&
+          uDoc?.is_approved === true &&
+          (approvalStatus === '' || approvalStatus === 'approved');
+        const r = String(uDoc?.role || '').toLowerCase();
+        if (isApprovedActive && (uDoc?.is_admin === true || ['admin', 'super_admin'].includes(r))) {
+          isAdmin = true;
+        }
       } catch (_) {}
     }
     if (!isAdmin) {

@@ -305,30 +305,49 @@ class MonthlyReminderSettingService {
         ],
       );
 
-      // Row data is keyed by user_id (the row id is the user id); carry the
-      // address from the users table when the row does not have one.
+      // Row data is keyed by user_id (the row id is the user id); batch-fetch
+      // missing profile names/emails from the users table in chunks of 50.
+      final missingIds = <String>[];
+      for (final row in snapshot.rows) {
+        final email = row.data['email'] as String?;
+        final name = row.data['full_name'] as String?;
+        if (email == null || name == null) {
+          missingIds.add(row.$id);
+        }
+      }
+
+      final profilesById = <String, Map<String, dynamic>>{};
+      const chunkSize = 50;
+      for (int i = 0; i < missingIds.length; i += chunkSize) {
+        final chunk = missingIds.sublist(
+          i,
+          i + chunkSize > missingIds.length ? missingIds.length : i + chunkSize,
+        );
+        try {
+          final profileRows = await tables.listRows(
+            databaseId: AppwriteBackendConfig.databaseId,
+            tableId: AppwriteBackendConfig.usersCollectionId,
+            queries: [
+              Query.equal(r'$id', chunk),
+              Query.limit(chunk.length),
+            ],
+          );
+          for (final p in profileRows.rows) {
+            profilesById[p.$id] = Map<String, dynamic>.from(p.data);
+          }
+        } catch (_) {
+          // Best-effort profile enrichment; keep settings row data if batch fails.
+        }
+      }
+
       final withEmail = <MonthlyReminderOptOut>[];
       for (final row in snapshot.rows) {
         final rowId = row.$id;
-        String? email = row.data['email'] as String?;
-        String? name = row.data['full_name'] as String?;
-        if (email == null || name == null) {
-          try {
-            // The client SDK's Account.get() only returns the *current* account
-            // and takes no id, so an admin listing other members has to read the
-            // Users table directly. It is keyed by the same user id.
-            final profile = await tables.getRow(
-              databaseId: AppwriteBackendConfig.databaseId,
-              tableId: AppwriteBackendConfig.usersCollectionId,
-              rowId: rowId,
-            );
-            email ??= profile.data['email'] as String?;
-            name ??= profile.data['full_name'] as String?;
-          } catch (_) {
-            // Leave whatever the settings row provided; a missing address is not
-            // a reason to hide the member from the list.
-          }
-        }
+        final profile = profilesById[rowId];
+        final email =
+            (row.data['email'] as String?) ?? (profile?['email'] as String?);
+        final name = (row.data['full_name'] as String?) ??
+            (profile?['full_name'] as String?);
         withEmail.add(MonthlyReminderOptOut(
           userId: rowId,
           name: name,

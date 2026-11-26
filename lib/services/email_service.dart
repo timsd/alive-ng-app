@@ -68,6 +68,10 @@ class EmailService {
   /// trigger the call.
   final Set<String> _sentBoardEmailKeys = {};
 
+  /// In-flight guard preventing concurrent duplicate dispatches before the
+  /// first send finishes and persists the sent marker.
+  static final Set<String> _inFlightBoardEmailKeys = <String>{};
+
   /// Persistent SharedPreferences prefix so we don't re-send even after an
   /// app restart (e.g. user opens the transcription screen for a past meeting
   /// and presses save again).
@@ -123,8 +127,14 @@ class EmailService {
     List<String>? toEmails,
     bool force = false,
   }) async {
-    // ── Deduplication guard ──────────────────────────────────────────────
+    // ── Deduplication & concurrent in-flight guard ───────────────────────
+    final dedupKey = _boardEmailKey(meetingTitle);
     if (!force) {
+      if (_inFlightBoardEmailKeys.contains(dedupKey)) {
+        _logger.info(
+            'Board/Leadership minutes email for "$meetingTitle" is already in flight — skipping.');
+        return;
+      }
       final alreadySent = await wasBoardEmailAlreadySent(meetingTitle);
       if (alreadySent) {
         _logger.info(
@@ -132,61 +142,83 @@ class EmailService {
         return;
       }
     }
+    _inFlightBoardEmailKeys.add(dedupKey);
+    try {
+      final recipients = toEmails ??
+          await LeadershipEmailSettingsService.instance.getLeadershipRecipients();
+      if (recipients.isEmpty) return;
 
-    final recipients = toEmails ??
-        await LeadershipEmailSettingsService.instance.getLeadershipRecipients();
-    if (recipients.isEmpty) return;
+      final now = DateTime.now();
+      final dateStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final subject = 'ALIVE Board Meeting Minutes: $meetingTitle ($dateStr)';
 
-    final now = DateTime.now();
-    final dateStr =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final subject = 'ALIVE Board Meeting Minutes: $meetingTitle ($dateStr)';
+      final safeTitle = htmlEscape.convert(meetingTitle);
+      final safeDocxFileName =
+          docxFileName != null ? htmlEscape.convert(docxFileName) : null;
 
-    final safeTitle = htmlEscape.convert(meetingTitle);
-    final safeDocxFileName =
-        docxFileName != null ? htmlEscape.convert(docxFileName) : null;
-    // Cap oversized verbatim transcripts so multi-hour Board meetings stay well
-    // under Resend/function HTML body limits while keeping the full summary,
-    // decisions, and action items intact.
-    final cappedMarkdown = markdownMinutes.length > 45000
-        ? '${markdownMinutes.substring(0, 45000)}\n\n---\n*Transcript truncated for email delivery. Open the archived .docx file in Meeting Files for the complete verbatim record.*'
-        : markdownMinutes;
-    final htmlBody = _convertMarkdownToHtml(cappedMarkdown);
+      String buildEmailHtml(String bodyHtml) {
+        return '<!DOCTYPE html><html><body style="font-family:Arial,Helvetica,sans-serif;'
+            'color:#17263B;max-width:760px;margin:0 auto;padding:24px;line-height:1.6;">'
+            '<div style="background-color:#032B20;color:#FACC15;padding:18px 24px;border-radius:10px 10px 0 0;">'
+            '<span style="font-size:11px;font-weight:900;letter-spacing:1px;background:#EAB308;color:#0F172A;padding:3px 8px;border-radius:4px;">ALIVE NIGERIA</span>'
+            '<h2 style="color:#FFFFFF;margin:12px 0 4px;font-size:22px;">$safeTitle</h2>'
+            '<p style="color:#A7F3D0;margin:0;font-size:12px;">Board of Directors Council Minutes &amp; Resolutions • $dateStr</p>'
+            '</div>'
+            '<div style="border:1px solid #E2E8F0;border-top:none;padding:24px;border-radius:0 0 10px 10px;background:#FFFFFF;">'
+            '<p style="color:#334155;font-size:14px;">Dear Board Member,</p>'
+            '<p style="color:#334155;font-size:14px;">The minutes and synthesized resolutions for <strong>$safeTitle</strong> '
+            'have been officially recorded and archived in the Meeting Files repository${safeDocxFileName != null ? " ($safeDocxFileName)" : ""}. '
+            'Below is the full synthesized record of the session:</p>'
+            '<hr style="border:none;border-top:1px solid #E2E8F0;margin:16px 0;">'
+            '<div style="font-size:13.5px;color:#1E293B;">$bodyHtml</div>'
+            '<hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0 16px;">'
+            '<p style="color:#64748B;font-size:12px;">This document was automatically compiled and verified via <strong>ALIVE Scribe</strong> on ALIVE Meet.</p>'
+            '</div>'
+            '</body></html>';
+      }
 
-    final html = '<!DOCTYPE html><html><body style="font-family:Arial,Helvetica,sans-serif;'
-        'color:#17263B;max-width:760px;margin:0 auto;padding:24px;line-height:1.6;">'
-        '<div style="background-color:#032B20;color:#FACC15;padding:18px 24px;border-radius:10px 10px 0 0;">'
-        '<span style="font-size:11px;font-weight:900;letter-spacing:1px;background:#EAB308;color:#0F172A;padding:3px 8px;border-radius:4px;">ALIVE NIGERIA</span>'
-        '<h2 style="color:#FFFFFF;margin:12px 0 4px;font-size:22px;">$safeTitle</h2>'
-        '<p style="color:#A7F3D0;margin:0;font-size:12px;">Board of Directors Council Minutes &amp; Resolutions • $dateStr</p>'
-        '</div>'
-        '<div style="border:1px solid #E2E8F0;border-top:none;padding:24px;border-radius:0 0 10px 10px;background:#FFFFFF;">'
-        '<p style="color:#334155;font-size:14px;">Dear Board Member,</p>'
-        '<p style="color:#334155;font-size:14px;">The minutes and synthesized resolutions for <strong>$safeTitle</strong> '
-        'have been officially recorded and archived in the Meeting Files repository${safeDocxFileName != null ? " ($safeDocxFileName)" : ""}. '
-        'Below is the full synthesized record of the session:</p>'
-        '<hr style="border:none;border-top:1px solid #E2E8F0;margin:16px 0;">'
-        '<div style="font-size:13.5px;color:#1E293B;">$htmlBody</div>'
-        '<hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0 16px;">'
-        '<p style="color:#64748B;font-size:12px;">This document was automatically compiled and verified via <strong>ALIVE Scribe</strong> on ALIVE Meet.</p>'
-        '</div>'
-        '</body></html>';
+      // Cap rendered HTML to <= 90,000 chars so multi-hour Board meetings
+      // (especially tables/lists that expand HTML) stay safely under the
+      // 100 KB send_email function limit.
+      const int maxHtmlChars = 90000;
+      const String truncationNotice =
+          '\n\n---\n*Transcript truncated for email delivery. Open the archived .docx file in Meeting Files for the complete verbatim record.*';
+      int markdownLimit =
+          markdownMinutes.length > 45000 ? 45000 : markdownMinutes.length;
+      String cappedMarkdown = markdownMinutes.length > markdownLimit
+          ? '${markdownMinutes.substring(0, markdownLimit)}$truncationNotice'
+          : markdownMinutes;
+      String html = buildEmailHtml(_convertMarkdownToHtml(cappedMarkdown));
 
-    final primary = recipients.first;
-    final extraCc = recipients.length > 1
-        ? recipients.sublist(1).where((r) => r.toLowerCase() != primary.toLowerCase()).join(', ')
-        : null;
+      while (html.length > maxHtmlChars && markdownLimit > 2000) {
+        markdownLimit = (markdownLimit * 0.7).floor();
+        cappedMarkdown =
+            '${markdownMinutes.substring(0, markdownLimit)}$truncationNotice';
+        html = buildEmailHtml(_convertMarkdownToHtml(cappedMarkdown));
+      }
 
-    await sendCustomEmail(
-      toEmail: primary,
-      toName: 'ALIVE Board of Directors',
-      subject: subject,
-      html: html,
-      cc: (extraCc != null && extraCc.isNotEmpty) ? extraCc : null,
-    );
+      final primary = recipients.first;
+      final extraCc = recipients.length > 1
+          ? recipients
+              .sublist(1)
+              .where((r) => r.toLowerCase() != primary.toLowerCase())
+              .join(', ')
+          : null;
 
-    // Mark as sent so neither auto-save nor manual save sends it again
-    await _markBoardEmailSent(meetingTitle);
+      await sendCustomEmail(
+        toEmail: primary,
+        toName: 'ALIVE Board of Directors',
+        subject: subject,
+        html: html,
+        cc: (extraCc != null && extraCc.isNotEmpty) ? extraCc : null,
+      );
+
+      // Mark as sent so neither auto-save nor manual save sends it again
+      await _markBoardEmailSent(meetingTitle);
+    } finally {
+      _inFlightBoardEmailKeys.remove(dedupKey);
+    }
   }
 
   /// Converts Markdown syntax from Scribe (including tables, blockquotes & rules) into clean HTML.

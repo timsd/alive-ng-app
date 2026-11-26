@@ -14,12 +14,18 @@ class AppwriteLibraryService {
   final TablesDB _tables = TablesDB(appwriteClient);
   final Logger _logger = Logger('AppwriteLibraryService');
 
-  Future<List<Map<String, dynamic>>> listBooks() async {
-    return _listCollection(AppwriteBackendConfig.booksCollectionId);
+  Future<List<Map<String, dynamic>>> listBooks({bool throwOnError = false}) async {
+    return _listCollection(
+      AppwriteBackendConfig.booksCollectionId,
+      throwOnError: throwOnError,
+    );
   }
 
-  Future<List<Map<String, dynamic>>> listArticles() async {
-    return _listCollection(AppwriteBackendConfig.articlesCollectionId);
+  Future<List<Map<String, dynamic>>> listArticles({bool throwOnError = false}) async {
+    return _listCollection(
+      AppwriteBackendConfig.articlesCollectionId,
+      throwOnError: throwOnError,
+    );
   }
 
   Future<List<Map<String, dynamic>>> listAudio() async {
@@ -49,8 +55,14 @@ class AppwriteLibraryService {
     return combined;
   }
 
-  Future<List<Map<String, dynamic>>> listVideos({bool includeHidden = false}) async {
-    final list = await _listCollection(AppwriteBackendConfig.videosCollectionId);
+  Future<List<Map<String, dynamic>>> listVideos({
+    bool includeHidden = false,
+    bool throwOnError = false,
+  }) async {
+    final list = await _listCollection(
+      AppwriteBackendConfig.videosCollectionId,
+      throwOnError: throwOnError,
+    );
     if (includeHidden) return list;
     return list.where((v) {
       final val = v['is_active'] ?? v['isActive'];
@@ -63,8 +75,9 @@ class AppwriteLibraryService {
   }
 
   Future<List<Map<String, dynamic>>> _listCollection(
-    String collectionId,
-  ) async {
+    String collectionId, {
+    bool throwOnError = false,
+  }) async {
     try {
       final rows = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
@@ -74,6 +87,7 @@ class AppwriteLibraryService {
       return rows.rows.map(_rowData).toList();
     } catch (e) {
       _logger.warning('Could not list $collectionId: $e');
+      if (throwOnError) rethrow;
       return const [];
     }
   }

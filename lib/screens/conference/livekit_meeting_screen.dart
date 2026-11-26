@@ -56,6 +56,10 @@ class LiveKitMeetingScreen extends ConsumerStatefulWidget {
     this.autoJoin = false,
   });
 
+  /// Disposes any retained ALIVE Scribe session (safe to invoke from PiP overlay).
+  static void disposeGlobalRetainedScribe() =>
+      _LiveKitMeetingScreenState.disposeGlobalRetainedScribe();
+
   @override
   ConsumerState<LiveKitMeetingScreen> createState() =>
       _LiveKitMeetingScreenState();
@@ -95,12 +99,21 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   // Preserved across PiP minimize/restore so transcript is never wiped mid-meeting.
   static AliveScribeService? _retainedScribeService;
   static String? _retainedScribeRoom;
+  MeetingGateway? _gateway;
   AliveScribeService? _scribeService;
   bool _isScribeRecording = false;
   bool _hasAutoStartedScribe = false;
   bool _hasSavedMinutesForSession = false;
   bool _isSavingMinutes = false;
   String? _savedMinutesFileName;
+
+  /// Disposes any retained ALIVE Scribe session (safe to invoke from PiP overlay).
+  static void disposeGlobalRetainedScribe() {
+    final active = _retainedScribeService;
+    _retainedScribeService = null;
+    _retainedScribeRoom = null;
+    active?.dispose();
+  }
 
   void _disposeRetainedScribe() {
     final active = _scribeService ?? _retainedScribeService;
@@ -147,6 +160,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     });
 
     final gateway = ref.read(meetingGatewayProvider);
+    _gateway = gateway;
 
     _sessionSub = gateway.sessionStream.listen((session) {
       if (!mounted) return;
@@ -371,6 +385,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
   Future<void> _startScribeRecording({bool isRemoteTrigger = false, bool showNotice = false}) async {
     final gateway = ref.read(meetingGatewayProvider);
+    _gateway = gateway;
     _ensureScribeInitialized(gateway);
     if (_scribeService == null) return;
 
@@ -414,6 +429,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
 
     if (!isRemoteTrigger && mounted && _canControlScribeForRoom) {
       final gateway = ref.read(meetingGatewayProvider);
+    _gateway = gateway;
       gateway.sendDataChannelMessage({
         'type': 'alive_scribe_control',
         'action': 'stop_recording',
@@ -434,6 +450,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
   void _openScribeScreen() {
     if (!mounted) return;
     final gateway = ref.read(meetingGatewayProvider);
+    _gateway = gateway;
     _ensureScribeInitialized(gateway);
 
     Navigator.of(context).push(
@@ -2339,6 +2356,7 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
                       Navigator.of(ctx).pop();
                       await _autoSaveAndPromptMinutes();
                       await gateway.endMeetingForAll();
+                      _disposeRetainedScribe();
                       _showMessage('Meeting ended for all participants.');
                     },
                     icon: const Icon(Icons.stop_circle_outlined, size: 19),
@@ -2448,13 +2466,12 @@ class _LiveKitMeetingScreenState extends ConsumerState<LiveKitMeetingScreen> {
     _dataChannelSub?.cancel();
     _sessionSub?.cancel();
     // Preserve active ALIVE Scribe instance when minimizing into PiP overlay;
-    // only dispose it when the meeting is actually disconnected/ended.
-    if (!_isMinimizing && _scribeService != _retainedScribeService) {
-      _scribeService?.dispose();
-    } else if (!_isMinimizing) {
-      final isStillConnected =
-          ref.read(meetingGatewayProvider).currentSession.isConnected;
-      if (!isStillConnected) {
+    // use cached `_gateway` (NEVER `ref.read` in dispose, which throws in Riverpod!).
+    if (!_isMinimizing) {
+      if (_scribeService != null && _scribeService != _retainedScribeService) {
+        _scribeService?.dispose();
+      } else if (_retainedScribeService != null &&
+          !(_gateway?.currentSession.isConnected ?? false)) {
         _disposeRetainedScribe();
       }
     }

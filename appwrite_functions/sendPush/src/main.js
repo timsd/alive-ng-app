@@ -389,6 +389,11 @@ export default async ({ req, res, log, error }) => {
         return res.json({ error: 'Prayer request not found.' }, 404);
       }
 
+      // Block unauthorized notifications on private prayer requests
+      if (prayerDoc.is_private === true && String(prayerDoc.user_id || '') !== callerUserId) {
+        return res.json({ error: 'Not authorized to interact with this private prayer request.' }, 403);
+      }
+
       const ownerId = String(
         prayerDoc.user_id || prayerDoc.userId || prayerDoc.requestedById || '',
       ).trim();
@@ -457,11 +462,11 @@ export default async ({ req, res, log, error }) => {
         draft: false,
       });
 
-      log(`Prayer support push dispatched: msg=${message.$id}, owner=${ownerId}, request=${requestId}`);
+      log(`Prayer support push dispatched: msg=${message.$id}, request=${requestId}`);
+      // Do NOT return `ownerId` in response so anonymous prayer authors cannot be de-anonymized.
       return res.json({
         success: true,
         messageId: message.$id,
-        ownerId,
         requestId,
         route,
       });

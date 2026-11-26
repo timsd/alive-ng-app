@@ -48,9 +48,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     }
     try {
       final results = await Future.wait([
-        _libraryService.listBooks(),
-        _libraryService.listArticles(),
-        _libraryService.listVideos(),
+        _libraryService.listBooks(throwOnError: true),
+        _libraryService.listArticles(throwOnError: true),
+        _libraryService.listVideos(throwOnError: true),
       ]);
       if (!mounted) return;
       setState(() {

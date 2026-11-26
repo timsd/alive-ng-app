@@ -19,6 +19,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'appwrite_profile_service.dart';
 import 'role_access_service.dart';
 import 'storage_service.dart';
+import '../widgets/in_app_pdf_viewer.dart';
 
 /// Provider to access the Appwrite authentication service instance.
 final appwriteAuthServiceProvider = Provider<AppwriteAuthService>((ref) {
@@ -299,12 +300,15 @@ class AppwriteAuthService {
       debugPrint('Error clearing image memory cache: $e');
     }
 
-    // 4. Flush disk image cache (cached_network_image)
+    // 4. Flush disk image cache (cached_network_image) & in-memory PDF cache
     try {
       await DefaultCacheManager().emptyCache();
     } catch (e) {
       debugPrint('Error clearing DefaultCacheManager cache: $e');
     }
+    try {
+      InAppPdfViewerScreen.clearCache();
+    } catch (_) {}
   }
 
   Future<void> signOut() => logout();

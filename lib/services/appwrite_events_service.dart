@@ -24,7 +24,7 @@ class AppwriteEventsService {
       final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.eventsCollectionId,
-        queries: [Query.limit(200)],
+        queries: [Query.orderDesc(r'$createdAt'), Query.limit(200)],
       );
 
       final rawMaps = response.rows
@@ -59,7 +59,7 @@ class AppwriteEventsService {
       final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
         tableId: AppwriteBackendConfig.announcementsCollectionId,
-        queries: [Query.limit(200)],
+        queries: [Query.orderDesc(r'$createdAt'), Query.limit(200)],
       );
 
       final now = DateTime.now();

@@ -296,11 +296,17 @@ class AppwriteMeetingFileService {
         'updated_at': createdAt,
       };
 
+      if (!storageSucceeded) {
+        throw Exception(
+          'Cloud file upload failed for "$fileName". Please check your connection and try again.',
+        );
+      }
+
       // Cache metadata only locally (never decode binary .docx/PDFs into SharedPreferences/localStorage)
       await _saveLocalMeetingFile({
         'id': fileId,
         ...rowData,
-        'is_local_only': !storageSucceeded,
+        'is_local_only': false,
       });
 
       bool dbSucceeded = false;
@@ -316,8 +322,10 @@ class AppwriteMeetingFileService {
         _logger.warning('TablesDB createRow note: $tableErr');
       }
 
-      if (!storageSucceeded && !dbSucceeded) {
-        throw Exception('Cloud upload failed for "$fileName". Please check your connection and try again.');
+      if (!dbSucceeded) {
+        throw Exception(
+          'File uploaded but metadata could not be saved for "$fileName". Please try again.',
+        );
       }
     } catch (e) {
       _logger.error('Error uploading meeting file: $e');

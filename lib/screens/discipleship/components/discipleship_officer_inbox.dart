@@ -849,8 +849,29 @@ class _DiscipleshipOfficerInboxViewState
     );
   }
 
+  List<OfficerOfficeAssignment> get _visibleOffices {
+    final roleService = RoleAccessService.instance;
+    if (roleService.canAccessAdmin()) {
+      return officerAssignments;
+    }
+    final user = AuthService.instance.currentUser;
+    final uid = (user?.uid ?? '').trim();
+    final email = (user?.email ?? '').trim().toLowerCase();
+    return officerAssignments.where((a) {
+      final matchesId = uid.isNotEmpty && a.officerId.trim() == uid;
+      final matchesEmail =
+          email.isNotEmpty && a.officerEmail.trim().toLowerCase() == email;
+      return matchesId || matchesEmail;
+    }).toList();
+  }
+
   // ─── Header Card ───
   Widget _buildHeaderCard(BuildContext context, ThemeData theme, bool isDark) {
+    final visibleOffices = _visibleOffices;
+    final effectiveSelectedOffice =
+        visibleOffices.any((a) => a.id == selectedOffice?.id)
+            ? visibleOffices.firstWhere((a) => a.id == selectedOffice?.id)
+            : (visibleOffices.isNotEmpty ? visibleOffices.first : null);
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -904,7 +925,7 @@ class _DiscipleshipOfficerInboxViewState
               ],
             ),
             const SizedBox(height: 14),
-            if (officerAssignments.isEmpty)
+            if (visibleOffices.isEmpty)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -916,10 +937,12 @@ class _DiscipleshipOfficerInboxViewState
                     Icon(Icons.info_outline_rounded, size: 16,
                         color: theme.colorScheme.error),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'No officer assignments found. Contact the Administrator.',
-                        style: TextStyle(fontSize: 12),
+                        officerAssignments.isEmpty
+                            ? 'No officer assignments found. Contact the Administrator.'
+                            : 'No office is currently assigned to your account. Contact the Administrator.',
+                        style: const TextStyle(fontSize: 12),
                       ),
                     ),
                   ],
@@ -927,7 +950,7 @@ class _DiscipleshipOfficerInboxViewState
               )
             else
               ModernDropdownFormField<OfficerOfficeAssignment>(
-                value: selectedOffice,
+                value: effectiveSelectedOffice,
                 isExpanded: true,
                 decoration: InputDecoration(
                   labelText: 'Select Office',
@@ -953,7 +976,7 @@ class _DiscipleshipOfficerInboxViewState
                   fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
-                items: officerAssignments.map((a) {
+                items: visibleOffices.map((a) {
                   return DropdownMenuItem(
                     value: a,
                     child: Text(
@@ -1097,7 +1120,11 @@ class _DiscipleshipOfficerInboxViewState
     final normalizedStatus = report.status.toLowerCase();
     final isDone = normalizedStatus == 'done';
     final isReviewed = normalizedStatus == 'reviewed';
-    final officerName = selectedOffice?.officerName ?? report.feedbackOfficerName ?? 'Officer';
+    final authDisplayName =
+        AuthService.instance.currentUser?.displayName?.trim() ?? '';
+    final officerName = authDisplayName.isNotEmpty
+        ? authDisplayName
+        : (selectedOffice?.officerName ?? report.feedbackOfficerName ?? 'Officer');
     final isExpanded = _expandedReportId == report.id;
 
     final statusColor = isDone

@@ -41,7 +41,10 @@ class DiscipleshipService {
     String? searchQuery,
   }) async {
     try {
-      final queries = <String>[Query.orderDesc('updated_at')];
+      final queries = <String>[
+        Query.orderDesc('updated_at'),
+        Query.limit(500),
+      ];
       if (discipleMakerId != null) {
         queries.add(Query.equal('disciple_maker_id', discipleMakerId));
       }
@@ -334,7 +337,10 @@ class DiscipleshipService {
     PrayerRequestStatus? status,
   }) async {
     try {
-      final queries = <String>[Query.orderDesc('date_requested')];
+      final queries = <String>[
+        Query.orderDesc('date_requested'),
+        Query.limit(500),
+      ];
       if (contactId != null) queries.add(Query.equal('contact_id', contactId));
       if (discipleMakerId != null) {
         queries.add(Query.equal('disciple_maker_id', discipleMakerId));
@@ -570,10 +576,8 @@ class DiscipleshipService {
     );
     final rowId = AppwriteIdUtils.toValidUid(updatedRequest.id);
     final data = _prayerRequestData(updatedRequest);
-    // Ensure both boolean is_answered and string status are present
-    data['is_answered'] = updatedRequest.status == PrayerRequestStatus.answered;
 
-    // 1. Attempt full update with all fields on discipleship collection
+    // 1. Attempt full update with schema-valid fields on discipleship collection
     try {
       final document = await _tables.updateRow(
         databaseId: AppwriteBackendConfig.databaseId,
@@ -583,11 +587,13 @@ class DiscipleshipService {
       );
       return _prayerRequestFromDocument(document);
     } catch (e) {
-      _logger.warning('Discipleship prayer full update failed, retrying without optional schema fields: $e');
+      _logger.warning(
+          'Discipleship prayer full update failed, retrying without optional schema fields: $e');
 
-      // 2. Fallback 1: remove fields that may be missing in older schemas (e.g. is_public_on_prayer_wall)
+      // 2. Fallback 1: remove optional columns that may not exist on older schemas
       final fallbackData = Map<String, dynamic>.from(data)
-        ..remove('is_public_on_prayer_wall');
+        ..remove('is_public_on_prayer_wall')
+        ..remove('history');
       try {
         final document = await _tables.updateRow(
           databaseId: AppwriteBackendConfig.databaseId,
@@ -597,18 +603,16 @@ class DiscipleshipService {
         );
         return _prayerRequestFromDocument(document);
       } catch (e2) {
-        _logger.warning('Fallback 1 failed, retrying with core update attributes: $e2');
+        _logger.warning(
+            'Fallback 1 failed, retrying with core discipleship schema attributes: $e2');
 
-        // 3. Fallback 2: essential attributes only
-        final isAns = updatedRequest.status == PrayerRequestStatus.answered;
+        // 3. Fallback 2: essential attributes only (schema-valid for discipleship_prayer_requests)
         final coreData = <String, dynamic>{
           'status': updatedRequest.status.name,
-          'is_answered': isAns,
           'updated_at': _iso(updatedRequest.updatedAt),
         };
         if (updatedRequest.dateAnswered != null) {
           coreData['date_answered'] = _iso(updatedRequest.dateAnswered!);
-          coreData['answered_at'] = _iso(updatedRequest.dateAnswered!);
         }
         if (updatedRequest.answer != null && updatedRequest.answer!.isNotEmpty) {
           coreData['answer'] = updatedRequest.answer;
@@ -623,10 +627,12 @@ class DiscipleshipService {
           );
           return _prayerRequestFromDocument(document);
         } catch (e3) {
-          _logger.warning('Discipleship table update failed, attempting general prayer_requests table: $e3');
+          _logger.warning(
+              'Discipleship table update failed, attempting general prayer_requests table: $e3');
 
           // 4. Fallback 3: Try general prayer_requests collection (for mirrored/prayer-wall requests)
           try {
+            final isAns = updatedRequest.status == PrayerRequestStatus.answered;
             final generalData = <String, dynamic>{
               'status': updatedRequest.status.name,
               'is_answered': isAns,
@@ -643,9 +649,12 @@ class DiscipleshipService {
             );
             return updatedRequest;
           } catch (e4) {
-            _logger.warning('All remote attempts to update prayer request failed, returning optimistic updated request: $e4');
-            // Return optimistic model so user flow is uninterrupted
-            return updatedRequest;
+            _logger.error(
+                'All remote attempts to update prayer request failed', e4);
+            throw DatabaseException(
+              'Failed to update prayer request',
+              originalError: e4,
+            );
           }
         }
       }
@@ -661,6 +670,7 @@ class DiscipleshipService {
         queries: [
           Query.equal('contact_id', contactId),
           Query.orderDesc('date'),
+          Query.limit(500),
         ],
       );
       return response.rows.map(_milestoneFromDocument).toList();
@@ -1060,6 +1070,7 @@ class DiscipleshipService {
 
   Future<List<OfficerOfficeAssignment>> getOfficerAssignments() async {
     try {
+      bool remoteRowMissing = false;
       try {
         final row = await _tables.getRow(
           databaseId: AppwriteBackendConfig.databaseId,
@@ -1083,7 +1094,17 @@ class DiscipleshipService {
             return parsed;
           }
         }
-      } catch (_) {}
+      } on AppwriteException catch (e) {
+        if (e.code == 404) {
+          remoteRowMissing = true;
+        } else {
+          _logger.warning(
+              'Transient Appwrite error reading officer assignments (${e.code}); using local fallback without overwriting remote settings.');
+        }
+      } catch (e) {
+        _logger.warning(
+            'Transient error reading officer assignments; using local fallback without overwriting remote settings: $e');
+      }
 
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getStringList(_officerAssignmentsKey);
@@ -1122,7 +1143,11 @@ class DiscipleshipService {
           assignedAt: DateTime.now().toUtc(),
         ),
       ];
-      await _saveOfficerAssignments(defaults);
+      // Only seed shared app_settings if the row genuinely does not exist (404),
+      // never on transient network/offline failures.
+      if (remoteRowMissing) {
+        await _saveOfficerAssignments(defaults);
+      }
       return defaults;
     } catch (e) {
       _logger.error('Failed to get officer assignments', e);
@@ -1604,7 +1629,10 @@ class DiscipleshipService {
     DateTime? startDate,
     DateTime? endDate,
   }) {
-    final queries = <String>[Query.orderDesc(orderKey)];
+    final queries = <String>[
+      Query.orderDesc(orderKey),
+      Query.limit(500),
+    ];
     if (startDate != null) {
       queries
           .add(Query.greaterThanEqual(startKey ?? orderKey, _iso(startDate)));

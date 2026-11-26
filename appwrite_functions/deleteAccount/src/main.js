@@ -106,6 +106,69 @@ export default async ({ req, res, log, error }) => {
   if (response.ok || response.status === 404) {
     log(`Deleted auth account ${targetId}`);
 
+    // ── Server-side PII & privilege cascade cleanup (matches Privacy Policy §7.3) ──
+    const dbId = process.env.APPWRITE_DATABASE_ID || '6a08941e0002e4756157';
+    const usersColId = process.env.APPWRITE_USERS_COLLECTION_ID || '6a08943100226f5b4963';
+    const base = endpoint.replace(/\/+$/, '');
+    const authHeaders = {
+      'X-Appwrite-Project': project,
+      'X-Appwrite-Key': apiKey,
+      'Content-Type': 'application/json',
+    };
+    const deleteDocSafe = async (colId, docId) => {
+      try {
+        await fetch(
+          `${base}/databases/${dbId}/collections/${colId}/documents/${encodeURIComponent(docId)}`,
+          { method: 'DELETE', headers: authHeaders },
+        );
+      } catch (_) {}
+    };
+    const listUserDocs = async (colId, attr = 'user_id') => {
+      try {
+        const q = encodeURIComponent(JSON.stringify({ method: 'equal', attribute: attr, values: [targetId] }));
+        const l = encodeURIComponent(JSON.stringify({ method: 'limit', values: [100] }));
+        const r = await fetch(
+          `${base}/databases/${dbId}/collections/${colId}/documents?queries[]=${q}&queries[]=${l}`,
+          { headers: authHeaders },
+        );
+        if (!r.ok) return [];
+        const data = await r.json();
+        return Array.isArray(data.documents) ? data.documents : [];
+      } catch (_) {
+        return [];
+      }
+    };
+
+    // 1. Delete profile row & notification_settings row
+    await deleteDocSafe(usersColId, targetId);
+    await deleteDocSafe('notification_settings', targetId);
+
+    // 2. Remove push_tokens rows
+    for (const tokDoc of await listUserDocs('push_tokens')) {
+      await deleteDocSafe('push_tokens', tokDoc.$id);
+    }
+
+    // 3. Unbind any org_office_holders rows so deleted account no longer holds office
+    for (const hDoc of await listUserDocs('org_office_holders')) {
+      try {
+        await fetch(
+          `${base}/databases/${dbId}/collections/org_office_holders/documents/${encodeURIComponent(hDoc.$id)}`,
+          {
+            method: 'PATCH',
+            headers: authHeaders,
+            body: JSON.stringify({ data: { user_id: null, is_current: false } }),
+          },
+        );
+      } catch (_) {}
+    }
+
+    // 4. Delete private prayer requests authored by this user
+    for (const pDoc of await listUserDocs('prayer_requests')) {
+      if (pDoc.is_private === true) {
+        await deleteDocSafe('prayer_requests', pDoc.$id);
+      }
+    }
+
     // ── Confirmation email ────────────────────────────────────────────────
     // Sent after the delete succeeds, and only then: telling a member their
     // account was closed when it was not would be worse than sending nothing.

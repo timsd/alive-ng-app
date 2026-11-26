@@ -963,7 +963,9 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
             ),
             Expanded(
               child: Text(
-                'I would like to add 3.5% to cover processing fees so that my donation goes a little further.',
+                _selectedCurrency == 'NGN'
+                    ? 'I would like to cover Paystack processing fees (1.5% + ₦100, capped at ₦2,000) so my full gift goes to the ministry.'
+                    : 'I would like to add 3.5% to cover international processing fees so my full gift goes to the ministry.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
@@ -975,11 +977,20 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
     );
   }
 
+  double _computeProcessingFee(double amount, String currency) {
+    if (!_coverProcessingFees || amount <= 0) return 0.0;
+    if (currency == 'NGN') {
+      final rawFee = (amount * 0.015) + (amount >= 2500 ? 100.0 : 0.0);
+      return rawFee > 2000.0 ? 2000.0 : rawFee;
+    }
+    return amount * 0.035;
+  }
+
   Widget _buildDonateButton(BuildContext context, ThemeData theme) {
     final isDark = theme.brightness == Brightness.dark;
     final isEnabled = _selectedAmount > 0 && !_isSubmitting;
     final totalAmount =
-        _coverProcessingFees ? _selectedAmount * 1.035 : _selectedAmount;
+        _selectedAmount + _computeProcessingFee(_selectedAmount, _selectedCurrency);
 
     return Column(
       children: [
@@ -1438,18 +1449,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen>
       return;
     }
 
-    // Adjust amount to include processing fees if selected:
-    // Paystack NGN local fee: 1.5% + ₦100 (waived under ₦2,500), capped at ₦2,000.
-    // International / USD fee: 3.5%.
-    final double feeAmount;
-    if (!_coverProcessingFees) {
-      feeAmount = 0.0;
-    } else if (currency == 'NGN') {
-      final rawFee = (amount * 0.015) + (amount >= 2500 ? 100.0 : 0.0);
-      feeAmount = rawFee > 2000.0 ? 2000.0 : rawFee;
-    } else {
-      feeAmount = amount * 0.035;
-    }
+    // Adjust amount to include processing fees if selected (shared with UI button total)
+    final double feeAmount = _computeProcessingFee(amount, currency);
     final totalAmount = amount + feeAmount;
 
     setState(() => _isSubmitting = true);

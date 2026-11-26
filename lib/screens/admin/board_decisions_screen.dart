@@ -38,10 +38,13 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
   }
 
   Future<void> _loadDecisions() async {
-    setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() => _isLoading = true);
+    }
     try {
       final decisions = await _boardService.getBoardDecisions();
       final mapped = decisions.map((e) => BoardDecision.fromJson(e)).toList();
+      if (!mounted) return;
       setState(() {
         _decisions = mapped;
       });
@@ -54,7 +57,9 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -403,7 +408,9 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                         radius: 14,
                         backgroundColor: colorScheme.primaryContainer,
                         child: Text(
-                          decision.proposedBy[0].toUpperCase(),
+                          decision.proposedBy.trim().isNotEmpty
+                              ? decision.proposedBy.trim()[0].toUpperCase()
+                              : '?',
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -597,16 +604,38 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                   ElevatedButton(
                     onPressed: () async {
                       final authService = AuthService.instance;
-                      final success =
-                          await _boardService.castBoardVote(decision.id, {
-                        'voter_id': authService.currentUser?.uid ?? 'unknown',
-                        'voter_name':
-                            authService.currentUser?.displayName ?? 'Admin',
-                        'vote': 'approve',
-                      });
-                      if (success && context.mounted) {
-                        Navigator.pop(context);
-                        _loadDecisions();
+                      final uid = authService.currentUser?.uid;
+                      if (uid == null || uid.isEmpty) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please sign in to cast a vote.'),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+                      try {
+                        final success =
+                            await _boardService.castBoardVote(decision.id, {
+                          'voter_id': uid,
+                          'voter_name':
+                              authService.currentUser?.displayName ?? 'Admin',
+                          'vote': 'approve',
+                        });
+                        if (success && context.mounted) {
+                          Navigator.pop(context);
+                          _loadDecisions();
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Failed to submit vote: ${ErrorHandler.getUserFriendlyMessage(e)}'),
+                            ),
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -617,16 +646,38 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                   ElevatedButton(
                     onPressed: () async {
                       final authService = AuthService.instance;
-                      final success =
-                          await _boardService.castBoardVote(decision.id, {
-                        'voter_id': authService.currentUser?.uid ?? 'unknown',
-                        'voter_name':
-                            authService.currentUser?.displayName ?? 'Admin',
-                        'vote': 'reject',
-                      });
-                      if (success && context.mounted) {
-                        Navigator.pop(context);
-                        _loadDecisions();
+                      final uid = authService.currentUser?.uid;
+                      if (uid == null || uid.isEmpty) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please sign in to cast a vote.'),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+                      try {
+                        final success =
+                            await _boardService.castBoardVote(decision.id, {
+                          'voter_id': uid,
+                          'voter_name':
+                              authService.currentUser?.displayName ?? 'Admin',
+                          'vote': 'reject',
+                        });
+                        if (success && context.mounted) {
+                          Navigator.pop(context);
+                          _loadDecisions();
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Failed to submit vote: ${ErrorHandler.getUserFriendlyMessage(e)}'),
+                            ),
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -637,16 +688,38 @@ class _BoardDecisionsScreenState extends State<BoardDecisionsScreen> {
                   OutlinedButton(
                     onPressed: () async {
                       final authService = AuthService.instance;
-                      final success =
-                          await _boardService.castBoardVote(decision.id, {
-                        'voter_id': authService.currentUser?.uid ?? 'unknown',
-                        'voter_name':
-                            authService.currentUser?.displayName ?? 'Admin',
-                        'vote': 'abstain',
-                      });
-                      if (success && context.mounted) {
-                        Navigator.pop(context);
-                        _loadDecisions();
+                      final uid = authService.currentUser?.uid;
+                      if (uid == null || uid.isEmpty) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please sign in to cast a vote.'),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+                      try {
+                        final success =
+                            await _boardService.castBoardVote(decision.id, {
+                          'voter_id': uid,
+                          'voter_name':
+                              authService.currentUser?.displayName ?? 'Admin',
+                          'vote': 'abstain',
+                        });
+                        if (success && context.mounted) {
+                          Navigator.pop(context);
+                          _loadDecisions();
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Failed to submit vote: ${ErrorHandler.getUserFriendlyMessage(e)}'),
+                            ),
+                          );
+                        }
                       }
                     },
                     child: const Text('Vote Abstain'),

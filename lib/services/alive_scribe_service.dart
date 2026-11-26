@@ -325,7 +325,25 @@ class AliveScribeService {
   // ──────────────────────────────────────────────────────────
   //  Local Audio Capture & Speech-to-Text
   // ──────────────────────────────────────────────────────────
+  Future<bool>? _initSpeechFuture;
+
   Future<bool> initializeSpeech() async {
+    if (_isDisposed) return false;
+    if (_isSttInitialized) return true;
+    final inFlight = _initSpeechFuture;
+    if (inFlight != null) return inFlight;
+    final future = _initializeSpeechInternal();
+    _initSpeechFuture = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_initSpeechFuture, future)) {
+        _initSpeechFuture = null;
+      }
+    }
+  }
+
+  Future<bool> _initializeSpeechInternal() async {
     if (_isDisposed) return false;
     if (_isSttInitialized) return true;
     try {

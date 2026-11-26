@@ -136,7 +136,8 @@ class AppwriteChatService extends ChangeNotifier {
         Query.limit(limit),
       ];
       if (before != null) {
-        queries.add(Query.cursorBefore(before));
+        // In DESC ordering, cursorAfter fetches older messages preceding `before`
+        queries.add(Query.cursorAfter(before));
       }
 
       final response = await _tables.listRows(

@@ -694,6 +694,7 @@ class _KidsMissionScreenState extends ConsumerState<KidsMissionScreen> {
 
   /// The real mission activity flow — verification + scoring + reward.
   void _openMissionFlow(Mission mission) {
+    if (!mounted) return;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -1089,18 +1090,18 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
   Future<void> _toggleListening() async {
     if (_listening) {
       await _speech.stop();
-      if (mounted) {
-        setState(() {
-          _listening = false;
-          _voiceLevel = 0.0;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _listening = false;
+        _voiceLevel = 0.0;
+      });
       _scoreRecitation();
       return;
     }
     if (!_speechAvailable) {
       await _initSpeech();
-      if (!_speechAvailable && mounted) {
+      if (!mounted) return;
+      if (!_speechAvailable) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text(
               'Microphone is not available. Please allow mic permission and try again.'),
@@ -1108,6 +1109,7 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
         return;
       }
     }
+    if (!mounted) return;
     _hasScoredSession = false;
     setState(() {
       _transcript = '';
@@ -1156,6 +1158,7 @@ class _MissionActivitySheetState extends State<_MissionActivitySheet> {
   }
 
   void _scoreRecitation() {
+    if (!mounted) return;
     if (_hasScoredSession) return;
     if (_transcript.trim().isEmpty) return;
     final expected = _expectedText;

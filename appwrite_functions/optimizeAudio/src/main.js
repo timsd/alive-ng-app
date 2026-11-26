@@ -42,8 +42,17 @@ export default async ({ req, res, log, error }) => {
       if (!authorized) {
         try {
           const uDoc = await databases.getDocument(databaseId, usersTableId, callerUserId);
+          const approvalStatus = String(uDoc?.approval_status || '').trim().toLowerCase();
+          const isApprovedActive =
+            uDoc?.is_archived !== true &&
+            uDoc?.is_approved === true &&
+            (approvalStatus === '' || approvalStatus === 'approved');
           const r = String(uDoc?.role || '').toLowerCase().trim();
-          if (uDoc?.is_admin === true || ['admin', 'super_admin', 'leader', 'director', 'bod', 'trustee'].includes(r)) {
+          if (
+            isApprovedActive &&
+            (uDoc?.is_admin === true ||
+              ['admin', 'super_admin', 'leader', 'director', 'bod', 'trustee'].includes(r))
+          ) {
             authorized = true;
           }
         } catch (_) {}

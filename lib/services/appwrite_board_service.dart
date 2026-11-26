@@ -237,10 +237,27 @@ class AppwriteBoardService {
     }
   }
 
+  static const Set<String> _jsonFieldKeys = {
+    'votes',
+    'metadata',
+    'attachments',
+    'tags',
+    'agenda_items',
+    'attendees',
+    'action_items',
+    'resolutions',
+    'participants',
+    'permissions',
+    'settings',
+    'metrics',
+    'data',
+    'decisions',
+  };
+
   Map<String, dynamic> _documentData(dynamic document) {
     final data = Map<String, dynamic>.from(document.data as Map);
     return {
-      ...data.map((key, value) => MapEntry(key, _readValue(value))),
+      ...data.map((key, value) => MapEntry(key, _readValue(key, value))),
       'id': document.$id,
     };
   }
@@ -274,8 +291,9 @@ class AppwriteBoardService {
     return payload;
   }
 
-  dynamic _readValue(dynamic value) {
+  dynamic _readValue(String key, dynamic value) {
     if (value is! String) return value;
+    if (!_jsonFieldKeys.contains(key)) return value;
     final trimmed = value.trim();
     if ((!trimmed.startsWith('{') || !trimmed.endsWith('}')) &&
         (!trimmed.startsWith('[') || !trimmed.endsWith(']'))) {

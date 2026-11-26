@@ -4,10 +4,8 @@ import '../../../models/discipleship_models.dart';
 /// Helper methods and presentation utilities for discipleship tracking.
 class DiscipleshipHelpers {
   static String getLevelDisplayName(DiscipleshipLevel level) {
-    return level.name
-        .split('')
-        .map((c) => c == level.name[0] ? c.toUpperCase() : c)
-        .join('');
+    if (level.name.isEmpty) return '';
+    return '${level.name[0].toUpperCase()}${level.name.substring(1)}';
   }
 
   static Color getLevelColor(DiscipleshipLevel level) {

@@ -47,7 +47,8 @@ async function checkIsAdminCaller({ req, userId }) {
     );
     if (authUserRes.ok) {
       const authUser = await authUserRes.json();
-      userEmail = String(authUser?.email || '').toLowerCase().trim();
+      const isEmailVerified = authUser?.emailVerification === true;
+      userEmail = isEmailVerified ? String(authUser?.email || '').toLowerCase().trim() : '';
       const superAdminEmails = (process.env.APPWRITE_SUPER_ADMIN_EMAILS || '')
         .toLowerCase()
         .split(',')
@@ -72,7 +73,14 @@ async function checkIsAdminCaller({ req, userId }) {
     if (uRes.ok) {
       const uDoc = await uRes.json();
       const r = String(uDoc?.role || '').toLowerCase().trim();
-      if (uDoc?.is_admin === true || ['admin', 'super_admin', 'treasurer', 'president', 'director', 'bod', 'trustee', 'leader'].includes(r)) {
+      const isApprovedAccount =
+        uDoc?.is_archived !== true &&
+        (uDoc?.is_approved === true || String(uDoc?.approval_status || '').toLowerCase() === 'approved');
+      if (
+        isApprovedAccount &&
+        (uDoc?.is_admin === true ||
+          ['admin', 'super_admin', 'treasurer', 'president', 'director', 'bod', 'trustee', 'leader'].includes(r))
+      ) {
         return true;
       }
     }
@@ -145,14 +153,16 @@ export default async ({ req, res, log, error }) => {
       : process.env.SENDER_EMAIL || DEFAULT_SENDER;
     // Every outbound email replies to the monitored support mailbox unless the
     // caller explicitly overrides it in the execution body.
-    const replyTo =
+    const rawReplyTo =
       (typeof body.reply_to === 'string' && body.reply_to.trim()) ||
       (typeof body.replyTo === 'string' && body.replyTo.trim()) ||
       process.env.REPLY_TO_EMAIL ||
       defaultReplyTo;
+    const replyTo = /^[^\s@\r\n]+@[^\s@\r\n]+\.[^\s@\r\n]+$/.test(rawReplyTo)
+      ? rawReplyTo
+      : (process.env.REPLY_TO_EMAIL || defaultReplyTo);
     // Parse CC as either an array or a comma-separated string, validate every
-    // address individually, deduplicate against `to`, and include the archive
-    // mailbox cleanly so Resend never rejects comma-joined strings (HTTP 422).
+    // address individually (rejecting CR/LF), cap at 20 recipients, and deduplicate.
     const rawCcItems = Array.isArray(body.cc)
       ? body.cc
       : typeof body.cc === 'string' && body.cc.trim()
@@ -161,8 +171,8 @@ export default async ({ req, res, log, error }) => {
     const ccList = [...new Set(
       rawCcItems
         .map((addr) => String(addr || '').trim())
-        .filter((addr) => addr && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)),
-    )];
+        .filter((addr) => addr && /^[^\s@\r\n]+@[^\s@\r\n]+\.[^\s@\r\n]+$/.test(addr)),
+    )].slice(0, 20);
     const ccAddress = ccList[0] || replyTo;
 
     const trigger = (req.headers['x-appwrite-trigger'] || '').toLowerCase();
@@ -331,33 +341,37 @@ export default async ({ req, res, log, error }) => {
     }
 
     const to = validateEmail(body.to);
-    const subject = validateSubject(body.subject);
+    const subject = validateSubject(body.subject).replace(/[\r\n]+/g, ' ').trim();
     const html = validateHtml(body.html);
 
     // Prevent regular members from forging official donation receipts or using
-    // ALIVE's verified domain as an arbitrary email relay to third parties.
-    // Non-admin signed-in users may only send system/support notifications
-    // addressed directly to the ministry inbox (replyTo / app@alivenigeria.org).
+    // ALIVE's verified domain as an arbitrary email relay via `to`, `cc`, or `reply_to`.
+    // Non-admin signed-in users may ONLY send support/contact messages directly
+    // to the ministry inbox with no third-party CC or spoofed Reply-To.
     const ministryInbox = (process.env.REPLY_TO_EMAIL || defaultReplyTo).toLowerCase().trim();
-    const isAdminOnlyTarget = isReceipt || to.toLowerCase().trim() !== ministryInbox;
-    if (!isInternal && isAdminOnlyTarget) {
-      const isAdminCaller = await checkIsAdminCaller({ req, userId });
-      if (!isAdminCaller) {
+    const hasExternalCc = ccList.some((addr) => addr.toLowerCase() !== ministryInbox);
+    const isAdminOnlyTarget =
+      isReceipt || to.toLowerCase().trim() !== ministryInbox || hasExternalCc;
+    let isAdminCaller = isInternal;
+    if (!isInternal) {
+      isAdminCaller = await checkIsAdminCaller({ req, userId });
+      if (isAdminOnlyTarget && !isAdminCaller) {
         return res.json({
           error: isReceipt
             ? 'Only server-side payment verification or admins may send receipts.'
-            : 'Only administrators may send outbound emails to external recipients.',
+            : 'Only administrators may send outbound emails or CC external recipients.',
         }, 403);
       }
     }
 
-    const filteredCc = ccList.filter(
-      (addr) => addr.toLowerCase() !== to.toLowerCase().trim(),
-    );
+    const effectiveReplyTo = isAdminCaller ? replyTo : ministryInbox;
+    const filteredCc = isAdminCaller
+      ? ccList.filter((addr) => addr.toLowerCase() !== to.toLowerCase().trim())
+      : [];
     const resendPayload = {
       from,
       to: [to],
-      reply_to: replyTo,
+      reply_to: effectiveReplyTo,
       subject,
       html,
     };

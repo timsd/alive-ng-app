@@ -435,7 +435,10 @@ export default async ({ req, res, log, error }) => {
           try {
             const uDoc = await authDb.getDocument(databaseId, usersCollectionId, callerId);
             const r = String(uDoc.role || '').toLowerCase();
-            if (uDoc.is_admin === true || ['admin', 'super_admin', 'treasurer'].includes(r)) {
+            const isApproved =
+              uDoc.is_archived !== true &&
+              (uDoc.is_approved === true || String(uDoc.approval_status || '').toLowerCase() === 'approved');
+            if (isApproved && (uDoc.is_admin === true || ['admin', 'super_admin', 'treasurer'].includes(r))) {
               isAuthorizedAdmin = true;
             }
           } catch (_) {}
@@ -546,6 +549,7 @@ export default async ({ req, res, log, error }) => {
       // Derive donor email authoritatively from the authenticated Appwrite account
       // so no caller can enumerate or cancel another member's subscriptions.
       let verifiedEmail = '';
+      let isEmailVerified = false;
       try {
         const fnEp = process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT;
         const fnPr = process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
@@ -553,13 +557,19 @@ export default async ({ req, res, log, error }) => {
         if (fnEp && fnPr && fnKey) {
           const uClient = new Client().setEndpoint(fnEp).setProject(fnPr).setKey(fnKey);
           const authUser = await new Users(uClient).get(callerId);
-          verifiedEmail = String(authUser?.email || '').trim().toLowerCase();
+          isEmailVerified = authUser?.emailVerification === true;
+          verifiedEmail = isEmailVerified ? String(authUser?.email || '').trim().toLowerCase() : '';
         }
       } catch (lookupErr) {
         log(`Subscription caller lookup failed: ${lookupErr.message}`);
       }
       if (!verifiedEmail) {
-        return fnError('Could not verify your account email.', 403);
+        return fnError(
+          isEmailVerified
+            ? 'Could not verify your account email.'
+            : 'Please verify your email address before managing subscriptions.',
+          403,
+        );
       }
 
       const subModePrefix = paystackConfig.isTestMode ? 'sk_test_' : 'sk_live_';

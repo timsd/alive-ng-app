@@ -475,7 +475,10 @@ class ChapterService {
     }
   }
 
-  Future<List<ChapterTask>> getUserTasks(String userId) async {
+  Future<List<ChapterTask>> getUserTasks(
+    String userId, {
+    bool includeCompleted = false,
+  }) async {
     try {
       final response = await _tables.listRows(
         databaseId: AppwriteBackendConfig.databaseId,
@@ -486,8 +489,11 @@ class ChapterService {
           Query.limit(500),
         ],
       );
-      return response.rows
-          .map(_taskFromDocument)
+      final tasks = response.rows.map(_taskFromDocument);
+      if (includeCompleted) {
+        return tasks.toList();
+      }
+      return tasks
           .where((task) => task.status != ActivityStatus.completed)
           .toList();
     } catch (e) {
@@ -738,7 +744,7 @@ class ChapterService {
       final results = await Future.wait([
         getUserMemberships(userId),
         getUserActivities(userId),
-        getUserTasks(userId),
+        getUserTasks(userId, includeCompleted: true),
       ]);
 
       final memberships = results[0] as List<ChapterMember>;

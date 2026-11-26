@@ -1443,7 +1443,11 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                               if (!widget.audioPlayer.playing) {
                                 // Never await play(): in just_audio its Future resolves
                                 // only when playback pauses or completes.
-                                unawaited(widget.audioPlayer.play());
+                                unawaited(
+                                  widget.audioPlayer.play().catchError((Object e) {
+                                    debugPrint('Transcript play error: $e');
+                                  }),
+                                );
                               }
                             } catch (e) {
                               _pendingSeekTargetMs = null;
@@ -1510,9 +1514,11 @@ class _ModernPodcastPlayerSheetState extends State<ModernPodcastPlayerSheet>
                               ),
                               if (isActive) ...[
                                 const SizedBox(width: 6),
-                                Builder(
-                                  builder: (_) {
-                                    final isAudioPlaying =
+                                StreamBuilder<bool>(
+                                  stream: widget.audioPlayer.playingStream,
+                                  initialData: widget.audioPlayer.playing,
+                                  builder: (_, playSnap) {
+                                    final isAudioPlaying = playSnap.data ??
                                         widget.audioPlayer.playing;
                                     return Container(
                                       padding: const EdgeInsets.symmetric(

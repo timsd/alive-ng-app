@@ -119,7 +119,15 @@ class _RangeSeekingAudioSource extends StreamAudioSource {
         onListen: () {
           sub = streamed.stream.listen(
             controller.add,
-            onError: controller.addError,
+            onError: (Object error, StackTrace stackTrace) {
+              if (!controller.isClosed) {
+                controller.addError(error, stackTrace);
+              }
+              client.close();
+              if (!controller.isClosed) {
+                controller.close();
+              }
+            },
             onDone: () {
               client.close();
               if (!controller.isClosed) {
@@ -129,6 +137,8 @@ class _RangeSeekingAudioSource extends StreamAudioSource {
             cancelOnError: true,
           );
         },
+        onPause: () => sub?.pause(),
+        onResume: () => sub?.resume(),
         onCancel: () async {
           await sub?.cancel();
           client.close();

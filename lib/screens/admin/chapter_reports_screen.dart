@@ -489,7 +489,7 @@ class _ChapterReportsScreenState extends State<ChapterReportsScreen> {
       case ReportingLevel.directorate:
         return _isPresident || _isDirector || _isCoordinator;
       case ReportingLevel.chapter:
-        return _isDirector || _isCoordinator || true;
+        return _isDirector || _isCoordinator;
     }
   }
 

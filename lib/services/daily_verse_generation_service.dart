@@ -152,11 +152,17 @@ class DailyVerseGenerationService {
       );
 
       if (languageCode == 'en') {
-        final createdVerse = await _repo.createDailyVerse(dailyVerse);
-        await _markVerseAsUsed(bibleVerse.reference, createdVerse.translation);
-        _logger.info(
-            '✅ Created daily verse for ${_formatDateForDatabase(date)}: ${bibleVerse.reference}');
-        return createdVerse;
+        try {
+          final createdVerse = await _repo.createDailyVerse(dailyVerse);
+          await _markVerseAsUsed(bibleVerse.reference, createdVerse.translation);
+          _logger.info(
+              '✅ Created daily verse for ${_formatDateForDatabase(date)}: ${bibleVerse.reference}');
+          return createdVerse;
+        } catch (e) {
+          _logger.warning(
+              '⚠️ Offline or remote save failed for daily verse (${bibleVerse.reference}); returning local verse: $e');
+          return dailyVerse;
+        }
       }
 
       return dailyVerse;

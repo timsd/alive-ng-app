@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { Client, ID, Query, Users } from 'node-appwrite';
 
 const DEFAULT_ENDPOINT = 'https://api.alivenigeria.org/v1';
@@ -29,6 +30,11 @@ async function verifyGoogleIdToken(idToken) {
     throw new Error(payload.error_description || payload.error || 'Invalid Google ID token.');
   }
 
+  const iss = String(payload.iss || '').trim();
+  if (iss && iss !== 'accounts.google.com' && iss !== 'https://accounts.google.com') {
+    throw new Error('Invalid Google token issuer.');
+  }
+
   const allowedAudiences = getAllowedClientIds();
   const aud = String(payload.aud || '').trim();
   const azp = String(payload.azp || '').trim();
@@ -58,6 +64,9 @@ async function verifyGoogleIdToken(idToken) {
 
 export default async ({ req, res, log, error }) => {
   try {
+    if (req.method && req.method.toUpperCase() !== 'POST') {
+      return res.json({ error: 'Method not allowed. Use POST.' }, 405);
+    }
     const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || DEFAULT_ENDPOINT;
     const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID;
     const apiKey = process.env.APPWRITE_FUNCTION_API_KEY || req.headers['x-appwrite-key'];
@@ -99,6 +108,12 @@ export default async ({ req, res, log, error }) => {
     if (existing.users && existing.users.length > 0) {
       user = existing.users[0];
       if (!user.emailVerification) {
+        // Prevent pre-account takeover: if an unverified account was pre-created
+        // with this email before the real owner signed in via Google, invalidate
+        // any prior sessions and rotate its password to an unguessable CSPRNG value.
+        await users.deleteSessions(user.$id).catch(() => {});
+        const randomPassword = crypto.randomBytes(32).toString('hex');
+        await users.updatePassword(user.$id, randomPassword).catch(() => {});
         await users.updateEmailVerification(user.$id, true).catch(() => {});
       }
       if ((!user.name || user.name.trim() === '') && profile.name) {

@@ -1157,6 +1157,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     final room = _room;
     if (room == null) return;
     try {
+      _isScreenShareEnabled = false;
       _roomListener?.dispose();
       _roomListener = null;
       await room.disconnect();
@@ -1498,6 +1499,9 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     final shouldEnable = !_isScreenShareEnabled;
     if (shouldEnable) {
       await MeetingPipService.instance.startScreenShareService();
+    } else {
+      // Clear flag before stopping so mediaTrack.onEnded cannot re-enter stop.
+      _isScreenShareEnabled = false;
     }
     try {
       // Standard conferencing: stream screen video AND computer/tab audio together
@@ -1557,14 +1561,15 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
       final prevOnEnded = mediaTrack.onEnded;
       mediaTrack.onEnded = () {
         prevOnEnded?.call();
-        if (_isScreenShareEnabled) {
-          _isScreenShareEnabled = false;
-          MeetingPipService.instance.stopScreenShareService();
-          unawaited(
-            participant.setScreenShareEnabled(false).catchError((_) => null),
-          );
-          _syncStateFromRoom();
+        if (_room?.localParticipant != participant || !_isScreenShareEnabled) {
+          return;
         }
+        _isScreenShareEnabled = false;
+        MeetingPipService.instance.stopScreenShareService();
+        unawaited(
+          participant.setScreenShareEnabled(false).catchError((_) => null),
+        );
+        _syncStateFromRoom();
       };
     } catch (e) {
       debugPrint('[LiveKitMeetingGateway] screenShare onEnded guard note: $e');
@@ -2211,6 +2216,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
     }
 
     try {
+      _isScreenShareEnabled = false;
       _roomListener?.dispose();
       _roomListener = null;
       await room.disconnect();
@@ -2325,6 +2331,7 @@ class LiveKitMeetingGateway with ChangeNotifier implements MeetingGateway {
 
   @override
   void dispose() {
+    _isScreenShareEnabled = false;
     _breakoutTimer?.cancel();
     _roomListener?.dispose();
     _roomListener = null;
