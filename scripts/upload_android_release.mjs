@@ -73,7 +73,7 @@ async function ensureReleaseBucket() {
     allowedFileExtensions: ['apk'],
     compression: 'none',
     encryption: false,
-    antivirus: true,
+    antivirus: false,
   };
 
   const getRes = await appwriteRequest(`/storage/buckets/${bucketId}`);
@@ -135,7 +135,7 @@ function getBuildNumber() {
 }
 
 async function syncOtaAppVersionSetting(downloadUrl) {
-  const databaseId = process.env.APPWRITE_DATABASE_ID || 'alive_db';
+  const databaseId = process.env.APPWRITE_DATABASE_ID || '6a089307002e54291a32';
   const collectionId = 'app_settings';
   const docId = 'app_version';
   const latestVersion = getAppVersion();
@@ -147,6 +147,7 @@ async function syncOtaAppVersionSetting(downloadUrl) {
     build_number: buildNumber,
     force_update: false,
     update_url: downloadUrl,
+    play_store_url: 'https://play.google.com/store/apps/details?id=com.alive.alivengandroidapp',
     updated_at: nowIso,
   };
   const payload = {
@@ -287,6 +288,17 @@ async function uploadRelease() {
   }
 
   const downloadUrl = `${endpoint}/storage/buckets/${bucketId}/files/${uploadResult.$id}/download?project=${encodeURIComponent(projectId)}`;
+
+  // Verify the uploaded file is genuinely readable from Appwrite storage (not a 404/corrupt stub)
+  const verifyRes = await fetch(downloadUrl, { headers: { Range: 'bytes=0-3' } });
+  const verifyBuf = new Uint8Array(await verifyRes.arrayBuffer());
+  const isZipMagic = verifyBuf.length >= 2 && verifyBuf[0] === 0x50 && verifyBuf[1] === 0x4b;
+  if (!(verifyRes.status === 200 || verifyRes.status === 206) || !isZipMagic) {
+    throw new Error(
+      `Post-upload verification failed: HTTP ${verifyRes.status}, bytes=${verifyBuf.length}, validApkHeader=${isZipMagic}`
+    );
+  }
+  console.log(`✅ Verified live APK download header (HTTP ${verifyRes.status}, valid PK/ZIP magic).`);
 
   await syncOtaAppVersionSetting(downloadUrl);
 

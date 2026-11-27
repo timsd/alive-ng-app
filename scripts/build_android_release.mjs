@@ -32,12 +32,21 @@ async function fetchCoolifyEnvs() {
     return null;
   }
 
+  const cfClientId = envVars.CF_ACCESS_CLIENT_ID || process.env.CF_ACCESS_CLIENT_ID || '';
+  const cfClientSecret = envVars.CF_ACCESS_CLIENT_SECRET || process.env.CF_ACCESS_CLIENT_SECRET || '';
+
   try {
     console.log(`🌐 Querying Coolify production environment for app ${uuid}...`);
     const res = await fetch(`${base}/api/v1/applications/${uuid}/envs`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',
+        ...(cfClientId && cfClientSecret
+          ? {
+              'CF-Access-Client-Id': cfClientId,
+              'CF-Access-Client-Secret': cfClientSecret,
+            }
+          : {}),
       },
     });
     if (!res.ok) {

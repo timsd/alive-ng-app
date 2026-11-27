@@ -3,7 +3,7 @@ class AppConstants {
   static const String appName = 'ALIVE Nigeria';
   static const String appVersion = String.fromEnvironment(
     'APP_VERSION',
-    defaultValue: '2.0.11+22',
+    defaultValue: '2.0.12+23',
   );
   static String get appVersionName => appVersion.split('+').first;
   static int get appBuildNumber => appVersion.contains('+')
