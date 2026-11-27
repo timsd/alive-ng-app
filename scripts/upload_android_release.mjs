@@ -1,8 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import dns from 'node:dns';
-import { Client, Storage, Permission, Role } from 'node-appwrite';
-import { InputFile } from 'node-appwrite/file';
 
 dns.setDefaultResultOrder('ipv4first');
 
