@@ -223,7 +223,7 @@ class InAppUpdateService {
       final latestVersion = (data['latest_version'] as String?)?.trim();
       final forceUpdate = data['force_update'] == true;
       final updateUrl = (data['update_url'] as String?)?.trim() ??
-          'https://api.alivenigeria.org/v1/storage/buckets/app_releases/files/alive_ng_android_release/download?project=6a3bef53002f5090dedf';
+          'https://api.alivenigeria.org/v1/storage/buckets/app_releases/files/alive_ng_android_latest/download?project=6a3bef53002f5090dedf';
 
       if (latestVersion == null || latestVersion.isEmpty) return;
 

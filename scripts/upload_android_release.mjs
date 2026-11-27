@@ -18,7 +18,7 @@ if (fs.existsSync('.env')) {
 }
 
 const bucketId = 'app_releases';
-const fileId = 'alive_ng_android_release';
+const fileId = 'alive_ng_android_latest';
 const localArtifact = path.resolve('build/app/outputs/flutter-apk/app-release.apk');
 const artifactPath = process.env.ANDROID_RELEASE_ARTIFACT ?? localArtifact;
 

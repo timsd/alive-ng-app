@@ -50,7 +50,7 @@ const buildNumber = process.env.APP_BUILD_NUMBER ? parseInt(process.env.APP_BUIL
 const forceUpdate = (process.env.APP_VERSION_FORCE_UPDATE || 'false') === 'true';
 const updateUrl =
   process.env.APP_VERSION_UPDATE_URL ||
-  'https://api.alivenigeria.org/v1/storage/buckets/app_releases/files/alive_ng_android_release/download?project=6a3bef53002f5090dedf';
+  'https://api.alivenigeria.org/v1/storage/buckets/app_releases/files/alive_ng_android_latest/download?project=6a3bef53002f5090dedf';
 const now = new Date().toISOString();
 
 const appVersionPayload = {
