@@ -77,7 +77,7 @@
             "enabled": true,
             "logging": true,
             "events": [],
-            "schedule": "",
+            "schedule": "*/10 * * * *",
             "timeout": 60,
             "commands": "npm install",
             "scopes": [

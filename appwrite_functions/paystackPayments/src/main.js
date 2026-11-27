@@ -281,7 +281,42 @@ async function getPaystackSecretKey(log, options = {}) {
   return conf.secret;
 }
 
+let _cachedPaystackConfig = null;
+let _cachedPaystackConfigAt = 0;
+const PAYSTACK_CONFIG_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+
+async function getCachedPaystackConfigKeys(log, req = null, { forceRefresh = false } = {}) {
+  const now = Date.now();
+  if (
+    !forceRefresh &&
+    _cachedPaystackConfig &&
+    _cachedPaystackConfig.secret &&
+    now - _cachedPaystackConfigAt < PAYSTACK_CONFIG_CACHE_TTL_MS
+  ) {
+    return _cachedPaystackConfig;
+  }
+  const fresh = await getPaystackConfigKeys(log, {}, req);
+  if (fresh && fresh.secret) {
+    _cachedPaystackConfig = fresh;
+    _cachedPaystackConfigAt = now;
+  }
+  return fresh;
+}
+
 export default async ({ req, res, log, error }) => {
+  const trigger = String(req.headers?.['x-appwrite-trigger'] || '').trim().toLowerCase();
+  if (trigger === 'schedule') {
+    // Keep-warm cron trigger (*/10 * * * *): keeps the Node runtime hot 24/7
+    // and refreshes the in-memory Paystack config cache so donors never wait
+    // on a cold container start.
+    await getCachedPaystackConfigKeys(log, req, { forceRefresh: true }).catch(() => null);
+    return res.json({ ok: true, warm: true, trigger: 'schedule', ts: Date.now() });
+  }
+
+  if (req.method === 'GET') {
+    return res.json({ ok: true, warm: true, ts: Date.now() });
+  }
+
   if (req.method !== 'POST') {
     return res.json({ error: 'Method not allowed. Use POST.' }, 405);
   }
@@ -294,13 +329,21 @@ export default async ({ req, res, log, error }) => {
       parsedBody = parsedBody.body;
     }
     const body = parsedBody || {};
+    const action = body.action || 'initialize_transaction';
+
+    // Ultra-fast container warmup endpoint (no DB or Paystack network calls)
+    if (action === 'warmup' || action === 'ping') {
+      await getCachedPaystackConfigKeys(log, req).catch(() => null);
+      return res.json({ ok: true, warm: true, ts: Date.now() });
+    }
+
     if (containsRawCardData(body)) {
       return res.json({ error: 'Raw card data must be submitted only to Paystack checkout.' }, 400);
     }
 
     // Always resolve test/live mode authoritatively from server app_settings/env
     // (never allow an unauthenticated client to override test_mode).
-    const paystackConfig = await getPaystackConfigKeys(log, {}, req);
+    const paystackConfig = await getCachedPaystackConfigKeys(log, req);
     let secret = paystackConfig.secret;
     let publicKey = paystackConfig.publicKey;
     const candidateKeys = [
@@ -315,8 +358,6 @@ export default async ({ req, res, log, error }) => {
       error('Missing PAYSTACK_SECRET_KEY in function environment or app_settings.');
       return res.json({ error: 'Paystack is not configured.' }, 500);
     }
-
-    const action = body.action || 'initialize_transaction';
 
     // ── Public rate lookup (no Paystack call). Lets web + Flutter show a
     // ── live "$1 ≈ ₦X" label from the market rate instead of a constant. ──

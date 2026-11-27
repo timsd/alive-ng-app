@@ -41,7 +41,25 @@ class PaystackPaymentGateway implements PaymentGateway {
       });
       _logger.info(
           'Paystack payment gateway initialized (active key: ${PaymentConfig.paystackPublicKey})');
+      // Fire-and-forget async warmup ping so the Appwrite function container is
+      // already awake by the time the member taps Donate.
+      _warmUpPaymentFunction();
     }
+  }
+
+  void _warmUpPaymentFunction() {
+    try {
+      final functions = Functions(appwriteClient);
+      functions
+          .createExecution(
+            functionId: AppwriteBackendConfig.paystackPaymentsFunctionId,
+            body: jsonEncode({'action': 'warmup'}),
+            xasync: true,
+            method: appwrite_enums.ExecutionMethod.pOST,
+          )
+          .timeout(const Duration(seconds: 6))
+          .then<void>((_) {}, onError: (_) {});
+    } catch (_) {}
   }
 
   @override
@@ -234,11 +252,13 @@ class PaystackPaymentGateway implements PaymentGateway {
   }
 
   Future<Map<String, dynamic>> _executePaystackFunction(
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    int attempt = 1,
+  }) async {
     final bodyJson = jsonEncode(payload);
 
-    // 1. First attempt via Appwrite Functions SDK (bounded timeout so UI never freezes 60s+)
+    // 1. First attempt via Appwrite Functions SDK (33s > Appwrite's 30s sync cap
+    //    so a 25s cold start is never aborted prematurely by the client).
     var receivedStructuredError = false;
     var timedOutOnServer = false;
     try {
@@ -250,7 +270,7 @@ class PaystackPaymentGateway implements PaymentGateway {
             xasync: false,
             method: appwrite_enums.ExecutionMethod.pOST,
           )
-          .timeout(const Duration(seconds: 22));
+          .timeout(const Duration(seconds: 33));
 
       final bodyStr = execution.responseBody.trim();
       if (bodyStr.isNotEmpty) {
@@ -268,6 +288,10 @@ class PaystackPaymentGateway implements PaymentGateway {
           }
           return decoded;
         }
+      }
+      if (execution.errors.toLowerCase().contains('timed out') ||
+          execution.errors.contains('408')) {
+        timedOutOnServer = true;
       }
     } catch (sdkErr) {
       // Do not fall back and execute the payment function twice if the backend
@@ -291,6 +315,18 @@ class PaystackPaymentGateway implements PaymentGateway {
     }
 
     if (timedOutOnServer) {
+      // Auto-retry ONCE on cold-start timeout: the first call woke up the
+      // container, so the immediate retry with a fresh reference completes in ~2s.
+      if (attempt == 1) {
+        _logger.info(
+            'Paystack function cold-start timed out; automatically retrying once...');
+        final retryPayload = Map<String, dynamic>.from(payload);
+        final act = retryPayload['action']?.toString() ?? '';
+        if (act == 'initialize_transaction' || act == 'initialize_subscription') {
+          retryPayload['reference'] = generateReference();
+        }
+        return _executePaystackFunction(retryPayload, attempt: 2);
+      }
       throw Exception(
         'Payment server took too long to wake up. Please tap Donate again to retry.',
       );

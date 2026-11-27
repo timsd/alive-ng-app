@@ -1155,6 +1155,25 @@
         statusEl.className = 'status-message' + (className ? ' ' + className : '');
       }
 
+      // Silently pre-warm the paystack_payments Appwrite container in the background
+      // while the donor fills out the form so checkout responds in ~2s instead of cold-starting.
+      try {
+        fetch(
+          APPWRITE_ENDPOINT + '/functions/' + PAYSTACK_FUNCTION_ID + '/executions',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Appwrite-Project': APPWRITE_PROJECT_ID
+            },
+            body: JSON.stringify({
+              body: JSON.stringify({ action: 'warmup' }),
+              async: true
+            })
+          }
+        ).catch(function () { });
+      } catch (_) { }
+
       document.getElementById('donation-form').addEventListener('submit', async function (event) {
         event.preventDefault();
 
@@ -1201,46 +1220,71 @@
             : CALLBACK_URL;
 
           // Guest checkout uses public execution permission, never an API key.
-          var response = await fetch(
-            APPWRITE_ENDPOINT + '/functions/' + PAYSTACK_FUNCTION_ID + '/executions',
-            {
-              method: 'POST',
-              headers: headers,
-              body: JSON.stringify({
+          // If the container was cold and hit Appwrite's 30s sync cap, retry once
+          // automatically with a fresh reference now that the runtime is awake.
+          async function callPaystackInit(refCode) {
+            var resp = await fetch(
+              APPWRITE_ENDPOINT + '/functions/' + PAYSTACK_FUNCTION_ID + '/executions',
+              {
+                method: 'POST',
+                headers: headers,
                 body: JSON.stringify({
-                  action: actionType,
-                  email: email,
-                  reference: reference,
-                  amount: amountMinor,
-                  currency: billingCurrency,
-                  callback_url: callbackWithProject,
-                  metadata: {
-                    donor_name: name,
-                    donor_email: email,
-                    project_id: selectedProjectId,
-                    purpose_id: selectedProjectId,
-                    project_title: selectedProjectTitle,
-                    fund_designation: selectedProjectTitle,
-                    mission_purpose: selectedProjectTitle,
-                    donation_type: donationTypeValue,
-                    app_id: 'alive_nigeria_app',
-                    source: 'web_donation_page',
-                    currency: selectedCurrency,
-                    original_currency: selectedCurrency,
-                    original_amount: amountValue,
-                    exchange_rate: isUSD ? exchangeRate : 1,
-                    billed_currency: billingCurrency,
-                    billed_amount_ngn: billedNgnAmount,
-                    amount_minor: amountMinor,
-                    recurring: isMonthly
-                  }
-                }),
-                async: false
-              })
-            }
-          );
+                  body: JSON.stringify({
+                    action: actionType,
+                    email: email,
+                    reference: refCode,
+                    amount: amountMinor,
+                    currency: billingCurrency,
+                    callback_url: callbackWithProject,
+                    metadata: {
+                      donor_name: name,
+                      donor_email: email,
+                      project_id: selectedProjectId,
+                      purpose_id: selectedProjectId,
+                      project_title: selectedProjectTitle,
+                      fund_designation: selectedProjectTitle,
+                      mission_purpose: selectedProjectTitle,
+                      donation_type: donationTypeValue,
+                      app_id: 'alive_nigeria_app',
+                      source: 'web_donation_page',
+                      currency: selectedCurrency,
+                      original_currency: selectedCurrency,
+                      original_amount: amountValue,
+                      exchange_rate: isUSD ? exchangeRate : 1,
+                      billed_currency: billingCurrency,
+                      billed_amount_ngn: billedNgnAmount,
+                      amount_minor: amountMinor,
+                      recurring: isMonthly
+                    }
+                  }),
+                  async: false
+                })
+              }
+            );
+            var json = await resp.json().catch(function () { return {}; });
+            return { response: resp, result: json };
+          }
 
-          var result = await response.json().catch(function () { return {}; });
+          function isColdStartTimeout(resp, json) {
+            var txt = String(
+              (json && (json.message || json.errors || json.error)) || ''
+            ).toLowerCase();
+            return resp.status === 408 ||
+              resp.status === 504 ||
+              txt.indexOf('timed out') !== -1 ||
+              txt.indexOf('408') !== -1 ||
+              (json && json.status === 'failed' && txt.indexOf('synchronous function execution') !== -1);
+          }
+
+          var callOut = await callPaystackInit(reference);
+          if (isColdStartTimeout(callOut.response, callOut.result)) {
+            setStatus('Payment server is waking up, retrying automatically...', '');
+            reference = makeReference();
+            callOut = await callPaystackInit(reference);
+          }
+
+          var response = callOut.response;
+          var result = callOut.result;
 
           if (!response.ok) {
             var errMsg = result.message || result.error || result;
@@ -1250,6 +1294,8 @@
             var httpError = '';
             if (response.status === 401 || response.status === 403) {
               httpError = ' (Authentication required. Check Appwrite function permissions)';
+            } else if (isColdStartTimeout(response, result)) {
+              errMsg = 'Payment server is still starting up. Please tap Donate Now once more.';
             }
             throw new Error(errMsg || ('Checkout initialization failed' + httpError));
           }
@@ -1258,6 +1304,13 @@
           var payload = result.responseBody !== undefined ? result.responseBody : result.response;
           if (typeof payload === 'string') {
             try { payload = JSON.parse(payload); } catch (_) { payload = {}; }
+          }
+
+          if (result.status === 'failed' && (!payload || !payload.authorization_url)) {
+            var execErr = String(result.errors || (payload && payload.error) || '');
+            if (execErr.toLowerCase().indexOf('timed out') !== -1) {
+              throw new Error('Payment server is still starting up. Please tap Donate Now once more.');
+            }
           }
 
           if (payload && payload.error) {
